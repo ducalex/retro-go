@@ -441,6 +441,37 @@ bool CSystem::ContextLoad(LSS_FILE *fp)
    return status;
 }
 
+void CSystem::UpdateFrame(bool draw)
+{
+   gEndOfFrame = FALSE;
+   gRenderFrame = draw;
+
+   while(gEndOfFrame != TRUE)
+   {
+      if(gSystemCycleCount>=gNextTimerEvent)
+      {
+         mMikie->Update();
+      }
+
+      mCpu->Update();
+
+   #ifdef _LYNXDBG
+            // Check breakpoint
+            static ULONG lastcycle=0;
+            if(lastcycle<mCycleCountBreakpoint && gSystemCycleCount>=mCycleCountBreakpoint) gBreakpointHit=TRUE;
+            lastcycle=gSystemCycleCount;
+
+            // Check single step mode
+            if(gSingleStepMode) gBreakpointHit=TRUE;
+   #endif
+
+      if(gSystemCPUSleep)
+      {
+         gSystemCycleCount=gNextTimerEvent;
+      }
+   }
+}
+
 #ifdef _LYNXDBG
 
 void CSystem::DebugTrace(int address)

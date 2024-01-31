@@ -192,70 +192,7 @@ class CSystem : public CSystemBase
       bool ContextSave(LSS_FILE *fp);
       bool ContextLoad(LSS_FILE *fp);
       void SaveEEPROM(void);
-
-      inline void Update(void)
-      {
-         //
-         // Only update if there is a predicted timer event
-         //
-         if(gSystemCycleCount>=gNextTimerEvent)
-         {
-            mMikie->Update();
-         }
-         //
-         // Step the processor through 1 instruction
-         //
-         mCpu->Update();
-
-#ifdef _LYNXDBG
-         // Check breakpoint
-         static ULONG lastcycle=0;
-         if(lastcycle<mCycleCountBreakpoint && gSystemCycleCount>=mCycleCountBreakpoint) gBreakpointHit=TRUE;
-         lastcycle=gSystemCycleCount;
-
-         // Check single step mode
-         if(gSingleStepMode) gBreakpointHit=TRUE;
-#endif
-
-         //
-         // If the CPU is asleep then skip to the next timer event
-         //
-         if(gSystemCPUSleep)
-         {
-            gSystemCycleCount=gNextTimerEvent;
-         }
-      }
-
-      inline void UpdateFrame(bool draw)
-      {
-         gEndOfFrame = FALSE;
-         gRenderFrame = draw;
-
-         while(gEndOfFrame != TRUE)
-         {
-            if(gSystemCycleCount>=gNextTimerEvent)
-            {
-               mMikie->Update();
-            }
-
-            mCpu->Update();
-
-         #ifdef _LYNXDBG
-                  // Check breakpoint
-                  static ULONG lastcycle=0;
-                  if(lastcycle<mCycleCountBreakpoint && gSystemCycleCount>=mCycleCountBreakpoint) gBreakpointHit=TRUE;
-                  lastcycle=gSystemCycleCount;
-
-                  // Check single step mode
-                  if(gSingleStepMode) gBreakpointHit=TRUE;
-         #endif
-
-            if(gSystemCPUSleep)
-            {
-               gSystemCycleCount=gNextTimerEvent;
-            }
-         }
-      }
+      void UpdateFrame(bool draw);
 
       //
       // CPU
