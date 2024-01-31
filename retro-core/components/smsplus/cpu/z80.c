@@ -2041,7 +2041,7 @@ ALWAYS_INLINE void take_interrupt(void)
 /****************************************************************************
  * Processor initialization
  ****************************************************************************/
-void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
+void z80_init(int index, int clock, const void *config, int (*irq_callback)(int))
 {
   int i, p;
 
@@ -2123,7 +2123,7 @@ void z80_init(int index, int clock, const void *config, int (*irqcallback)(int))
   F = ZF;      /* Zero flag is set */
   SP = 0xdff0; /* fix Shadow Dancer & Ace of Aces (normally set by BIOS) */
   Z80.daisy = config;
-  Z80.irq_callback = irqcallback;
+  Z80.irq_callback = irq_callback ? irq_callback : dummy_irq;
   Z80.mem_read = dummy_read;
   Z80.mem_write = dummy_write;
   Z80.port_read = dummy_read;
