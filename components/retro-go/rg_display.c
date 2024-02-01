@@ -249,6 +249,14 @@ static void lcd_init(void)
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 
+#if defined(RG_GPIO_LCD_RST)
+    gpio_set_direction(RG_GPIO_LCD_RST, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_RST, 0);
+    usleep(100 * 1000);
+    gpio_set_level(RG_GPIO_LCD_RST, 1);
+    usleep(10 * 1000);
+#endif
+
     ILI9341_CMD(0x01);          // Reset
     usleep(5 * 1000);           // Wait 5ms after reset
     ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565

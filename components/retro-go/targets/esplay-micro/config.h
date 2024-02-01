@@ -111,6 +111,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_12
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_27
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_26

@@ -83,6 +83,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_8
 #define RG_GPIO_LCD_DC              GPIO_NUM_47
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_39
+#define RG_GPIO_LCD_RST             GPIO_NUM_3
 
 // SPI SD Card
 #define RG_GPIO_SDSPI_CMD          GPIO_NUM_14
