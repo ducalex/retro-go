@@ -47,7 +47,7 @@
 }
 
 // Battery
-// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_DRIVER           0
 #define RG_BATTERY_CALC_PERCENT(raw) (99)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 

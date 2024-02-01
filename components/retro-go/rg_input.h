@@ -25,6 +25,28 @@ typedef enum
     RG_KEY_NONE    = 0,
 } rg_key_t;
 
+typedef struct
+{
+    rg_key_t key;
+    int channel;
+    int atten;
+    int min, max;
+} rg_keymap_adc1_t;
+
+typedef struct
+{
+    rg_key_t key;
+    int num;
+    int pull;
+    int level;
+} rg_keymap_gpio_t;
+
+typedef struct
+{
+    rg_key_t key;
+    int src;
+} rg_keymap_t;
+
 void rg_input_init(void);
 void rg_input_deinit(void);
 bool rg_input_key_is_pressed(rg_key_t key);
