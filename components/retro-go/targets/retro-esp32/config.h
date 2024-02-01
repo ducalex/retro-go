@@ -1,7 +1,5 @@
-// REF: https://wiki.odroid.com/odroid_go/odroid_go
-
 // Target definition
-#define RG_TARGET_NAME             "ODROID-GO"
+#define RG_TARGET_NAME             "RETRO-ESP32"
 
 // Storage and Settings
 #define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash

@@ -1,18 +1,3 @@
-// REF: https://www.makerfabs.com/esplay-micro-v2.html
-// This port developed for the Micro V2 listed above. Compatibility with the elusive V1 is unknown.
-
-// WORK IN PROGRESS!
-// Issues: Menu, L, and R aren't properly mapped yet.
-
-// Parts:
-// - ESP32-WROVER-B (SoC 16MB Flash + 8MB PSRAM)
-// - PCF8574 I2C GPIO (To connect the extra buttons)
-// - UDA1334A (I2S DAC)
-// - YT240L010 (ILI9341 LCD)
-// - TP4054 (Lipo Charger IC)
-// - CH340C (USB to Serial)
-// - 3.5mm Headphone jack 0_o
-
 // Target definition
 #define RG_TARGET_NAME             "ESPLAY-MICRO"
 

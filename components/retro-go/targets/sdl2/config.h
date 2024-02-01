@@ -1,5 +1,3 @@
-// REF: https://wiki.libsdl.org/
-
 // Target definition
 #define RG_TARGET_NAME             "SDL2"
 
