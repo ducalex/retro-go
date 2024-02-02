@@ -87,7 +87,7 @@ static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
 
-#define WDT_TIMEOUT 10000000
+#define WDT_TIMEOUT 12000000
 #define WDT_RELOAD(val) wdtCounter = (val)
 
 #define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
@@ -167,7 +167,7 @@ static void system_monitor_task(void *arg)
 
     while (!exitCalled)
     {
-        int loopTime_us = lastLoop - rg_system_timer();
+        int loopTime_us = rg_system_timer() - lastLoop;
         lastLoop = rg_system_timer();
         rtcValue = time(NULL);
 
