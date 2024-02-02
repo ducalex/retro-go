@@ -5,8 +5,11 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 
 # Supported Devices
 
+I develop and test mainly on the ODROID-GO. I occasionally test on the MRGC-G32 as well. All other devices have various degrees of support.
+
 | Name                                                  | Status |
 |-------------------------------------------------------|--------|
+| [esp32s3-devkit-c](esp32s3-devkit-c/docs/README.md)       |   |
 | [esplay-micro](targets/esplay-micro/docs/README.md)   |   |
 | [esplay-s3](targets/esplay-s3/docs/README.md)         |   |
 | [mrgc-g32](targets/mrgc-g32/docs/README.md)           |   |
