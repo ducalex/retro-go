@@ -61,6 +61,7 @@ static inline uint32_t gamepad_read(void)
             state |= mapping->key;
     }
 #endif
+
 #if defined(RG_GAMEPAD_GPIO_MAP)
     for (size_t i = 0; i < RG_COUNT(keymap_gpio); ++i)
     {
@@ -70,7 +71,7 @@ static inline uint32_t gamepad_read(void)
     }
 #endif
 
-#if RG_GAMEPAD_DRIVER == 2  // Serial
+#if RG_GAMEPAD_DRIVER == 2 // Serial
 
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     usleep(5);
@@ -93,7 +94,7 @@ static inline uint32_t gamepad_read(void)
             state |= keymap[i].key;
     }
 
-#elif RG_GAMEPAD_DRIVER == 3  // I2C
+#elif RG_GAMEPAD_DRIVER == 3 // I2C
 
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
@@ -107,7 +108,7 @@ static inline uint32_t gamepad_read(void)
         }
     }
 
-#elif RG_GAMEPAD_DRIVER == 4  // I2C via AW9523
+#elif RG_GAMEPAD_DRIVER == 4 // I2C via AW9523
 
     uint32_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 
@@ -134,11 +135,11 @@ static inline uint32_t gamepad_read(void)
 
     // Virtual buttons (combos) to replace essential missing buttons.
 #if !RG_GAMEPAD_HAS_MENU_BTN
-    if (state == (RG_KEY_SELECT|RG_KEY_START))
+    if (state == (RG_KEY_SELECT | RG_KEY_START))
         state = RG_KEY_MENU;
 #endif
 #if !RG_GAMEPAD_HAS_OPTION_BTN
-    if (state == (RG_KEY_SELECT|RG_KEY_A))
+    if (state == (RG_KEY_SELECT | RG_KEY_A))
         state = RG_KEY_OPTION;
 #endif
 
@@ -207,6 +208,7 @@ void rg_input_init(void)
         adc1_config_channel_atten(mapping->channel, mapping->atten);
     }
 #endif
+
 #if defined(RG_GAMEPAD_GPIO_MAP)
     RG_LOGI("Initializing GPIO gamepad driver...");
     for (size_t i = 0; i < RG_COUNT(keymap_gpio); ++i)
@@ -230,6 +232,7 @@ void rg_input_init(void)
 
     RG_LOGI("Initializing I2C gamepad driver...");
     rg_i2c_init();
+    gamepad_read();
 
 #elif RG_GAMEPAD_DRIVER == 4 // I2C w/AW9523
 
@@ -256,10 +259,7 @@ void rg_input_init(void)
 
 #endif
 
-    // Certain drivers return garbage on first read, let's drop it
-    gamepad_read();
-
-#if RG_BATTERY_DRIVER == 1  /* ADC1 */
+#if RG_BATTERY_DRIVER == 1 /* ADC1 */
     RG_LOGI("Initializing ADC1 battery driver...");
     adc1_config_width(ADC_WIDTH_MAX - 1);
     adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
