@@ -766,7 +766,7 @@ next:
 		break;
 
 	case 0xCB: /* CB prefix */
-		clen += exec_cb();
+		clen = exec_cb();
 		break;
 
 	default:
