@@ -14,6 +14,8 @@
 #include "targets/esplay-micro/config.h"
 #elif defined(RG_TARGET_ESPLAY_S3)
 #include "targets/esplay-s3/config.h"
+#elif defined(RG_TARGET_ESP32S3_DEVKIT_C)
+#include "targets/esp32s3-devkit-c/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
