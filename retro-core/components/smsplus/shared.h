@@ -9,6 +9,7 @@ typedef signed char int8;
 typedef signed short int int16;
 typedef signed long int int32;
 
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
