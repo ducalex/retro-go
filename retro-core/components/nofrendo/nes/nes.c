@@ -35,16 +35,11 @@ void nes_emulate(bool draw)
 {
     int elapsed_cycles = 0;
 
-    if (nes.input_func)
-    {
-        nes.input_func();
-    }
-
     while (nes.scanline < nes.scanlines_per_frame)
     {
         nes.cycles += nes.cycles_per_scanline;
 
-        ppu_scanline(nes.vidbuf, nes.scanline, draw);
+        ppu_renderline(nes.vidbuf, nes.scanline, draw);
 
         if (nes.scanline == 241)
         {
@@ -62,24 +57,11 @@ void nes_emulate(bool draw)
         if (nes.mapper->hblank)
             nes.mapper->hblank(nes.scanline);
 
-        if (nes.timer_func == NULL)
-        {
-            elapsed_cycles = nes6502_execute(nes.cycles);
-            apu_fc_advance(elapsed_cycles);
-            nes.cycles -= elapsed_cycles;
-        }
-        else
-        {
-            while (nes.cycles >= 1)
-            {
-                elapsed_cycles = nes6502_execute(MIN(nes.timer_period, nes.cycles));
-                apu_fc_advance(elapsed_cycles);
-                nes.timer_func(elapsed_cycles);
-                nes.cycles -= elapsed_cycles;
-            }
-        }
+        elapsed_cycles = nes6502_execute(nes.cycles);
+        apu_fc_advance(elapsed_cycles);
+        nes.cycles -= elapsed_cycles;
 
-        ppu_endscanline();
+        ppu_endline();
         nes.scanline++;
     }
 
@@ -92,28 +74,13 @@ void nes_emulate(bool draw)
     }
 
     apu_emulate();
-
-    if (nes.vsync_func)
-    {
-        nes.vsync_func();
-    }
 }
 
 /* This sets a timer to be fired every `period` cpu cycles. It is NOT accurate. */
-void nes_settimer(nes_timer_t *func, long period)
+void nes_settimer(nes_timer_t *func, int period)
 {
     nes.timer_func = func;
     nes.timer_period = period;
-}
-
-void nes_poweroff(void)
-{
-    nes.poweroff = true;
-}
-
-void nes_togglepause(void)
-{
-    nes.pause ^= true;
 }
 
 void nes_setcompathacks(void)
@@ -268,8 +235,6 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
 {
     memset(&nes, 0, sizeof(nes_t));
 
-    nes.poweroff = false;
-    nes.pause = false;
     nes.system = system;
     nes.refresh_rate = 60;
 

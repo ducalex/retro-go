@@ -27,6 +27,9 @@
 #include "palettes.h"
 #include "nes/nes.h"
 
+// static bool frameskip;
+static bool running;
+
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input)
 {
     nes_t *nes = nes_init(system, sample_rate, stereo);
@@ -37,8 +40,6 @@ int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vs
     }
 
     nes->blit_func = blit;
-    nes->input_func = input;
-    nes->vsync_func = vsync;
 
     return 0;
 }
@@ -99,10 +100,8 @@ void *nofrendo_buildpalette(nespal_t palette, int bitdepth)
     return NULL;
 }
 
-int nofrendo_run(const char *filename, const char *savefile)
+int nofrendo_start(const char *filename, const char *savefile)
 {
-    nes_t *nes = nes_getptr();
-
     if (nes_insertcart(filename, NULL) < 0)
     {
         MESSAGE_ERROR("Failed to insert NES cart.\n");
@@ -114,16 +113,19 @@ int nofrendo_run(const char *filename, const char *savefile)
         nes_reset(true);
     }
 
-    while (!nes->poweroff)
+    running = true;
+
+    while (running)
     {
         nes_emulate(true);
     }
+
+    nes_shutdown();
 
     return 0;
 }
 
 void nofrendo_stop(void)
 {
-    nes_poweroff();
-    nes_shutdown();
+    running = false;
 }

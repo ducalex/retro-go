@@ -185,7 +185,7 @@ IRAM_ATTR uint8 ppu_read(uint32 address)
       {
          ppu.vdata_latch = 0xFF;
          MESSAGE_DEBUG("VRAM read at $%04X, scanline %d\n",
-                        ppu.vaddr, NES_CURRENT_SCANLINE);
+                        ppu.vaddr, nes_getptr()->scanline);
       }
       else
       {
@@ -302,7 +302,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
          if ((ppu.bg_on || ppu.obj_on) && !ppu.vram_accessible)
          {
             MESSAGE_DEBUG("VRAM write to $%04X, scanline %d\n",
-                           ppu.vaddr, NES_CURRENT_SCANLINE);
+                           ppu.vaddr, nes_getptr()->scanline);
             PPU_MEM_WRITE(ppu.vaddr, 0xFF); /* corrupt */
          }
          else
@@ -641,7 +641,7 @@ bool ppu_inframe(void)
    return (ppu.scanline < 240);
 }
 
-IRAM_ATTR void ppu_endscanline()
+IRAM_ATTR void ppu_endline()
 {
    /* modify vram address at end of scanline */
    if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
@@ -670,7 +670,7 @@ IRAM_ATTR void ppu_endscanline()
    }
 }
 
-IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
+IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
 {
    ppu.scanline = scanline;
 
@@ -705,10 +705,9 @@ IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
    {
       ppu.stat |= PPU_STATF_VBLANK;
       ppu.vram_accessible = true;
-      ppu.last_scanline = NES_SCANLINES - 1;
    }
    // End of frame
-   else if (scanline == ppu.last_scanline)
+   else if (scanline == ppu.scanlines - 1)
    {
       ppu.stat &= ~PPU_STATF_VBLANK;
       ppu.strikeflag = false;
@@ -731,7 +730,7 @@ void ppu_reset()
    ppu.tile_xofs = 0;
    ppu.latch = 0;
    ppu.vram_accessible = true;
-   ppu.last_scanline = NES_SCANLINES - 1;
+   ppu.scanlines = nes_getptr()->scanlines_per_frame;
 }
 
 ppu_t *ppu_init(void)

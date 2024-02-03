@@ -96,7 +96,7 @@ static void map_vblank(void)
         setup_song(++current_song);
         nes6502_reset();
         apu_reset();
-        nes6502_burn(NES_CPU_CLOCK / 2);
+        nes6502_burn(NES_CPU_CLOCK_NTSC / 2);
     }
 }
 
@@ -109,7 +109,7 @@ static void map_write(uint32 address, uint8 value)
     else if (address == 0x5800) // playback sync
     {
 #if !SYNC_TO_VBLANK
-        nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK / 1000000.f) - 214);
+        nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK_NTSC / 1000000.f) - 214);
 #endif
         playing = true;
     }

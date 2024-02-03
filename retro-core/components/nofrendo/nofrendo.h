@@ -72,4 +72,5 @@ enum
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
 int nofrendo_start(const char *filename, const char *savefile);
 void nofrendo_stop(void);
+void nofrendo_pause(bool pause);
 void *nofrendo_buildpalette(nespal_t n, int bitdepth);

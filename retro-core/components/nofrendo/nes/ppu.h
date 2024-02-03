@@ -118,8 +118,8 @@ typedef struct
    bool strikeflag;
    uint32 strike_cycle;
 
+   int scanlines;
    int scanline;
-   int last_scanline;
 
    /* Determines if left column can be cropped/blanked */
    int left_bg_counter;
@@ -163,8 +163,8 @@ uint8 ppu_read(uint32 address);
 void ppu_write(uint32 address, uint8 value);
 
 /* Rendering */
-void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag);
-void ppu_endscanline(void);
+void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag);
+void ppu_endline(void);
 
 /* Debugging */
 void ppu_dumppattern(uint8 *bmp, int table_num, int x_loc, int y_loc, int col);

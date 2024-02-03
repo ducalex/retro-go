@@ -78,7 +78,7 @@ static void map_reg_write(uint32 address, uint8 value)
     {
     case 0x5000:
         reg5000 = value;
-        if (!(reg5000 & 0x80) && NES_CURRENT_SCANLINE < 128)
+        if (!(reg5000 & 0x80) && nes_getptr()->scanline < 128)
         {
             mmc_bankvrom(8, 0x0000, 0);
         }

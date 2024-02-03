@@ -43,7 +43,7 @@ static void map_hblank(int scanline)
     /* Increment the counter if it is enabled and check for strike */
     if (irq.enabled)
     {
-        irq.counter += NES_CYCLES_PER_SCANLINE;
+        irq.counter += nes_getptr()->cycles_per_scanline;
 
         /* IRQ line is hooked to Q12 of the counter */
         if (irq.counter & 0x1000)

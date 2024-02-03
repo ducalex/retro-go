@@ -111,7 +111,7 @@ static void map_hblank(int scanline)
 {
     if (irq.enabled)
     {
-        irq.counter += NES_CYCLES_PER_SCANLINE;
+        irq.counter += nes_getptr()->cycles_per_scanline;
 
         if (irq.counter >= 0x7FFF)
         {

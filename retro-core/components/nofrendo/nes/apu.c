@@ -758,8 +758,9 @@ int apu_getopt(apu_option_t n)
 void apu_reset(void)
 {
    /* Update region if needed */
-   apu.samples_per_frame = apu.sample_rate / NES_REFRESH_RATE;
-   apu.cycle_rate = (float)NES_CPU_CLOCK / apu.sample_rate;
+   nes_t *nes = nes_getptr();
+   apu.samples_per_frame = apu.sample_rate / nes->refresh_rate;
+   apu.cycle_rate = (float)nes->cpu_clock / apu.sample_rate;
    apu.noise.shift_reg = 0x4000;
    apu_build_luts(apu.samples_per_frame);
 
