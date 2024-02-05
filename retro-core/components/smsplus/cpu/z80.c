@@ -1180,7 +1180,7 @@ static void dummy_write(UINT16 addr, UINT8 val)
   //
 }
 
-static UINT16 dummy_irq(UINT8 param)
+static int dummy_irq(int param)
 {
   return 0xFF;
 }
