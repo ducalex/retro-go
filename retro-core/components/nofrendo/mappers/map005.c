@@ -35,7 +35,6 @@ static uint16 chr_upper_bits;
 static uint16 chr_banks_count;
 
 static int split_tile, split_tile_number, split_region;
-static int scanline;
 
 #define IN_FRAME    0x40
 #define IRQ_PENDING 0x80
@@ -171,11 +170,9 @@ static inline void nametable_fill()
     memset(ppu_getnametable(3) + 32 * 30, (fill_mode.color | fill_mode.color << 2 | fill_mode.color << 4 | fill_mode.color << 6), 64);
 }
 
-static void map_hblank(int _scanline)
+static void map_hblank(nes_t *nes)
 {
-    scanline = _scanline;
-
-    if (scanline >= 241)
+    if (nes->scanline >= 241)
     {
         irq.status &= ~IN_FRAME; // (IN_FRAME|IRQ_PENDING)
     }
@@ -183,7 +180,7 @@ static void map_hblank(int _scanline)
     {
         irq.status |= IN_FRAME;
 
-        if (scanline == irq.scanline)
+        if (nes->scanline == irq.scanline)
         {
             if (irq.enabled) nes6502_irq();
             irq.status |= IRQ_PENDING;
@@ -363,6 +360,7 @@ static uint8 map_vram_read(uint32 address, uint8 value)
 
     // Reference: https://github.com/SourMesen/Mesen/blob/master/Core/MMC5.h
     #if 0
+    int scanline = nes_getptr()->scanline;
     if (exram.mode <= 1 && scanline < 240)
     {
         if (vert_split.enabled)
@@ -477,8 +475,6 @@ static void map_init(rom_t *cart)
 
     fill_mode.color = 0xFF;
     fill_mode.tile = 0xFF;
-
-    scanline = 241;
 
     prg_mode = 3;
     chr_mode = 3;

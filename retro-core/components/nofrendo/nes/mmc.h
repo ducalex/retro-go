@@ -44,8 +44,8 @@ struct mapper_s
    int number;                         /* mapper number */
    const char *name;                   /* mapper name */
    void (*init)(rom_t *cart);          /* init routine */
-   void (*vblank)(void);               /* vblank callback */
-   void (*hblank)(int scanline);       /* hblank callback */
+   void (*vblank)(nes_t *nes);         /* vblank callback */
+   void (*hblank)(nes_t *nes);         /* hblank callback */
    void (*get_state)(uint8 *state);    /* get state (uint8 *(state[128])) */
    void (*set_state)(uint8 *state);    /* set state (uint8 *(state[128])) */
    mem_read_handler_t mem_read[4];     /* memory read structure */

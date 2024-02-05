@@ -122,9 +122,9 @@ static void map_write(uint32 address, uint8 value)
     }
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
-    if (scanline > 240)
+    if (nes->scanline > 240)
         return;
 
     if (!ppu_enabled())

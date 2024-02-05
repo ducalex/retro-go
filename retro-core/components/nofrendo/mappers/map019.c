@@ -107,11 +107,11 @@ static uint8 map_read(uint32 address)
     }
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
     if (irq.enabled)
     {
-        irq.counter += nes_getptr()->cycles_per_scanline;
+        irq.counter += nes->cycles_per_scanline;
 
         if (irq.counter >= 0x7FFF)
         {

@@ -70,9 +70,9 @@ static void map_write(uint32 address, uint8 value)
     }
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
-    if (scanline < 241)
+    if (nes->scanline < 241)
     {
         if (irq.enabled && ppu_enabled())
         {

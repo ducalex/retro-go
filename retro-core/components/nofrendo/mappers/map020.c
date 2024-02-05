@@ -110,9 +110,9 @@ static void fds_cpu_timer(int cycles)
     }
 }
 
-static void fds_hblank(int scanline)
+static void fds_hblank(nes_t *nes)
 {
-    fds_cpu_timer(nes_getptr()->cycles_per_scanline);
+    fds_cpu_timer(nes->cycles_per_scanline);
 }
 
 static uint8 fds_read(uint32 address)

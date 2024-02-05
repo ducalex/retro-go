@@ -33,9 +33,9 @@ static uint16 command = 0;
 static uint16 vrombase = 0x0000;
 
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
-    if (scanline >= 241)
+    if (nes->scanline >= 241)
         return;
 
     irq.reset = false;

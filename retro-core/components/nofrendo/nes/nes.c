@@ -47,7 +47,7 @@ void nes_emulate(bool draw)
                 nes6502_nmi();
 
             if (nes.mapper->vblank)
-                nes.mapper->vblank();
+                nes.mapper->vblank(&nes);
         }
 
         if (nes.mapper->hblank)
@@ -55,7 +55,7 @@ void nes_emulate(bool draw)
             // Mappers use various techniques to detect horizontal blank and we can't accommodate
             // all of them unfortunately. But ~86 cycles seems to work fine for everything tested.
             elapsed_cycles += nes6502_execute(86 - elapsed_cycles);
-            nes.mapper->hblank(nes.scanline);
+            nes.mapper->hblank(&nes);
         }
 
         nes.cycles += nes.cycles_per_scanline;

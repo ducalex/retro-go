@@ -89,14 +89,14 @@ static void setup_song(int song)
 }
 
 // That whole thing should be written in 6502 assembly above instead but for now I'm lazy
-static void map_vblank(void)
+static void map_vblank(nes_t *nes)
 {
-    if (playing && nes_getptr()->input->state)
+    if (playing && nes->input->state)
     {
         setup_song(++current_song);
         nes6502_reset();
         apu_reset();
-        nes6502_burn(NES_CPU_CLOCK_NTSC / 2);
+        nes6502_burn(nes->cpu_clock / 2);
     }
 }
 

@@ -39,16 +39,16 @@ static void map_update()
     // mmc_bankvrom(8, 0x0000, 0);
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
     if ((reg5000 & 0x80))
     {
-        if (scanline == 127)
+        if (nes->scanline == 127)
         {
             mmc_bankvrom(4, 0x0000, 1);
             mmc_bankvrom(4, 0x1000, 1);
         }
-        else if (scanline == 239)
+        else if (nes->scanline == 239)
         {
             mmc_bankvrom(4, 0x0000, 0);
             mmc_bankvrom(4, 0x1000, 0);
