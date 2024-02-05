@@ -62,11 +62,11 @@ typedef struct nes_s nes_t;
 
 typedef enum
 {
-    SYS_UNKNOWN,
     SYS_NES_NTSC,
     SYS_NES_PAL,
     SYS_FAMICOM,
-    SYS_DETECT = 0,
+    SYS_UNKNOWN,
+    SYS_DETECT = -1,
 } nes_type_t;
 
 typedef void (nes_timer_t)(int cycles);
@@ -91,15 +91,14 @@ typedef struct nes_s
     int overscan;
 
     /* Timing constants */
-    /* TO DO: re-check if float is still necessary...*/
     int refresh_rate;
     int scanlines_per_frame;
-    float cycles_per_scanline;
-    float cpu_clock;
+    int cycles_per_scanline;
+    int cpu_clock;
 
     /* Timing counters */
     int scanline;
-    float cycles;
+    int cycles;
 
     /* Periodic timer */
     nes_timer_t *timer_func;
