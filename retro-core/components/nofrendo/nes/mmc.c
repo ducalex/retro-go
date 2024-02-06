@@ -30,6 +30,7 @@ static rom_t *cart;
 /* PRG-ROM/RAM bankswitching */
 void mmc_bankprg(unsigned size, unsigned address, int bank, uint8 *base)
 {
+   // ASSERT(size == 8 || size == 16 || size == 32);
    size_t banks = 16;
 
    // if (base == PRG_ANY)
@@ -46,40 +47,31 @@ void mmc_bankprg(unsigned size, unsigned address, int bank, uint8 *base)
       banks = cart->prg_ram_banks;
    }
 
-   if (base == NULL)
+   banks /= (size / 8);
+
+   if (bank < 0)
+      bank += banks;
+
+   if (base == NULL || banks == 0 || bank < 0) // || bank > banks)
    {
-      MESSAGE_ERROR("MMC: Invalid pointer! Addr: $%04X Bank: %d Size: %d\n", address, bank, size);
-      abort();
+      MESSAGE_ERROR("MMC: Bogus PRG mapping! Address: $%04X, Size: %dKB, Bank: %d, Banks: %d, Base: %p\n",
+         address, size, bank, banks, base);
+      return;
    }
 
-   switch (size)
+   bank %= banks;
+   base += bank * (size * 1024);
+
+   for (size_t i = 0, num = (size * 1024 / MEM_PAGESIZE); i < num; ++i)
    {
-   case 8:
-      base += ((bank >= 0 ? bank : (banks) + bank) % (banks)) << 13;
-      break;
-
-   case 16:
-      base += ((bank >= 0 ? bank : (banks / 2) + bank) % (banks / 2)) << 14;
-      break;
-
-   case 32:
-      base += ((bank >= 0 ? bank : (banks / 4) + bank) % (banks / 4)) << 15;
-      break;
-
-   default:
-      MESSAGE_ERROR("MMC: Invalid bank size! Addr: $%04X Bank: %d Size: %d\n", address, bank, size);
-      abort();
-   }
-
-   for (int i = 0; i < (size * 0x400 / MEM_PAGESIZE); i++)
-   {
-      mem_setpage((address >> MEM_PAGESHIFT) + i, base + i * MEM_PAGESIZE);
+      mem_setpage((address >> MEM_PAGESHIFT) + i, &base[i * MEM_PAGESIZE]);
    }
 }
 
 /* CHR-ROM/RAM bankswitching */
 void mmc_bankchr(unsigned size, unsigned address, int bank, uint8 *base)
 {
+   // ASSERT(size == 1 || size == 2 || size == 4 || size == 8);
    size_t banks = 128;
 
    if (base == CHR_ANY)
@@ -96,32 +88,22 @@ void mmc_bankchr(unsigned size, unsigned address, int bank, uint8 *base)
       banks = cart->chr_ram_banks;
    }
 
-   switch (size)
+   banks *= (8 / size);
+
+   if (bank < 0)
+      bank += banks;
+
+   if (base == NULL || banks == 0 || bank < 0) // || bank > banks)
    {
-   case 1:
-      bank = (bank >= 0 ? bank : (banks * 8) + bank) % (banks * 8);
-      ppu_setpage(1, address >> 10, &base[bank << 10] - address);
-      break;
-
-   case 2:
-      bank = (bank >= 0 ? bank : (banks * 4) + bank) % (banks * 4);
-      ppu_setpage(2, address >> 10, &base[bank << 11] - address);
-      break;
-
-   case 4:
-      bank = (bank >= 0 ? bank : (banks * 2) + bank) % (banks * 2);
-      ppu_setpage(4, address >> 10, &base[bank << 12] - address);
-      break;
-
-   case 8:
-      bank = (bank >= 0 ? bank : (banks) + bank) % (banks);
-      ppu_setpage(8, 0, &base[bank << 13]);
-      break;
-
-   default:
-      MESSAGE_ERROR("MMC: Invalid CHR bank size %d\n", size);
-      abort();
+      MESSAGE_ERROR("MMC: Bogus CHR mapping! Address: $%04X, Size: %dKB, Bank: %d, Banks: %d, Base: %p\n",
+         address, size, bank, banks, base);
+      return;
    }
+
+   bank %= banks;
+   base += bank * (size * 1024);
+
+   ppu_setpage(size, address >> 10, base - address);
 }
 
 /* Mapper initialization routine */

@@ -54,17 +54,23 @@ static const mem_write_handler_t write_handlers[] =
 /* Set 2KB memory page */
 void mem_setpage(uint32 page, uint8 *ptr)
 {
-   ASSERT(page < 32);
-   ASSERT(ptr);
+   if (page >= MEM_PAGECOUNT)
+   {
+      MESSAGE_ERROR("Invalid page #%d (max: %d) !\n", page, MEM_PAGECOUNT);
+      return;
+   }
 
-   mem.pages[page] = ptr - (page * MEM_PAGESIZE);
+   if (ptr)
+      mem.pages[page] = ptr - (page * MEM_PAGESIZE);
+   else
+      mem.pages[page] = NULL;
 
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
+   if (mem.pages_read[page] != MEM_PAGE_HAS_HANDLERS)
    {
       mem.pages_read[page] = mem.pages[page];
    }
 
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_write[page]))
+   if (mem.pages_write[page] != MEM_PAGE_HAS_HANDLERS)
    {
       mem.pages_write[page] = mem.pages[page];
    }
@@ -73,16 +79,16 @@ void mem_setpage(uint32 page, uint8 *ptr)
 /* Get 2KB memory page */
 uint8 *mem_getpage(uint32 page)
 {
-   ASSERT(page < 32);
-
-   uint8 *page_ptr = mem.pages[page];
-
-   if (MEM_PAGE_IS_VALID_PTR(page_ptr))
+   if (page >= MEM_PAGECOUNT)
    {
-      return page_ptr + (page * MEM_PAGESIZE);
+      MESSAGE_ERROR("Invalid page #%d (max: %d) !\n", page, MEM_PAGECOUNT);
+      return NULL;
    }
 
-   return page_ptr;
+   if (!mem.pages[page])
+      return NULL;
+
+   return mem.pages[page] + (page * MEM_PAGESIZE);
 }
 
 /* read a byte of 6502 memory space */
@@ -91,7 +97,7 @@ IRAM_ATTR uint8 mem_getbyte(uint32 address)
    uint8 *page = mem.pages_read[address >> MEM_PAGESHIFT];
 
    /* Special memory handlers */
-   if (MEM_PAGE_HAS_HANDLERS(page))
+   if (page == MEM_PAGE_HAS_HANDLERS)
    {
       for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
       {
@@ -102,16 +108,13 @@ IRAM_ATTR uint8 mem_getbyte(uint32 address)
    }
 
    /* Unmapped region */
-   if (page == NULL)
+   if (page == MEM_PAGE_NOT_MAPPED)
    {
       MESSAGE_DEBUG("Read unmapped region: $%4X\n", address);
       return 0xFF;
    }
-   /* Paged memory */
-   else
-   {
-      return page[address];
-   }
+
+   return page[address];
 }
 
 /* write a byte of data to 6502 memory space */
@@ -120,7 +123,7 @@ IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
    uint8 *page = mem.pages_write[address >> MEM_PAGESHIFT];
 
    /* Special memory handlers */
-   if (MEM_PAGE_HAS_HANDLERS(page))
+   if (page == MEM_PAGE_HAS_HANDLERS)
    {
       for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
       {
@@ -134,15 +137,13 @@ IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
    }
 
    /* Unmapped region */
-   if (page == NULL)
+   if (page == MEM_PAGE_NOT_MAPPED)
    {
       MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
+      return;
    }
-   /* Paged memory */
-   else
-   {
-      page[address] = value;
-   }
+
+   page[address] = value;
 }
 
 IRAM_ATTR uint32 mem_getword(uint32 address)
@@ -154,12 +155,17 @@ void mem_reset(void)
 {
    memset(&mem, 0, sizeof(mem));
 
-   mem_setpage(0, mem.ram);
+   mem_setpage(0, mem.ram); // $000 - $7FF
    mem_setpage(1, mem.ram); // $800 - $FFF mirror
    mem_setpage(2, mem.ram); // $1000 - $07FF mirror
    mem_setpage(3, mem.ram); // $1800 - $1FFF mirror
 
-   int num_read_handlers = 0, num_write_handlers = 0;
+   for (size_t i = 4; i < MEM_PAGECOUNT; ++i)
+   {
+      mem_setpage(i, MEM_PAGE_NOT_MAPPED);
+   }
+
+   size_t num_read_handlers = 0, num_write_handlers = 0;
    mapper_t *mapper = nes_getptr()->mapper;
 
    // NES cartridge handlers
@@ -189,13 +195,13 @@ void mem_reset(void)
    for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
    {
       for (int i = mr->min_range; i < mr->max_range; i++)
-         mem.pages_read[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+         mem.pages_read[i >> MEM_PAGESHIFT] = MEM_PAGE_HAS_HANDLERS;
    }
 
    for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
    {
       for (int i = mw->min_range; i < mw->max_range; i++)
-         mem.pages_write[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+         mem.pages_write[i >> MEM_PAGESHIFT] = MEM_PAGE_HAS_HANDLERS;
    }
 
    ASSERT(num_read_handlers <= MEM_HANDLERS_MAX);

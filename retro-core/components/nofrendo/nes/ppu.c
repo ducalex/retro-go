@@ -337,7 +337,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
    }
 }
 
-void ppu_setopt(ppu_option_t n, uint8_t val)
+void ppu_setopt(ppu_option_t n, int val)
 {
    // Some options need special care
    switch (n)
@@ -349,7 +349,7 @@ void ppu_setopt(ppu_option_t n, uint8_t val)
    ppu.options[n] = val;
 }
 
-uint8_t ppu_getopt(ppu_option_t n)
+int ppu_getopt(ppu_option_t n)
 {
    return ppu.options[n];
 }

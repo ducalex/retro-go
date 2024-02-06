@@ -32,12 +32,8 @@
 #define MEM_RAMSIZE   0x800
 
 // This is kind of a hack, but for speed...
-#define MEM_PAGE_USE_HANDLERS ((uint8*)1)
-#define MEM_PAGE_READ_ONLY    ((uint8*)2)
-#define MEM_PAGE_WRITE_ONLY   ((uint8*)3)
-
-#define MEM_PAGE_HAS_HANDLERS(page) ((page) == MEM_PAGE_USE_HANDLERS)
-#define MEM_PAGE_IS_VALID_PTR(page) ((page) > ((uint8*)100))
+#define MEM_PAGE_HAS_HANDLERS ((uint8*)1)
+#define MEM_PAGE_NOT_MAPPED   NULL
 
 #define MEM_HANDLERS_MAX     32
 

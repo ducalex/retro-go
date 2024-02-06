@@ -146,7 +146,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          if (entry->prg_ram != rom.prg_ram_banks)
          {
             MESSAGE_WARN("ROM: prg_ram_banks mismatch! (DB: %d, ROM: %d)\n", entry->prg_ram, rom.prg_ram_banks);
-            // rom.prg_rom_banks = entry->prg_ram;
+            // rom.prg_ram_banks = entry->prg_ram;
          }
 
          if (entry->chr_rom > -1 && entry->chr_rom != rom.chr_rom_banks)
