@@ -52,7 +52,7 @@ static const mem_write_handler_t write_handlers[] =
 };
 
 /* Set 2KB memory page */
-IRAM_ATTR void mem_setpage(uint32 page, uint8 *ptr)
+void mem_setpage(uint32 page, uint8 *ptr)
 {
    ASSERT(page < 32);
    ASSERT(ptr);

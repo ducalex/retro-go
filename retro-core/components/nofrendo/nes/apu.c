@@ -76,7 +76,7 @@ static const int dmc_clocks[16] =
 static const int duty_flip[4] = { 2, 4, 8, 12 };
 
 
-IRAM_ATTR void apu_fc_advance(int cycles)
+void apu_fc_advance(int cycles)
 {
    // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
    const int int_period = 4 * 7457;

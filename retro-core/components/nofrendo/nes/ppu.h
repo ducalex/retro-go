@@ -148,7 +148,6 @@ void ppu_refresh(void);
 void ppu_reset(void);
 void ppu_shutdown(void);
 bool ppu_enabled(void);
-bool ppu_inframe(void);
 void ppu_setopt(ppu_option_t n, uint8_t val);
 uint8_t ppu_getopt(ppu_option_t n);
 

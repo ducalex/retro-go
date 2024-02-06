@@ -636,12 +636,7 @@ bool ppu_enabled(void)
    return (ppu.bg_on || ppu.obj_on);
 }
 
-bool ppu_inframe(void)
-{
-   return (ppu.scanline < 240);
-}
-
-IRAM_ATTR void ppu_endline()
+void ppu_endline(void)
 {
    /* modify vram address at end of scanline */
    if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
