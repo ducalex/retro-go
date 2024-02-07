@@ -23,6 +23,13 @@
 
 #pragma once
 
+/* PPU Memory defines */
+#define PPU_ADDRSPACE 0x4000
+#define PPU_PAGESIZE  0x400
+#define PPU_PAGEMASK  0x3FF
+#define PPU_PAGESHIFT (10)
+#define PPU_PAGECOUNT (PPU_ADDRSPACE / PPU_PAGESIZE)
+
 /* PPU register defines */
 #define  PPU_CTRL0            0x2000
 #define  PPU_CTRL1            0x2001
@@ -94,7 +101,7 @@ typedef struct
 typedef struct
 {
    /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
-   uint8 *nametab; // [0x400 * 4];
+   uint8 *nametab; // [PPU_PAGESIZE * 4];
 
    /* Sprite memory */
    uint8 oam[256];
@@ -103,7 +110,7 @@ typedef struct
    uint8 palette[32];
 
    /* VRAM (CHR RAM/ROM) paging */
-   uint8 *page[16];
+   uint8 *page[PPU_PAGECOUNT];
 
    /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
@@ -136,11 +143,11 @@ typedef struct
 } ppu_t;
 
 /* Mirroring / Paging */
-void ppu_setpage(int size, int page_num, uint8 *location);
-void ppu_setnametables(int nt1, int nt2, int nt3, int nt4);
+void ppu_setpage(uint32 page_num, uint8 *location);
+void ppu_setnametables(uint8 nt1, uint8 nt2, uint8 nt3, uint8 nt4);
 void ppu_setmirroring(ppu_mirror_t type);
-uint8 *ppu_getpage(int page_num);
-uint8 *ppu_getnametable(int nt);
+uint8 *ppu_getpage(uint32 page_num);
+uint8 *ppu_getnametable(uint8 nt);
 
 /* Control */
 ppu_t *ppu_init(void);

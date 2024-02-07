@@ -66,11 +66,11 @@ static void map_write(uint32 address, uint8 value)
     case 0x1A:
     case 0x1B:
         if (value < 0xE0)
-            page = &cart->chr_rom[(value % (cart->chr_rom_banks * 8)) << 10] - (0x2000 + ((reg & 3) << 10));
+            page = &cart->chr_rom[(value % (cart->chr_rom_banks * 8)) << 10];
         else
-            page = ppu_getnametable(value & 1) - (0x2000 + ((reg & 3) << 10));
-        ppu_setpage(1, (reg & 3) + 8, page);
-        ppu_setpage(1, (reg & 3) + 12, page);
+            page = ppu_getnametable(value & 1);
+        ppu_setpage((reg & 3) + 8, page);
+        ppu_setpage((reg & 3) + 12, page);
         break;
 
     case 0x1C:

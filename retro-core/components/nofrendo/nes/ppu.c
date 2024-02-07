@@ -24,8 +24,8 @@
 #include "nes.h"
 
 /* PPU access */
-#define PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])
-#define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
+#define PPU_MEM_READ(x)      (ppu.page[(x) >> PPU_PAGESHIFT][(x)])
+#define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> PPU_PAGESHIFT][(x)] = (v))
 
 /* Background (color 0) and solid sprite pixel flags */
 #define BG_TRANS             (0x80)
@@ -69,39 +69,47 @@ void ppu_getcontext(ppu_t *dest_ppu)
    *dest_ppu = ppu;
 }
 
-void ppu_setpage(int size, int page_num, uint8 *location)
+void ppu_setpage(uint32 page, uint8 *location)
 {
-   while (size--)
+   if (page >= PPU_PAGECOUNT || location == NULL)
    {
-      ppu.page[page_num++] = location;
+      MESSAGE_ERROR("Invalid PPU page #%d!\n", (int)page);
+      return;
    }
+   ppu.page[page] = location - (page << PPU_PAGESHIFT);
 }
 
-uint8 *ppu_getpage(int page)
+uint8 *ppu_getpage(uint32 page)
 {
-   return ppu.page[page];
+   if (page >= PPU_PAGECOUNT || ppu.page[page] == NULL)
+   {
+      MESSAGE_ERROR("Invalid PPU page #%d!\n", (int)page);
+      return NULL;
+   }
+   return ppu.page[page] + (page << PPU_PAGESHIFT);
 }
 
-uint8 *ppu_getnametable(int table)
+uint8 *ppu_getnametable(uint8 table)
 {
-   return ppu.nametab + (0x400 * (table & 3));
+   return ppu.nametab + ((table & 3) * PPU_PAGESIZE);
 }
 
-void ppu_setnametables(int nt1, int nt2, int nt3, int nt4)
+void ppu_setnametables(uint8 nt1, uint8 nt2, uint8 nt3, uint8 nt4)
 {
    ppu.nt1 = nt1 & 0x3; ppu.nt2 = nt2 & 0x3;
    ppu.nt3 = nt3 & 0x3; ppu.nt4 = nt4 & 0x3;
 
-   ppu.page[8]  = ppu.nametab + (ppu.nt1 * 0x400) - 0x2000;
-   ppu.page[9]  = ppu.nametab + (ppu.nt2 * 0x400) - 0x2400;
-   ppu.page[10] = ppu.nametab + (ppu.nt3 * 0x400) - 0x2800;
-   ppu.page[11] = ppu.nametab + (ppu.nt4 * 0x400) - 0x2C00;
+   /* Setup name tables at $2000 - $3000 */
+   ppu_setpage(8, ppu.nametab + (ppu.nt1 * PPU_PAGESIZE));
+   ppu_setpage(9, ppu.nametab + (ppu.nt2 * PPU_PAGESIZE));
+   ppu_setpage(10, ppu.nametab + (ppu.nt3 * PPU_PAGESIZE));
+   ppu_setpage(11, ppu.nametab + (ppu.nt4 * PPU_PAGESIZE));
 
-   /* make sure $3000-$3F00 mirrors $2000-$2F00 */
-   ppu.page[12] = ppu.page[8] - 0x1000;
-   ppu.page[13] = ppu.page[9] - 0x1000;
-   ppu.page[14] = ppu.page[10] - 0x1000;
-   ppu.page[15] = ppu.page[11] - 0x1000;
+   /* Setup mirrors at $3000 - $4000 */
+   ppu_setpage(12, ppu.nametab + (ppu.nt1 * PPU_PAGESIZE));
+   ppu_setpage(13, ppu.nametab + (ppu.nt2 * PPU_PAGESIZE));
+   ppu_setpage(14, ppu.nametab + (ppu.nt3 * PPU_PAGESIZE));
+   ppu_setpage(15, ppu.nametab + (ppu.nt4 * PPU_PAGESIZE));
 }
 
 void ppu_setmirroring(ppu_mirror_t type)
@@ -711,10 +719,10 @@ IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
    }
 }
 
-void ppu_reset()
+void ppu_reset(void)
 {
    memset(ppu.nametab, 0, 0x400 * 4);
-   memset(ppu.oam, 0, sizeof(ppu.oam));
+   memset(ppu.oam, 0, 0x100);
 
    ppu.ctrl0 = 0;
    ppu.ctrl1 = PPU_CTRL1F_OBJON | PPU_CTRL1F_BGON;
@@ -746,6 +754,7 @@ ppu_t *ppu_init(void)
 void ppu_shutdown(void)
 {
    free(ppu.nametab);
+   ppu.nametab = NULL;
 }
 
 

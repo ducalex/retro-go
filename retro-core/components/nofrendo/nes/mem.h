@@ -23,17 +23,19 @@
 
 #pragma once
 
-#define MEM_PAGEBITS  5
-#define MEM_PAGESHIFT (16 - MEM_PAGEBITS)
-#define MEM_PAGECOUNT (1 << MEM_PAGEBITS)
-#define MEM_PAGESIZE  (0x10000 / MEM_PAGECOUNT)
-#define MEM_PAGEMASK  (MEM_PAGESIZE - 1)
+#define MEM_ADDRSPACE 0x10000
+#define MEM_PAGESIZE  0x800
+#define MEM_PAGEMASK  0x7FF
+#define MEM_PAGESHIFT (11)
+#define MEM_PAGECOUNT (MEM_ADDRSPACE / MEM_PAGESIZE)
 
 #define MEM_RAMSIZE   0x800
 
-// This is kind of a hack, but for speed...
-#define MEM_PAGE_HAS_HANDLERS ((uint8*)1)
-#define MEM_PAGE_NOT_MAPPED   NULL
+#define MEM_PAGE_HAS_READ_HANDLER   (1 << 0)
+#define MEM_PAGE_HAS_WRITE_HANDLER  (1 << 2)
+#define MEM_PAGE_HAS_MEMORY         (1 << 3)
+
+#define MEM_PAGE_NOT_MAPPED         NULL
 
 #define MEM_HANDLERS_MAX     32
 
@@ -42,13 +44,13 @@
 typedef struct
 {
    uint32 min_range, max_range;
-   uint8 (*read_func)(uint32 address);
+   uint8 (*handler)(uint32 address);
 } mem_read_handler_t;
 
 typedef struct
 {
    uint32 min_range, max_range;
-   void (*write_func)(uint32 address, uint8 value);
+   void (*handler)(uint32 address, uint8 value);
 } mem_write_handler_t;
 
 typedef struct
@@ -56,16 +58,16 @@ typedef struct
    // System RAM
    uint8 ram[MEM_RAMSIZE];
 
-   /* Plain memory (RAM/ROM) pages */
+   /* Memory map */
    uint8 *pages[MEM_PAGECOUNT];
-
-   /* Mostly for nes6502 fastmem functions */
-   uint8 *pages_read[MEM_PAGECOUNT];
-   uint8 *pages_write[MEM_PAGECOUNT];
+   uint32 flags[MEM_PAGECOUNT];
 
    /* Special memory handlers */
    mem_read_handler_t read_handlers[MEM_HANDLERS_MAX];
    mem_write_handler_t write_handlers[MEM_HANDLERS_MAX];
+
+   /* Dummy memory to trap access to unmapped regions */
+   uint8 *dummy; // [MEM_PAGESIZE]
 } mem_t;
 
 mem_t *mem_init_(void);

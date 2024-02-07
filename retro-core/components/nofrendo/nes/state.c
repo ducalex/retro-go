@@ -243,15 +243,15 @@ int state_save(const char* fn)
 
       for (int i = 0; i < 4; i++)
       {
-         uint16 temp = swap16((mem_getpage((i + 4) * 4) - machine->cart->prg_rom) >> 13);
+         uint16 temp = (mem_getpage((i + 4) * 4) - machine->cart->prg_rom) >> 13;
+         temp = swap16(temp);
          buffer[(i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[(i * 2) + 1] = ((uint8 *) &temp)[1];
       }
 
       for (int i = 0; i < 8; i++)
       {
-         uint16 temp = (machine->cart->chr_rom_banks) ?
-            ((ppu_getpage(i) - machine->cart->chr_rom + (i * 0x400)) >> 10) : (i);
+         uint16 temp = (machine->cart->chr_rom_banks) ? ((ppu_getpage(i) - machine->cart->chr_rom) >> 10) : (i);
          temp = swap16(temp);
          buffer[8 + (i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[8 + (i * 2) + 1] = ((uint8 *) &temp)[1];
@@ -412,17 +412,17 @@ int state_load(const char* fn)
          _fread(buffer, 0x98);
 
          for (int i = 0; i < 4; i++)
-            mmc_bankrom(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]));
+            mmc_bankprg(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]), PRG_ROM);
 
          if (machine->cart->chr_rom_banks)
          {
             for (int i = 0; i < 8; i++)
-               mmc_bankvrom(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]));
+               mmc_bankchr(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]), CHR_ROM);
          }
          else if (machine->cart->chr_ram)
          {
             for (int i = 0; i < 8; i++)
-               ppu_setpage(1, i, machine->cart->chr_ram);
+               mmc_bankchr(1, i * 0x400, i, CHR_RAM);
          }
 
          if (machine->mapper->set_state)

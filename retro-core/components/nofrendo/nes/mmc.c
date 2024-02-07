@@ -103,7 +103,10 @@ void mmc_bankchr(unsigned size, unsigned address, int bank, uint8 *base)
    bank %= banks;
    base += bank * (size * 1024);
 
-   ppu_setpage(size, address >> 10, base - address);
+   for (size_t i = 0; i < size; ++i)
+   {
+      ppu_setpage((address >> PPU_PAGESHIFT) + i, &base[i * PPU_PAGESIZE]);
+   }
 }
 
 /* Mapper initialization routine */
@@ -134,6 +137,7 @@ void mmc_reset(void)
    ppu_setlatchfunc(NULL);
    ppu_setvreadfunc(NULL);
    nes_settimer(NULL, 0);
+   apu_setext(NULL);
 
    /* The mapper's init will undo all we've just done, oh well :) */
    if (mapper.init)
