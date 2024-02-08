@@ -99,16 +99,14 @@ void apu_fc_advance(int cycles)
    }
 }
 
-void apu_setcontext(apu_t *src_apu)
+void apu_setcontext(const apu_t *src)
 {
-   ASSERT(src_apu);
-   apu = *src_apu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
-void apu_getcontext(apu_t *dest_apu)
+void apu_getcontext(apu_t *dest)
 {
-   ASSERT(dest_apu);
-   *dest_apu = apu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
 static void apu_build_luts(int num_samples)

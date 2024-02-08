@@ -160,8 +160,8 @@ int ppu_getopt(ppu_option_t n);
 void ppu_setlatchfunc(ppu_latchfunc_t func);
 void ppu_setvreadfunc(ppu_vreadfunc_t func);
 
-void ppu_getcontext(ppu_t *dest_ppu);
-void ppu_setcontext(ppu_t *src_ppu);
+void ppu_setcontext(const ppu_t *src);
+void ppu_getcontext(ppu_t *dst);
 
 /* IO */
 uint8 ppu_read(uint32 address);

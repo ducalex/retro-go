@@ -224,8 +224,8 @@ void apu_emulate(void);
 void apu_setopt(apu_option_t n, int val);
 int  apu_getopt(apu_option_t n);
 
-void apu_setcontext(apu_t *src_apu);
-void apu_getcontext(apu_t *dest_apu);
+void apu_setcontext(const apu_t *src);
+void apu_getcontext(apu_t *dest);
 
 void apu_process(short *buffer, size_t num_samples, bool stereo);
 void apu_fc_advance(int cycles);

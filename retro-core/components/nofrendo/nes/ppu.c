@@ -56,17 +56,14 @@ INLINE uint8 PPU_MEM_READ(uint32 x)
 }
 #endif
 
-void ppu_setcontext(ppu_t *src_ppu)
+void ppu_setcontext(const ppu_t *src)
 {
-   ASSERT(src_ppu);
-   ppu = *src_ppu;
-   ppu_setnametables(ppu.nt1, ppu.nt2, ppu.nt3, ppu.nt4);
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
-void ppu_getcontext(ppu_t *dest_ppu)
+void ppu_getcontext(ppu_t *dest)
 {
-   ASSERT(dest_ppu);
-   *dest_ppu = ppu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
 void ppu_setpage(uint32 page, uint8 *location)

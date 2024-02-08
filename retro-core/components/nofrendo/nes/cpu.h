@@ -78,5 +78,5 @@ nes6502_t *nes6502_init(mem_t *mem);
 void nes6502_reset(void);
 void nes6502_shutdown(void);
 
-void nes6502_setcontext(nes6502_t *cpu);
-void nes6502_getcontext(nes6502_t *cpu);
+void nes6502_setcontext(const nes6502_t *src);
+void nes6502_getcontext(nes6502_t *dest);

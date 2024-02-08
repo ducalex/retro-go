@@ -1102,17 +1102,15 @@ static mem_t *mem;
 
 
 /* set the current context */
-void nes6502_setcontext(nes6502_t *context)
+void nes6502_setcontext(const nes6502_t *src)
 {
-   ASSERT(context);
-   cpu = *context;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
 /* get the current context */
 void nes6502_getcontext(nes6502_t *context)
 {
-   ASSERT(context);
-   *context = cpu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
 /* get number of elapsed cycles */
