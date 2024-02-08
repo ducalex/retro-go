@@ -119,7 +119,7 @@ static bool memory_zone_dirty(const void *ptr, size_t size)
 int state_save(const char* fn)
 {
    uint32 numberOfBlocks = 0;
-   uint8 buffer[512];
+   uint8 buffer[600];
    nes_t *machine = nes_getptr();
    FILE *file;
 
@@ -262,8 +262,8 @@ int state_save(const char* fn)
          machine->mapper->get_state(buffer + 0x18);
       }
 
-      _fwrite("MPRD\x00\x00\x00\x01\x00\x00\x00\x98", 12);
-      _fwrite(&buffer, 0x98);
+      _fwrite("MPRD\x00\x00\x00\x01\x00\x00\x02\x18", 12);
+      _fwrite(&buffer, 0x218);
       numberOfBlocks++;
    }
 
@@ -290,7 +290,7 @@ _error:
 
 int state_load(const char* fn)
 {
-   uint8 buffer[512];
+   uint8 buffer[600];
 
    nes_t *machine = nes_getptr();
    FILE *file;
@@ -330,7 +330,7 @@ int state_load(const char* fn)
 
       if (memcmp(buffer, "BASR", 4) == 0)
       {
-         MESSAGE_INFO("  - Found base block\n");
+         MESSAGE_INFO("  - Found base block (%d bytes)\n", blockLength);
 
          _fread(buffer, 9);
 
@@ -374,7 +374,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "VRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found VRAM block\n");
+         MESSAGE_INFO("  - Found VRAM block (%d bytes)\n", blockLength);
 
          if (machine->cart->chr_ram_banks < (blockLength / ROM_CHR_BANK_SIZE))
          {
@@ -390,7 +390,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found SRAM block\n");
+         MESSAGE_INFO("  - Found SRAM block (%d bytes)\n", blockLength);
 
          if (machine->cart->prg_ram_banks < ((blockLength-1) / ROM_PRG_BANK_SIZE))
          {
@@ -407,9 +407,9 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "MPRD", 4) == 0)
       {
-         MESSAGE_INFO("  - Found mapper block\n");
+         MESSAGE_INFO("  - Found mapper block (%d bytes)\n", blockLength);
 
-         _fread(buffer, 0x98);
+         _fread(buffer, MIN(blockLength, sizeof(buffer)));
 
          for (int i = 0; i < 4; i++)
             mmc_bankprg(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]), PRG_ROM);
@@ -434,7 +434,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SOUN", 4) == 0)
       {
-         MESSAGE_INFO("  - Found sound block\n");
+         MESSAGE_INFO("  - Found sound block (%d bytes)\n", blockLength);
 
          _fread(buffer, 0x16);
 
@@ -449,7 +449,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "INFO", 4) == 0)
       {
-         MESSAGE_INFO("  - Found info block\n");
+         MESSAGE_INFO("  - Found info block (%d bytes)\n", blockLength);
 
          _fread(buffer, 0x100);
 

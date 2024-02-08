@@ -795,19 +795,13 @@ apu_t *apu_init(int sample_rate, bool stereo)
    return &apu;
 }
 
-void apu_shutdown()
+void apu_shutdown(void)
 {
-   if (apu.ext && apu.ext->shutdown)
-      apu.ext->shutdown();
    free(apu.buffer);
    apu.buffer = NULL;
 }
 
-void apu_setext(apuext_t *ext)
+void apu_setext(const apuext_t *ext)
 {
    apu.ext = ext;
-
-   /* initialize it */
-   if (apu.ext && NULL != apu.ext->init)
-      apu.ext->init();
 }
