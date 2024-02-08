@@ -23,27 +23,19 @@
 
 #include "nes/nes.h"
 
-static bool is_battletoads = 0;
-
 
 static void map_write(uint32 address, uint8 value)
 {
     mmc_bankrom(32, 0x8000, value & 0xF);
 
     if (value & 0x10)
-       // ppu_setmirroring(PPU_MIRROR_SCR1);
-       ppu_setnametables(1, is_battletoads ? 0 : 1, 1, 1);
+       ppu_setmirroring(PPU_MIRROR_SCR1);
     else
        ppu_setmirroring(PPU_MIRROR_SCR0);
 }
 
 static void map_init(rom_t *cart)
 {
-    is_battletoads = (cart->checksum == 0x279710DC);
-
-    if (is_battletoads)
-       MESSAGE_INFO("Enabled Battletoads mirroring hack\n");
-
     map_write(0x8000, 0);
 }
 

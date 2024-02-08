@@ -42,6 +42,14 @@
 
 #define INLINE static inline __attribute__((__always_inline__))
 
+static const uint8 mirroring_maps[][4] = {
+   [PPU_MIRROR_SCR0] = {0, 0, 0, 0},
+   [PPU_MIRROR_SCR1] = {1, 1, 1, 1},
+   [PPU_MIRROR_HORI] = {0, 0, 1, 1},
+   [PPU_MIRROR_VERT] = {0, 1, 0, 1},
+   [PPU_MIRROR_FOUR] = {0, 1, 2, 3},
+};
+
 /* the NES PPU */
 static ppu_t ppu;
 
@@ -74,6 +82,12 @@ void ppu_setpage(uint32 page, uint8 *location)
       return;
    }
    ppu.page[page] = location - (page << PPU_PAGESHIFT);
+
+   /* Setup mirror if required (8-11 <=> 12-15) */
+   if (page >= 12)
+      ppu.page[page - 4] = location - ((page - 4) << PPU_PAGESHIFT);
+   else if (page >= 8)
+      ppu.page[page + 4] = location - ((page + 4) << PPU_PAGESHIFT);
 }
 
 uint8 *ppu_getpage(uint32 page)
@@ -86,39 +100,26 @@ uint8 *ppu_getpage(uint32 page)
    return ppu.page[page] + (page << PPU_PAGESHIFT);
 }
 
+void ppu_setnametable(uint8 index, uint8 table)
+{
+   index &= 3;
+   table &= 3;
+   ppu.nt_map[index] = table;
+   ppu_setpage(8 + index, ppu.nametab + (table * PPU_PAGESIZE));
+}
+
 uint8 *ppu_getnametable(uint8 table)
 {
    return ppu.nametab + ((table & 3) * PPU_PAGESIZE);
 }
 
-void ppu_setnametables(uint8 nt1, uint8 nt2, uint8 nt3, uint8 nt4)
-{
-   ppu.nt1 = nt1 & 0x3; ppu.nt2 = nt2 & 0x3;
-   ppu.nt3 = nt3 & 0x3; ppu.nt4 = nt4 & 0x3;
-
-   /* Setup name tables at $2000 - $3000 */
-   ppu_setpage(8, ppu.nametab + (ppu.nt1 * PPU_PAGESIZE));
-   ppu_setpage(9, ppu.nametab + (ppu.nt2 * PPU_PAGESIZE));
-   ppu_setpage(10, ppu.nametab + (ppu.nt3 * PPU_PAGESIZE));
-   ppu_setpage(11, ppu.nametab + (ppu.nt4 * PPU_PAGESIZE));
-
-   /* Setup mirrors at $3000 - $4000 */
-   ppu_setpage(12, ppu.nametab + (ppu.nt1 * PPU_PAGESIZE));
-   ppu_setpage(13, ppu.nametab + (ppu.nt2 * PPU_PAGESIZE));
-   ppu_setpage(14, ppu.nametab + (ppu.nt3 * PPU_PAGESIZE));
-   ppu_setpage(15, ppu.nametab + (ppu.nt4 * PPU_PAGESIZE));
-}
-
 void ppu_setmirroring(ppu_mirror_t type)
 {
-   switch (type)
-   {
-      case PPU_MIRROR_SCR0: ppu_setnametables(0, 0, 0, 0); break;
-      case PPU_MIRROR_SCR1: ppu_setnametables(1, 1, 1, 1); break;
-      case PPU_MIRROR_FOUR: ppu_setnametables(0, 1, 2, 3); break;
-      case PPU_MIRROR_VERT: ppu_setnametables(0, 1, 0, 1); break;
-      case PPU_MIRROR_HORI: ppu_setnametables(0, 0, 1, 1); break;
-   }
+   const uint8 *map = mirroring_maps[type % 5];
+   ppu_setnametable(0, map[0]);
+   ppu_setnametable(1, map[1]);
+   ppu_setnametable(2, map[2]);
+   ppu_setnametable(3, map[3]);
 }
 
 INLINE void ppu_oamdma(uint8 value)
@@ -372,10 +373,10 @@ void ppu_setvreadfunc(ppu_vreadfunc_t func)
 /* rendering routines */
 INLINE uint32 get_patpix(uint32 tile_addr)
 {
-   uint8 pat1 = PPU_MEM_READ(tile_addr);
-   uint8 pat2 = PPU_MEM_READ(tile_addr + 8);
+   uint32 pat1 = PPU_MEM_READ(tile_addr);
+   uint32 pat2 = PPU_MEM_READ(tile_addr + 8);
    return ((pat2 & 0xAA) << 8) | ((pat2 & 0x55) << 1)
-        | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
+        | ((pat1 & 0xAA) << 7) | ((pat1 & 0x55) << 0);
 }
 
 INLINE void build_tile_colors(bool flip, uint32 pattern, uint8 *colors)
@@ -689,9 +690,6 @@ IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
             ppu.vaddr = (ppu.vaddr & ~0x041F) | (ppu.vaddr_latch & 0x041F);
       }
 
-      if (scanline == 0)
-         ppu.left_bg_counter = 0;
-
       uint8 *vidbuf = NES_SCREEN_GETPTR(bmp, 0, scanline);
 
       if (draw_flag && OPT(PPU_DRAW_BACKGROUND))
@@ -713,6 +711,7 @@ IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
       ppu.strikeflag = false;
       ppu.strike_cycle = (uint32) -1;
       ppu.vram_accessible = false;
+      ppu.left_bg_counter = 0;
    }
 }
 

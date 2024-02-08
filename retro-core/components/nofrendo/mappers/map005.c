@@ -161,7 +161,10 @@ static inline void chr_switch(int reg, int value)
 static inline void nametable_update(uint8 value)
 {
     nametable_mapping = value;
-    ppu_setnametables(value & 3, (value >> 2) & 3, (value >> 4) & 3, value >> 6);
+    ppu_setnametable(0, (value >> 0) & 3);
+    ppu_setnametable(1, (value >> 2) & 3);
+    ppu_setnametable(2, (value >> 4) & 3);
+    ppu_setnametable(3, (value >> 6) & 3);
 }
 
 static inline void nametable_fill()

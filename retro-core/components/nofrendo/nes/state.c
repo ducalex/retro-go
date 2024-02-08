@@ -158,10 +158,10 @@ int state_save(const char* fn)
    for (int i = 0; i < 32; i++)
       buffer[i] = machine->ppu->palette[i] & 0x3F;
 
-   buffer[32] = machine->ppu->nt1;
-   buffer[33] = machine->ppu->nt2;
-   buffer[34] = machine->ppu->nt3;
-   buffer[35] = machine->ppu->nt4;
+   buffer[32] = machine->ppu->nt_map[0];
+   buffer[33] = machine->ppu->nt_map[1];
+   buffer[34] = machine->ppu->nt_map[2];
+   buffer[35] = machine->ppu->nt_map[3];
    buffer[36] = machine->ppu->vaddr / 256;
    buffer[37] = machine->ppu->vaddr % 256;
    buffer[38] = machine->ppu->oam_addr;
@@ -240,6 +240,8 @@ int state_save(const char* fn)
    if (machine->mapper->number > 0)
    {
       MESSAGE_INFO("  - Saving mapper block\n");
+
+      memset(buffer, 0, sizeof(buffer));
 
       for (int i = 0; i < 4; i++)
       {
@@ -362,7 +364,11 @@ int state_load(const char* fn)
          machine->ppu->flipflop = 0;
          machine->ppu->strikeflag = false;
 
-         ppu_setnametables(buffer[0], buffer[1], buffer[2], buffer[3]);
+         ppu_setnametable(0, buffer[0]);
+         ppu_setnametable(1, buffer[1]);
+         ppu_setnametable(2, buffer[2]);
+         ppu_setnametable(3, buffer[3]);
+
          ppu_write(PPU_CTRL0, machine->ppu->ctrl0);
          ppu_write(PPU_CTRL1, machine->ppu->ctrl1);
          ppu_write(PPU_VADDR, machine->ppu->vaddr >> 8);

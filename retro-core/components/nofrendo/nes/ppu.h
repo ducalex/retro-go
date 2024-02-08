@@ -116,7 +116,7 @@ typedef struct
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
    uint8 latch, vdata_latch, tile_xofs, flipflop;
    int   vaddr, vaddr_latch, vaddr_inc;
-   uint8 nt1, nt2, nt3, nt4;
+   uint8 nt_map[4];
 
    int  obj_height, obj_base, bg_base;
    bool left_bg_on, left_obj_on;
@@ -144,10 +144,10 @@ typedef struct
 
 /* Mirroring / Paging */
 void ppu_setpage(uint32 page_num, uint8 *location);
-void ppu_setnametables(uint8 nt1, uint8 nt2, uint8 nt3, uint8 nt4);
+void ppu_setnametable(uint8 index, uint8 table);
 void ppu_setmirroring(ppu_mirror_t type);
 uint8 *ppu_getpage(uint32 page_num);
-uint8 *ppu_getnametable(uint8 nt);
+uint8 *ppu_getnametable(uint8 table);
 
 /* Control */
 ppu_t *ppu_init(void);

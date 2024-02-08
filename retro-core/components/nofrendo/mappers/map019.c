@@ -52,6 +52,7 @@ typedef struct map019_s
         uint8 changed;
         uint8 enable;
     } sound;
+    uint8 nt_map[4];
 } map019_t;
 
 static map019_t *map019;
@@ -137,10 +138,18 @@ static void ram_write(uint32 address, uint8 value)
     map019->sound.changed = true;
 }
 
+static void set_nametable(uint8 i, uint8 value)
+{
+    if (value < 0xE0)
+        ppu_setpage(8 + (i & 3), &map019->cart->chr_rom[(value % (map019->cart->chr_rom_banks * 8)) << 10]);
+    else
+        ppu_setnametable(i & 3, value & 1);
+    map019->nt_map[i & 3] = value;
+}
+
 static void map_write(uint32 address, uint8 value)
 {
     uint8 reg = address >> 11;
-    uint8 *page;
 
     switch (reg)
     {
@@ -170,12 +179,7 @@ static void map_write(uint32 address, uint8 value)
     case 0x19:
     case 0x1A:
     case 0x1B:
-        if (value < 0xE0)
-            page = &map019->cart->chr_rom[(value % (map019->cart->chr_rom_banks * 8)) << 10];
-        else
-            page = ppu_getnametable(value & 1);
-        ppu_setpage((reg & 3) + 8, page);
-        ppu_setpage((reg & 3) + 12, page);
+        set_nametable(reg & 3, value);
         break;
 
     case 0x1C: // PRG Select 1 ($E000-$E7FF)
@@ -240,6 +244,10 @@ static void map_getstate(uint8 *state)
     state[1] = map019->irq.counter >> 8;
     state[2] = map019->irq.enabled;
     state[3] = map019->address;
+    state[4] = map019->nt_map[0];
+    state[5] = map019->nt_map[1];
+    state[6] = map019->nt_map[2];
+    state[7] = map019->nt_map[3];
     memcpy(&state[0x80], map019->ram, 0x80);
 }
 
@@ -248,6 +256,10 @@ static void map_setstate(uint8 *state)
     map019->irq.counter = (state[1] << 8) | state[0];
     map019->irq.enabled = state[2];
     map019->address = state[3];
+    set_nametable(0, state[4]);
+    set_nametable(1, state[5]);
+    set_nametable(2, state[6]);
+    set_nametable(3, state[7]);
     memcpy(map019->ram, &state[0x80], 0x80);
 }
 
@@ -264,6 +276,10 @@ static void map_init(rom_t *cart)
     map019->cart = cart;
     map019->irq.counter = 0;
     map019->irq.enabled = 0;
+    map019->nt_map[0] = 0;
+    map019->nt_map[1] = 0;
+    map019->nt_map[2] = 1;
+    map019->nt_map[3] = 1;
     apu_setext(&sound_ext);
 }
 
