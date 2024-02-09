@@ -237,7 +237,7 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
         goto _fail;
 
     /* cpu */
-    nes.cpu = nes6502_init(nes.mem);
+    nes.cpu = nes6502_init(nes.mem->pages);
     if (NULL == nes.cpu)
         goto _fail;
 

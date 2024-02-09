@@ -26,7 +26,6 @@
 /* NOTE: 16-bit addresses avoided like the plague: use 32-bit values
 **       wherever humanly possible
 */
-#include "mem.h"
 
 /* P (flag) register bitmasks */
 #define  N_FLAG         0x80
@@ -58,6 +57,7 @@ typedef struct
    uint8 s_reg, p_reg;
 
    uint8 *zp, *stack;
+   uint8 **pages;
 
    bool int_pending;
    bool jammed;
@@ -74,7 +74,7 @@ void nes6502_irq_clear(void);
 uint32 nes6502_getcycles(void);
 void nes6502_burn(int cycles);
 
-nes6502_t *nes6502_init(mem_t *mem);
+nes6502_t *nes6502_init(uint8 **memmap);
 void nes6502_reset(void);
 void nes6502_shutdown(void);
 

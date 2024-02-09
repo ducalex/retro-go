@@ -25,7 +25,6 @@
 
 /* internal CPU context */
 static nes6502_t cpu;
-static mem_t *mem;
 
 // #define NES6502_JUMPTABLE
 #define NES6502_FASTMEM
@@ -1061,9 +1060,9 @@ static mem_t *mem;
 
 #ifdef NES6502_FASTMEM
 
-#define fast_readbyte(a) ({uint16 _a = (a); mem->pages[_a >> MEM_PAGESHIFT][_a];})
-#define fast_readword(a) ({uint16 _a = (a); ((_a & MEM_PAGEMASK) != MEM_PAGEMASK) ? PAGE_READWORD(mem->pages[_a >> MEM_PAGESHIFT], _a) : mem_getword(_a);})
-#define writebyte(a, v)  {uint16 _a = (a), _v = (v); if (_a < 0x2000) mem->ram[_a & 0x7FF] = _v; else mem_putbyte(_a, _v);}
+#define fast_readbyte(a) ({uint16 _a = (a); cpu.pages[_a >> MEM_PAGESHIFT][_a];})
+#define fast_readword(a) ({uint16 _a = (a); ((_a & MEM_PAGEMASK) != MEM_PAGEMASK) ? PAGE_READWORD(cpu.pages[_a >> MEM_PAGESHIFT], _a) : mem_getword(_a);})
+#define writebyte(a, v)  {uint16 _a = (a), _v = (v); if (_a < 0x2000) cpu.pages[0][_a & 0x7FF] = _v; else mem_putbyte(_a, _v);}
 
 #else /* !NES6502_FASTMEM */
 
@@ -1522,6 +1521,8 @@ void nes6502_burn(int cycles)
 /* Issue a CPU Reset */
 void nes6502_reset(void)
 {
+   cpu.zp    = cpu.pages[0] + 0x000; // Page 0
+   cpu.stack = cpu.pages[0] + 0x100; // Page 1
    cpu.p_reg = Z_FLAG | R_FLAG | I_FLAG;  /* Reserved bit always 1 */
    cpu.pc_reg = readword(RESET_VECTOR);   /* Fetch reset vector */
    cpu.int_pending = false;               /* No pending interrupts */
@@ -1530,14 +1531,10 @@ void nes6502_reset(void)
 }
 
 /* Create a nes6502 object */
-nes6502_t *nes6502_init(mem_t *_mem)
+nes6502_t *nes6502_init(uint8 **memmap)
 {
    memset(&cpu, 0, sizeof(nes6502_t));
-
-   cpu.zp    = _mem->ram + 0x000; // Page 0
-   cpu.stack = _mem->ram + 0x100; // Page 1
-
-   mem = _mem; // For FASTMEM
+   cpu.pages = memmap;
 
    return &cpu;
 }
