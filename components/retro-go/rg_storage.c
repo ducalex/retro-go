@@ -335,6 +335,7 @@ rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char 
         }
     }
     memset(&results[count], 0, sizeof(rg_scandir_t));
+    closedir(dir);
 
     if (flags & RG_SCANDIR_SORT)
     {
