@@ -640,6 +640,7 @@ static void emu_update_save_slot(uint8_t slot)
         app.bootFlags |= app.saveSlot << 4;
         app.bootFlags |= RG_BOOT_RESUME;
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
+        rg_settings_commit();
     }
 
     rg_storage_commit();
