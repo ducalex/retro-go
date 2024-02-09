@@ -124,40 +124,26 @@ void ppu_setmirroring(ppu_mirror_t type)
 
 INLINE void ppu_oamdma(uint8 value)
 {
-   uint32 cpu_address;
-   uint8 oam_loc;
+   uint32 cpu_address = (uint32) (value << 8);
 
-   cpu_address = (uint32) (value << 8);
+   for (size_t i = 0; i < 256; ++i)
+      ppu.oam[ppu.oam_addr++] = mem_getbyte(cpu_address++);
 
-   /* Sprite DMA starts at the current SPRRAM address */
-   oam_loc = ppu.oam_addr;
-   do
-   {
-      ppu.oam[oam_loc++] = mem_getbyte(cpu_address++);
-   }
-   while (oam_loc != ppu.oam_addr);
-
-   /* TODO: enough with houdini */
-   cpu_address -= 256;
-   /* Odd address in $2003 */
-   if ((ppu.oam_addr >> 2) & 1)
-   {
-      for (oam_loc = 4; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-      cpu_address += 248;
-      for (oam_loc = 0; oam_loc < 4; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-   }
-   /* Even address in $2003 */
-   else
-   {
-      for (oam_loc = 0; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-   }
+   // This is unlike other emulators or documented behavior. Workaround for something, maybe?
+   // cpu_address -= 256;
+   // if ((ppu.oam_addr >> 2) & 1) {
+   //    for (oam_loc = 4; oam_loc < 8; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   //    cpu_address += 248;
+   //    for (oam_loc = 0; oam_loc < 4; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   // } else {
+   //    for (oam_loc = 0; oam_loc < 8; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   // }
 
    /* make the CPU spin for DMA cycles */
    nes6502_burn(513);
-   // nes6502_release();
 }
 
 /* Read from $2000-$2007 */
