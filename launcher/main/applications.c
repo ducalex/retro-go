@@ -27,13 +27,65 @@ static bool crc_cache_dirty = true;
 static retro_app_t *apps[24];
 static int apps_count = 0;
 
-
-static const char *get_file_path(retro_file_t *file)
+typedef struct
 {
-    static char buffer[RG_PATH_MAX + 1];
-    RG_ASSERT(file, "Bad param");
-    snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
-    return buffer;
+    const char *folder;
+    retro_app_t *app;
+} sc_arg_t;
+
+static void scan_folder(retro_app_t *app, const char* path, void *parent);
+
+static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
+{
+    const char *folder = ((sc_arg_t*)arg)->folder;
+    retro_app_t *app = ((sc_arg_t*)arg)->app;
+    const char *ext = rg_extension(entry->name);
+    uint8_t is_valid = false;
+    uint8_t type = 0x00;
+    char ext_buf[32];
+
+    if (entry->is_file && ext != NULL)
+    {
+        snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
+        is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
+        type = 0x00;
+    }
+    else if (entry->is_dir)
+    {
+        is_valid = true;
+        type = 0xFF;
+    }
+
+    if (!is_valid)
+        return true;
+
+    if (app->files_count + 1 > app->files_capacity)
+    {
+        size_t new_capacity = app->files_capacity * 1.5;
+        retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
+        if (!new_buf)
+        {
+            RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
+            return false;
+        }
+        app->files = new_buf;
+        app->files_capacity = new_capacity;
+    }
+
+    app->files[app->files_count++] = (retro_file_t) {
+        .name = strdup(entry->name),
+        .folder = folder,
+        .app = (void*)app,
+        .type = type,
+        .is_valid = true,
+    };
+
+    if (type == 0xFF)
+    {
+        retro_file_t *file = &app->files[app->files_count-1];
+        scan_folder(app, entry->path, file);
+    }
+    return true;
 }
 
 static void scan_folder(retro_app_t *app, const char* path, void *parent)
@@ -42,60 +94,18 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
 
     RG_LOGI("Scanning directory %s\n", path);
 
-    const char *folder = const_string(path);
-    rg_scandir_t *files = rg_storage_scandir(path, NULL, false);
-    char ext_buf[32];
+    sc_arg_t data = {
+        .folder = const_string(path),
+        .app = app,
+    };
+    rg_storage_scandir(path, scan_folder_cb, &data, 0);
+}
 
-    for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
-    {
-        const char *ext = rg_extension(entry->name);
-        uint8_t is_valid = false;
-        uint8_t type = 0x00;
-
-        if (entry->is_file && ext != NULL)
-        {
-            snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
-            is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
-            type = 0x00;
-        }
-        else if (entry->is_dir)
-        {
-            is_valid = true;
-            type = 0xFF;
-        }
-
-        if (!is_valid)
-            continue;
-
-        if (app->files_count + 1 > app->files_capacity)
-        {
-            size_t new_capacity = app->files_capacity * 1.5;
-            retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
-            if (!new_buf)
-            {
-                RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
-                break;
-            }
-            app->files = new_buf;
-            app->files_capacity = new_capacity;
-        }
-
-        app->files[app->files_count++] = (retro_file_t) {
-            .name = strdup(entry->name),
-            .folder = folder,
-            .app = (void*)app,
-            .type = type,
-            .is_valid = true,
-        };
-
-        if (type == 0xFF)
-        {
-            retro_file_t *file = &app->files[app->files_count-1];
-            scan_folder(app, get_file_path(file), file);
-        }
-    }
-
-    free(files);
+static bool scan_folder_cb2(const rg_scandir_t *entry, void *arg)
+{
+    retro_app_t *app = arg;
+    app->use_crc_covers = entry->name[1] == 0 && isalnum(entry->name[0]);
+    return app->use_crc_covers == false;
 }
 
 static void application_init(retro_app_t *app)
@@ -107,21 +117,21 @@ static void application_init(retro_app_t *app)
 
     // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
     // It adds very little delay but it could become an issue if someone has thousands of named files...
-    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL, false);
-    if (!files)
+    if (rg_storage_scandir(app->paths.covers, scan_folder_cb2, app, 0) <= 0)
         rg_storage_mkdir(app->paths.covers);
-    else
-    {
-        for (rg_scandir_t *entry = files; entry->is_valid && !app->use_crc_covers; ++entry)
-            app->use_crc_covers = entry->name[1] == 0 && isalnum(entry->name[0]);
-        free(files);
-    }
-
     rg_storage_mkdir(app->paths.saves);
     rg_storage_mkdir(app->paths.roms);
     scan_folder(app, app->paths.roms, 0);
 
     app->initialized = true;
+}
+
+static const char *get_file_path(retro_file_t *file)
+{
+    static char buffer[RG_PATH_MAX + 1];
+    RG_ASSERT(file, "Bad param");
+    snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+    return buffer;
 }
 
 static void application_start(retro_file_t *file, int load_state)

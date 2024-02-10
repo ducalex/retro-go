@@ -269,78 +269,58 @@ static int scandir_natural_sort(const void *a, const void *b)
     return 0;
 }
 
-// FIXME: rg_scandir_t should probably be {count, items[]} to avoid walking the array to get the count...
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
+bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
 {
-    RG_ASSERT(path, "Bad param");
+    RG_ASSERT(path && callback, "Bad param");
 
     DIR *dir = opendir(path);
     if (!dir)
-        return NULL;
-
-    rg_scandir_t *results = calloc(1, sizeof(rg_scandir_t));
-    size_t capacity = 0;
-    size_t count = 0;
-    struct dirent *ent;
-    struct stat statbuf;
+        return false;
 
     size_t path_len = strlen(path) + 1;
-    size_t name_maxlen = sizeof(results[0].name) - 1;
-    char fullpath[path_len + name_maxlen + 1];
+    struct stat statbuf;
+    char fullpath[RG_PATH_MAX + 1] = {0};
+    rg_scandir_t result = {
+        .path = strcat(strcpy(fullpath, path), "/"),
+        .name = fullpath + path_len,
+    };
 
-    sprintf(fullpath, "%s/", path);
-
-    while ((ent = readdir(dir)))
+    for (struct dirent *ent; (ent = readdir(dir));)
     {
         if (ent->d_name[0] == '.') // Ignore all dot files
             continue;
 
-        if (strlen(ent->d_name) > name_maxlen) // Filename is too long
-            continue;
-
-        strcpy(fullpath + path_len, ent->d_name);
-
-        if (validator && !validator(fullpath))
-            continue;
-
-        if (count + 1 >= capacity)
+        if (path_len + strlen(ent->d_name) >= sizeof(fullpath))
         {
-            capacity += 100;
-            void *temp = realloc(results, (capacity + 1) * sizeof(rg_scandir_t));
-            if (!temp)
-            {
-                RG_LOGW("Not enough memory to finish scan!\n");
-                break;
-            }
-            results = temp;
+            RG_LOGE("File path too long '%s/%s'", path, ent->d_name);
+            continue;
         }
 
-        rg_scandir_t *result = &results[count++];
-
-        strcpy(result->name, ent->d_name);
-        result->is_valid = 1;
+        strcpy(result.name, ent->d_name);
     #if defined(DT_REG) && defined(DT_DIR)
-        result->is_file = ent->d_type == DT_REG;
-        result->is_dir = ent->d_type == DT_DIR;
+        result.is_file = ent->d_type == DT_REG;
+        result.is_dir = ent->d_type == DT_DIR;
     #else
+        // We're forced to stat() if the OS doesn't provide type via dirent
         flags |= RG_SCANDIR_STAT;
     #endif
 
         if ((flags & RG_SCANDIR_STAT) && stat(fullpath, &statbuf) == 0)
         {
-            result->is_file = S_ISREG(statbuf.st_mode);
-            result->is_dir = S_ISDIR(statbuf.st_mode);
-            result->size = statbuf.st_size;
-            result->mtime = statbuf.st_mtime;
+            result.is_file = S_ISREG(statbuf.st_mode);
+            result.is_dir = S_ISDIR(statbuf.st_mode);
+            result.size = statbuf.st_size;
+            result.mtime = statbuf.st_mtime;
+        }
+
+        if (!(callback)(&result, arg))
+        {
+            // Stop if the callback returns false
+            break;
         }
     }
-    memset(&results[count], 0, sizeof(rg_scandir_t));
+
     closedir(dir);
 
-    if (flags & RG_SCANDIR_SORT)
-    {
-        qsort(results, count, sizeof(rg_scandir_t), scandir_natural_sort);
-    }
-
-    return results;
+    return true;
 }

@@ -882,44 +882,48 @@ void rg_gui_alert(const char *title, const char *message)
     rg_gui_dialog(title, message ? options : options + 1, -1);
 }
 
+typedef struct
+{
+    rg_gui_option_t options[21];
+    size_t count;
+    bool (*validator)(const char *path);
+} file_picker_opts_t;
+
+static bool file_picker_cb(const rg_scandir_t *entry, void *arg)
+{
+    file_picker_opts_t *f = arg;
+    if (f->validator && !(f->validator)(entry->path))
+        return false;
+    f->options[f->count].arg = f->count;
+    f->options[f->count].flags = 1;
+    f->options[f->count].label = strdup(entry->name);
+    f->count++;
+    f->options[f->count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+    return f->count < 19;
+}
+
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path))
 {
-    rg_scandir_t *files = rg_storage_scandir(path, validator, false);
+    file_picker_opts_t options = {
+        .options = {RG_DIALOG_CHOICE_LAST},
+        .count = 0,
+        .validator = validator,
+    };
 
-    if (!files || !files[0].is_valid)
+    if (!rg_storage_scandir(path, file_picker_cb, &options, 0) || options.count < 1)
     {
-        free(files);
         rg_gui_alert(title, "Folder is empty.");
         return NULL;
     }
 
-    size_t count = 0;
-    while (files[count].is_valid)
-        count++;
-
-    RG_LOGI("count=%d\n", count);
-
-    // Unfortunately, at this time, any more than that will blow the stack.
-    count = RG_MIN(count, 20);
-
-    rg_gui_option_t *options = calloc(count + 1, sizeof(rg_gui_option_t));
-    for (size_t i = 0; i < count; ++i)
-    {
-        // To do: check extension...
-        options[i].arg = i;
-        options[i].flags = 1;
-        options[i].label = files[i].name;
-    }
-    options[count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
-
-    int sel = rg_gui_dialog(title, options, 0);
+    int sel = rg_gui_dialog(title, options.options, 0);
     char *filename = NULL;
 
-    if (sel >= 0 && sel < count)
-        filename = strdup(files[sel].name);
+    if (sel >= 0 && sel < options.count)
+        filename = strdup(options.options[sel].label);
 
-    free(options);
-    free(files);
+    for (size_t i = 0; i < options.count; ++i)
+        free((void *)(options.options[i].label));
 
     return filename;
 }

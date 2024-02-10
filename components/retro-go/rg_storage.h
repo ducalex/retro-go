@@ -14,15 +14,17 @@
 #define RG_BASE_PATH_SAVES  RG_BASE_PATH "/saves"
 #define RG_BASE_PATH_THEMES RG_BASE_PATH "/themes"
 
-typedef struct __attribute__((packed))
+typedef struct
 {
-    uint8_t is_valid : 1;
-    uint8_t is_file  : 1;
-    uint8_t is_dir   : 1;
-    uint8_t unused   : 5;
-    char name[91];
-    int32_t mtime, size;
+    char *path;
+    char *name;
+    size_t size;
+    time_t mtime;
+    bool is_file;
+    bool is_dir;
 } rg_scandir_t;
+
+typedef bool (rg_scandir_cb_t)(const rg_scandir_t *file, void *arg);
 
 enum
 {
@@ -41,4 +43,4 @@ bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
 bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
 bool rg_storage_mkdir(const char *dir);
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags);
+bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);

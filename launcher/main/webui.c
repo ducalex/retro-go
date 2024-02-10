@@ -33,6 +33,18 @@ static char *urldecode(const char *str)
     return new_string;
 }
 
+static bool add_file(const rg_scandir_t *entry, void *arg)
+{
+    cJSON *obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "name", entry->name);
+    cJSON_AddNumberToObject(obj, "size", entry->size);
+    cJSON_AddNumberToObject(obj, "mtime", entry->mtime);
+    // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);
+    cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
+    cJSON_AddItemToArray((cJSON *)arg, obj);
+    return true;
+}
+
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
     char http_buffer[1024] = {0};
@@ -57,19 +69,8 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     if (strcmp(cmd, "list") == 0)
     {
         cJSON *array = cJSON_AddArrayToObject(response, "files");
-        rg_scandir_t *files = rg_storage_scandir(arg1, NULL, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
-        for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
-        {
-            cJSON *obj = cJSON_CreateObject();
-            cJSON_AddStringToObject(obj, "name", entry->name);
-            cJSON_AddNumberToObject(obj, "size", entry->size);
-            cJSON_AddNumberToObject(obj, "mtime", entry->mtime);
-            // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);
-            cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
-            cJSON_AddItemToArray(array, obj);
-        }
-        success = array && files;
-        free(files);
+        int res = rg_storage_scandir(arg1, add_file, array, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
+        success = array && res >= 0;
     }
     else if (strcmp(cmd, "rename") == 0)
     {
