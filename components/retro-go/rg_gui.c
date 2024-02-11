@@ -147,7 +147,7 @@ void rg_gui_set_buffered(bool buffered)
 void rg_gui_flush(void)
 {
     if (gui.screen_buffer)
-        rg_display_write(0, 0, gui.screen_width, gui.screen_height, 0, gui.screen_buffer);
+        rg_display_write(0, 0, gui.screen_width, gui.screen_height, 0, gui.screen_buffer, 0);
 }
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
@@ -175,7 +175,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer);
+        rg_display_write(left, top, width, height, stride, buffer, 0);
     }
 }
 
@@ -517,7 +517,7 @@ void rg_gui_draw_hourglass(void)
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
-        (uint16_t*)image_hourglass.pixel_data);
+        (uint16_t*)image_hourglass.pixel_data, 0);
 }
 
 void rg_gui_clear(rg_color_t color)

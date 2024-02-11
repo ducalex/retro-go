@@ -255,7 +255,7 @@ void gw_main(void)
         if (rg_display_sync(0) && drawFrame)
         {
             gw_system_blit(currentUpdate->buffer);
-            rg_display_queue_update(currentUpdate, NULL);
+            rg_display_submit(currentUpdate, NULL);
         }
         /****************************************************************************/
 

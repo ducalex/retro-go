@@ -276,7 +276,7 @@ void sms_main(void)
                 memcpy(currentUpdate->palette, previousUpdate->palette, 512);
                 copyPalette = false;
             }
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+            fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
             currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }

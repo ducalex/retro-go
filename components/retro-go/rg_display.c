@@ -881,7 +881,7 @@ bool rg_display_sync(bool block)
 #endif
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer)
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
     // Offsets can be negative to indicate N pixels from the end
     if (left < 0)
@@ -903,7 +903,8 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
-    rg_display_sync(true);
+    if (!(flags & RG_NOSYNC))
+        rg_display_sync(true);
 
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 

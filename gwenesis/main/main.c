@@ -423,7 +423,7 @@ void app_main(void)
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
             // rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-            rg_display_queue_update(currentUpdate, NULL);
+            rg_display_submit(currentUpdate, NULL);
             // currentUpdate = previousUpdate;
         }
 

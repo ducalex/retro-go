@@ -140,8 +140,8 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         palette = pal;
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         build_palette(pal);
-        rg_display_queue_update(currentUpdate, NULL);
-        rg_display_queue_update(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, NULL);
         rg_task_delay(50);
     }
 
@@ -161,7 +161,7 @@ static void blit_screen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+    fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
     previousUpdate = currentUpdate;
     currentUpdate = &updates[currentUpdate == &updates[0]];
 }

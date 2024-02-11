@@ -134,15 +134,13 @@ typedef struct
 void rg_display_init(void);
 void rg_display_deinit(void);
 void rg_display_write(int left, int top, int width, int height, int stride,
-                      const uint16_t *buffer); // , bool little_endian);
+                      const uint16_t *buffer, uint32_t flags);
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
-
 rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
-#define rg_display_queue_update rg_display_submit
 
 rg_display_counters_t rg_display_get_counters(void);
 rg_display_config_t rg_display_get_config(void);

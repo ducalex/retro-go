@@ -231,7 +231,7 @@ extern "C" void lynx_main(void)
         {
             rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
 
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+            fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
 
             currentUpdate = previousUpdate;
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;

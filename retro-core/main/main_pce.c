@@ -64,7 +64,7 @@ void osd_vsync(void)
     if (skipFrames == 0)
     {
         rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_queue_update(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, NULL);
         currentUpdate = previousUpdate;
     }
 
