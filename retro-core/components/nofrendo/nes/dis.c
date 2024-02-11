@@ -123,7 +123,7 @@ static int dis_show_relative(char *buf)
 {
    int target;
 
-   target = (int8_t) dis_op8();
+   target = (int8) dis_op8();
    target += (pc_reg + 2);
    return sprintf(buf, " %04X   ", target);
 }

@@ -62,7 +62,7 @@ static void sound_prepare(void)
 {
     const nes_t *nes = nes_getptr();
     uint32 chan_enable = ((map019->ram[0x7F] >> 4) & 7) + 1;
-    uint32 z = ((uint64_t)nes->apu->sample_rate * (chan_enable * 15 * 32 * 32768) * SOUND_STEP) / nes->cpu_clock;
+    uint32 z = ((uint64)nes->apu->sample_rate * (chan_enable * 15 * 32 * 32768) * SOUND_STEP) / nes->cpu_clock;
 
     for (size_t i = 0; i < 8; i++)
     {

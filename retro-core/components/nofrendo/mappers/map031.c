@@ -68,7 +68,7 @@ static void setup_song(int song)
     memcpy(cart->prg_ram, program, sizeof(program));
 
     // Load song data into ROM
-    if (*((uint64_t*)header->banks) == 0)
+    if (memcmp(header->banks, "\x00\x00\x00\x00\x00\x00\x00\x00", 8) == 0)
     {
         size_t offset = header->load_addr - 0x8000;
         size_t len = MIN(cart->data_len - 128, 0x7FF8 - offset);
