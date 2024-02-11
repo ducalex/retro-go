@@ -904,6 +904,10 @@ static bool file_picker_cb(const rg_scandir_t *entry, void *arg)
 
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path))
 {
+    RG_ASSERT(title && path, "Bad param");
+
+    char pathbuf[RG_PATH_MAX + 1] = {0};
+
     file_picker_opts_t options = {
         .options = {RG_DIALOG_CHOICE_LAST},
         .count = 0,
@@ -920,7 +924,10 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     char *filename = NULL;
 
     if (sel >= 0 && sel < options.count)
-        filename = strdup(options.options[sel].label);
+    {
+        snprintf(pathbuf, RG_PATH_MAX, "%s/%s", path, options.options[sel].label);
+        filename = strdup(pathbuf);
+    }
 
     for (size_t i = 0; i < options.count; ++i)
         free((void *)(options.options[i].label));
