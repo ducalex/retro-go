@@ -598,9 +598,9 @@ rg_display_counters_t rg_display_get_counters(void)
     return counters;
 }
 
-rg_display_config_t rg_display_get_config(void)
+const rg_display_config_t *rg_display_get_config(void)
 {
-    return config;
+    return &config;
 }
 
 void rg_display_set_update_mode(display_update_t update_mode)
@@ -651,14 +651,14 @@ display_rotation_t rg_display_get_rotation(void)
     return config.rotation;
 }
 
-void rg_display_set_backlight(int percent)
+void rg_display_set_backlight(display_backlight_t percent)
 {
-    config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
+    config.backlight = RG_MIN(RG_MAX(percent, RG_DISPLAY_BACKLIGHT_MIN), RG_DISPLAY_BACKLIGHT_MAX);
     rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, config.backlight);
     lcd_set_backlight(config.backlight);
 }
 
-int rg_display_get_backlight(void)
+display_backlight_t rg_display_get_backlight(void)
 {
     return config.backlight;
 }

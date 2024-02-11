@@ -46,7 +46,13 @@ typedef enum
     RG_DISPLAY_ROTATION_COUNT,
 } display_rotation_t;
 
-enum
+typedef enum
+{
+    RG_DISPLAY_BACKLIGHT_MIN = 1,
+    RG_DISPLAY_BACKLIGHT_MAX = 100,
+} display_backlight_t;
+
+typedef enum
 {
     // These are legacy flags, don't use them. Still needed for now
     RG_PIXEL_565 = 0b0000, // 16bit 565
@@ -60,7 +66,7 @@ enum
     RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
     RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
     RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
-};
+} rg_pixel_format_t;
 
 typedef struct
 {
@@ -68,7 +74,7 @@ typedef struct
     display_scaling_t scaling;
     display_filter_t filter;
     display_update_t update_mode;
-    int backlight;
+    display_backlight_t backlight;
 } rg_display_config_t;
 
 typedef struct
@@ -143,7 +149,7 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
 rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
 
 rg_display_counters_t rg_display_get_counters(void);
-rg_display_config_t rg_display_get_config(void);
+const rg_display_config_t *rg_display_get_config(void);
 const rg_display_t *rg_display_get_info(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
@@ -152,7 +158,7 @@ void rg_display_set_filter(display_filter_t filter);
 display_filter_t rg_display_get_filter(void);
 void rg_display_set_rotation(display_rotation_t rotation);
 display_rotation_t rg_display_get_rotation(void);
-void rg_display_set_backlight(int percent);
-int rg_display_get_backlight(void);
+void rg_display_set_backlight(display_backlight_t percent);
+display_backlight_t rg_display_get_backlight(void);
 void rg_display_set_update_mode(display_update_t update);
 display_update_t rg_display_get_update_mode(void);
