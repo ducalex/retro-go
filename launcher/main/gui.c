@@ -24,6 +24,7 @@ retro_gui_t gui;
 #define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
+#define SETTING_WIFI_ENABLE     "Enable"
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
 {
@@ -439,12 +440,15 @@ void gui_draw_status(tab_t *tab)
 
     rg_gui_draw_battery(-22, 3);
 
-#ifdef RG_ENABLE_NETWORKING
-    rg_gui_draw_radio(-45, 3);
-    rg_gui_draw_clock(-(50 + TEXT_RECT("00:00", 0).width), 3);
-#else
-    rg_gui_draw_clock(-(20 + TEXT_RECT("00:00", 0).width), 3);
-#endif
+    if (rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false) || rg_network_get_info().state > RG_NETWORK_DISCONNECTED)
+    {
+        rg_gui_draw_radio(-45, 3);
+        rg_gui_draw_clock(-(50 + TEXT_RECT("00:00", 0).width), 3);
+    }
+    else
+    {
+        rg_gui_draw_clock(-(30 + TEXT_RECT("00:00", 0).width), 3);
+    }
 
     rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);

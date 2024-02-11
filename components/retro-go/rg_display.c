@@ -212,17 +212,6 @@ static inline uint16_t *lcd_get_buffer(void)
     return buffer;
 }
 
-static void lcd_send_buffer(int left, int top, int width, int height, const uint16_t *buffer)
-{
-    // FIXME: Here we should probably acquire a lock to avoid parallel lcd_send_buffer calls...
-    lcd_set_window(left, top, width, height);
-    if (osd.buffer)
-    {
-        // FIXME: Here we should check if we draw over the OSD region and, if so, redraw the OSD to buffer->ptr.
-    }
-    lcd_send_data(buffer, width * height);
-}
-
 static void lcd_init(void)
 {
 #ifdef RG_GPIO_LCD_BCKL
@@ -582,6 +571,12 @@ static void display_task(void *arg)
         }
 
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
+
+        // We update OSD *after* receiving the update, because the update would block rg_display_write
+        if (osd.buffer)
+        {
+            // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, 0);
+        }
     }
 
     vQueueDelete(display_task_queue);
@@ -903,8 +898,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
-    if (!(flags & RG_NOSYNC))
-        rg_display_sync(true);
+    rg_display_sync(true);
 
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
