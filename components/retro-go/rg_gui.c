@@ -884,7 +884,7 @@ void rg_gui_alert(const char *title, const char *message)
 
 typedef struct
 {
-    rg_gui_option_t options[21];
+    rg_gui_option_t options[22];
     size_t count;
     bool (*validator)(const char *path);
 } file_picker_opts_t;
@@ -894,19 +894,17 @@ static bool file_picker_cb(const rg_scandir_t *entry, void *arg)
     file_picker_opts_t *f = arg;
     if (f->validator && !(f->validator)(entry->path))
         return false;
-    f->options[f->count].arg = f->count;
+    char *path = strdup(entry->path);
+    f->options[f->count].arg = (intptr_t)path;
     f->options[f->count].flags = 1;
-    f->options[f->count].label = strdup(entry->name);
+    f->options[f->count].label = rg_basename(path);
     f->count++;
-    f->options[f->count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
     return f->count < 19;
 }
 
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path))
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option)
 {
     RG_ASSERT(title && path, "Bad param");
-
-    char pathbuf[RG_PATH_MAX + 1] = {0};
 
     file_picker_opts_t options = {
         .options = {RG_DIALOG_CHOICE_LAST},
@@ -914,25 +912,31 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
         .validator = validator,
     };
 
+    if (none_option)
+    {
+        options.options[options.count++] = (rg_gui_option_t){0, "<None>", NULL, 1, NULL};
+        // options.options[options.count++] = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
+    }
+
     if (!rg_storage_scandir(path, file_picker_cb, &options, 0) || options.count < 1)
     {
         rg_gui_alert(title, "Folder is empty.");
         return NULL;
     }
 
-    int sel = rg_gui_dialog(title, options.options, 0);
-    char *filename = NULL;
+    options.options[options.count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
 
-    if (sel >= 0 && sel < options.count)
-    {
-        snprintf(pathbuf, RG_PATH_MAX, "%s/%s", path, options.options[sel].label);
-        filename = strdup(pathbuf);
-    }
+    char *filepath = (char *)rg_gui_dialog(title, options.options, 0);
+
+    if (filepath != (void *)RG_DIALOG_CANCELLED)
+        filepath = strdup(filepath ? filepath : "");
+    else
+        filepath = NULL;
 
     for (size_t i = 0; i < options.count; ++i)
-        free((void *)(options.options[i].label));
+        free((void *)(options.options[i].arg));
 
-    return filename;
+    return filepath;
 }
 
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
@@ -1120,9 +1124,12 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL);
-        const char *theme = path ? rg_basename(path) : NULL;
-        rg_gui_set_theme(theme);
+        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL, true);
+        if (path != NULL)
+        {
+            const char *theme = strlen(path) > 0 ? rg_basename(path) : NULL;
+            rg_gui_set_theme(theme);
+        }
         free(path);
     }
 

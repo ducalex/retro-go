@@ -99,7 +99,7 @@ void rg_gui_draw_status_bars(void);
 int  rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path));
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
 void rg_gui_options_menu(void);
