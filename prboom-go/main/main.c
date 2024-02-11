@@ -524,7 +524,7 @@ void app_main()
     };
     const rg_gui_option_t options[] = {
         {0, "Gamma Boost", "0/5", 1, &gamma_update_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);

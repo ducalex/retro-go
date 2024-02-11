@@ -160,7 +160,7 @@ extern "C" void lynx_main(void)
     };
     const rg_gui_option_t options[] = {
         {100, "Rotation", (char *)"Auto", 1, &rotation_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

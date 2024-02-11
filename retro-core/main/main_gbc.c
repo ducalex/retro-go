@@ -177,7 +177,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
             {'m', "Min",  "00", 1, &rtc_t_update_cb},
             {'s', "Sec",  "00", 1, &rtc_t_update_cb},
             {'x', "Sync",  "Yes", 1, &rtc_t_update_cb},
-            RG_DIALOG_CHOICE_LAST
+            RG_DIALOG_END
         };
         rg_gui_dialog("RTC config", choices, 0);
     }
@@ -217,7 +217,7 @@ void gbc_main(void)
         {0, "Palette", "7/7", 1, &palette_update_cb},
         {0, "RTC config", "00:00", 1, &rtc_update_cb},
         {0, "SRAM autosave", "Off", 1, &sram_autosave_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

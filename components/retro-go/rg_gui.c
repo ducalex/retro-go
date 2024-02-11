@@ -866,7 +866,7 @@ bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
         {0, "",              NULL, -1, NULL},
         {1, "Yes",           NULL, 1,  NULL},
         {0, "No ",           NULL, 1,  NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END,
     };
     return rg_gui_dialog(title, message ? options : options + 1, default_yes ? -2 : -1) == 1;
 }
@@ -877,7 +877,7 @@ void rg_gui_alert(const char *title, const char *message)
         {0, (char *)message, NULL, -1, NULL},
         {0, "",              NULL, -1, NULL},
         {1, "OK",            NULL, 1,  NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END,
     };
     rg_gui_dialog(title, message ? options : options + 1, -1);
 }
@@ -907,7 +907,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     RG_ASSERT(title && path, "Bad param");
 
     file_picker_opts_t options = {
-        .options = {RG_DIALOG_CHOICE_LAST},
+        .options = {},
         .count = 0,
         .validator = validator,
     };
@@ -924,7 +924,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
         return NULL;
     }
 
-    options.options[options.count] = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+    options.options[options.count] = (rg_gui_option_t)RG_DIALOG_END;
 
     char *filepath = (char *)rg_gui_dialog(title, options.options, 0);
 
@@ -1167,7 +1167,7 @@ void rg_gui_options_menu(void)
     for (size_t i = 0; i < extra_options; i++)
         *opt++ = app->options[i];
 
-    *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
     rg_audio_set_mute(true);
 
@@ -1193,7 +1193,7 @@ void rg_gui_sysinfo_menu(void)
         {0, "Uptime", uptime, 1, NULL},
         RG_DIALOG_SEPARATOR,
         {0, "Close", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     const rg_display_t *display = rg_display_get_info();
@@ -1241,7 +1241,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         *opt++ = extra_options[i];
     *opt++ = (rg_gui_option_t){2000, "Reset settings", NULL, 1, NULL};
     *opt++ = (rg_gui_option_t){3000, "Debug", NULL, 1, NULL};
-    *opt++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
     const rg_app_t *app = rg_system_get_app();
 
@@ -1301,7 +1301,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {4, "Save trace", NULL, 1, NULL},
         {5, "Cheats", NULL, 1, NULL},
         {6, "Crash", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     const rg_display_t *display = rg_display_get_info();
@@ -1391,7 +1391,7 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
         {1, "Slot 1", NULL, 1, &slot_select_cb},
         {2, "Slot 2", NULL, 1, &slot_select_cb},
         {3, "Slot 3", NULL, 1, &slot_select_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
     int sel;
 
@@ -1430,7 +1430,7 @@ void rg_gui_game_menu(void)
         #endif
         {6000, "About", NULL, 1, NULL},
         {7000, "Quit", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
     int slot, sel;
 
@@ -1446,7 +1446,7 @@ void rg_gui_game_menu(void)
         const rg_gui_option_t choices[] = {
             {3002, "Soft reset", NULL, 1, NULL},
             {3003, "Hard reset", NULL, 1, NULL},
-            RG_DIALOG_CHOICE_LAST
+            RG_DIALOG_END
         };
         sel = rg_gui_dialog("Reset Emulation?", choices, 0);
     }

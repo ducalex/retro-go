@@ -236,7 +236,7 @@ void app_main(void)
         // {2, "Down sampling", "On", 1, &sampling_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
 		{2, "Frameskip", "", 1, &frameskip_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, options);

@@ -233,7 +233,7 @@ static void enter_recovery_mode(void)
         {0, "Reset all settings", NULL, 1, NULL},
         {1, "Reboot to factory ", NULL, 1, NULL},
         {2, "Reboot to launcher", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST,
+        RG_DIALOG_END,
     };
     while (true)
     {

@@ -180,7 +180,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
                 option++;
             }
 
-            *option++ = (rg_gui_option_t)RG_DIALOG_CHOICE_LAST;
+            *option++ = (rg_gui_option_t)RG_DIALOG_END;
 
             dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
             rg_display_submit(currentUpdate, NULL);
@@ -272,7 +272,7 @@ void app_main(void)
         {2, "Audio filter", (char*)"", 1, &lowpass_filter_cb},
         {2, "Frameskip", (char *)"", 1, &frameskip_cb},
         {2, "Controls", (char *)"", 1, &menu_keymap_cb},
-        RG_DIALOG_CHOICE_LAST,
+        RG_DIALOG_END,
     };
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 

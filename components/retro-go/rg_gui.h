@@ -52,6 +52,13 @@ typedef struct
     uint16_t height;
 } rg_rect_t;
 
+typedef struct
+{
+    intptr_t arg;
+    size_t index;
+    bool cancelled;
+} rg_dialog_t;
+
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
@@ -70,7 +77,6 @@ struct rg_gui_option_s
 
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 #define RG_DIALOG_END         {0, NULL, NULL, 0, NULL}
-#define RG_DIALOG_CHOICE_LAST RG_DIALOG_END
 
 #define RG_DIALOG_CANCELLED -0x7654321
 

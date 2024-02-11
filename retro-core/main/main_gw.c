@@ -123,7 +123,7 @@ void gw_main(void)
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {
-        RG_DIALOG_CHOICE_LAST,
+        RG_DIALOG_END,
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

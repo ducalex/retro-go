@@ -188,7 +188,7 @@ void pce_main(void)
     };
     const rg_gui_option_t options[] = {
         {2, "Overscan      ", "On ", 1, &overscan_update_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

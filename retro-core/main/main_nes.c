@@ -176,7 +176,7 @@ static void nsf_draw_overlay(void)
         {0, "Artist    ", (char *)header->artist, 1, NULL},
         {0, "Copyright ", (char *)header->copyright, 1, NULL},
         {0, "Playing   ", (char *)song, 1, NULL},
-        RG_DIALOG_CHOICE_LAST,
+        RG_DIALOG_END,
     };
     snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
     rg_gui_draw_dialog("NSF Player", options, -1);
@@ -197,7 +197,7 @@ void nes_main(void)
         {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
         {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
         {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
-        RG_DIALOG_CHOICE_LAST
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
