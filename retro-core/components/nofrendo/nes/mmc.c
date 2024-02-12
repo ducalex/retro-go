@@ -31,7 +31,7 @@ static rom_t *cart;
 void mmc_bankprg(unsigned size, unsigned address, int bank, uint8 *base)
 {
    // ASSERT(size == 8 || size == 16 || size == 32);
-   size_t banks = 16;
+   int banks = 16;
 
    // if (base == PRG_ANY)
    //    base = cart->prg_rom_banks ? PRG_ROM : PRG_RAM;
@@ -72,7 +72,7 @@ void mmc_bankprg(unsigned size, unsigned address, int bank, uint8 *base)
 void mmc_bankchr(unsigned size, unsigned address, int bank, uint8 *base)
 {
    // ASSERT(size == 1 || size == 2 || size == 4 || size == 8);
-   size_t banks = 128;
+   int banks = 128;
 
    if (base == CHR_ANY)
       base = cart->chr_rom_banks ? CHR_ROM : CHR_RAM;

@@ -20,6 +20,7 @@
 ** nes/mem.c: Memory emulation
 **
 */
+#pragma GCC diagnostic ignored "-Warray-bounds="
 
 #include "nes.h"
 

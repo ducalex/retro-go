@@ -138,7 +138,7 @@ static void audioTask(void *arg)
 {
     const size_t numSamples = 62; // TODO: Find the best value
 
-    RG_LOGI("task started. numSamples=%d.", numSamples);
+    RG_LOGI("task started. numSamples=%d.", (int)numSamples);
     while (1)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...

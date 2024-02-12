@@ -24,7 +24,7 @@ rg_image_t *rg_image_load_from_file(const char *filename, uint32_t flags)
     uint8_t *data = malloc(data_len);
     if (!data)
     {
-        RG_LOGE("Memory allocation failed (%d bytes)!\n", data_len);
+        RG_LOGE("Memory allocation failed (%d bytes)!\n", (int)data_len);
         fclose(fp);
         return NULL;
     }
@@ -182,7 +182,7 @@ rg_image_t *rg_image_alloc(size_t width, size_t height)
     rg_image_t *img = malloc(sizeof(rg_image_t) + width * height * 2);
     if (!img)
     {
-        RG_LOGE("Image alloc failed (%dx%d)\n", width, height);
+        RG_LOGE("Image alloc failed (%dx%d)\n", (int)width, (int)height);
         return NULL;
     }
     img->width = width;

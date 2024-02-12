@@ -469,7 +469,7 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
         return true;
 #endif
 
-    RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, stackSize);
+    RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, (int)stackSize);
     task->func = NULL;
 
     return false;

@@ -81,7 +81,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    {
       inesheader_t *header = (inesheader_t *)data;
 
-      MESSAGE_INFO("ROM: Found iNES file of size %d.\n", size);
+      MESSAGE_INFO("ROM: Found iNES file of size %d.\n", (int)size);
 
       rom.prg_rom = data + sizeof(inesheader_t);
 
@@ -193,7 +193,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    }
    else if (!memcmp(data, ROM_FDS_MAGIC, 4) || !memcmp(data, ROM_FDS_RAW_MAGIC, 15))
    {
-      MESSAGE_INFO("ROM: Found FDS file of size %d.\n", size);
+      MESSAGE_INFO("ROM: Found FDS file of size %d.\n", (int)size);
 
       rom.flags = ROM_FLAG_FDS_DISK|ROM_FLAG_BATTERY;
       rom.prg_ram_banks = 4; // The FDS adapter contains 32KB to store game program
@@ -221,7 +221,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    }
    else if (!memcmp(data, ROM_NSF_MAGIC, 5))
    {
-      MESSAGE_INFO("ROM: Found NSF file of size %d.\n", size);
+      MESSAGE_INFO("ROM: Found NSF file of size %d.\n", (int)size);
 
       rom.prg_ram_banks = 1; // Some songs may need it. I store a bootstrap program there at the moment
       rom.chr_ram_banks = 1; // Not used but some code might assume it will be present...

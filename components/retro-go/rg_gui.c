@@ -759,7 +759,6 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
         if (option->update_cb)
             option->update_cb(option, RG_DIALOG_INIT);
     }
-    RG_LOGD("text_buffer usage = %d\n", (intptr_t)(text_buffer_ptr - text_buffer));
 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);

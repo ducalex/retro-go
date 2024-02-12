@@ -311,18 +311,18 @@ int state_load(const char* fn)
       goto _error;
    }
 
-   size_t numberOfBlocks = swap32(*((uint32*)&buffer[4]));
-   size_t nextBlock = 8;
+   uint32 numberOfBlocks = swap32(*((uint32*)&buffer[4]));
+   uint32 nextBlock = 8;
 
-   MESSAGE_INFO("state_load: file '%s' opened, blocks=%d.\n", fn, numberOfBlocks);
+   MESSAGE_INFO("state_load: file '%s' opened, blocks=%u.\n", fn, numberOfBlocks);
 
-   for (size_t blk = 0; blk < numberOfBlocks; blk++)
+   for (uint32 blk = 0; blk < numberOfBlocks; blk++)
    {
       fseek(file, nextBlock, SEEK_SET);
       _fread(buffer, 12);
 
-      unsigned blockVersion = swap32(*((uint32*)&buffer[4]));
-      size_t blockLength = swap32(*((uint32*)&buffer[8]));
+      uint32 blockVersion = swap32(*((uint32*)&buffer[4]));
+      uint32 blockLength = swap32(*((uint32*)&buffer[8]));
 
       UNUSED(blockVersion);
 
@@ -332,7 +332,7 @@ int state_load(const char* fn)
 
       if (memcmp(buffer, "BASR", 4) == 0)
       {
-         MESSAGE_INFO("  - Found base block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found base block (%u bytes)\n", blockLength);
 
          _fread(buffer, 9);
 
@@ -380,7 +380,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "VRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found VRAM block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found VRAM block (%u bytes)\n", blockLength);
 
          if (machine->cart->chr_ram_banks < (blockLength / ROM_CHR_BANK_SIZE))
          {
@@ -396,7 +396,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found SRAM block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found SRAM block (%u bytes)\n", blockLength);
 
          if (machine->cart->prg_ram_banks < ((blockLength-1) / ROM_PRG_BANK_SIZE))
          {
@@ -413,7 +413,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "MPRD", 4) == 0)
       {
-         MESSAGE_INFO("  - Found mapper block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found mapper block (%u bytes)\n", blockLength);
 
          _fread(buffer, MIN(blockLength, sizeof(buffer)));
 
@@ -440,7 +440,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SOUN", 4) == 0)
       {
-         MESSAGE_INFO("  - Found sound block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found sound block (%u bytes)\n", blockLength);
 
          _fread(buffer, 0x16);
 
@@ -455,7 +455,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "INFO", 4) == 0)
       {
-         MESSAGE_INFO("  - Found info block (%d bytes)\n", blockLength);
+         MESSAGE_INFO("  - Found info block (%u bytes)\n", blockLength);
 
          _fread(buffer, 0x100);
 

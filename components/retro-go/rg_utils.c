@@ -157,8 +157,8 @@ void *rg_alloc(size_t size, uint32_t caps)
         // Loosen the caps and try again
         if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
         {
-            RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n", size, caps_list, ptr,
-                    available);
+            RG_LOGW("SIZE=%d, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
+                    (int)size, caps_list, ptr, (int)available);
             return ptr;
         }
     }
@@ -168,11 +168,11 @@ void *rg_alloc(size_t size, uint32_t caps)
 
     if (!ptr)
     {
-        RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
+        RG_LOGE("SIZE=%d, CAPS=%s << FAILED! (available: %d)\n", (int)size, caps_list, (int)available);
         RG_PANIC("Memory allocation failed!");
     }
 
-    RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
+    RG_LOGI("SIZE=%d, CAPS=%s, PTR=%p\n", (int)size, caps_list, ptr);
     return ptr;
 }
 
