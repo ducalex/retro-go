@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
 #include <driver/sdmmc_host.h>
@@ -15,7 +14,11 @@
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
+#include <io.h>
+#define access _access
 #define mkdir(A, B) mkdir(A)
+#else
+#include <unistd.h>
 #endif
 
 static bool disk_mounted = false;
@@ -240,7 +243,7 @@ bool rg_storage_delete(const char *path)
 
     // errno has proven to be somewhat unreliable across our targets
     // let's use a bruteforce approach...
-    if (unlink(path) == 0 || rmdir(path) == 0)
+    if (remove(path) == 0 || rmdir(path) == 0)
         return true;
 
     DIR *dir = opendir(path);
@@ -261,6 +264,11 @@ bool rg_storage_delete(const char *path)
     }
 
     return false;
+}
+
+bool rg_storage_exists(const char *path)
+{
+    return access(path, F_OK) == 0;
 }
 
 static int scandir_natural_sort(const void *a, const void *b)

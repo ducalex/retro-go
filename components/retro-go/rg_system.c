@@ -6,7 +6,6 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
@@ -479,7 +478,7 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
 void rg_task_delay(int ms)
 {
     // Note: rg_task_delay MUST yield at least once, even if ms = 0
-    // Keep in mind that delay may not be very accurate, use usleep().
+    // Keep in mind that delay may not be very accurate, use rg_usleep().
 #ifdef ESP_PLATFORM
     vTaskDelay(pdMS_TO_TICKS(ms));
 #else
@@ -712,7 +711,7 @@ bool rg_emu_save_state(uint8_t slot)
 
         if (rename(tempname(".new"), filename) == 0)
         {
-            unlink(tempname(".bak"));
+            remove(tempname(".bak"));
             success = true;
         }
     }
@@ -721,7 +720,7 @@ bool rg_emu_save_state(uint8_t slot)
     {
         RG_LOGE("Save failed!\n");
         rename(filename, tempname(".bak"));
-        unlink(tempname(".new"));
+        remove(tempname(".new"));
         rg_gui_alert("Save failed", NULL);
     }
     else

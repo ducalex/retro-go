@@ -4,7 +4,6 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
 
 #include <pce-go.h>
@@ -91,7 +90,7 @@ void osd_vsync(void)
     }
     else if (sleep > 0)
     {
-        usleep(sleep);
+        rg_usleep(sleep);
     }
     else if (sleep < -(frameTime / 2))
     {

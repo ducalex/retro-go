@@ -197,7 +197,7 @@ int I_GetTime(void)
 
 void I_uSleep(unsigned long usecs)
 {
-    usleep(usecs);
+    rg_usleep(usecs);
 }
 
 void I_SafeExit(int rc)

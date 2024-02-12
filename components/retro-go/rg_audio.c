@@ -240,7 +240,7 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-        // usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
+        // rg_usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
         dummyBusyUntil = rg_system_timer() + ((audio.sampleRate * 1000) / count);
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)

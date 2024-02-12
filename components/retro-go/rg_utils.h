@@ -52,6 +52,7 @@ const char *rg_relpath(const char *path);
 const char *const_string(const char *str);
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len);
 void *rg_alloc(size_t size, uint32_t caps);
+void rg_usleep(uint32_t us);
 
 #define MEM_ANY   (0)
 #define MEM_SLOW  (1)

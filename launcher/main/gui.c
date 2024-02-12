@@ -3,7 +3,6 @@
 #include <string.h>
 #include <dirent.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "applications.h"
 #include "gui.h"
@@ -577,7 +576,7 @@ void gui_load_preview(tab_t *tab)
         else
             continue;
 
-        if (path_len < RG_PATH_MAX && access(path, F_OK) == 0)
+        if (path_len < RG_PATH_MAX && rg_storage_exists(path))
         {
             gui_set_preview(tab, rg_image_load_from_file(path, 0));
             if (!tab->preview)

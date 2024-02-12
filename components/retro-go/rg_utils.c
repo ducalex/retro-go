@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 char *rg_strtolower(char *str)
 {
     if (!str)
@@ -175,4 +174,16 @@ void *rg_alloc(size_t size, uint32_t caps)
 
     RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
     return ptr;
+}
+
+void rg_usleep(uint32_t us)
+{
+    int64_t goal = rg_system_timer() + us;
+    // We only yield if we have plenty of time, because the OS could
+    // suspend us for anywhere between 10 to 50ms (on all platforms)
+    while ((goal - rg_system_timer()) > 20000)
+        rg_task_delay(10);
+    // Then we busy wait, which is fine as it's a short delay
+    while (rg_system_timer() < goal)
+        continue;
 }

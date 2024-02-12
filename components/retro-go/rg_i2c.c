@@ -2,7 +2,6 @@
 #include "rg_i2c.h"
 
 #include <stdlib.h>
-#include <unistd.h>
 
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_I2C_SDA) && defined(RG_GPIO_I2C_SCL)
 #include <driver/i2c.h>
@@ -149,7 +148,7 @@ bool rg_i2c_gpio_init(void)
     gpio_extender_address = 0x58;
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
-    usleep(10 * 1000);
+    rg_usleep(10 * 1000);
 
     uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
     RG_LOGI("AW9523 ID code 0x%x found\n", id);

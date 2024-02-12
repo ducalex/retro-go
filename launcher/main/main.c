@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <esp_heap_caps.h>
@@ -431,7 +430,7 @@ static void try_migrate(void)
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1390)
     {
     #ifdef RG_TARGET_ODROID_GO
-        if (access(RG_STORAGE_ROOT "/odroid/data", F_OK) == 0)
+        if (rg_storage_exists(RG_STORAGE_ROOT "/odroid/data"))
             rg_gui_alert("Save path changed in 1.32",
                 "Save format is no longer fully compatible with Go-Play and can cause corruption.\n\n"
                 "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");

@@ -3,7 +3,6 @@
 
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_server.h>
-#include <sys/unistd.h>
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -147,7 +146,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     {
         RG_LOGE("Received %d/%d bytes", received, req->content_len);
         httpd_resp_sendstr(req, "ERROR");
-        unlink(filename);
+        remove(filename);
         return ESP_FAIL;
     }
 

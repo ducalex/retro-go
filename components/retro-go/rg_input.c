@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
@@ -74,18 +73,18 @@ static inline uint32_t gamepad_read(void)
 #if RG_GAMEPAD_DRIVER == 2 // Serial
 
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
-    usleep(5);
+    rg_usleep(5);
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
-    usleep(1);
+    rg_usleep(1);
 
     uint32_t buttons = 0;
     for (int i = 0; i < 16; i++)
     {
         buttons |= gpio_get_level(RG_GPIO_GAMEPAD_DATA) << (15 - i);
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
-        usleep(1);
+        rg_usleep(1);
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
-        usleep(1);
+        rg_usleep(1);
     }
 
     for (size_t i = 0; i < RG_COUNT(keymap); ++i)
@@ -249,9 +248,9 @@ void rg_input_init(void)
 
     // tft reset
     rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
-    usleep(10 * 1000);
+    rg_usleep(10 * 1000);
     rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
-    usleep(10 * 1000);
+    rg_usleep(10 * 1000);
 
 #elif RG_GAMEPAD_DRIVER == 6 // SDL2
 

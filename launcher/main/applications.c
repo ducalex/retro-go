@@ -1,7 +1,6 @@
 #include <rg_system.h>
 #include <sys/stat.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -576,7 +575,7 @@ static void show_file_info(retro_file_t *file)
         case 5:
             if (rg_gui_confirm("Delete selected file?", 0, 0))
             {
-                if (unlink(get_file_path(file)) == 0)
+                if (remove(get_file_path(file)) == 0)
                 {
                     bookmark_remove(BOOK_TYPE_FAVORITE, file);
                     bookmark_remove(BOOK_TYPE_RECENT, file);
@@ -598,7 +597,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
     rg_emu_state_t *savestate = rg_emu_get_states(rom_path, 4);
     bool has_save = savestate->used > 0;
-    bool has_sram = access(sram_path, F_OK) == 0;
+    bool has_sram = rg_storage_exists(sram_path);
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
 
@@ -629,12 +628,12 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     case 2:
         while ((slot = rg_gui_savestate_menu("Delete save?", rom_path, 0)) != -1)
         {
-            unlink(savestate->slots[slot].preview);
-            unlink(savestate->slots[slot].file);
+            remove(savestate->slots[slot].preview);
+            remove(savestate->slots[slot].file);
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
-            unlink(sram_path);
+            remove(sram_path);
         }
         break;
 

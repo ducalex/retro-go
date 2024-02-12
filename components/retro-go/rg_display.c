@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
@@ -241,13 +240,13 @@ static void lcd_init(void)
 #if defined(RG_GPIO_LCD_RST)
     gpio_set_direction(RG_GPIO_LCD_RST, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_RST, 0);
-    usleep(100 * 1000);
+    rg_usleep(100 * 1000);
     gpio_set_level(RG_GPIO_LCD_RST, 1);
-    usleep(10 * 1000);
+    rg_usleep(10 * 1000);
 #endif
 
     ILI9341_CMD(0x01);          // Reset
-    usleep(5 * 1000);           // Wait 5ms after reset
+    rg_usleep(5 * 1000);           // Wait 5ms after reset
     ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565
     #ifdef RG_SCREEN_INIT
         RG_SCREEN_INIT();
@@ -255,7 +254,7 @@ static void lcd_init(void)
         #warning "LCD init sequence is not defined for this device!"
     #endif
     ILI9341_CMD(0x11);  // Exit Sleep
-    usleep(5 * 1000);   // Wait 5ms after sleep out
+    rg_usleep(5 * 1000);// Wait 5ms after sleep out
     ILI9341_CMD(0x29);  // Display on
 
     rg_display_clear(C_BLACK);

@@ -1,7 +1,6 @@
 #include "shared.h"
 
 #include <sys/time.h>
-#include <unistd.h>
 #include <gnuboy.h>
 
 static bool fullFrame = false;
