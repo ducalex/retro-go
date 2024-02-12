@@ -50,7 +50,11 @@ typedef struct
 {
     void (*func)(void *arg);
     void *arg;
-    void *handle;
+#ifdef ESP_PLATFORM
+    TaskHandle_t *handle;
+#else
+    SDL_threadID handle;
+#endif
     char name[16];
 } rg_task_t;
 
