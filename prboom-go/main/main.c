@@ -547,7 +547,7 @@ void app_main()
     }
 
     if (!iwad)
-        iwad = rg_gui_file_picker("Select WAD file", I_DoomExeDir(), is_iwad, false);
+        iwad = rg_gui_file_picker("Select WAD file", I_DoomExeDir(), is_iwad, false) ?: "";
 
     if (pwad)
     {
