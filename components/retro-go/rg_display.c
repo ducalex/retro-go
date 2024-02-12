@@ -665,6 +665,8 @@ display_backlight_t rg_display_get_backlight(void)
 
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
 {
+    RG_ASSERT(filename && frame, "Bad param");
+
     rg_image_t *original = rg_image_alloc(display.source.width, display.source.height);
     if (!original)
         return false;
@@ -704,9 +706,9 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
 IRAM_ATTR
 rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
 {
-    const int64_t time_start = rg_system_timer();
+    RG_ASSERT(update, "Bad param");
     // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
-    RG_ASSERT(update, "update is null!");
+    const int64_t time_start = rg_system_timer();
 
     if (!previousUpdate || display.changed || config.update_mode == RG_DISPLAY_UPDATE_FULL)
     {
@@ -878,6 +880,8 @@ bool rg_display_sync(bool block)
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
+    RG_ASSERT(buffer, "Bad param");
+
     // Offsets can be negative to indicate N pixels from the end
     if (left < 0)
         left += display.screen.width;
