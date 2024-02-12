@@ -66,7 +66,14 @@ typedef enum
     RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
     RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
     RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
-} rg_pixel_format_t;
+
+    // Additional misc flags
+    RG_PIXEL_NOSYNC = 0b100000000,
+
+    // Masks
+    RG_PIXEL_FORMAT = 0x00FF,
+    RG_PIXEL_FLAGS = 0xFF00,
+} rg_pixel_flags_t;
 
 typedef struct
 {
@@ -75,6 +82,7 @@ typedef struct
     display_filter_t filter;
     display_update_t update_mode;
     display_backlight_t backlight;
+    char *border;
 } rg_display_config_t;
 
 typedef struct
@@ -139,13 +147,13 @@ typedef struct
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride,
-                      const uint16_t *buffer, uint32_t flags);
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
+                      rg_pixel_flags_t flags);
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
+void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format);
 rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
 
 rg_display_counters_t rg_display_get_counters(void);
@@ -162,3 +170,5 @@ void rg_display_set_backlight(display_backlight_t percent);
 display_backlight_t rg_display_get_backlight(void);
 void rg_display_set_update_mode(display_update_t update);
 display_update_t rg_display_get_update_mode(void);
+void rg_display_set_border(const char *filename);
+char *rg_display_get_border(void);

@@ -1137,6 +1137,23 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        char *path = rg_gui_file_picker("Border", RG_BASE_PATH_BORDERS, NULL, true);
+        if (path != NULL)
+        {
+            rg_display_set_border(strlen(path) ? path : NULL);
+        }
+        free(path);
+    }
+    char *border = rg_display_get_border();
+    strcpy(option->value, border ? rg_basename(border) : "None");
+    free(border);
+    return RG_DIALOG_VOID;
+}
+
 void rg_gui_options_menu(void)
 {
     rg_gui_option_t options[24];
@@ -1160,6 +1177,7 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, "Scaling", "Full", 1, &scaling_update_cb};
         *opt++ = (rg_gui_option_t){0, "Filter", "None", 1, &filter_update_cb};
         *opt++ = (rg_gui_option_t){0, "Update", "Partial", 1, &update_mode_update_cb};
+        *opt++ = (rg_gui_option_t){0, "Border", "None", 1, &border_update_cb};
         *opt++ = (rg_gui_option_t){0, "Speed", "1x", 1, &speedup_update_cb};
     }
 

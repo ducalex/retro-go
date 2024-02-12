@@ -16,19 +16,20 @@
 #include <SDL2/SDL.h>
 #endif
 
-#define LCD_BUFFER_LENGTH     (RG_SCREEN_WIDTH * 4) // In pixels
+#define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 static QueueHandle_t display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_display_osd_t osd;
+static rg_image_t *border;
 static rg_display_t display;
 static struct
 {
     uint8_t start  : 1; // Indicates this line or column is safe to start an update on
     uint8_t stop   : 1; // Indicates this line or column is safe to end an update on
     uint8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
-} filter_lines[320]; // This is source height
+} filter_lines[320];    // This is source height
 static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT + 1];
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
@@ -36,6 +37,7 @@ static const char *SETTING_SCALING = "DispScaling";
 static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_UPDATE = "DispUpdate";
+static const char *SETTING_BORDER = "DispBorder";
 
 #ifdef ESP_PLATFORM
 static spi_device_handle_t spi_dev;
@@ -195,7 +197,7 @@ static void lcd_set_window(int left, int top, int width, int height)
 
     ILI9341_CMD(0x2A, left >> 8, left & 0xff, right >> 8, right & 0xff); // Horiz
     ILI9341_CMD(0x2B, top >> 8, top & 0xff, bottom >> 8, bottom & 0xff); // Vert
-    ILI9341_CMD(0x2C); // Memory write
+    ILI9341_CMD(0x2C);                                                   // Memory write
 }
 
 static inline void lcd_send_data(const uint16_t *buffer, size_t length)
@@ -309,8 +311,8 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
     return (v << 8) | (v >> 8);
 }
 
-static inline void write_rect(int left, int top, int width, int height,
-                              const void *framebuffer, const uint16_t *palette)
+static inline void write_rect(int left, int top, int width, int height, const void *framebuffer,
+                              const uint16_t *palette)
 {
     const int screen_width = display.screen.width;
     const int screen_height = display.screen.height;
@@ -519,6 +521,29 @@ static void update_viewport_scaling(void)
             display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
+static bool load_border_file(const char *filename)
+{
+    free(border), border = NULL;
+    display.changed = true;
+
+    if (filename && (border = rg_image_load_from_file(filename, 0)))
+    {
+        if (border->width != display.screen.width || border->height != display.screen.height)
+        {
+            rg_image_t *resized = rg_image_copy_resampled(border, display.screen.width, display.screen.height, 0);
+            if (resized)
+            {
+                rg_image_free(border);
+                border = resized;
+            }
+        }
+        rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+        return true;
+    }
+    rg_display_clear(C_BLACK);
+    return false;
+}
+
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));
@@ -537,7 +562,12 @@ static void display_task(void *arg)
         if (display.changed)
         {
             if (config.scaling != RG_DISPLAY_SCALING_FILL)
-                rg_display_clear(C_BLACK);
+            {
+                if (border)
+                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+                else
+                    rg_display_clear(C_BLACK);
+            }
             update_viewport_scaling();
             update->type = RG_UPDATE_FULL;
             display.changed = false;
@@ -660,6 +690,29 @@ void rg_display_set_backlight(display_backlight_t percent)
 display_backlight_t rg_display_get_backlight(void)
 {
     return config.backlight;
+}
+
+void rg_display_set_border(const char *filename)
+{
+    free(config.border);
+    config.border = NULL;
+
+    if (load_border_file(filename))
+    {
+        rg_settings_set_string(NS_APP, SETTING_BORDER, filename);
+        config.border = strdup(filename);
+    }
+    else
+    {
+        rg_settings_set_string(NS_APP, SETTING_BORDER, NULL);
+        config.border = NULL;
+    }
+    display.changed = true;
+}
+
+char *rg_display_get_border(void)
+{
+    return rg_settings_get_string(NS_APP, SETTING_BORDER, NULL);
 }
 
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
@@ -848,7 +901,7 @@ rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_vide
     return update->type;
 }
 
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format)
+void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format)
 {
     rg_display_sync(true);
 
@@ -877,7 +930,8 @@ bool rg_display_sync(bool block)
 #endif
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
+                      rg_pixel_flags_t flags)
 {
     RG_ASSERT(buffer, "Bad param");
 
@@ -901,7 +955,8 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
-    rg_display_sync(true);
+    if (!(flags & RG_PIXEL_NOSYNC))
+        rg_display_sync(true);
 
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
@@ -915,8 +970,15 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            for (size_t i = 0; i < width; ++i)
-                dst[i] = (src[i] >> 8) | (src[i] << 8);
+            if (flags & RG_PIXEL_LE)
+            {
+                memcpy(dst, src, width * 2);
+            }
+            else
+            {
+                for (size_t i = 0; i < width; ++i)
+                    dst[i] = (src[i] >> 8) | (src[i] << 8);
+            }
         }
 
         lcd_send_data(lcd_buffer, width * num_lines);
@@ -961,6 +1023,7 @@ void rg_display_init(void)
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+        .border = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
     };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
