@@ -100,7 +100,7 @@ static int sound_process(void)
             int value = map019->ram[(index >> 1) & 0x3F];
             if (index & 1)
                 value >>= 4;
-            sample += ((value & 0xF) << 2) * chan->volume;
+            sample += ((value & 0xF) - 8) * chan->volume;
             chan->phase += SOUND_STEP;
         }
 
@@ -113,7 +113,7 @@ static int sound_process(void)
     if (!active)
         return 0;
 
-    return sample / active;
+    return sample << 1; // / active;
 }
 
 static void sound_reset(void)
