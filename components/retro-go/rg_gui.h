@@ -102,7 +102,7 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
 
-int  rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
+intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);

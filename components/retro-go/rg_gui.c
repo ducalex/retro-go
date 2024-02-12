@@ -727,7 +727,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     rg_gui_flush();
 }
 
-int rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
+intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
 {
     size_t options_count = get_dialog_items_count(options_const);
     int sel = selected_index < 0 ? (options_count + selected_index) : selected_index;
