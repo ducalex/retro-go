@@ -13,7 +13,7 @@
 #define RG_AUDIO_USE_SDL2           1   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            99   // 0 = ILI9341
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
 #define RG_SCREEN_WIDTH             320
@@ -52,3 +52,7 @@
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 // #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 // #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
+#if !defined(__VERSION__) && defined(__TINYC__)
+#define __VERSION__ "TinyC"
+#endif

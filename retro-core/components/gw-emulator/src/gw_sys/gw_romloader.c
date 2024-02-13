@@ -68,7 +68,7 @@ static uint8_t JPEG_Buffer[JPEG_BUFFER_SIZE] __attribute__((aligned(4)));
 // 4x320x240     JPEG out buffer ARGB 8888                           307200
 // background    RGB565 background from JPEG 2 x 320x240             153600
 
-#define GW_ROM_SIZE_MAX (uint32_t)(400000)
+#define GW_ROM_SIZE_MAX 400000U
 unsigned char *GW_ROM;
 
 unsigned short *gw_background = NULL;
