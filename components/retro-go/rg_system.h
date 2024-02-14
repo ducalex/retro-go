@@ -91,21 +91,20 @@ typedef enum
 
 typedef enum
 {
+    /* Types and masks */
     RG_EVENT_TYPE_SYSTEM  = 0xF1000000,
     RG_EVENT_TYPE_POWER   = 0xF2000000,
     RG_EVENT_TYPE_NETWORK = 0xF3000000,
     RG_EVENT_TYPE_NETPLAY = 0xF4000000,
     RG_EVENT_TYPE_MASK    = 0xFF000000,
-} rg_event_type_t;
 
-enum
-{
+    /* Events */
     RG_EVENT_UNRESPONSIVE = RG_EVENT_TYPE_SYSTEM | 1,
     RG_EVENT_LOWMEMORY    = RG_EVENT_TYPE_SYSTEM | 2,
     RG_EVENT_REDRAW       = RG_EVENT_TYPE_SYSTEM | 3,
     RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER | 1,
     RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
-};
+} rg_event_t;
 
 typedef bool (*rg_state_handler_t)(const char *filename);
 typedef bool (*rg_reset_handler_t)(bool hard);

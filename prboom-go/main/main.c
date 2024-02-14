@@ -502,7 +502,10 @@ static void event_handler(int event, void *arg)
         Z_FreeTags(0, PU_MAX);
         rg_audio_set_mute(true);
     }
-    return;
+    else if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(&update, NULL);
+    }
 }
 
 bool is_iwad(const char *path)

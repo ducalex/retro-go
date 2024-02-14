@@ -51,6 +51,10 @@ static void event_handler(int event, void *arg)
       remoteJoystick = &joystick2;
    }
 #endif
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -94,9 +98,9 @@ void sms_main(void)
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
         .saveState = &save_state_handler,
-        .event = &event_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
@@ -265,7 +269,7 @@ void sms_main(void)
 
         if (drawFrame)
         {
-            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+            previousUpdate = &updates[currentUpdate == &updates[0]];
             if (render_copy_palette(currentUpdate->palette))
             {
                 previousUpdate = NULL;

@@ -42,7 +42,6 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
-        gui_redraw();
     }
     return RG_DIALOG_VOID;
 }
@@ -60,7 +59,7 @@ static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t eve
     gui.scroll_mode %= SCROLL_MODE_COUNT;
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
 
     strcpy(option->value, modes[gui.scroll_mode]);
     return RG_DIALOG_VOID;
@@ -80,7 +79,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
         int sel = rg_gui_dialog("Timezone", options, 0);
         if (sel != RG_DIALOG_CANCELLED)
             rg_system_set_timezone(timezones[sel].TZ);
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, getenv("TZ") ?: "N/A");
@@ -135,7 +134,7 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
             gui.joystick = 0;
             gui_load_preview(gui_get_current_tab());
         }
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, modes[gui.show_preview]);
@@ -154,7 +153,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
     gui.color_theme %= RG_COUNT(gui.themes);
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
 
     sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
     return RG_DIALOG_VOID;
@@ -198,7 +197,7 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (event == RG_DIALOG_ENTER)
     {
         wifi_show_dialog();
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }
@@ -208,7 +207,7 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         updater_show_dialog();
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }

@@ -110,6 +110,14 @@ unsigned int gw_get_buttons()
     return hw_buttons;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -121,6 +129,7 @@ void gw_main(void)
         .loadState = &gw_system_LoadState,
         .saveState = &gw_system_SaveState,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
         RG_DIALOG_END,

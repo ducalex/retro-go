@@ -29,6 +29,14 @@ static void update_rtc_time(void)
     gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -89,7 +97,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         gnuboy_set_palette(pal);
         gnuboy_run(true);
-        rg_task_delay(50);
+        return RG_DIALOG_REDRAW;
     }
 
     if (pal == GB_PALETTE_DMG)
@@ -189,10 +197,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 static void video_callback(void *buffer)
 {
     int64_t startTime = rg_system_timer();
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
     fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-    currentUpdate = previousUpdate;
-    gnuboy_set_framebuffer(currentUpdate->buffer);
     video_time += rg_system_timer() - startTime;
 }
 
@@ -211,6 +216,7 @@ void gbc_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
         {0, "Palette", "7/7", 1, &palette_update_cb},
@@ -308,6 +314,12 @@ void gbc_main(void)
 
         video_time = audio_time = 0;
 
+        if (drawFrame)
+        {
+            previousUpdate = currentUpdate;
+            currentUpdate = &updates[currentUpdate == &updates[0]];
+            gnuboy_set_framebuffer(currentUpdate->buffer);
+        }
         gnuboy_run(drawFrame);
 
         if (autoSaveSRAM > 0)

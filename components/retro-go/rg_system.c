@@ -685,6 +685,8 @@ bool rg_emu_load_state(uint8_t slot)
     WDT_RELOAD(WDT_TIMEOUT);
     free(filename);
 
+    rg_display_force_redraw();
+
     return success;
 }
 
@@ -744,10 +746,11 @@ bool rg_emu_save_state(uint8_t slot)
     #undef tempname
     free(filename);
 
+    WDT_RELOAD(WDT_TIMEOUT);
+
     rg_storage_commit();
     rg_system_set_led(0);
-
-    WDT_RELOAD(WDT_TIMEOUT);
+    rg_display_force_redraw();
 
     return success;
 }

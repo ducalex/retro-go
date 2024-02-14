@@ -622,6 +622,8 @@ static void display_task(void *arg)
 void rg_display_force_redraw(void)
 {
     display.changed = true;
+    rg_system_event(RG_EVENT_REDRAW, NULL);
+    rg_display_sync(true);
 }
 
 const rg_display_t *rg_display_get_info(void)

@@ -222,6 +222,14 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -229,6 +237,7 @@ void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},

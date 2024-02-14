@@ -19,8 +19,10 @@ static const char *SETTING_SPRITELIMIT = "spritelimit";
 
 static void event_handler(int event, void *arg)
 {
-#ifdef RG_ENABLE_NETPLAY
-#endif
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -98,6 +100,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, overscan ? "Auto" : "Off ");
@@ -118,6 +121,7 @@ static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t
         autocrop = val;
         rg_settings_set_number(NS_APP, SETTING_AUTOCROP, val);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     if (val == 0) strcpy(option->value, "Never ");
@@ -140,9 +144,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         palette = pal;
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         build_palette(pal);
-        rg_display_submit(currentUpdate, NULL);
-        rg_display_submit(currentUpdate, NULL);
-        rg_task_delay(50);
+        return RG_DIALOG_REDRAW;
     }
 
     if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");
@@ -162,8 +164,6 @@ static void blit_screen(uint8 *bmp)
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
     fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-    previousUpdate = currentUpdate;
-    currentUpdate = &updates[currentUpdate == &updates[0]];
 }
 
 static void nsf_draw_overlay(void)
@@ -270,8 +270,14 @@ void nes_main(void)
         if (joystick & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
         if (joystick & RG_KEY_A)      buttons |= NES_PAD_A;
         if (joystick & RG_KEY_B)      buttons |= NES_PAD_B;
-        input_update(0, buttons);
 
+        if (drawFrame)
+        {
+            previousUpdate = currentUpdate;
+            currentUpdate = &updates[currentUpdate == &updates[0]];
+        }
+
+        input_update(0, buttons);
         nes_emulate(drawFrame);
 
         int elapsed = rg_system_timer() - startTime;

@@ -30,6 +30,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
         current_width = current_height = 0;
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, overscan ? "On " : "Off");
@@ -62,9 +63,9 @@ void osd_vsync(void)
 
     if (skipFrames == 0)
     {
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_submit(currentUpdate, NULL);
-        currentUpdate = previousUpdate;
+        rg_display_submit(currentUpdate, NULL); // previousUpdate
+        previousUpdate = currentUpdate;
+        currentUpdate = &updates[currentUpdate == &updates[0]];
     }
 
     // See if we need to skip a frame to keep up
@@ -149,11 +150,19 @@ static void audioTask(void *arg)
     }
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        // We must use previous update because at this point current has been wiped.
+        rg_display_submit(previousUpdate ?: currentUpdate, NULL);
+    }
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-    return rg_display_save_frame(filename, previousUpdate, width, height);
+    return rg_display_save_frame(filename, previousUpdate ?: currentUpdate, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -184,6 +193,7 @@ void pce_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
         {2, "Overscan      ", "On ", 1, &overscan_update_cb},

@@ -104,6 +104,14 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -154,7 +162,7 @@ extern "C" void lynx_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
-        .event = NULL,
+        .event = &event_handler,
         .memRead = NULL,
         .memWrite = NULL,
     };
@@ -229,11 +237,9 @@ extern "C" void lynx_main(void)
 
         if (drawFrame)
         {
-            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-
             fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-
-            currentUpdate = previousUpdate;
+            previousUpdate = currentUpdate;
+            currentUpdate = &updates[currentUpdate == &updates[0]];
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 

@@ -67,6 +67,14 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, NULL);
+    }
+}
+
 static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -266,6 +274,7 @@ void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
         {2, "Audio enable", (char *)"", 1, &apu_toggle_cb},

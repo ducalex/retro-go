@@ -98,9 +98,6 @@ bool rg_gui_set_theme(const char *theme_name)
     gui.style.item_disabled = rg_gui_get_theme_color("dialog", "item_disabled", C_GRAY);
     gui.style.scrollbar = rg_gui_get_theme_color("dialog", "scrollbar", C_WHITE);
 
-    if (gui.initialized)
-        rg_system_event(RG_EVENT_REDRAW, NULL);
-
     return true;
 }
 
@@ -267,9 +264,6 @@ bool rg_gui_set_font_type(int type)
 
     RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
         gui.style.font_points, (float)gui.style.font_points / font->height);
-
-    if (gui.initialized)
-        rg_system_event(RG_EVENT_REDRAW, NULL);
 
     return true;
 }
@@ -732,6 +726,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     size_t options_count = get_dialog_items_count(options_const);
     int sel = selected_index < 0 ? (options_count + selected_index) : selected_index;
     int sel_old = -1;
+    bool redraw = false;
 
     // Constrain initial cursor and skip FLAG_SKIP items
     sel = RG_MIN(RG_MAX(0, sel), options_count - 1);
@@ -792,19 +787,19 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
             }
             else if (joystick & RG_KEY_LEFT && callback) {
                 event = callback(&options[sel], RG_DIALOG_PREV);
-                sel_old = -1;
+                redraw = true;
             }
             else if (joystick & RG_KEY_RIGHT && callback) {
                 event = callback(&options[sel], RG_DIALOG_NEXT);
-                sel_old = -1;
+                redraw = true;
             }
             else if (joystick & RG_KEY_START && callback) {
                 event = callback(&options[sel], RG_DIALOG_ALT);
-                sel_old = -1;
+                redraw = true;
             }
             else if (joystick & RG_KEY_A && callback) {
                 event = callback(&options[sel], RG_DIALOG_ENTER);
-                sel_old = -1;
+                redraw = true;
             }
             else if (joystick & RG_KEY_A && selected) {
                 event = RG_DIALOG_CLOSE;
@@ -821,11 +816,10 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
         if (event == RG_DIALOG_CLOSE)
             break;
 
-        if (sel_old == -1)
-            rg_gui_draw_status_bars();
-
         if (sel_old != sel)
         {
+            // if (options[sel].update_cb)
+            //     options[sel].update_cb(&options[sel], RG_DIALOG_LEAVE);
             while (options[sel].flags == RG_DIALOG_FLAG_SKIP && sel_old != sel)
             {
                 sel += (joystick == RG_KEY_DOWN) ? 1 : -1;
@@ -837,9 +831,27 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                     sel = 0;
             }
             if (options[sel].update_cb)
-                event = options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS);
-            rg_gui_draw_dialog(title, options, sel);
+                options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS);
+            redraw = true;
             sel_old = sel;
+        }
+
+        if (event == RG_DIALOG_REDRAW)
+        {
+            for (size_t i = 0; i < options_count; i++)
+            {
+                if (options[i].update_cb)
+                    options[i].update_cb(&options[i], RG_DIALOG_INIT); // RG_DIALOG_REDRAW
+            }
+            rg_display_force_redraw();
+            rg_gui_draw_status_bars();
+            redraw = true;
+        }
+
+        if (redraw)
+        {
+            rg_gui_draw_dialog(title, options, sel);
+            redraw = false;
         }
 
         rg_task_delay(20);
@@ -1019,7 +1031,10 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
         mode = 0;
 
     if (mode != prev_mode)
+    {
         rg_display_set_filter(mode);
+        return RG_DIALOG_REDRAW;
+    }
 
     if (mode == RG_DISPLAY_FILTER_OFF)
         strcpy(option->value, "Off  ");
@@ -1045,7 +1060,10 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         mode = 0; // max;
 
     if (mode != prev_mode)
+    {
         rg_display_set_scaling(mode);
+        return RG_DIALOG_REDRAW;
+    }
 
     if (mode == RG_DISPLAY_SCALING_OFF)
         strcpy(option->value, "Off  ");
@@ -1090,7 +1108,6 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         app->speed = 0.5f;
 
     sprintf(option->value, "%.1fx", app->speed);
-
     return RG_DIALOG_VOID;
 }
 
@@ -1116,6 +1133,7 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
         {
             rg_gui_set_font_type(0);
         }
+        return RG_DIALOG_REDRAW;
     }
     sprintf(option->value, "%s %d", gui.style.font->name, gui.style.font_points);
     return RG_DIALOG_VOID;
@@ -1130,8 +1148,9 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
         {
             const char *theme = strlen(path) > 0 ? rg_basename(path) : NULL;
             rg_gui_set_theme(theme);
+            free(path);
+            return RG_DIALOG_REDRAW;
         }
-        free(path);
     }
 
     strcpy(option->value, rg_gui_get_theme_name() ?: "Default");
@@ -1146,8 +1165,9 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
         if (path != NULL)
         {
             rg_display_set_border(strlen(path) ? path : NULL);
+            free(path);
+            return RG_DIALOG_REDRAW;
         }
-        free(path);
     }
     char *border = rg_display_get_border();
     strcpy(option->value, border ? rg_basename(border) : "None");
@@ -1290,7 +1310,6 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
             default:
                 return;
         }
-        rg_system_event(RG_EVENT_REDRAW, NULL);
     }
 }
 
