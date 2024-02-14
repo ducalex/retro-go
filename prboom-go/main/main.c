@@ -428,11 +428,13 @@ void I_StartTic(void)
     {
         if (joystick & RG_KEY_OPTION)
         {
+            Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
             rg_gui_options_menu();
             changed = 0;
         }
         else if (rg_menu_delay++ == TICRATE / 2)
         {
+            Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
             rg_gui_game_menu();
         }
         realtic_clock_rate = app->speed * 100;
