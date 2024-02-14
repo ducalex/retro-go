@@ -17,7 +17,7 @@
 
 typedef struct
 {
-    char *path;
+    char path[RG_PATH_MAX + 1];
     char *name;
     size_t size;
     time_t mtime;
@@ -25,12 +25,17 @@ typedef struct
     bool is_dir;
 } rg_scandir_t;
 
-typedef bool (rg_scandir_cb_t)(const rg_scandir_t *file, void *arg);
+typedef int (rg_scandir_cb_t)(const rg_scandir_t *file, void *arg);
 
 enum
 {
-    RG_SCANDIR_STAT = 1, // This will populate file size
-    RG_SCANDIR_SORT = 2, // This will sort using natural order
+    RG_SCANDIR_STAT = (1 << 0), // This will populate file size
+    RG_SCANDIR_SORT = (1 << 1), // This will sort using natural order
+    RG_SCANDIR_RECURSIVE = (1 << 2),
+
+    RG_SCANDIR_CONTINUE = 1,
+    RG_SCANDIR_SKIP = 2,
+    RG_SCANDIR_STOP = 0,
 };
 
 void rg_storage_init(void);

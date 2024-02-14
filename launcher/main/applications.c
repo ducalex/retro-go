@@ -34,7 +34,7 @@ typedef struct
 
 static void scan_folder(retro_app_t *app, const char* path, void *parent);
 
-static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
+static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 {
     const char *folder = ((sc_arg_t*)arg)->folder;
     retro_app_t *app = ((sc_arg_t*)arg)->app;
@@ -42,6 +42,10 @@ static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
     uint8_t is_valid = false;
     uint8_t type = 0x00;
     char ext_buf[32];
+
+    // Skip hidden files
+    if (entry->name[0] == '.')
+        return RG_SCANDIR_SKIP;
 
     if (entry->is_file && ext != NULL)
     {
@@ -56,7 +60,7 @@ static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
     }
 
     if (!is_valid)
-        return true;
+        return RG_SCANDIR_CONTINUE;
 
     if (app->files_count + 1 > app->files_capacity)
     {
@@ -65,7 +69,7 @@ static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
         if (!new_buf)
         {
             RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
-            return false;
+            return RG_SCANDIR_STOP;
         }
         app->files = new_buf;
         app->files_capacity = new_capacity;
@@ -84,7 +88,7 @@ static bool scan_folder_cb(const rg_scandir_t *entry, void *arg)
         retro_file_t *file = &app->files[app->files_count-1];
         scan_folder(app, entry->path, file);
     }
-    return true;
+    return RG_SCANDIR_CONTINUE;
 }
 
 static void scan_folder(retro_app_t *app, const char* path, void *parent)
@@ -100,13 +104,6 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
     rg_storage_scandir(path, scan_folder_cb, &data, 0);
 }
 
-static bool scan_folder_cb2(const rg_scandir_t *entry, void *arg)
-{
-    retro_app_t *app = arg;
-    app->use_crc_covers = entry->name[1] == 0 && isalnum(entry->name[0]);
-    return app->use_crc_covers == false;
-}
-
 static void application_init(retro_app_t *app)
 {
     RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
@@ -114,13 +111,13 @@ static void application_init(retro_app_t *app)
     if (app->initialized)
         app->files_count = 0;
 
-    // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
-    // It adds very little delay but it could become an issue if someone has thousands of named files...
-    if (rg_storage_scandir(app->paths.covers, scan_folder_cb2, app, 0) <= 0)
-        rg_storage_mkdir(app->paths.covers);
+    rg_storage_mkdir(app->paths.covers);
     rg_storage_mkdir(app->paths.saves);
     rg_storage_mkdir(app->paths.roms);
     scan_folder(app, app->paths.roms, 0);
+
+    app->use_crc_covers = rg_storage_exists(strcat(app->paths.covers, "/0"));
+    app->paths.covers[strlen(app->paths.covers) - 2] = 0;
 
     app->initialized = true;
 }

@@ -32,7 +32,7 @@ static char *urldecode(const char *str)
     return new_string;
 }
 
-static bool add_file(const rg_scandir_t *entry, void *arg)
+static int add_file(const rg_scandir_t *entry, void *arg)
 {
     cJSON *obj = cJSON_CreateObject();
     cJSON_AddStringToObject(obj, "name", entry->name);
@@ -41,7 +41,7 @@ static bool add_file(const rg_scandir_t *entry, void *arg)
     // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);
     cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
     cJSON_AddItemToArray((cJSON *)arg, obj);
-    return true;
+    return RG_SCANDIR_CONTINUE;
 }
 
 static esp_err_t http_api_handler(httpd_req_t *req)
@@ -68,8 +68,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     if (strcmp(cmd, "list") == 0)
     {
         cJSON *array = cJSON_AddArrayToObject(response, "files");
-        int res = rg_storage_scandir(arg1, add_file, array, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
-        success = array && res >= 0;
+        success = array && rg_storage_scandir(arg1, add_file, array, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
     }
     else if (strcmp(cmd, "rename") == 0)
     {
@@ -110,7 +109,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
 static esp_err_t http_upload_handler(httpd_req_t *req)
 {
     char *filename = urldecode(req->uri);
-
+    bool success = false;
     RG_LOGI("Receiving file: %s", filename);
 
     gui.http_lock = true;
@@ -118,7 +117,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
     FILE *fp = fopen(filename, "wb");
     if (!fp)
-        return ESP_FAIL;
+        goto _done;
 
     size_t received = 0;
 
@@ -129,7 +128,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
             break;
         if (!fwrite(http_buffer, length, 1, fp))
         {
-            RG_LOGI("Write failure at %d bytes", received);
+            RG_LOGE("Write failure at %d bytes", received);
             break;
         }
         rg_task_delay(0);
@@ -137,20 +136,22 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     }
 
     fclose(fp);
-    free(filename);
+
+    RG_LOGI("Received %d/%d bytes", received, req->content_len);
+    success = received == req->content_len;
 
     gui.http_lock = false;
     gui_invalidate();
 
-    if (received < req->content_len)
+_done:
+    free(filename);
+    if (!success)
     {
-        RG_LOGE("Received %d/%d bytes", received, req->content_len);
+        RG_LOGE("File receive error!");
         httpd_resp_sendstr(req, "ERROR");
         remove(filename);
         return ESP_FAIL;
     }
-
-    RG_LOGI("Received %d/%d bytes", received, req->content_len);
     httpd_resp_sendstr(req, "OK");
     return ESP_OK;
 }
