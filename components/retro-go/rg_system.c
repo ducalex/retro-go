@@ -90,7 +90,7 @@ static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
 
-#define WDT_TIMEOUT 12000000
+#define WDT_TIMEOUT 8000000
 #define WDT_RELOAD(val) wdtCounter = (val)
 
 #define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
@@ -255,18 +255,24 @@ static void enter_recovery_mode(void)
     }
 }
 
-static void setup_gpios(void)
+static void platform_init(void)
 {
-// At boot time those pins are muxed to JTAG and can interfere with other things.
-#if CONFIG_IDF_TARGET_ESP32
-    gpio_reset_pin(GPIO_NUM_12);
-    gpio_reset_pin(GPIO_NUM_13);
-    gpio_reset_pin(GPIO_NUM_14);
-    gpio_reset_pin(GPIO_NUM_15);
-#endif
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
+    // At boot time those pins are muxed to JTAG and can interfere with other things.
+    #if CONFIG_IDF_TARGET_ESP32
+        gpio_reset_pin(GPIO_NUM_12);
+        gpio_reset_pin(GPIO_NUM_13);
+        gpio_reset_pin(GPIO_NUM_14);
+        gpio_reset_pin(GPIO_NUM_15);
+    #endif
     if (RG_GPIO_LED != GPIO_NUM_NC)
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+#elif defined(RG_TARGET_SDL2)
+    // freopen("stdout.txt", "w", stdout);
+    // freopen("stderr.txt", "w", stderr);
+    SDL_SetMainReady();
+    if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
+        RG_PANIC("SDL Init failed!");
 #endif
 }
 
@@ -304,6 +310,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .options = options, // TO DO: We should make a copy of it?
     };
 
+    // Do this very early, may be needed to enable serial console
+    platform_init();
+
 #ifdef ESP_PLATFORM
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
     snprintf(app.name, sizeof(app.name), "%s", esp_app->project_name);
@@ -317,14 +326,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.bootType = RG_RST_RESTART;
     tasks[0] = (rg_task_t){NULL, NULL, xTaskGetCurrentTaskHandle(), "main"};
 #else
-    snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", 1, 1, 1, __VERSION__);
-    freopen("stdout.txt", "w", stdout);
-    freopen("stderr.txt", "w", stderr);
+    SDL_version version;
+    SDL_GetVersion(&version);
+    snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", version.major,
+             version.minor, version.patch, __VERSION__);
     tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
 #endif
 
-    // Do this very early, may be needed to enable serial console
-    setup_gpios();
     rg_system_set_led(0);
 
     printf("\n========================================================\n");
@@ -562,7 +570,7 @@ IRAM_ATTR int64_t rg_system_timer(void)
 #ifdef ESP_PLATFORM
     return esp_timer_get_time();
 #else
-    return SDL_GetTicks() * 1000;
+    return (SDL_GetPerformanceCounter() * 1000000.f) / SDL_GetPerformanceFrequency();
 #endif
 }
 
@@ -867,7 +875,7 @@ void rg_system_restart(void)
 #ifdef ESP_PLATFORM
     esp_restart();
 #else
-    exit(0);
+    exit(1);
 #endif
 }
 

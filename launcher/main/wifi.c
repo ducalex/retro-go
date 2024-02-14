@@ -126,7 +126,7 @@ void wifi_show_dialog(void)
 void wifi_init(void)
 {
     rg_network_init();
-    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, true));
+    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false));
     webui_toggle(rg_settings_get_number(NS_APP, SETTING_WEBUI, true));
 }
 #endif

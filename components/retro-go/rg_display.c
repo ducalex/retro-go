@@ -213,6 +213,11 @@ static inline uint16_t *lcd_get_buffer(void)
     return buffer;
 }
 
+static void lcd_sync(void)
+{
+    // Unused for SPI LCD
+}
+
 static void lcd_init(void)
 {
 #ifdef RG_GPIO_LCD_BCKL
@@ -606,6 +611,8 @@ static void display_task(void *arg)
         {
             // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, 0);
         }
+
+        lcd_sync();
     }
 
     vQueueDelete(display_task_queue);
@@ -927,6 +934,8 @@ bool rg_display_sync(bool block)
     while (block && uxQueueMessagesWaiting(display_task_queue))
         continue; // Wait until display queue is done
     return uxQueueMessagesWaiting(display_task_queue) == 0;
+#else
+    return true;
 #endif
 }
 
@@ -984,6 +993,8 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         lcd_send_data(lcd_buffer, width * num_lines);
         y += num_lines;
     }
+
+    lcd_sync();
 }
 
 void rg_display_clear(uint16_t color_le)

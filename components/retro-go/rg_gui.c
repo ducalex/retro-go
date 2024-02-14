@@ -888,17 +888,19 @@ typedef struct
     bool (*validator)(const char *path);
 } file_picker_opts_t;
 
-static bool file_picker_cb(const rg_scandir_t *entry, void *arg)
+static int file_picker_cb(const rg_scandir_t *entry, void *arg)
 {
     file_picker_opts_t *f = arg;
     if (f->validator && !(f->validator)(entry->path))
-        return false;
+        return RG_SCANDIR_STOP;
     char *path = strdup(entry->path);
     f->options[f->count].arg = (intptr_t)path;
     f->options[f->count].flags = 1;
     f->options[f->count].label = rg_basename(path);
     f->count++;
-    return f->count < 19;
+    if (f->count > 18)
+        return RG_SCANDIR_STOP;
+    return RG_SCANDIR_CONTINUE;
 }
 
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option)

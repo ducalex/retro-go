@@ -1,3 +1,8 @@
+__pycache__/
+.DS_Store/
+.vscode/
+build/
+
 /*/sdkconfig.old
 /*/sdkconfig
 /*.exe
@@ -8,11 +13,7 @@
 /partitions.bin
 /partitions.csv
 
-__pycache__/
-.DS_Store/
-.vscode/
-build/
-
-stderr.txt
-stdout.txt
-gmon.out
+/sd
+/stderr.txt
+/stdout.txt
+/gmon.out
