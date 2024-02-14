@@ -8,9 +8,9 @@
 
 */
 #include "gw_type_defs.h"
-#include "sm510.h"
 #include "gw_romloader.h"
 #include "gw_system.h"
+#include "sm510.h"
 
 //-------------------------------------------------
 //  device_start - device-specific startup

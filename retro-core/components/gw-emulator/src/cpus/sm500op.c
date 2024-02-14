@@ -5,9 +5,9 @@
 // SM500 shared opcode handlers
 
 #include "gw_type_defs.h"
+#include "gw_system.h"
 #include "sm510.h"
 #include "sm500.h"
-#include "gw_system.h"
 
 // internal helpers
 
