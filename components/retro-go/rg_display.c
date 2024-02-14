@@ -334,9 +334,10 @@ static inline void write_rect(int left, int top, int width, int height, const vo
     const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
     const int lines_per_buffer = LCD_BUFFER_LENGTH / scaled_width;
     const int ix_acc = (x_inc * scaled_left) % screen_width;
-    const int filter_mode = config.scaling ? config.filter : 0;
-    const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
-    const bool filter_x = filter_mode == RG_DISPLAY_FILTER_HORIZ || filter_mode == RG_DISPLAY_FILTER_BOTH;
+    const bool filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                          (config.scaling && (display.viewport.height % display.source.height) != 0);
+    const bool filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                          (config.scaling && (display.viewport.width % display.source.width) != 0);
     const int format = display.source.format;
     const int stride = display.source.stride;
     union { const uint8_t *u8; const uint16_t *u16; } buffer;
@@ -1035,7 +1036,7 @@ void rg_display_init(void)
         .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
-        .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+        .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_FULL),
         .border = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
     };
     display = (rg_display_t){
