@@ -108,7 +108,7 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -201,7 +201,6 @@ extern "C" void lynx_main(void)
 
     float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
-    bool fullFrame = 0;
 
     // Start emulation
     while (1)
@@ -237,8 +236,7 @@ extern "C" void lynx_main(void)
 
         if (drawFrame)
         {
-            fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-            previousUpdate = currentUpdate;
+            rg_display_submit(currentUpdate, 0);
             currentUpdate = &updates[currentUpdate == &updates[0]];
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
@@ -253,7 +251,7 @@ extern "C" void lynx_main(void)
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
             else if (elapsed > ((gAudioBufferPointer / 2) * sampleTime))
                 skipFrames += 1;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+            else if (drawFrame && rg_display_get_counters()->lastFullFrame) // This could be avoided when scaling != full
                 skipFrames += 1;
         }
         else if (skipFrames > 0)

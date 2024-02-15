@@ -5,14 +5,6 @@
 
 typedef enum
 {
-    RG_UPDATE_EMPTY = 0,
-    RG_UPDATE_FULL,
-    RG_UPDATE_PARTIAL,
-    RG_UPDATE_ERROR,
-} rg_update_t;
-
-typedef enum
-{
     RG_DISPLAY_UPDATE_PARTIAL = 0,
     RG_DISPLAY_UPDATE_FULL,
     // RG_DISPLAY_UPDATE_INTERLACE,
@@ -88,8 +80,10 @@ typedef struct
 typedef struct
 {
     int32_t totalFrames;
+    int32_t partFrames;
     int32_t fullFrames;
-    int64_t busyTime; // This is only time spent blocking the main task
+    int64_t busyTime;
+    bool lastFullFrame;
 } rg_display_counters_t;
 
 typedef struct
@@ -126,23 +120,15 @@ typedef struct
         int crop_h;
         int crop_v;
         int format;
+        bool ready;
     } source;
     bool changed;
 } rg_display_t;
 
 typedef struct
 {
-    short left;   // int32_t left:10;
-    short width;  // int32_t width:10;
-    short repeat; // int32_t repeat:10;
-} rg_line_diff_t;
-
-typedef struct
-{
-    rg_update_t type;
     void *buffer;          // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
     uint16_t palette[256]; // Used in RG_PIXEL_PAL is set
-    rg_line_diff_t diff[256];
 } rg_video_update_t;
 
 void rg_display_init(void);
@@ -154,9 +140,9 @@ bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format);
-rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
+void rg_display_submit(const rg_video_update_t *update, uint32_t flags);
 
-rg_display_counters_t rg_display_get_counters(void);
+const rg_display_counters_t *rg_display_get_counters(void);
 const rg_display_config_t *rg_display_get_config(void);
 const rg_display_t *rg_display_get_info(void);
 

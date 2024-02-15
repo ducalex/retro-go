@@ -226,7 +226,7 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -431,9 +431,7 @@ void app_main(void)
         {
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
-            // rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-            rg_display_submit(currentUpdate, NULL);
-            // currentUpdate = previousUpdate;
+            rg_display_submit(currentUpdate, 0);
         }
 
         int elapsed = rg_system_timer() - startTime;

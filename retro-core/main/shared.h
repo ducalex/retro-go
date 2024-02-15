@@ -11,7 +11,6 @@ extern rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 extern rg_video_update_t updates[2];
 extern rg_video_update_t *currentUpdate;
-extern rg_video_update_t *previousUpdate;
 
 extern rg_app_t *app;
 

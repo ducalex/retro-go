@@ -3,7 +3,6 @@
 #include <nofrendo.h>
 #include <nes/nes.h>
 
-static int fullFrame = 0;
 static int overscan = true;
 static int autocrop = 0;
 static int palette = 0;
@@ -21,7 +20,7 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -74,7 +73,6 @@ static void build_palette(int n)
         updates[1].palette[i] = color;
     }
     free(pal);
-    previousUpdate = NULL;
 }
 
 static rg_gui_event_t sprite_limit_cb(rg_gui_option_t *option, rg_gui_event_t event)
@@ -163,7 +161,7 @@ static void blit_screen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
-    fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+    rg_display_submit(currentUpdate, 0);
 }
 
 static void nsf_draw_overlay(void)
@@ -273,7 +271,6 @@ void nes_main(void)
 
         if (drawFrame)
         {
-            previousUpdate = currentUpdate;
             currentUpdate = &updates[currentUpdate == &updates[0]];
         }
 
@@ -287,7 +284,7 @@ void nes_main(void)
             int frameTime = 1000000 / (nes->refresh_rate * app->speed);
             if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+            else if (drawFrame && rg_display_get_counters()->lastFullFrame)
                 skipFrames = 1;
             else if (nsfPlayer)
                 skipFrames = 10, nsf_draw_overlay();

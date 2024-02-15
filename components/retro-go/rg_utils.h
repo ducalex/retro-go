@@ -50,7 +50,8 @@ const char *rg_basename(const char *path);
 const char *rg_extension(const char *path);
 const char *rg_relpath(const char *path);
 const char *const_string(const char *str);
-uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len);
+uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
+uint32_t rg_hash(const char *buf, size_t len);
 void *rg_alloc(size_t size, uint32_t caps);
 void rg_usleep(uint32_t us);
 

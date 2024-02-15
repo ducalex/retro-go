@@ -3,7 +3,6 @@
 #include <sys/time.h>
 #include <gnuboy.h>
 
-static bool fullFrame = false;
 static int skipFrames = 20; // The 20 is to hide startup flicker in some games
 
 static int video_time;
@@ -33,7 +32,7 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -74,7 +73,6 @@ static bool reset_handler(bool hard)
     gnuboy_reset(hard);
     update_rtc_time();
 
-    fullFrame = false;
     skipFrames = 20;
     autoSaveSRAM_Timer = 0;
 
@@ -197,7 +195,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 static void video_callback(void *buffer)
 {
     int64_t startTime = rg_system_timer();
-    fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+    rg_display_submit(currentUpdate, 0);
     video_time += rg_system_timer() - startTime;
 }
 
@@ -316,7 +314,6 @@ void gbc_main(void)
 
         if (drawFrame)
         {
-            previousUpdate = currentUpdate;
             currentUpdate = &updates[currentUpdate == &updates[0]];
             gnuboy_set_framebuffer(currentUpdate->buffer);
         }
@@ -346,7 +343,7 @@ void gbc_main(void)
             int frameTime = 1000000 / (60 * app->speed);
             if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+            else if (drawFrame && rg_display_get_counters()->lastFullFrame) // This could be avoided when scaling != full
                 skipFrames = 1;
             if (app->speed > 1.f) // This is a hack until we account for audio speed...
                 skipFrames += (int)app->speed;

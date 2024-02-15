@@ -53,7 +53,7 @@ static void event_handler(int event, void *arg)
 #endif
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -139,7 +139,6 @@ void sms_main(void)
     }
 
     int skipFrames = 0;
-    int copyPalette = 0;
 
     while (true)
     {
@@ -156,7 +155,6 @@ void sms_main(void)
 
         int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
-        bool fullFrame = true;
 
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
@@ -269,18 +267,9 @@ void sms_main(void)
 
         if (drawFrame)
         {
-            previousUpdate = &updates[currentUpdate == &updates[0]];
             if (render_copy_palette(currentUpdate->palette))
-            {
-                previousUpdate = NULL;
-                copyPalette = true;
-            }
-            else if (copyPalette)
-            {
-                memcpy(currentUpdate->palette, previousUpdate->palette, 512);
-                copyPalette = false;
-            }
-            fullFrame = rg_display_submit(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
+                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+            rg_display_submit(currentUpdate, 0);
             currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
@@ -293,7 +282,7 @@ void sms_main(void)
             int frameTime = 1000000 / (app->refreshRate * app->speed);
             if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+            else if (drawFrame && rg_display_get_counters()->lastFullFrame)
                 skipFrames = 1;
             if (app->speed > 1.f) // This is a hack until we account for audio speed...
                 skipFrames += (int)app->speed;

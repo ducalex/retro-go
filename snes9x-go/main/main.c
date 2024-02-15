@@ -71,7 +71,7 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, NULL);
+        rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -191,7 +191,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             *option++ = (rg_gui_option_t)RG_DIALOG_END;
 
             dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
-            rg_display_submit(currentUpdate, NULL);
+            rg_display_submit(currentUpdate, 0);
             rg_display_sync(true);
         }
     }
@@ -377,7 +377,7 @@ void app_main(void)
         S9xMainLoop();
 
         if (IPPU.RenderThisFrame)
-            rg_display_submit(currentUpdate, NULL);
+            rg_display_submit(currentUpdate, 0);
 
     #ifndef USE_BLARGG_APU
         if (apu_enabled && lowpass_filter)

@@ -63,8 +63,7 @@ void osd_vsync(void)
 
     if (skipFrames == 0)
     {
-        rg_display_submit(currentUpdate, NULL); // previousUpdate
-        previousUpdate = currentUpdate;
+        rg_display_submit(currentUpdate, 0);
         currentUpdate = &updates[currentUpdate == &updates[0]];
     }
 
@@ -155,14 +154,16 @@ static void event_handler(int event, void *arg)
     if (event == RG_EVENT_REDRAW)
     {
         // We must use previous update because at this point current has been wiped.
-        rg_display_submit(previousUpdate ?: currentUpdate, NULL);
+        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+        rg_display_submit(previousUpdate, 0);
     }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    return rg_display_save_frame(filename, previousUpdate ?: currentUpdate, width, height);
+    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+    return rg_display_save_frame(filename, previousUpdate, width, height);
 }
 
 static bool save_state_handler(const char *filename)

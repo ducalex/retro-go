@@ -139,8 +139,8 @@ static void update_statistics(void)
     static counters_t counters = {0};
     const counters_t previous = counters;
 
-    rg_display_counters_t display = rg_display_get_counters();
-    // rg_audio_counters_t audio = rg_audio_get_counters();
+    rg_display_counters_t display = *rg_display_get_counters();
+    // rg_audio_counters_t audio = *rg_audio_get_counters();
 
     counters.totalFrames = display.totalFrames;
     counters.fullFrames = display.fullFrames;
@@ -685,8 +685,6 @@ bool rg_emu_load_state(uint8_t slot)
     WDT_RELOAD(WDT_TIMEOUT);
     free(filename);
 
-    rg_display_force_redraw();
-
     return success;
 }
 
@@ -750,7 +748,6 @@ bool rg_emu_save_state(uint8_t slot)
 
     rg_storage_commit();
     rg_system_set_led(0);
-    rg_display_force_redraw();
 
     return success;
 }
