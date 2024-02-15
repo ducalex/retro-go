@@ -339,7 +339,6 @@ static inline void write_update(const rg_video_update_t *update)
     const uint16_t *palette = update->palette;
 
     bool partial = config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
-    bool need_update;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;
@@ -366,6 +365,9 @@ static inline void write_update(const rg_video_update_t *update)
         uint16_t *line_buffer = lcd_get_buffer();
         uint16_t *line_buffer_ptr = line_buffer;
 
+        uint32_t checksum = 0xFFFFFFFF;
+        bool need_update = !partial;
+
         for (int i = 0; i < lines_to_copy; ++i)
         {
             if (i > 0 && screen_line_is_empty[screen_y])
@@ -376,13 +378,13 @@ static inline void write_update(const rg_video_update_t *update)
             else
             {
                 #define RENDER_LINE(pixel) { \
-                    for (int x = 0, x_acc = 0; x < width;) { \
-                        *line_buffer_ptr++ = (pixel); \
-                        x_acc += x_inc; \
-                        while (x_acc >= screen_width) { \
-                            x_acc -= screen_width; \
-                            ++x; \
+                    for (size_t x = 0, x_acc = 0; x < width; ++x) { \
+                        uint16_t _pixel = (pixel);\
+                        while (x_acc < screen_width) { \
+                            *line_buffer_ptr++ = _pixel; \
+                            x_acc += x_inc; \
                         } \
+                        x_acc -= screen_width; \
                     } \
                 }
                 if (format & RG_PIXEL_PAL)
@@ -391,6 +393,17 @@ static inline void write_update(const rg_video_update_t *update)
                     RENDER_LINE((buffer.u16[x] << 8) | (buffer.u16[x] >> 8))
                 else
                     RENDER_LINE(buffer.u16[x])
+
+                if (partial)
+                {
+                    checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
+                }
+            }
+
+            if (screen_line_checksum[screen_y] != checksum)
+            {
+                screen_line_checksum[screen_y] = checksum;
+                need_update = true;
             }
 
             if (!screen_line_is_empty[++screen_y])
@@ -398,19 +411,6 @@ static inline void write_update(const rg_video_update_t *update)
                 buffer.u8 += stride;
                 ++y;
             }
-        }
-
-        if (partial)
-        {
-            uint32_t checksum = rg_hash((void*)line_buffer, draw_width * lines_to_copy * 2);
-            // uint32_t checksum = rg_crc32(0, (void*)line_buffer, draw_width * lines_to_copy * 2);
-            need_update = screen_line_checksum[screen_y] != checksum;
-            screen_line_checksum[screen_y] = checksum;
-        }
-        else
-        {
-            need_update = true;
-            screen_line_checksum[screen_y] = 0;
         }
 
         if (need_update)
