@@ -35,6 +35,7 @@ enum
     RG_TEXT_ALIGN_MIDDLE = (1 << 6),
     RG_TEXT_ALIGN_BOTTOM = (1 << 7),
     RG_TEXT_NO_PADDING   = (1 << 8),
+    RG_TEXT_BIGGER       = (1 << 9),
 };
 
 typedef struct
@@ -75,11 +76,14 @@ struct rg_gui_option_s
     rg_gui_callback_t update_cb;
 };
 
-#define RG_DIALOG_FLAG_DISABLED (0)  // (1 << 0)
-#define RG_DIALOG_FLAG_NORMAL   (1)  // (1 << 1)
-#define RG_DIALOG_FLAG_SKIP     (-1) // (1 << 2)
+#define RG_DIALOG_FLAG_DISABLED 0x00
+#define RG_DIALOG_FLAG_NORMAL   0x01
+#define RG_DIALOG_FLAG_MESSAGE  0x03
+#define RG_DIALOG_FLAG_SKIP     0x03
+#define RG_DIALOG_FLAG_HIDDEN   0x04
+#define RG_DIALOG_FLAG_SEPARATOR RG_DIALOG_FLAG_SKIP
 
-#define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
+#define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SEPARATOR, NULL}
 #define RG_DIALOG_END         {0, NULL, NULL, 0, NULL}
 
 #define RG_DIALOG_CANCELLED -0x7654321
@@ -267,4 +271,5 @@ enum colors565
     C_WHITE                    = 0xFFFF,
     // C_TRANSPARENT              = -1,
     C_TRANSPARENT              = C_MAGENTA,
+    C_NONE = -1,
 };
