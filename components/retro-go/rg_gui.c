@@ -1110,8 +1110,10 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         strcpy(option->value, "Off  ");
     if (mode == RG_DISPLAY_SCALING_FIT)
         strcpy(option->value, "Fit ");
-    if (mode == RG_DISPLAY_SCALING_FILL)
+    if (mode == RG_DISPLAY_SCALING_FULL)
         strcpy(option->value, "Full ");
+    // if (mode == RG_DISPLAY_SCALING_CUSTOM)
+    //     strcpy(option->value, "Custom");
 
     return RG_DIALOG_VOID;
 }

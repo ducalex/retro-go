@@ -16,7 +16,8 @@ typedef enum
 {
     RG_DISPLAY_SCALING_OFF = 0, // No scaling, center image on screen
     RG_DISPLAY_SCALING_FIT,     // Scale and preserve aspect ratio
-    RG_DISPLAY_SCALING_FILL,    // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_FULL,    // Scale and stretch to fill screen
+    // RG_DISPLAY_SCALING_CUSTOM,  // Custom width and height
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -74,7 +75,7 @@ typedef struct
     display_filter_t filter;
     display_update_t update_mode;
     display_backlight_t backlight;
-    char *border;
+    char *border_file;
 } rg_display_config_t;
 
 typedef struct

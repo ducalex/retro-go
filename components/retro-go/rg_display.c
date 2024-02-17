@@ -495,7 +495,7 @@ static void update_viewport_scaling(void)
     int new_height = src_height;
     double new_ratio = 0.0;
 
-    if (config.scaling == RG_DISPLAY_SCALING_FILL)
+    if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
         new_ratio = display.screen.width / (double)display.screen.height;
     }
@@ -551,6 +551,8 @@ static void update_viewport_scaling(void)
 
 static bool load_border_file(const char *filename)
 {
+    RG_LOGI("Loading border file: %s", filename ?: "(none)");
+
     free(border), border = NULL;
     display.changed = true;
 
@@ -565,10 +567,10 @@ static bool load_border_file(const char *filename)
                 border = resized;
             }
         }
-        rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+        // rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
         return true;
     }
-    rg_display_clear(C_BLACK);
+    // rg_display_clear(C_BLACK);
     return false;
 }
 
@@ -589,7 +591,7 @@ static void display_task(void *arg)
 
         if (display.changed)
         {
-            if (config.scaling != RG_DISPLAY_SCALING_FILL)
+            if (config.scaling != RG_DISPLAY_SCALING_FULL)
             {
                 if (border)
                     rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
@@ -702,18 +704,18 @@ display_backlight_t rg_display_get_backlight(void)
 
 void rg_display_set_border(const char *filename)
 {
-    free(config.border);
-    config.border = NULL;
+    free(config.border_file);
+    config.border_file = NULL;
 
     if (load_border_file(filename))
     {
         rg_settings_set_string(NS_APP, SETTING_BORDER, filename);
-        config.border = strdup(filename);
+        config.border_file = strdup(filename);
     }
     else
     {
         rg_settings_set_string(NS_APP, SETTING_BORDER, NULL);
-        config.border = NULL;
+        config.border_file = NULL;
     }
     display.changed = true;
 }
@@ -905,11 +907,11 @@ void rg_display_init(void)
     // TO DO: We probably should call the setters to ensure valid values...
     config = (rg_display_config_t){
         .backlight = rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
-        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FULL),
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
-        .border = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
+        .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
     };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
@@ -918,5 +920,7 @@ void rg_display_init(void)
     };
     lcd_init();
     rg_task_create("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
+    if (config.border_file)
+        load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");
 }
