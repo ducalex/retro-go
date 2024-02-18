@@ -31,12 +31,18 @@ enum
     RG_TEXT_ALIGN_CENTER = (1 << 2),
     RG_TEXT_ALIGN_RIGHT  = (1 << 3),
     RG_TEXT_DUMMY_DRAW   = (1 << 4),
-    RG_TEXT_ALIGN_TOP    = (1 << 5),
-    RG_TEXT_ALIGN_MIDDLE = (1 << 6),
-    RG_TEXT_ALIGN_BOTTOM = (1 << 7),
-    RG_TEXT_NO_PADDING   = (1 << 8),
-    RG_TEXT_DOUBLE_WIDTH = (1 << 9),
-    RG_TEXT_DOUBLE_HEIGHT= (1 << 10),
+    RG_TEXT_NO_PADDING   = (1 << 5),
+    RG_TEXT_DOUBLE_WIDTH = (1 << 6),
+    RG_TEXT_DOUBLE_HEIGHT= (1 << 7),
+};
+
+enum
+{
+    RG_GUI_CENTER = 0xF18000,
+    RG_GUI_TOP    = 0xF28000,
+    RG_GUI_BOTTOM = 0xF38000,
+    RG_GUI_LEFT   = 0xF48000,
+    RG_GUI_RIGHT  = 0xF58000,
 };
 
 typedef struct
@@ -100,9 +106,11 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
+                           rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
-void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
+void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
+                      rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_battery(int x_pos, int y_pos);
 void rg_gui_draw_radio(int x_pos, int y_pos);
 void rg_gui_draw_clock(int x_pos, int y_pos);

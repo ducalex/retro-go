@@ -61,6 +61,36 @@ static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
     return gui.draw_buffer;
 }
 
+static int get_horizontal_position(int x_pos, int width)
+{
+    int type = (x_pos & 0xFF0000) | 0x8000;
+    int offset = (x_pos & 0xFFFF) - 0x8000;
+    if (type == RG_GUI_CENTER)
+        return ((gui.screen_width - width) / 2) + offset;
+    else if (type == RG_GUI_LEFT)
+        return 0 + offset;
+    else if (type == RG_GUI_RIGHT)
+        return (gui.screen_width - width) - offset;
+    else if (x_pos < 0)
+        return x_pos + gui.screen_width;
+    return x_pos;
+}
+
+static int get_vertical_position(int y_pos, int height)
+{
+    int type = (y_pos & 0xFF0000) | 0x8000;
+    int offset = (y_pos & 0xFFFF) - 0x8000;
+    if (type == RG_GUI_CENTER)
+        return ((gui.screen_height - height) / 2) + offset;
+    else if (type == RG_GUI_TOP)
+        return 0 + offset;
+    else if (type == RG_GUI_BOTTOM)
+        return (gui.screen_height - height) - offset;
+    else if (y_pos < 0)
+        return y_pos + gui.screen_height;
+    return y_pos;
+}
+
 void rg_gui_init(void)
 {
     gui.screen_width = rg_display_get_info()->screen.width;
@@ -197,12 +227,11 @@ void rg_gui_flush(void)
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
 {
+    left = get_horizontal_position(left, width);
+    top = get_vertical_position(top, height);
+
     if (gui.screen_buffer)
     {
-        if (left < 0)
-            left += gui.screen_width;
-        if (top < 0)
-            top += gui.screen_height;
         if (stride < width)
             stride = width * 2;
 
@@ -294,20 +323,16 @@ static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, uin
     return glyph_width;
 }
 
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
+rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
-    if (x_pos < 0)
-        x_pos += gui.screen_width;
-    if (y_pos < 0)
-        y_pos += gui.screen_height;
-    if (!text || *text == 0)
-        text = " ";
-
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = (flags & RG_TEXT_DOUBLE_HEIGHT) ? gui.style.font_points * 2 : gui.style.font_points;
     int line_height = font_height + padding * 2;
     const rg_font_t *font = gui.style.font;
+
+    if (!text || *text == 0)
+        text = " ";
 
     if (width == 0)
     {
@@ -316,7 +341,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         for (const char *ptr = text; *ptr;)
         {
             int chr = *ptr++;
-            line_width += get_glyph(0, font, font_height, chr);
+            line_width += get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -326,13 +351,14 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         }
     }
 
-    // TO DO: this should honor wrapping, multiline, etc...
-    if (flags & RG_TEXT_ALIGN_MIDDLE)
-        y_pos = (gui.screen_height - line_height) / 2;
-    else if (flags & RG_TEXT_ALIGN_BOTTOM)
-        y_pos = (gui.screen_height - line_height);
-    else if (flags & RG_TEXT_ALIGN_TOP)
-        y_pos = 0;
+    x_pos = get_horizontal_position(x_pos, width);
+    y_pos = get_vertical_position(y_pos, line_height);
+
+    if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
+    {
+        RG_LOGD("Texbox (pos: %dx%d, size: %dx%d) will be truncated!", width, line_height, x_pos, y_pos);
+        // return;
+    }
 
     int draw_width = RG_MIN(width, gui.screen_width - x_pos);
     int y_offset = 0;
@@ -409,10 +435,8 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     if (width <= 0 || height <= 0)
         return;
 
-    if (x_pos < 0)
-        x_pos += gui.screen_width;
-    if (y_pos < 0)
-        y_pos += gui.screen_height;
+    x_pos = get_horizontal_position(x_pos, width);
+    y_pos = get_vertical_position(y_pos, height);
 
     if (border_size > 0)
     {
@@ -460,17 +484,15 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 
 void rg_gui_draw_battery(int x_pos, int y_pos)
 {
-    if (x_pos < 0)
-        x_pos += gui.screen_width;
-    if (y_pos < 0)
-        y_pos += gui.screen_height;
-
     int width = 16, height = 10;
     int width_fill = width;
     rg_color_t color_fill = C_DARK_GRAY;
     rg_color_t color_border = C_SILVER;
     rg_color_t color_empty = C_BLACK;
     float percentage;
+
+    x_pos = get_horizontal_position(x_pos, width);
+    y_pos = get_vertical_position(y_pos, height);
 
     if (rg_input_read_battery(&percentage, NULL))
     {
@@ -491,14 +513,12 @@ void rg_gui_draw_battery(int x_pos, int y_pos)
 
 void rg_gui_draw_radio(int x_pos, int y_pos)
 {
-    if (x_pos < 0)
-        x_pos += gui.screen_width;
-    if (y_pos < 0)
-        y_pos += gui.screen_height;
-
     rg_network_t net = rg_network_get_info();
     rg_color_t color_fill = (net.state == RG_NETWORK_CONNECTED) ? C_GREEN : -1;
     rg_color_t color_border = (net.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
+
+    x_pos = get_horizontal_position(x_pos, 16);
+    y_pos = get_vertical_position(y_pos, 12);
 
     int seg_width = 4;
     y_pos += 6;
@@ -513,14 +533,12 @@ void rg_gui_draw_radio(int x_pos, int y_pos)
 
 void rg_gui_draw_clock(int x_pos, int y_pos)
 {
-    if (x_pos < 0)
-        x_pos += gui.screen_width;
-    if (y_pos < 0)
-        y_pos += gui.screen_height;
-
     char buffer[10];
     time_t time_sec = time(NULL);
     struct tm *time = localtime(&time_sec);
+
+    x_pos = get_horizontal_position(x_pos, 0);
+    y_pos = get_vertical_position(y_pos, 0);
 
     // FIXME: Use a fixed small font here, that's why we're doing it in rg_gui...
     sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
@@ -574,8 +592,8 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
-    rg_gui_draw_text(0, 0, gui.screen_width, header, C_WHITE, C_BLACK, RG_TEXT_ALIGN_TOP);
-    rg_gui_draw_text(0, 0, gui.screen_width, footer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_BOTTOM);
+    rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
+    rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
     rg_gui_draw_battery(-22, 3);
     // rg_gui_draw_radio(-45, 3);

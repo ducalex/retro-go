@@ -449,7 +449,7 @@ void gui_draw_status(tab_t *tab)
         rg_gui_draw_clock(-(30 + TEXT_RECT("00:00", 0).width), 3);
     }
 
-    rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
 }
 
