@@ -39,7 +39,7 @@ static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
 
-#define SPI_TRANSACTION_COUNT (8)
+#define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT      (5)
 #define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
 
@@ -98,8 +98,8 @@ static void spi_task(void *arg)
     while (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
     {
         if ((int)t->user & 2)
-            xQueueSend(spi_buffers, &t->tx_buffer, 0);
-        xQueueSend(spi_transactions, &t, 0);
+            xQueueSend(spi_buffers, &t->tx_buffer, portMAX_DELAY);
+        xQueueSend(spi_transactions, &t, portMAX_DELAY);
     }
 }
 
@@ -474,7 +474,7 @@ static inline void write_update(const rg_video_update_t *update)
         else
         {
             // Return buffer
-            xQueueSend(spi_buffers, &line_buffer, 0);
+            xQueueSend(spi_buffers, &line_buffer, portMAX_DELAY);
         }
 
         lines_remaining -= lines_to_copy;
