@@ -97,14 +97,14 @@ static bool reset_handler(bool hard)
 
 static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t event)
 {
-    int pal = option.tms_pal;
-    int max = 2;
-
     if (sms.console >= CONSOLE_SMS)
     {
         opt->flags = RG_DIALOG_FLAG_HIDDEN;
         return RG_DIALOG_VOID;
     }
+
+    int pal = option.tms_pal;
+    int max = 2;
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
@@ -125,7 +125,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t eve
         return RG_DIALOG_REDRAW;
     }
 
-    sprintf(opt->value, "%d", pal);
+    sprintf(opt->value, "%d/%d", pal + 1, max + 1);
     return RG_DIALOG_VOID;
 }
 
