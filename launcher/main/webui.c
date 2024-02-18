@@ -3,7 +3,6 @@
 
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_server.h>
-#include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <cJSON.h>
@@ -35,7 +34,7 @@ static char *urldecode(const char *str)
 static int add_file(const rg_scandir_t *entry, void *arg)
 {
     cJSON *obj = cJSON_CreateObject();
-    cJSON_AddStringToObject(obj, "name", entry->name);
+    cJSON_AddStringToObject(obj, "name", entry->basename);
     cJSON_AddNumberToObject(obj, "size", entry->size);
     cJSON_AddNumberToObject(obj, "mtime", entry->mtime);
     // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);

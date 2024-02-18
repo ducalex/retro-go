@@ -1,6 +1,5 @@
 #include "rg_system.h"
 
-#include <sys/stat.h>
 #include <sys/time.h>
 #include <stdarg.h>
 #include <assert.h>
@@ -795,12 +794,12 @@ rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots)
         rg_emu_slot_t *slot = &result->slots[i];
         char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
         char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
-        struct stat st;
+        rg_stat_t info = rg_storage_stat(slot->file);
         strcpy(slot->preview, preview);
         strcpy(slot->file, file);
         slot->id = i;
-        slot->exists = stat(slot->file, &st) == 0;
-        slot->mtime = st.st_mtime;
+        slot->exists = info.exists;
+        slot->mtime = info.mtime;
         if (slot->exists)
         {
             if (!result->latest || slot->mtime > result->latest->mtime)

@@ -1,5 +1,4 @@
 #include <rg_system.h>
-#include <sys/stat.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -26,25 +25,16 @@ static bool crc_cache_dirty = true;
 static retro_app_t *apps[24];
 static int apps_count = 0;
 
-typedef struct
-{
-    const char *folder;
-    retro_app_t *app;
-} sc_arg_t;
-
-static void scan_folder(retro_app_t *app, const char* path, void *parent);
-
 static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 {
-    const char *folder = ((sc_arg_t*)arg)->folder;
-    retro_app_t *app = ((sc_arg_t*)arg)->app;
-    const char *ext = rg_extension(entry->name);
+    retro_app_t *app = (retro_app_t *)arg;
+    const char *ext = rg_extension(entry->basename);
     uint8_t is_valid = false;
     uint8_t type = 0x00;
     char ext_buf[32];
 
     // Skip hidden files
-    if (entry->name[0] == '.')
+    if (entry->basename[0] == '.')
         return RG_SCANDIR_SKIP;
 
     if (entry->is_file && ext != NULL)
@@ -55,6 +45,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     }
     else if (entry->is_dir)
     {
+        RG_LOGI("Found subdirectory '%s'", entry->path);
         is_valid = true;
         type = 0xFF;
     }
@@ -68,7 +59,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
         retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
         if (!new_buf)
         {
-            RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
+            RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...", app->files_count);
             return RG_SCANDIR_STOP;
         }
         app->files = new_buf;
@@ -76,18 +67,13 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     }
 
     app->files[app->files_count++] = (retro_file_t) {
-        .name = strdup(entry->name),
-        .folder = folder,
+        .name = strdup(entry->basename),
+        .folder = const_string(entry->dirname),
         .app = (void*)app,
         .type = type,
         .is_valid = true,
     };
 
-    if (type == 0xFF)
-    {
-        retro_file_t *file = &app->files[app->files_count-1];
-        scan_folder(app, entry->path, file);
-    }
     return RG_SCANDIR_CONTINUE;
 }
 
@@ -95,18 +81,14 @@ static void scan_folder(retro_app_t *app, const char* path, void *parent)
 {
     RG_ASSERT(app && path, "Bad param");
 
-    RG_LOGI("Scanning directory %s\n", path);
+    RG_LOGI("Scanning directory '%s'", path);
 
-    sc_arg_t data = {
-        .folder = const_string(path),
-        .app = app,
-    };
-    rg_storage_scandir(path, scan_folder_cb, &data, 0);
+    rg_storage_scandir(path, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
 }
 
 static void application_init(retro_app_t *app)
 {
-    RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
+    RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
 
     if (app->initialized)
         app->files_count = 0;
@@ -151,7 +133,7 @@ static void crc_cache_init(void)
     crc_cache = calloc(1, sizeof(*crc_cache));
     if (!crc_cache)
     {
-        RG_LOGE("Failed to allocate crc_cache!\n");
+        RG_LOGE("Failed to allocate crc_cache!");
         return;
     }
     // File format: {magic:U32 count:U32} {{key:U32 crc:U32}, ...}
@@ -161,7 +143,7 @@ static void crc_cache_init(void)
         fread(crc_cache, 8, 1, fp);
         if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
         {
-            RG_LOGI("Loaded CRC cache (entries: %d)\n", crc_cache->count);
+            RG_LOGI("Loaded CRC cache (entries: %d)", crc_cache->count);
             fread(crc_cache->entries, crc_cache->count, 8, fp);
             crc_cache_dirty = false;
         }
@@ -201,7 +183,7 @@ static void crc_cache_save(void)
     if (!crc_cache || !crc_cache_dirty)
         return;
 
-    RG_LOGI("Saving cache\n");
+    RG_LOGI("Saving cache");
 
     FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "wb");
     if (fp)
@@ -231,7 +213,7 @@ static void crc_cache_update(retro_file_t *file)
     crc_cache->entries[index].crc = file->checksum;
     crc_cache_dirty = true;
 
-    RG_LOGI("Adding %08X => %08X to cache (new total: %d)\n",
+    RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
         key, file->checksum, crc_cache->count);
 
     // crc_cache_save();
@@ -538,9 +520,9 @@ static void show_file_info(retro_file_t *file)
 {
     char filesize[16];
     char filecrc[16] = "Compute";
-    struct stat st;
+    rg_stat_t info = rg_storage_stat(get_file_path(file));
 
-    if (stat(get_file_path(file), &st) != 0)
+    if (!info.exists)
     {
         rg_gui_alert("File not found", file->name);
         return;
@@ -557,7 +539,7 @@ static void show_file_info(retro_file_t *file)
         RG_DIALOG_END,
     };
 
-    sprintf(filesize, "%ld KB", st.st_size / 1024);
+    sprintf(filesize, "%d KB", (int)info.size / 1024);
 
     while (true) // We loop in case we need to update the CRC
     {
@@ -661,7 +643,7 @@ static void application(const char *desc, const char *name, const char *exts, co
 
     if (!rg_system_have_app(part))
     {
-        RG_LOGI("Application '%s' (%s) not present, skipping\n", desc, part);
+        RG_LOGI("Application '%s' (%s) not present, skipping", desc, part);
         return;
     }
 
