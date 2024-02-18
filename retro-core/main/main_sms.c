@@ -11,6 +11,8 @@ static uint32_t *remoteJoystick = &joystick2;
 
 static bool netplay = false;
 #endif
+
+static const char *SETTING_PALETTE = "palette";
 // --- MAIN
 
 
@@ -93,6 +95,40 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t event)
+{
+    int pal = option.tms_pal;
+    int max = 2;
+
+    if (sms.console >= CONSOLE_SMS)
+    {
+        opt->flags = RG_DIALOG_FLAG_HIDDEN;
+        return RG_DIALOG_VOID;
+    }
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        if (event == RG_DIALOG_PREV)
+            pal = pal > 0 ? pal - 1 : max;
+        else
+            pal = pal < max ? pal + 1 : 0;
+
+        if (option.tms_pal != pal)
+        {
+            option.tms_pal = pal;
+            for (int i = 0; i < PALETTE_SIZE; i++)
+                palette_sync(i);
+            if (render_copy_palette(currentUpdate->palette))
+                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+            rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
+        }
+        return RG_DIALOG_REDRAW;
+    }
+
+    sprintf(opt->value, "%d", pal);
+    return RG_DIALOG_VOID;
+}
+
 void sms_main(void)
 {
     const rg_handlers_t handlers = {
@@ -102,8 +138,12 @@ void sms_main(void)
         .screenshot = &screenshot_handler,
         .event = &event_handler,
     };
+    const rg_gui_option_t options[] = {
+        {0, "Palette ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        RG_DIALOG_END
+    };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     updates[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
     updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
@@ -123,6 +163,7 @@ void sms_main(void)
     option.sndrate = AUDIO_SAMPLE_RATE;
     option.overscan = 0;
     option.extra_gg = 0;
+    option.tms_pal = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
     system_poweron();
 
