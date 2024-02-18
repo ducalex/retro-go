@@ -305,6 +305,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .speed = 1.f,
         .refreshRate = 60,
         .sampleRate = sampleRate,
+        .overclock = 0,
         .logLevel = RG_LOG_INFO,
         .options = options, // TO DO: We should make a copy of it?
     };
@@ -1022,6 +1023,29 @@ void rg_system_set_led(int value)
 int rg_system_get_led(void)
 {
     return ledValue;
+}
+
+void rg_system_set_overclock(int level)
+{
+    //
+}
+
+int rg_system_get_overclock(void)
+{
+    return app.overclock;
+}
+
+float rg_system_get_overclock_ratio(void)
+{
+#if 0
+    extern uint64_t esp_rtc_get_time_us(void);
+    uint64_t start = esp_rtc_get_time_us();
+    int64_t end = rg_system_timer() + 1000000;
+    while (rg_system_timer() < end)
+        continue;
+    return 1000000.f / (esp_rtc_get_time_us() - start);
+#endif
+    return (240 + (app.overclock * 40)) / 240.f;
 }
 
 #ifdef RG_ENABLE_PROFILING

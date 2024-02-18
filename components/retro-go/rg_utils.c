@@ -161,25 +161,34 @@ uint32_t rg_hash(const char *data, size_t len)
 
 const char *const_string(const char *str)
 {
-    static const char **strings = NULL;
+    static const rg_str_t **strings = NULL;
     static size_t strings_count = 0;
 
     if (!str)
         return NULL;
 
-    // To do : use hashmap or something faster
-    for (int i = 0; i < strings_count; i++)
-        if (strcmp(strings[i], str) == 0)
-            return strings[i];
+    size_t len = strlen(str);
 
-    str = strdup(str);
+    for (int i = 0; i < strings_count; i++)
+    {
+        if (strings[i]->length != len)
+            continue;
+        if (memcmp(strings[i]->data, str, len + 1) == 0)
+            return strings[i]->data;
+    }
+
+    rg_str_t *obj = malloc(sizeof(rg_str_t) + len + 1);
 
     strings = realloc(strings, (strings_count + 1) * sizeof(char *));
-    RG_ASSERT(strings && str, "alloc failed");
+    RG_ASSERT(strings && obj, "alloc failed");
 
-    strings[strings_count++] = str;
+    memcpy(obj->data, str, len + 1);
+    obj->capacity = len;
+    obj->length = len;
 
-    return str;
+    strings[strings_count++] = obj;
+
+    return obj->data;
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure
