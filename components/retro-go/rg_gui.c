@@ -121,7 +121,7 @@ bool rg_gui_set_theme(const char *theme_name)
     gui.style.box_border = rg_gui_get_theme_color("dialog", "border", C_DIM_GRAY);
     gui.style.item_standard = rg_gui_get_theme_color("dialog", "item_standard", C_WHITE);
     gui.style.item_disabled = rg_gui_get_theme_color("dialog", "item_disabled", C_GRAY);
-    gui.style.item_message = rg_gui_get_theme_color("dialog", "item_message", gui.style.item_disabled);
+    gui.style.item_message = rg_gui_get_theme_color("dialog", "item_message", C_SILVER);
     gui.style.scrollbar = rg_gui_get_theme_color("dialog", "scrollbar", C_WHITE);
 
     return true;
@@ -305,7 +305,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text,
         text = " ";
 
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_points * 2 : gui.style.font_points;
+    int font_height = (flags & RG_TEXT_DOUBLE_HEIGHT) ? gui.style.font_points * 2 : gui.style.font_points;
     int line_height = font_height + padding * 2;
     const rg_font_t *font = gui.style.font;
 
@@ -1459,7 +1459,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
         rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_points * 2 + 6, 0, C_BLACK, C_BLACK);
-        rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
+        rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_DOUBLE_HEIGHT|RG_TEXT_NO_PADDING);
         rg_image_free(preview);
     }
     else if (event == RG_DIALOG_ENTER)
