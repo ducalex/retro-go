@@ -1213,7 +1213,7 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
         }
     }
     char *border = rg_display_get_border();
-    strcpy(option->value, border ? rg_basename(border) : "None");
+    sprintf(option->value, "%.9s", border ? rg_basename(border) : "None");
     free(border);
     return RG_DIALOG_VOID;
 }
