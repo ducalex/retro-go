@@ -47,6 +47,12 @@ enum
 
 typedef struct
 {
+    size_t columns, rows;
+    char data[];
+} rg_gui_keyboard_t;
+
+typedef struct
+{
     uint8_t type;
     uint8_t width; // In prop fonts this must be set to avg char width
     uint8_t height;
@@ -118,11 +124,13 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
+void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_t cursor);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
+char *rg_gui_prompt(const char *title, const char *message, const char *default_value);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
 void rg_gui_options_menu(void);

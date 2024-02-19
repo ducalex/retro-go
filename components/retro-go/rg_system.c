@@ -557,7 +557,7 @@ rg_stats_t rg_system_get_counters(void)
     return statistics;
 }
 
-IRAM_ATTR void rg_system_tick(int busyTime)
+void rg_system_tick(int busyTime)
 {
     statistics.lastTick = rg_system_timer();
     statistics.busyTime += busyTime;

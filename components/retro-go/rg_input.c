@@ -341,3 +341,100 @@ const char *rg_input_get_key_name(rg_key_t key)
     default: return "Unknown";
     }
 }
+
+const rg_gui_keyboard_t virtual_map1 = {
+    .columns = 10,
+    .rows = 4,
+    .data = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
+        'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+        'U', 'V', 'W', 'X', 'Y', 'Z', ' ', ',', '.', ' ',
+    }
+};
+
+const rg_gui_keyboard_t virtual_map2 = {
+    .columns = 10,
+    .rows = 4,
+    .data = {
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
+        'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
+        'u', 'v', 'w', 'x', 'y', 'z', ' ', ',', '.', ' ',
+    }
+};
+
+const rg_gui_keyboard_t virtual_map3 = {
+    .columns = 10,
+    .rows = 4,
+    .data = {
+        '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+        '`', '~', '-', '+', '=', ' ', ' ', ' ', '<', '>',
+        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '{', '}',
+        ' ', ' ', ' ', ' ', ' ', '|','\\', '/', '[', ']',
+    }
+};
+
+const rg_gui_keyboard_t virtual_map4 = {
+    .columns = 4,
+    .rows = 4,
+    .data = {
+        '0', '1', '2', '3',
+        '4', '5', '6', '7',
+        '8', '9', 'A', 'B',
+        'C', 'D', 'E', 'F',
+    }
+};
+
+const rg_gui_keyboard_t *virtual_maps[] = {
+    &virtual_map1,
+    &virtual_map2,
+    &virtual_map3,
+    &virtual_map4,
+};
+
+int rg_input_read_keyboard(/* const char *custom_map */)
+{
+    static size_t selected_map = 0;
+    static size_t cursor = 0;
+
+    rg_input_wait_for_key(RG_KEY_ALL, false);
+
+    while (1)
+    {
+        uint32_t joystick = rg_input_read_gamepad();
+
+        const rg_gui_keyboard_t *map = virtual_maps[selected_map];
+
+        size_t prev_cursor = cursor;
+
+        if (joystick & RG_KEY_LEFT)
+            cursor--;
+        if (joystick & RG_KEY_RIGHT)
+            cursor++;
+        if (joystick & RG_KEY_UP)
+            cursor -= map->columns;
+        if (joystick & RG_KEY_DOWN)
+            cursor += map->columns;
+
+        if (cursor >= map->columns * map->rows)
+            cursor = prev_cursor;
+        prev_cursor = cursor;
+
+        if (joystick & RG_KEY_SELECT)
+            selected_map = (selected_map + 1) % RG_COUNT(virtual_maps);
+
+        if (joystick & RG_KEY_A)
+            return map->data[cursor];
+        if (joystick & RG_KEY_B)
+            break;
+
+        rg_input_wait_for_key(~(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT), false);
+        rg_gui_draw_keyboard("[select] to change map", map, cursor);
+
+        rg_task_delay(50);
+        rg_system_tick(0);
+    }
+
+    return -1;
+}

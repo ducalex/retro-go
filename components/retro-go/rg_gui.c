@@ -1011,6 +1011,35 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
+void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_t cursor)
+{
+    RG_ASSERT(map, "Bad param");
+
+    int width = map->columns * 16 + 16;
+    int height = map->rows * 16 + 32;
+
+    int x_pos = (gui.screen_width - width) / 2;
+    int y_pos = (gui.screen_height - height);
+
+    char buf[2] = {0};
+
+    rg_gui_draw_rect(x_pos, y_pos, width, height, 2, gui.style.box_border, gui.style.box_background);
+    rg_gui_draw_text(x_pos + 4, y_pos + 4, width - 8, title, gui.style.item_message, gui.style.box_background, 0);
+    y_pos += 16;
+
+    for (size_t i = 0; i < map->columns * map->rows; ++i)
+    {
+        int x = x_pos + 8 + (i % map->columns) * 16;
+        int y = y_pos + 8 + (i / map->columns) * 16;
+        if (!map->data[i])
+            continue;
+        buf[0] = map->data[i];
+        rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
+    }
+
+    rg_gui_flush();
+}
+
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int level = rg_audio_get_volume();

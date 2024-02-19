@@ -574,6 +574,7 @@ static bool load_border_file(const char *filename)
     return false;
 }
 
+IRAM_ATTR
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));
@@ -765,7 +766,6 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
     return success;
 }
 
-IRAM_ATTR
 void rg_display_submit(const rg_video_update_t *update, uint32_t flags)
 {
     const int64_t time_start = rg_system_timer();

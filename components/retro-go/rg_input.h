@@ -54,3 +54,4 @@ void rg_input_wait_for_key(rg_key_t key, bool pressed);
 const char *rg_input_get_key_name(rg_key_t key);
 uint32_t rg_input_read_gamepad(void);
 bool rg_input_read_battery(float *percent, float *volts);
+int rg_input_read_keyboard(void);
