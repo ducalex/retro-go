@@ -10,6 +10,7 @@
 - All: Added support for custom scaling dimensions
 - All: Added border support (to replace black bars when not using full screen scaling)
 - All: Fixed savestate wouldn't be loaded on next boot after saving
+- All: Fixed partial screen updating sometimes caused artifacts
 - Launcher: Long file names are now working correctly (though still not recommended)
 
 
