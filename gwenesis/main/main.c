@@ -33,7 +33,6 @@ static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
 
 static bool yfm_enabled = true;
-static bool yfm_resample = true;
 static bool z80_enabled = true;
 static bool sn76489_enabled = true;
 static int frameskip = 3;
@@ -42,7 +41,6 @@ static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
-static const char *SETTING_YFM_RESAMPLE = "sampling";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
 static const char *SETTING_SN76489_EMULATION = "sn_enable";
 static const char *SETTING_FRAMESKIP = "frameskip";
@@ -158,19 +156,6 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t sampling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        yfm_resample = !yfm_resample;
-        rg_settings_set_number(NS_APP, SETTING_YFM_RESAMPLE, yfm_resample);
-        rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
-    }
-    strcpy(option->value, yfm_resample ? "On " : "Off");
-
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -242,7 +227,6 @@ void app_main(void)
     const rg_gui_option_t options[] = {
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
         {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
-        // {2, "Down sampling", "On", 1, &sampling_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
 		{2, "Frameskip", "", 1, &frameskip_cb},
         RG_DIALOG_END
@@ -252,17 +236,13 @@ void app_main(void)
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
-    // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
     frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
-    updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
-    // updates[1].buffer = rg_alloc(320 * 240, MEM_FAST);
+    updates[0].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
+    // updates[1].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
-
-    // rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
-    // rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
 
     RG_LOGI("Genesis start\n");
 
@@ -438,6 +418,7 @@ void app_main(void)
         rg_system_tick(elapsed);
 
         if (yfm_enabled || z80_enabled) {
+            // TODO: Mix in gwenesis_sn76489_buffer
             rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
         }
     }
