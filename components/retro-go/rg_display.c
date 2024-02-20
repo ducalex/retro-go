@@ -33,6 +33,8 @@ static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_UPDATE = "DispUpdate";
 static const char *SETTING_BORDER = "DispBorder";
+static const char *SETTING_CUSTOM_WIDTH = "DispCustomWidth";
+static const char *SETTING_CUSTOM_HEIGHT = "DispCustomHeight";
 
 #ifdef ESP_PLATFORM
 static spi_device_handle_t spi_dev;
@@ -498,23 +500,32 @@ static void update_viewport_scaling(void)
     if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
         new_ratio = display.screen.width / (double)display.screen.height;
+        new_width = display.screen.height * new_ratio;
+        new_height = display.screen.height;
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
         new_ratio = src_width / (double)src_height;
-    }
-
-    if (new_ratio > 0.0)
-    {
         new_width = display.screen.height * new_ratio;
         new_height = display.screen.height;
+    }
+    else if (config.scaling == RG_DISPLAY_SCALING_CUSTOM)
+    {
+        new_ratio = config.custom_width / (double)config.custom_height;
+        new_width = config.custom_width;
+        new_height = config.custom_height;
+    }
 
-        if (new_width > display.screen.width)
-        {
-            RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-            new_height = display.screen.height * (display.screen.width / (double)new_width);
-            new_width = display.screen.width;
-        }
+    if (new_width > display.screen.width)
+    {
+        RG_LOGW("new_width too large: %d, cropping to %d", new_width, display.screen.width);
+        new_width = display.screen.width;
+    }
+
+    if (new_height > display.screen.height)
+    {
+        RG_LOGW("new_height too large: %d, cropping to %d", new_height, display.screen.height);
+        new_height = display.screen.height;
     }
 
     display.viewport.x_pos = (display.screen.width - new_width) / 2;
@@ -638,11 +649,6 @@ const rg_display_counters_t *rg_display_get_counters(void)
     return &counters;
 }
 
-const rg_display_config_t *rg_display_get_config(void)
-{
-    return &config;
-}
-
 void rg_display_set_update_mode(display_update_t update_mode)
 {
     config.update_mode = RG_MIN(RG_MAX(0, update_mode), RG_DISPLAY_UPDATE_COUNT - 1);
@@ -665,6 +671,30 @@ void rg_display_set_scaling(display_scaling_t scaling)
 display_scaling_t rg_display_get_scaling(void)
 {
     return config.scaling;
+}
+
+void rg_display_set_custom_width(int width)
+{
+    config.custom_width = RG_MIN(RG_MAX(64, width), display.screen.width);
+    rg_settings_set_number(NS_APP, SETTING_CUSTOM_WIDTH, config.custom_width);
+    display.changed = true;
+}
+
+int rg_display_get_custom_width(void)
+{
+    return config.custom_width;
+}
+
+void rg_display_set_custom_height(int height)
+{
+    config.custom_height = RG_MIN(RG_MAX(64, height), display.screen.height);
+    rg_settings_set_number(NS_APP, SETTING_CUSTOM_HEIGHT, config.custom_height);
+    display.changed = true;
+}
+
+int rg_display_get_custom_height(void)
+{
+    return config.custom_height;
 }
 
 void rg_display_set_filter(display_filter_t filter)
@@ -912,6 +942,8 @@ void rg_display_init(void)
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
+        .custom_width = rg_settings_get_number(NS_APP, SETTING_CUSTOM_WIDTH, 240),
+        .custom_height = rg_settings_get_number(NS_APP, SETTING_CUSTOM_HEIGHT, 240),
     };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,

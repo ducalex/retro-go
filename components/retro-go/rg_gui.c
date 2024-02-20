@@ -1159,9 +1159,51 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         strcpy(option->value, "Fit ");
     if (mode == RG_DISPLAY_SCALING_FULL)
         strcpy(option->value, "Full ");
-    // if (mode == RG_DISPLAY_SCALING_CUSTOM)
-    //     strcpy(option->value, "Custom");
+    if (mode == RG_DISPLAY_SCALING_CUSTOM)
+        strcpy(option->value, "Custom");
 
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t custom_width_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (rg_display_get_scaling() != RG_DISPLAY_SCALING_CUSTOM)
+    {
+        option->flags = RG_DIALOG_FLAG_HIDDEN;
+        return RG_DIALOG_VOID;
+    }
+
+    if (event == RG_DIALOG_PREV)
+        rg_display_set_custom_width(rg_display_get_custom_width() - 4);
+    if (event == RG_DIALOG_NEXT)
+        rg_display_set_custom_width(rg_display_get_custom_width() + 4);
+
+    sprintf(option->value, "%d", rg_display_get_custom_width());
+    option->flags = RG_DIALOG_FLAG_NORMAL;
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        return RG_DIALOG_REDRAW;
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t custom_height_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (rg_display_get_scaling() != RG_DISPLAY_SCALING_CUSTOM)
+    {
+        option->flags = RG_DIALOG_FLAG_HIDDEN;
+        return RG_DIALOG_VOID;
+    }
+
+    if (event == RG_DIALOG_PREV)
+        rg_display_set_custom_height(rg_display_get_custom_height() - 4);
+    if (event == RG_DIALOG_NEXT)
+        rg_display_set_custom_height(rg_display_get_custom_height() + 4);
+
+    sprintf(option->value, "%d", rg_display_get_custom_height());
+    option->flags = RG_DIALOG_FLAG_NORMAL;
+
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        return RG_DIALOG_REDRAW;
     return RG_DIALOG_VOID;
 }
 
@@ -1286,6 +1328,8 @@ void rg_gui_options_menu(void)
     else
     {
         *opt++ = (rg_gui_option_t){0, "Scaling", "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
+        *opt++ = (rg_gui_option_t){0, "  Width",  "-", RG_DIALOG_FLAG_HIDDEN, &custom_width_cb};
+        *opt++ = (rg_gui_option_t){0, "  Height", "-", RG_DIALOG_FLAG_HIDDEN, &custom_height_cb};
         *opt++ = (rg_gui_option_t){0, "Filter ", "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
         *opt++ = (rg_gui_option_t){0, "Update ", "-", RG_DIALOG_FLAG_NORMAL, &update_mode_update_cb};
         *opt++ = (rg_gui_option_t){0, "Border ", "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};

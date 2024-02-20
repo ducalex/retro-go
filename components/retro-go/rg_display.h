@@ -17,7 +17,7 @@ typedef enum
     RG_DISPLAY_SCALING_OFF = 0, // No scaling, center image on screen
     RG_DISPLAY_SCALING_FIT,     // Scale and preserve aspect ratio
     RG_DISPLAY_SCALING_FULL,    // Scale and stretch to fill screen
-    // RG_DISPLAY_SCALING_CUSTOM,  // Custom width and height
+    RG_DISPLAY_SCALING_CUSTOM,  // Custom width and height
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -76,6 +76,7 @@ typedef struct
     display_update_t update_mode;
     display_backlight_t backlight;
     char *border_file;
+    int custom_width, custom_height;
 } rg_display_config_t;
 
 typedef struct
@@ -144,7 +145,6 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
 void rg_display_submit(const rg_video_update_t *update, uint32_t flags);
 
 const rg_display_counters_t *rg_display_get_counters(void);
-const rg_display_config_t *rg_display_get_config(void);
 const rg_display_t *rg_display_get_info(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
@@ -159,3 +159,7 @@ void rg_display_set_update_mode(display_update_t update);
 display_update_t rg_display_get_update_mode(void);
 void rg_display_set_border(const char *filename);
 char *rg_display_get_border(void);
+void rg_display_set_custom_width(int width);
+int rg_display_get_custom_width(void);
+void rg_display_set_custom_height(int height);
+int rg_display_get_custom_height(void);
