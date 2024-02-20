@@ -6,6 +6,9 @@
 - NES: Fixed Teenage Mutant Ninja Turtles 3 (HUD jumping around in level 2)
 - NES: Fixed other minor glitching in mapper 4 (MMC3) games
 - NES: Fixed text garbled in Gun-Nac
+- COL: Added palette selector (also for SG-1000)
+- All: Added support for custom scaling dimensions
+- All: Added border support (to replace black bars when not using full screen scaling)
 - All: Fixed savestate wouldn't be loaded on next boot after saving
 - Launcher: Long file names are now working correctly (though still not recommended)
 
