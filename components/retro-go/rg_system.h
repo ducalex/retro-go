@@ -158,6 +158,7 @@ typedef struct
     int refreshRate;
     int sampleRate;
     int overclock;
+    int watchdog;
     int logLevel;
     int isLauncher;
     int saveSlot;

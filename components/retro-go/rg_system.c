@@ -202,11 +202,10 @@ static void system_monitor_task(void *arg)
         {
             if ((lastLoop - statistics.lastTick) > WDT_TIMEOUT)
             {
-            #ifdef RG_ENABLE_PROFILING
-                RG_LOGW("Application unresponsive!\n");
-            #else
-                RG_PANIC("Application unresponsive!");
-            #endif
+                if (app.watchdog)
+                    RG_PANIC("Application unresponsive!");
+                else
+                    RG_LOGW("Application unresponsive!");
             }
             WDT_RELOAD(WDT_TIMEOUT);
         }
@@ -306,6 +305,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .refreshRate = 60,
         .sampleRate = sampleRate,
         .overclock = 0,
+        .watchdog = 1,
         .logLevel = RG_LOG_INFO,
         .options = options, // TO DO: We should make a copy of it?
     };
