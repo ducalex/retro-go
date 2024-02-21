@@ -795,7 +795,7 @@ rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots)
         rg_emu_slot_t *slot = &result->slots[i];
         char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
         char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
-        rg_stat_t info = rg_storage_stat(slot->file);
+        rg_stat_t info = rg_storage_stat(file);
         strcpy(slot->preview, preview);
         strcpy(slot->file, file);
         slot->id = i;
