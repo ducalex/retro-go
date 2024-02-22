@@ -4,6 +4,7 @@
 extern "C" {
 #endif
 
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -155,8 +156,9 @@ typedef struct
     uint32_t bootFlags;
     uint32_t bootType;
     float speed;
-    int refreshRate;
     int sampleRate;
+    int tickRate;
+    int frameskip;
     int overclock;
     int watchdog;
     int logLevel;
@@ -243,6 +245,7 @@ rg_emu_state_t *rg_emu_get_states(const char *romPath, size_t slots);
 #define RG_LOGE(x, ...) rg_system_log(RG_LOG_ERROR, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
+#define RG_LOGU(x, ...) rg_system_log(RG_LOG_USER, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
 
 void __cyg_profile_func_enter(void *this_fn, void *call_site);

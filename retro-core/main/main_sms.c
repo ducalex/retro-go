@@ -167,7 +167,7 @@ void sms_main(void)
 
     system_poweron();
 
-    app->refreshRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
+    app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
 
     updates[0].buffer += bitmap.viewport.x;
     updates[1].buffer += bitmap.viewport.x;
@@ -196,6 +196,7 @@ void sms_main(void)
 
         int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
+        bool slowFrame = false;
 
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
@@ -310,31 +311,11 @@ void sms_main(void)
         {
             if (render_copy_palette(currentUpdate->palette))
                 memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+            slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
             currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
             bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
         }
-
-        int elapsed = rg_system_timer() - startTime;
-
-        // See if we need to skip a frame to keep up
-        if (skipFrames == 0)
-        {
-            int frameTime = 1000000 / (app->refreshRate * app->speed);
-            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
-                skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && rg_display_get_counters()->lastFullFrame)
-                skipFrames = 1;
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
-        }
-        else if (skipFrames > 0)
-        {
-            skipFrames--;
-        }
-
-        // Tick before submitting audio/syncing
-        rg_system_tick(elapsed);
 
         // The emulator's sound buffer isn't in a very convenient format, we must remix it.
         size_t sample_count = snd.sample_count;
@@ -345,7 +326,29 @@ void sms_main(void)
             mixbuffer[i].right = snd.stream[1][i] * 2.75f;
         }
 
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime);
+
         // Audio is used to pace emulation :)
         rg_audio_submit(mixbuffer, sample_count);
+
+        // See if we need to skip a frame to keep up
+        if (skipFrames == 0)
+        {
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+            if (app->speed > 1.f)
+                skipFrames += 2;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
+        }
     }
 }

@@ -7,6 +7,7 @@ static int overscan = true;
 static int autocrop = 0;
 static int palette = 0;
 static int crop_h, crop_v;
+static bool slowFrame = false;
 static nes_t *nes;
 
 static const char *SETTING_AUTOCROP = "autocrop";
@@ -161,6 +162,7 @@ static void blit_screen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
+    slowFrame = !rg_display_sync(false);
     rg_display_submit(currentUpdate, 0);
 }
 
@@ -220,7 +222,7 @@ void nes_main(void)
     else if (ret < 0)
         RG_PANIC("Unsupported ROM.");
 
-    app->refreshRate = nes->refresh_rate;
+    app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
@@ -277,31 +279,31 @@ void nes_main(void)
         input_update(0, buttons);
         nes_emulate(drawFrame);
 
-        int elapsed = rg_system_timer() - startTime;
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime);
+
+        // Audio is used to pace emulation :)
+        rg_audio_submit((void*)nes->apu->buffer, nes->apu->samples_per_frame);
 
         if (skipFrames == 0)
         {
             int frameTime = 1000000 / (nes->refresh_rate * app->speed);
-            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
-                skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && rg_display_get_counters()->lastFullFrame)
-                skipFrames = 1;
-            else if (nsfPlayer)
+            int elapsed = rg_system_timer() - startTime;
+            if (nsfPlayer)
                 skipFrames = 10, nsf_draw_overlay();
-
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
+            else if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+            if (app->speed > 1.f)
+                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        // Tick before submitting audio/syncing
-        rg_system_tick(elapsed);
-
-        // Audio is used to pace emulation :)
-        rg_audio_submit((void*)nes->apu->buffer, nes->apu->samples_per_frame);
     }
 
     RG_PANIC("Nofrendo died!");

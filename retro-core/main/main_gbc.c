@@ -4,6 +4,7 @@
 #include <gnuboy.h>
 
 static int skipFrames = 20; // The 20 is to hide startup flicker in some games
+static bool slowFrame = false;
 
 static int video_time;
 static int audio_time;
@@ -195,6 +196,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 static void video_callback(void *buffer)
 {
     int64_t startTime = rg_system_timer();
+    slowFrame = !rg_display_sync(false);
     rg_display_submit(currentUpdate, 0);
     video_time += rg_system_timer() - startTime;
 }
@@ -273,8 +275,8 @@ void gbc_main(void)
 
     // Ready!
 
-    int joystick_old = -1;
-    int joystick = 0;
+    uint32_t joystick_old = -1;
+    uint32_t joystick = 0;
 
     while (true)
     {
@@ -334,26 +336,25 @@ void gbc_main(void)
             }
         }
 
-        int elapsed = rg_system_timer() - startTime;
-        elapsed -= audio_time;
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime - audio_time);
 
         if (skipFrames == 0)
         {
-            // This is all nonsense, we should sample lag on a per second basis or something...
-            int frameTime = 1000000 / (60 * app->speed);
-            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && rg_display_get_counters()->lastFullFrame) // This could be avoided when scaling != full
+            else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
+            if (app->speed > 1.f)
+                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        // Tick before submitting audio/syncing
-        rg_system_tick(elapsed);
     }
 }

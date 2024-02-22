@@ -136,7 +136,7 @@ void gw_main(void)
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
-    app->refreshRate = GW_REFRESH_RATE;
+    app->tickRate = GW_REFRESH_RATE;
 
     updates[0].buffer = malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * 2);
 
@@ -260,17 +260,17 @@ void gw_main(void)
         // to execute on the emulated device
         gw_system_run(GW_SYSTEM_CYCLES);
 
-        /* update the screen only if there is no pending frame to render */
-        if (rg_display_sync(0) && drawFrame)
+        // Our refresh rate is 128Hz, which is way too fast for our display
+        // so make sure the previous frame is done sending before queuing a new one
+        if (rg_display_sync(false) && drawFrame)
         {
             gw_system_blit(currentUpdate->buffer);
             rg_display_submit(currentUpdate, 0);
         }
         /****************************************************************************/
 
-        int elapsed = rg_system_timer() - startTime;
-
-        rg_system_tick(elapsed);
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime);
 
         /* copy audio samples for DMA */
         rg_audio_sample_t mixbuffer[GW_AUDIO_BUFFER_LENGTH];

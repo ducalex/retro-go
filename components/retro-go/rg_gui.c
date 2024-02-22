@@ -588,10 +588,10 @@ void rg_gui_draw_status_bars(void)
     if (!app->initialized || app->isLauncher)
         return;
 
-    snprintf(header, max_len, "SPEED: %d%% (%d/%d) / BUSY: %d%%",
-        (int)round(stats.totalFPS / app->refreshRate * 100.f),
-        (int)round(stats.totalFPS - stats.skippedFPS),
-        (int)round(stats.totalFPS),
+    snprintf(header, max_len, "SPEED: %d%% (%d:%d) / BUSY: %d%%",
+        (int)round(stats.totalFPS / app->tickRate * 100.f),
+        (int)app->frameskip,
+        (int)round(stats.skippedFPS),
         (int)round(stats.busyPercent));
 
     if (app->romPath && strlen(app->romPath) > max_len - 1)
@@ -1215,29 +1215,6 @@ static rg_gui_event_t custom_height_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t update_mode_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    int max = RG_DISPLAY_UPDATE_COUNT - 1;
-    int mode = rg_display_get_update_mode();
-    int prev_mode = mode;
-
-    if (event == RG_DIALOG_PREV && --mode < 0)
-        mode = max; // 0;
-    if (event == RG_DIALOG_NEXT && ++mode > max)
-        mode = 0; // max;
-
-    if (mode != prev_mode)
-        rg_display_set_update_mode(mode);
-
-    if (mode == RG_DISPLAY_UPDATE_PARTIAL)
-        strcpy(option->value, "Partial");
-    if (mode == RG_DISPLAY_UPDATE_FULL)
-        strcpy(option->value, "Full   ");
-    // if (mode == RG_DISPLAY_UPDATE_INTERLACE) strcpy(option->value, "Interlace");
-
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     rg_app_t *app = rg_system_get_app();
@@ -1347,13 +1324,12 @@ void rg_gui_options_menu(void)
     // App settings that are shown only inside a game
     else
     {
-        *opt++ = (rg_gui_option_t){0, "Scaling", "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
-        *opt++ = (rg_gui_option_t){0, "  Width",  "-", RG_DIALOG_FLAG_HIDDEN, &custom_width_cb};
-        *opt++ = (rg_gui_option_t){0, "  Height", "-", RG_DIALOG_FLAG_HIDDEN, &custom_height_cb};
-        *opt++ = (rg_gui_option_t){0, "Filter ", "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
-        *opt++ = (rg_gui_option_t){0, "Update ", "-", RG_DIALOG_FLAG_NORMAL, &update_mode_update_cb};
-        *opt++ = (rg_gui_option_t){0, "Border ", "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
-        *opt++ = (rg_gui_option_t){0, "Speed  ", "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
+        *opt++ = (rg_gui_option_t){0, "Scaling",   "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
+        *opt++ = (rg_gui_option_t){0, "  Width",   "-", RG_DIALOG_FLAG_HIDDEN, &custom_width_cb};
+        *opt++ = (rg_gui_option_t){0, "  Height",  "-", RG_DIALOG_FLAG_HIDDEN, &custom_height_cb};
+        *opt++ = (rg_gui_option_t){0, "Filter",    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
+        *opt++ = (rg_gui_option_t){0, "Border",    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
+        *opt++ = (rg_gui_option_t){0, "Speed",     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
     }
 
     size_t extra_options = get_dialog_items_count(app->options);

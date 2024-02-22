@@ -27,7 +27,6 @@ static rg_app_t *app;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
-static int frameskip = 4;
 
 bool overclock_cycles = false;
 int one_c = 4, slow_one_c = 5, two_c = 6;
@@ -35,7 +34,6 @@ int one_c = 4, slow_one_c = 5, two_c = 6;
 static int keymap_id = 0;
 static keymap_t keymap;
 
-static const char *SETTING_FRAMESKIP = "frameskip";
 static const char *SETTING_KEYMAP = "keymap";
 static const char *SETTING_APU_EMULATION = "apu";
 // --- MAIN
@@ -84,20 +82,6 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
     }
 
     strcpy(option->value, apu_enabled ? "On " : "Off");
-
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        frameskip += (event == RG_DIALOG_PREV) ? -1 : 1;
-        frameskip = RG_MAX(frameskip, 1);
-        rg_settings_set_number(NS_APP, SETTING_FRAMESKIP, frameskip);
-    }
-
-    sprintf(option->value, "%d", frameskip);
 
     return RG_DIALOG_VOID;
 }
@@ -279,13 +263,11 @@ void app_main(void)
     const rg_gui_option_t options[] = {
         {2, "Audio enable", (char *)"", 1, &apu_toggle_cb},
         {2, "Audio filter", (char*)"", 1, &lowpass_filter_cb},
-        {2, "Frameskip", (char *)"", 1, &frameskip_cb},
         {2, "Controls", (char *)"", 1, &menu_keymap_cb},
         RG_DIALOG_END,
     };
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
 
-    frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
     updates[0].buffer = malloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2);
@@ -337,11 +319,12 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->refreshRate = Memory.ROMFramesPerSecond;
+    app->tickRate = Memory.ROMFramesPerSecond;
+    app->frameskip = 3;
 
     bool menuCancelled = false;
     bool menuPressed = false;
-    int frames = 0;
+    int skipFrames = 0;
 
     while (1)
     {
@@ -371,13 +354,19 @@ void app_main(void)
         }
 
         int64_t startTime = rg_system_timer();
+        bool drawFrame = (skipFrames == 0);
+        bool slowFrame = false;
 
-        IPPU.RenderThisFrame = (frames++ % frameskip) == 0;
+        IPPU.RenderThisFrame = drawFrame;
         GFX.Screen = currentUpdate->buffer;
+
         S9xMainLoop();
 
-        if (IPPU.RenderThisFrame)
+        if (drawFrame)
+        {
+            slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
+        }
 
     #ifndef USE_BLARGG_APU
         if (apu_enabled && lowpass_filter)
@@ -386,13 +375,29 @@ void app_main(void)
             S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
     #endif
 
-        int elapsed = rg_system_timer() - startTime;
+        rg_system_tick(rg_system_timer() - startTime);
 
     #ifndef USE_BLARGG_APU
         if (apu_enabled)
             rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
     #endif
 
-        rg_system_tick(elapsed);
+        if (skipFrames == 0)
+        {
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+            if (app->speed > 1.f)
+                skipFrames += 2;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
+        }
     }
 }

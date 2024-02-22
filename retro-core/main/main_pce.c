@@ -17,6 +17,8 @@ static int current_height = 0;
 static int current_width = 0;
 static int overscan = false;
 static int skipFrames = 0;
+static bool drawFrame = true;
+static bool slowFrame = false;
 static uint8_t *framebuffers[2];
 
 static const char *SETTING_OVERSCAN  = "overscan";
@@ -54,15 +56,16 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
         current_width = width;
         current_height = height;
     }
-    return skipFrames ? NULL : currentUpdate->buffer;
+    return drawFrame ? currentUpdate->buffer : NULL;
 }
 
 void osd_vsync(void)
 {
     static int64_t lasttime, prevtime;
 
-    if (skipFrames == 0)
+    if (drawFrame)
     {
+        slowFrame = !rg_display_sync(false);
         rg_display_submit(currentUpdate, 0);
         currentUpdate = &updates[currentUpdate == &updates[0]];
     }
@@ -70,10 +73,12 @@ void osd_vsync(void)
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        if (app->speed > 1.f)
-            skipFrames = app->speed * 2.5f;
-        else
+        if (app->frameskip > 0)
+            skipFrames = app->frameskip;
+        else if (drawFrame && slowFrame)
             skipFrames = 1;
+        if (app->speed > 1.f)
+            skipFrames += 2;
     }
     else if (skipFrames > 0)
     {
@@ -81,7 +86,7 @@ void osd_vsync(void)
     }
 
     int64_t curtime = rg_system_timer();
-    int frameTime = 1000000 / 60 / app->speed;
+    int frameTime = 1000000 / (app->tickRate * app->speed);
     int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
@@ -104,6 +109,8 @@ void osd_vsync(void)
 
     if ((lasttime + frameTime) < prevtime)
         lasttime = prevtime;
+
+    drawFrame = (skipFrames == 0);
 }
 
 void osd_input_read(uint8_t joypads[8])
@@ -226,6 +233,9 @@ void pce_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    app->tickRate = 60;
+    app->frameskip = 1;
 
     emulationPaused = false;
     RunPCE();

@@ -31,7 +31,6 @@ static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING = "DispScaling";
 static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
-static const char *SETTING_UPDATE = "DispUpdate";
 static const char *SETTING_BORDER = "DispBorder";
 static const char *SETTING_CUSTOM_WIDTH = "DispCustomWidth";
 static const char *SETTING_CUSTOM_HEIGHT = "DispCustomHeight";
@@ -315,7 +314,7 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
 
 static inline void write_update(const rg_video_update_t *update)
 {
-    int64_t time_start = rg_system_timer();
+    const int64_t time_start = rg_system_timer();
 
     const int screen_width = display.screen.width;
     const int screen_height = display.screen.height;
@@ -340,7 +339,7 @@ static inline void write_update(const rg_video_update_t *update)
     union {const uint8_t *u8; const uint16_t *u16; } buffer = {update->buffer + display.source.offset};
     const uint16_t *palette = update->palette;
 
-    bool partial = config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
+    bool partial = true; // config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;
@@ -482,8 +481,7 @@ static inline void write_update(const rg_video_update_t *update)
         lines_remaining -= lines_to_copy;
     }
 
-    counters.lastFullFrame = lines_updated > display.screen.height * 0.75;
-    if (counters.lastFullFrame)
+    if (lines_updated > display.screen.height * 0.80)
         counters.fullFrames++;
     counters.totalFrames++;
     counters.busyTime += rg_system_timer() - time_start;
@@ -644,21 +642,9 @@ const rg_display_t *rg_display_get_info(void)
     return &display;
 }
 
-const rg_display_counters_t *rg_display_get_counters(void)
+rg_display_counters_t rg_display_get_counters(void)
 {
-    return &counters;
-}
-
-void rg_display_set_update_mode(display_update_t update_mode)
-{
-    config.update_mode = RG_MIN(RG_MAX(0, update_mode), RG_DISPLAY_UPDATE_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_UPDATE, config.update_mode);
-    display.changed = true;
-}
-
-display_update_t rg_display_get_update_mode(void)
-{
-    return config.update_mode;
+    return counters;
 }
 
 void rg_display_set_scaling(display_scaling_t scaling)
@@ -940,7 +926,6 @@ void rg_display_init(void)
         .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FULL),
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
-        .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
         .custom_width = rg_settings_get_number(NS_APP, SETTING_CUSTOM_WIDTH, 240),
         .custom_height = rg_settings_get_number(NS_APP, SETTING_CUSTOM_HEIGHT, 240),

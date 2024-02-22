@@ -35,7 +35,6 @@ static rg_app_t *app;
 static bool yfm_enabled = true;
 static bool z80_enabled = true;
 static bool sn76489_enabled = true;
-static int frameskip = 3;
 
 static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
@@ -43,7 +42,6 @@ static int savestate_errors = 0;
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
 static const char *SETTING_SN76489_EMULATION = "sn_enable";
-static const char *SETTING_FRAMESKIP = "frameskip";
 
 // --- MAIN
 
@@ -156,20 +154,6 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        frameskip += (event == RG_DIALOG_PREV) ? -1 : 1;
-        frameskip = RG_MAX(frameskip, 1);
-        rg_settings_set_number(NS_APP, SETTING_FRAMESKIP, frameskip);
-    }
-
-    sprintf(option->value, "%d", frameskip);
-
-    return RG_DIALOG_VOID;
-}
-
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -228,7 +212,6 @@ void app_main(void)
         {1, "YFM emulation", "On", 1, &yfm_update_cb},
         {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
         {3, "Z80 emulation", "On", 1, &z80_update_cb},
-		{2, "Frameskip", "", 1, &frameskip_cb},
         RG_DIALOG_END
     };
 
@@ -237,7 +220,6 @@ void app_main(void)
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
-    frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
     updates[0].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
     // updates[1].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
@@ -271,6 +253,9 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
+    app->tickRate = 60;
+    app->frameskip = 3;
+
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
     extern unsigned short CRAM565[256];
@@ -281,9 +266,10 @@ void app_main(void)
 
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t joystick = 0, joystick_old;
-    uint32_t frames = 0;
 
     RG_LOGI("rg_display_set_source_format()\n");
+
+    int skipFrames = 0;
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -310,7 +296,8 @@ void app_main(void)
         }
 
         int64_t startTime = rg_system_timer();
-        bool drawFrame = (frames++ % frameskip) == 0;
+        bool drawFrame = skipFrames == 0;
+        bool slowFrame = false;
 
         int lines_per_frame = REG1_PAL ? LINES_PER_FRAME_PAL : LINES_PER_FRAME_NTSC;
         int hint_counter = gwenesis_vdp_regs[10];
@@ -411,15 +398,33 @@ void app_main(void)
         {
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
+            slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
         }
 
-        int elapsed = rg_system_timer() - startTime;
-        rg_system_tick(elapsed);
+        rg_system_tick(rg_system_timer() - startTime);
 
         if (yfm_enabled || z80_enabled) {
             // TODO: Mix in gwenesis_sn76489_buffer
             rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+        }
+
+        if (skipFrames == 0)
+        {
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = (elapsed + frameTime / 2) / frameTime;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+            if (app->speed > 1.f)
+                skipFrames += 2;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
         }
     }
 }

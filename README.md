@@ -139,10 +139,6 @@ which allows high quality audio through headphones. You can switch to it in the 
 Retro-Go typically detects and resolves application crashes and freezes automatically. However, if you do
 get stuck in a boot loop, you can hold `DOWN` while powering up the device to return to the launcher.
 
-### Artifacts or tearing
-Retro-Go uses partial screen updating to achieve a higher framerate and reduce tearing. This method isn't
-perfect however, if you notice display issues or stuttering you can try changing the `Update` option.
-
 ### Sound quality
 The volume isn't correctly attenuated on the GO, resulting in upper volume levels that are too loud and
 lower levels that are distorted due to DAC resolution. A quick way to improve the audio is to cut one

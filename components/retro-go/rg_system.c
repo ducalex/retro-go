@@ -81,7 +81,7 @@ static rg_app_t app;
 static logbuf_t logbuf;
 static rg_task_t tasks[8];
 static int ledValue = -1;
-static int wdtCounter = 0;
+static int64_t watchdogTimer = INT64_MAX;
 static bool exitCalled = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
@@ -90,7 +90,7 @@ static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
 
 #define WDT_TIMEOUT 8000000
-#define WDT_RELOAD(val) wdtCounter = (val)
+#define WDT_RELOAD(val) watchdogTimer = rg_system_timer() + (val)
 
 #define logbuf_putc(buf, c) (buf)->buffer[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
@@ -138,8 +138,8 @@ static void update_statistics(void)
     static counters_t counters = {0};
     const counters_t previous = counters;
 
-    rg_display_counters_t display = *rg_display_get_counters();
-    // rg_audio_counters_t audio = *rg_audio_get_counters();
+    rg_display_counters_t display = rg_display_get_counters();
+    // rg_audio_counters_t audio = rg_audio_get_counters();
 
     counters.totalFrames = display.totalFrames;
     counters.fullFrames = display.fullFrames;
@@ -147,33 +147,34 @@ static void update_statistics(void)
     counters.ticks = statistics.ticks;
     counters.updateTime = rg_system_timer();
 
-    float elapsedTime = (counters.updateTime - previous.updateTime) / 1000000.f;
-    statistics.busyPercent = RG_MIN((counters.busyTime - previous.busyTime) / (elapsedTime * 1000000.f) * 100.f, 100.f);
-    statistics.totalFPS = (counters.ticks - previous.ticks) / elapsedTime;
-    statistics.skippedFPS = statistics.totalFPS - ((counters.totalFrames - previous.totalFrames) / elapsedTime);
-    statistics.fullFPS = (counters.fullFrames - previous.fullFrames) / elapsedTime;
+    if (counters.ticks && previous.ticks)
+    {
+        float totalTime = counters.updateTime - previous.updateTime;
+        float totalTimeSecs = totalTime / 1000000.f;
+        float busyTime = counters.busyTime - previous.busyTime;
+        float ticks = counters.ticks - previous.ticks;
+        // Since we sample semi-randomly, display and ticks could be out of sync.
+        // RG_MIN won't prevent bogus skippedFPS=1, but at least no -1...
+        float fullFrames = RG_MIN(counters.fullFrames - previous.fullFrames, ticks);
+        float frames = RG_MIN(counters.totalFrames - previous.totalFrames, ticks);
+
+        statistics.busyPercent = busyTime / totalTime * 100.f;
+        statistics.totalFPS = ticks / totalTimeSecs;
+        statistics.skippedFPS = (ticks - frames) / totalTimeSecs;
+        statistics.fullFPS = fullFrames / totalTimeSecs;
+    }
 
     update_memory_statistics();
 }
 
 static void system_monitor_task(void *arg)
 {
-    int64_t lastLoop = rg_system_timer();
     int32_t numLoop = 0;
     float batteryPercent = 0.f;
     bool ledState = false;
 
-    // Give the app a few seconds to start before monitoring
-    rg_task_delay(2500);
-    WDT_RELOAD(WDT_TIMEOUT);
-
     while (!exitCalled)
     {
-        int loopTime_us = rg_system_timer() - lastLoop;
-        lastLoop = rg_system_timer();
-        rtcValue = time(NULL);
-
-        // Maybe we should *try* to wait for vsync before updating?
         update_statistics();
 
         if (rg_input_read_battery(&batteryPercent, NULL))
@@ -198,30 +199,35 @@ static void system_monitor_task(void *arg)
             (int)(statistics.fullFPS + 0.5f),
             (int)(batteryPercent + 0.5f));
 
-        if ((wdtCounter -= loopTime_us) <= 0)
+        if (watchdogTimer <= rg_system_timer())
         {
-            if ((lastLoop - statistics.lastTick) > WDT_TIMEOUT)
-            {
-                if (app.watchdog)
-                    RG_PANIC("Application unresponsive!");
-                else
-                    RG_LOGW("Application unresponsive!");
-            }
+            if (app.watchdog)
+                RG_PANIC("Application unresponsive!");
+            else
+                RG_LOGW("Application unresponsive!");
             WDT_RELOAD(WDT_TIMEOUT);
         }
 
-        #ifdef RG_ENABLE_PROFILING
-            if ((numLoop % 10) == 0)
-                rg_system_dump_profile();
-        #endif
-
-        // if ((numLoop % 300) == 299)
-        // {
-        //     RG_LOGI("Saving system time");
-        //     rg_system_save_time();
-        // }
+        // Auto frameskip
+        if (statistics.ticks > app.tickRate)
+        {
+            float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;
+            // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
+            // borderline in power and going back to 0 is just asking for stuttering...
+            if (speed > 99.f && statistics.busyPercent < 90.f && app.frameskip > 1)
+            {
+                app.frameskip--;
+                RG_LOGI("Reduced frameskip to %d", app.frameskip);
+            }
+            else if (speed < 95.f && statistics.busyPercent > 90.f && app.frameskip < 4)
+            {
+                app.frameskip++;
+                RG_LOGI("Raised frameskip to %d", app.frameskip);
+            }
+        }
 
         rg_task_delay(1000);
+        rtcValue = time(NULL);
         numLoop++;
     }
 }
@@ -302,8 +308,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
         .speed = 1.f,
-        .refreshRate = 60,
         .sampleRate = sampleRate,
+        .tickRate = 60,
+        .frameskip = 0,
         .overclock = 0,
         .watchdog = 1,
         .logLevel = RG_LOG_INFO,
@@ -562,7 +569,7 @@ void rg_system_tick(int busyTime)
     statistics.lastTick = rg_system_timer();
     statistics.busyTime += busyTime;
     statistics.ticks++;
-    // WDT_RELOAD(WDT_TIMEOUT);
+    WDT_RELOAD(WDT_TIMEOUT);
 }
 
 IRAM_ATTR int64_t rg_system_timer(void)

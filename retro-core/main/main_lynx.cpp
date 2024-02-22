@@ -178,7 +178,7 @@ extern "C" void lynx_main(void)
     updates[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
 
     // The Lynx has a variable framerate but 60 is typical
-    app->refreshRate = 60;
+    app->tickRate = 60;
 
     // Init emulator
     lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
@@ -201,6 +201,7 @@ extern "C" void lynx_main(void)
 
     float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
+    bool slowFrame = false;
 
     // Start emulation
     while (1)
@@ -231,37 +232,40 @@ extern "C" void lynx_main(void)
     	if (joystick & RG_KEY_SELECT) buttons |= BUTTON_OPT1;
 
         lynx->SetButtonData(buttons);
-
         lynx->UpdateFrame(drawFrame);
 
         if (drawFrame)
         {
+            slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
             currentUpdate = &updates[currentUpdate == &updates[0]];
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
-        int elapsed = rg_system_timer() - startTime;
+        app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);
+        rg_system_tick(rg_system_timer() - startTime);
+
+        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (app->speed > 1.f)
-                skipFrames += (int)app->speed * 2;
+            int frameTime = ((gAudioBufferPointer / 2) * sampleTime);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            else if (elapsed > ((gAudioBufferPointer / 2) * sampleTime))
-                skipFrames += 1;
-            else if (drawFrame && rg_display_get_counters()->lastFullFrame) // This could be avoided when scaling != full
-                skipFrames += 1;
+            else if (elapsed > frameTime + 1500)
+                skipFrames = 1;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+            if (app->speed > 1.f)
+                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        rg_system_tick(elapsed);
-
-        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
         gAudioBufferPointer = 0;
     }
 }
