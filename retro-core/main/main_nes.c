@@ -172,10 +172,10 @@ static void nsf_draw_overlay(void)
     char song[32];
     const nsfheader_t *header = (nsfheader_t *)nes->cart->data_ptr;
     const rg_gui_option_t options[] = {
-        {0, "Name      ", (char *)header->name, 1, NULL},
-        {0, "Artist    ", (char *)header->artist, 1, NULL},
-        {0, "Copyright ", (char *)header->copyright, 1, NULL},
-        {0, "Playing   ", (char *)song, 1, NULL},
+        {0, "Name      ", (char*)header->name,      RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Artist    ", (char*)header->artist,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Copyright ", (char*)header->copyright, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Playing   ", (char*)song,              RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
@@ -193,10 +193,10 @@ void nes_main(void)
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {
-        {1, "Palette     ", "Default", 1, &palette_update_cb},
-        {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
-        {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
-        {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
+        {0, "Palette     ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, "Overscan    ", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
+        {0, "Crop sides  ", "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb},
+        {0, "Sprite limit", "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb},
         RG_DIALOG_END
     };
 

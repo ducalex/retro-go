@@ -735,7 +735,11 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)
             continue;
 
-        if (options[i].value)
+        if (false && options[i].flags == RG_DIALOG_FLAG_SEPARATOR)
+        {
+            // FIXME: Draw a nice dim line...
+        }
+        else if (options[i].value)
         {
             rg_gui_draw_text(xx, yy, col1_width, options[i].label, fg, bg, 0);
             rg_gui_draw_text(xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
@@ -818,7 +822,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false);
-    rg_task_delay(100);
+    rg_task_delay(80);
 
     rg_gui_event_t event = RG_DIALOG_INIT;
     uint32_t joystick = 0, joystick_old;

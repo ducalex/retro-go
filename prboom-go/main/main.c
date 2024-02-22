@@ -528,7 +528,7 @@ void app_main()
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Gamma Boost", "0/5", 1, &gamma_update_cb},
+        {0, "Gamma Boost", "-", RG_DIALOG_FLAG_NORMAL, &gamma_update_cb},
         RG_DIALOG_END
     };
 

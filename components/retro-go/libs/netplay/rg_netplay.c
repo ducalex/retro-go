@@ -366,10 +366,10 @@ bool rg_netplay_quick_start(void)
 
     rg_display_clear(0);
 
-    rg_gui_option_t options[] = {
-        {1, "Host Game (P1)", NULL, 1, NULL},
-        {2, "Find Game (P2)", NULL, 1, NULL},
-        RG_DIALOG_CHOICE_LAST
+    const rg_gui_option_t options[] = {
+        {1, "Host Game (P1)", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, "Find Game (P2)", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        RG_DIALOG_END
     };
 
     int ret = rg_gui_dialog("Netplay", options, 0);

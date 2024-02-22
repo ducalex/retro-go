@@ -167,7 +167,7 @@ extern "C" void lynx_main(void)
         .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
-        {100, "Rotation", (char *)"Auto", 1, &rotation_cb},
+        {0, "Rotation", (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
         RG_DIALOG_END
     };
 

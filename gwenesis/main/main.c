@@ -209,9 +209,9 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {1, "YFM emulation", "On", 1, &yfm_update_cb},
-        {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
-        {3, "Z80 emulation", "On", 1, &z80_update_cb},
+        {0, "YM2612 audio ", "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb},
+        {0, "SN76489 audio", "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb},
+        {0, "Z80 emulation", "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb},
         RG_DIALOG_END
     };
 

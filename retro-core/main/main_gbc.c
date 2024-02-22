@@ -177,12 +177,12 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
 static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        rg_gui_option_t choices[] = {
-            {'d', "Day", "000", 1, &rtc_t_update_cb},
-            {'h', "Hour", "00", 1, &rtc_t_update_cb},
-            {'m', "Min",  "00", 1, &rtc_t_update_cb},
-            {'s', "Sec",  "00", 1, &rtc_t_update_cb},
-            {'x', "Sync",  "Yes", 1, &rtc_t_update_cb},
+        const rg_gui_option_t choices[] = {
+            {'d', "Day ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'h', "Hour", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'m', "Min ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'s', "Sec ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'x', "Sync", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
             RG_DIALOG_END
         };
         rg_gui_dialog("RTC config", choices, 0);
@@ -219,9 +219,9 @@ void gbc_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Palette", "7/7", 1, &palette_update_cb},
-        {0, "RTC config", "00:00", 1, &rtc_update_cb},
-        {0, "SRAM autosave", "Off", 1, &sram_autosave_cb},
+        {0, "Palette      ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, "RTC config   ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
+        {0, "SRAM autosave", "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
         RG_DIALOG_END
     };
 

@@ -261,9 +261,9 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {2, "Audio enable", (char *)"", 1, &apu_toggle_cb},
-        {2, "Audio filter", (char*)"", 1, &lowpass_filter_cb},
-        {2, "Controls", (char *)"", 1, &menu_keymap_cb},
+        {0, "Audio enable", "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
+        {0, "Audio filter", "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
+        {0, "Controls    ", "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
         RG_DIALOG_END,
     };
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
