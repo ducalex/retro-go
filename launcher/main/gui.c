@@ -437,20 +437,9 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_battery(-22, 3);
-
-    if (rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false) || rg_network_get_info().state > RG_NETWORK_DISCONNECTED)
-    {
-        rg_gui_draw_radio(-45, 3);
-        rg_gui_draw_clock(-(50 + TEXT_RECT("00:00", 0).width), 3);
-    }
-    else
-    {
-        rg_gui_draw_clock(-(30 + TEXT_RECT("00:00", 0).width), 3);
-    }
-
     rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_icons();
 }
 
 void gui_draw_list(tab_t *tab)

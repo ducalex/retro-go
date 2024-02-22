@@ -31,10 +31,12 @@ static struct
     } style;
     char theme_name[32];
     cJSON *theme_obj;
+    bool show_clock;
     bool initialized;
 } gui;
 
 static const char *SETTING_FONTTYPE = "FontType";
+static const char *SETTING_CLOCK = "Clock";
 static const char *SETTING_THEME = "Theme";
 
 
@@ -98,6 +100,7 @@ void rg_gui_init(void)
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_font_type(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
+    gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
     gui.initialized = true;
 }
 
@@ -329,6 +332,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = (flags & RG_TEXT_DOUBLE_HEIGHT) ? gui.style.font_points * 2 : gui.style.font_points;
     int line_height = font_height + padding * 2;
+    int line_count = 0;
     const rg_font_t *font = gui.style.font;
 
     if (!text || *text == 0)
@@ -347,6 +351,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             {
                 width = RG_MAX(line_width, width);
                 line_width = padding * 2;
+                line_count++;
             }
         }
     }
@@ -453,7 +458,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
         height -= border_size * 2;
     }
 
-    if (height > 0 && fill_color != C_NONE)
+    if (width > 0 && height > 0 && fill_color != C_NONE)
     {
         uint16_t *draw_buffer = get_draw_buffer(width, RG_MIN(height, 16), fill_color);
         for (int y = 0; y < height; y += 16)
@@ -482,67 +487,71 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     }
 }
 
-void rg_gui_draw_battery(int x_pos, int y_pos)
+void rg_gui_draw_icons(void)
 {
-    int width = 16, height = 10;
-    int width_fill = width;
-    rg_color_t color_fill = C_DARK_GRAY;
-    rg_color_t color_border = C_SILVER;
-    rg_color_t color_empty = C_BLACK;
-    float percentage;
+    const rg_app_t *app = rg_system_get_app();
+    rg_network_t net = rg_network_get_info();
+    rg_rect_t txt = TEXT_RECT("00:00", 0);
+    int right = 0;
+    int top = app->isLauncher ? 0 : -1;
+    float percent;
 
-    x_pos = get_horizontal_position(x_pos, width);
-    y_pos = get_vertical_position(y_pos, height);
-
-    if (rg_input_read_battery(&percentage, NULL))
+    if (rg_input_read_battery(&percent, NULL))
     {
-        width_fill = width / 100.f * percentage;
-        if (percentage < 20.f)
-            color_fill = C_RED;
-        else if (percentage < 40.f)
-            color_fill = C_ORANGE;
-        else
-            color_fill = C_FOREST_GREEN;
+        right += 22;
+
+        int width = 16;
+        int height = 10;
+        int width_fill = width / 100.f * percent;
+        rg_color_t color_fill = (percent > 20 ? (percent > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
+        rg_color_t color_border = C_SILVER;
+        rg_color_t color_empty = C_BLACK;
+
+        int x_pos = -right;
+        int y_pos = RG_MAX(0, (txt.height - 10) / 2 + top);
+
+        rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
+        rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
+        rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
+        rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
     }
 
-    rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
-    rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
-    rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
-    rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
-}
+    if (net.state > RG_NETWORK_DISCONNECTED)
+    {
+        right += 22;
 
-void rg_gui_draw_radio(int x_pos, int y_pos)
-{
-    rg_network_t net = rg_network_get_info();
-    rg_color_t color_fill = (net.state == RG_NETWORK_CONNECTED) ? C_GREEN : -1;
-    rg_color_t color_border = (net.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
+        int x_pos = -right;
+        int y_pos = RG_MAX(0, (txt.height - 10) / 2 + top);
 
-    x_pos = get_horizontal_position(x_pos, 16);
-    y_pos = get_vertical_position(y_pos, 12);
+        int width = 16;
+        int height = 10;
+        int seg_width = (width - 2 - 2) / 3;
+        rg_color_t color_fill = (net.state == RG_NETWORK_CONNECTED) ? C_GREEN : C_NONE;
+        rg_color_t color_border = (net.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
-    int seg_width = 4;
-    y_pos += 6;
-    rg_gui_draw_rect(x_pos, y_pos, seg_width, 4, 1, color_border, color_fill);
-    x_pos += seg_width + 2;
-    y_pos -= 3;
-    rg_gui_draw_rect(x_pos, y_pos, seg_width, 7, 1, color_border, color_fill);
-    x_pos += seg_width + 2;
-    y_pos -= 3;
-    rg_gui_draw_rect(x_pos, y_pos, seg_width, 10, 1, color_border, color_fill);
-}
+        y_pos += height * 0.6;
+        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.4, 1, color_border, color_fill);
+        x_pos += seg_width + 2;
+        y_pos -= height * 0.3;
+        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.7, 1, color_border, color_fill);
+        x_pos += seg_width + 2;
+        y_pos -= height * 0.3;
+        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 1.0, 1, color_border, color_fill);
+    }
 
-void rg_gui_draw_clock(int x_pos, int y_pos)
-{
-    char buffer[10];
-    time_t time_sec = time(NULL);
-    struct tm *time = localtime(&time_sec);
+    if (gui.show_clock)
+    {
+        right += txt.width + 4;
 
-    x_pos = get_horizontal_position(x_pos, 0);
-    y_pos = get_vertical_position(y_pos, 0);
+        int x_pos = -right;
+        int y_pos = RG_MAX(0, 1 + top);
+        char buffer[12];
+        time_t time_sec = time(NULL);
+        struct tm *time = localtime(&time_sec);
 
-    // FIXME: Use a fixed small font here, that's why we're doing it in rg_gui...
-    sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
-    rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_WHITE, C_TRANSPARENT, 0);
+        sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
+        rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_SILVER, app->isLauncher ? C_TRANSPARENT : C_BLACK, 0);
+    }
 }
 
 void rg_gui_draw_hourglass(void)
@@ -595,8 +604,7 @@ void rg_gui_draw_status_bars(void)
     rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
     rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
-    rg_gui_draw_battery(-22, 3);
-    // rg_gui_draw_radio(-45, 3);
+    rg_gui_draw_icons();
 }
 
 static size_t get_dialog_items_count(const rg_gui_option_t *options)
@@ -1253,6 +1261,17 @@ static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        gui.show_clock = !gui.show_clock;
+        rg_settings_set_number(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
+    }
+    strcpy(option->value, gui.show_clock ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -1323,6 +1342,7 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, "Disk LED  ", "-", RG_DIALOG_FLAG_NORMAL, &disk_activity_cb};
         *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
         *opt++ = (rg_gui_option_t){0, "Theme     ", "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
+        *opt++ = (rg_gui_option_t){0, "Show clock", "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
     }
     // App settings that are shown only inside a game
     else
@@ -1354,7 +1374,7 @@ void rg_gui_options_menu(void)
 void rg_gui_sysinfo_menu(void)
 {
     char screen_str[32], network_str[64], memory_str[32];
-    char storage_str[32], localtime_str[32], uptime[32];
+    char storage_str[32], uptime[32];
 
     const rg_gui_option_t options[] = {
         {0, "Console", RG_TARGET_NAME, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1362,7 +1382,6 @@ void rg_gui_sysinfo_menu(void)
         {0, "Memory ", memory_str,     RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Network", network_str,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Storage", storage_str,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "RTC    ", localtime_str,  RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Uptime ", uptime,         RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
         {0, "Close  ", NULL,           RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1371,13 +1390,11 @@ void rg_gui_sysinfo_menu(void)
 
     const rg_display_t *display = rg_display_get_info();
     rg_stats_t stats = rg_system_get_counters();
-    time_t now = time(NULL);
 
     snprintf(screen_str, 32, "%dx%d (%d)", display->screen.width, display->screen.height, display->screen.format);
     snprintf(memory_str, 32, "%dKB + %dKB", stats.totalMemoryInt / 1024, stats.totalMemoryExt / 1024);
     snprintf(uptime, 32, "%ds", (int)(rg_system_timer() / 1000000));
     snprintf(storage_str, 32, "%s", "N/A");
-    strftime(localtime_str, 32, "%F %T", localtime(&now));
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_t net = rg_network_get_info();

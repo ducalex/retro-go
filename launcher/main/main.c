@@ -224,12 +224,14 @@ static void show_about_menu(void)
     rg_gui_about_menu(options);
 }
 
+#if !RG_GAMEPAD_HAS_OPTION_BTN
 static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
         show_about_menu();
     return RG_DIALOG_VOID;
 }
+#endif
 
 static void retro_loop(void)
 {
