@@ -215,9 +215,10 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static void show_about_menu(void)
 {
+    bool online = rg_network_get_info().state == RG_NETWORK_CONNECTED;
     const rg_gui_option_t options[] = {
     #ifdef RG_ENABLE_NETWORKING
-        {0, "Check for updates", NULL, 1, &updater_cb},
+        {0, "Check for updates", NULL, online ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, &updater_cb},
     #endif
         RG_DIALOG_END,
     };
@@ -453,8 +454,8 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
+        {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
     #ifdef RG_ENABLE_NETWORKING
         {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
