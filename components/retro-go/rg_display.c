@@ -483,7 +483,6 @@ static inline void write_update(const rg_video_update_t *update)
 
     if (lines_updated > display.screen.height * 0.80)
         counters.fullFrames++;
-    counters.totalFrames++;
     counters.busyTime += rg_system_timer() - time_start;
 }
 
@@ -792,6 +791,9 @@ void rg_display_submit(const rg_video_update_t *update, uint32_t flags)
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
+    if (rg_system_timer() - time_start > 1000)
+        counters.delayedFrames++;
+    counters.totalFrames++;
     counters.busyTime += rg_system_timer() - time_start;
 }
 

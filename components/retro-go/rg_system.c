@@ -220,7 +220,7 @@ static void system_monitor_task(void *arg)
                 app.frameskip--;
                 RG_LOGI("Reduced frameskip to %d", app.frameskip);
             }
-            else if (speed < 95.f && statistics.busyPercent > 90.f && app.frameskip < 4)
+            else if (speed < 95.f && statistics.busyPercent > 90.f && app.frameskip < 5)
             {
                 app.frameskip++;
                 RG_LOGI("Raised frameskip to %d", app.frameskip);

@@ -336,14 +336,12 @@ void app_main(void)
             {
                 rg_task_delay(50);
                 rg_gui_game_menu();
-                rg_audio_set_sample_rate(app->sampleRate * app->speed);
             }
             menuCancelled = false;
         }
         else if (joystick & RG_KEY_OPTION)
         {
             rg_gui_options_menu();
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         menuPressed = joystick & RG_KEY_MENU;
@@ -392,8 +390,6 @@ void app_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f)
-                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {

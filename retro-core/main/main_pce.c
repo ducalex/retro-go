@@ -77,8 +77,6 @@ void osd_vsync(void)
             skipFrames = app->frameskip;
         else if (drawFrame && slowFrame)
             skipFrames = 1;
-        if (app->speed > 1.f)
-            skipFrames += 2;
     }
     else if (skipFrames > 0)
     {
@@ -125,7 +123,6 @@ void osd_input_read(uint8_t joypads[8])
             rg_gui_game_menu();
         else
             rg_gui_options_menu();
-        rg_audio_set_sample_rate(app->sampleRate * app->speed);
         emulationPaused = false;
     }
 

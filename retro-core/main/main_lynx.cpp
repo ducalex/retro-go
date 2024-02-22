@@ -215,7 +215,6 @@ extern "C" void lynx_main(void)
             else
                 rg_gui_options_menu();
             sampleTime = 1000000.f / (app->sampleRate * app->speed);
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         int64_t startTime = rg_system_timer();
@@ -259,8 +258,6 @@ extern "C" void lynx_main(void)
                 skipFrames = 1;
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f)
-                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {

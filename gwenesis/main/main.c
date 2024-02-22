@@ -419,8 +419,6 @@ void app_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f)
-                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {

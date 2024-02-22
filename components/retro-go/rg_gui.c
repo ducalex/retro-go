@@ -1223,10 +1223,15 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 {
     rg_app_t *app = rg_system_get_app();
 
-    if (event == RG_DIALOG_PREV && (app->speed -= 0.5f) < 0.5f)
-        app->speed = 2.5f;
-    if (event == RG_DIALOG_NEXT && (app->speed += 0.5f) > 2.5f)
-        app->speed = 0.5f;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        // Probably should be broken into a function in rg_system or rg_emu...
+        float change = (event == RG_DIALOG_NEXT) ? 0.5f : -0.5f;
+        app->speed = RG_MIN(2.5f, RG_MAX(0.5f, app->speed + change));
+        app->frameskip = (app->speed > 1.0f) ? 2 : 0; // Reset auto frameskip
+        rg_audio_set_sample_rate(app->sampleRate * app->speed);
+        rg_system_event(RG_EVENT_SPEEDUP, NULL);
+    }
 
     sprintf(option->value, "%.1fx", app->speed);
     return RG_DIALOG_VOID;

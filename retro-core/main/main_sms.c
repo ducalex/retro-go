@@ -191,7 +191,6 @@ void sms_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         int64_t startTime = rg_system_timer();
@@ -343,8 +342,6 @@ void sms_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f)
-                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {

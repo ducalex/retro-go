@@ -292,7 +292,6 @@ void gbc_main(void)
             }
             else
                 rg_gui_options_menu();
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
         else if (joystick != joystick_old)
         {
@@ -349,8 +348,6 @@ void gbc_main(void)
                 skipFrames = (elapsed + frameTime / 2) / frameTime;
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f)
-                skipFrames += 2;
         }
         else if (skipFrames > 0)
         {
