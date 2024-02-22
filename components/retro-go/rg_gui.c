@@ -494,16 +494,16 @@ void rg_gui_draw_icons(void)
     rg_rect_t txt = TEXT_RECT("00:00", 0);
     int right = 0;
     int top = app->isLauncher ? 0 : -1;
-    float percent;
+    float batteryLevel = rg_system_get_counters().batteryLevel;
 
-    if (rg_input_read_battery(&percent, NULL))
+    if (batteryLevel >= 0)
     {
         right += 22;
 
         int width = 16;
         int height = 10;
-        int width_fill = width / 100.f * percent;
-        rg_color_t color_fill = (percent > 20 ? (percent > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
+        int width_fill = width / 100.f * batteryLevel;
+        rg_color_t color_fill = (batteryLevel > 20 ? (batteryLevel > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
         rg_color_t color_border = C_SILVER;
         rg_color_t color_empty = C_BLACK;
 

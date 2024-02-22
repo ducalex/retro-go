@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
@@ -164,26 +165,30 @@ static void update_statistics(void)
         statistics.fullFPS = fullFrames / totalTimeSecs;
     }
 
+    float batteryPercent, batteryVolts;
+    if (rg_input_read_battery(&batteryPercent, &batteryVolts))
+    {
+        if (fabsf(statistics.batteryLevel - batteryPercent) >= 1.0f)
+            statistics.batteryLevel = batteryPercent;
+        if (fabsf(statistics.batteryVolts - batteryVolts) >= 0.010f)
+            statistics.batteryVolts = batteryVolts;
+    }
+    else
+    {
+        statistics.batteryLevel = -1;
+        statistics.batteryVolts = -1;
+    }
+
     update_memory_statistics();
 }
 
 static void system_monitor_task(void *arg)
 {
-    int32_t numLoop = 0;
-    float batteryPercent = 0.f;
-    bool ledState = false;
+    bool batteryLedState = false;
 
     while (!exitCalled)
     {
         update_statistics();
-
-        if (rg_input_read_battery(&batteryPercent, NULL))
-        {
-            if (batteryPercent < 2)
-                rg_system_set_led((ledState ^= 1));
-            else if (ledState)
-                rg_system_set_led((ledState = 0));
-        }
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
@@ -192,21 +197,17 @@ static void system_monitor_task(void *arg)
             statistics.freeMemoryExt / 1024,
             statistics.freeBlockInt / 1024,
             statistics.freeBlockExt / 1024,
-            (int)(statistics.busyPercent + 0.5f),
-            (int)(statistics.totalFPS + 0.5f),
-            (int)(statistics.skippedFPS + 0.5f),
-            (int)(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS + 0.5f),
-            (int)(statistics.fullFPS + 0.5f),
-            (int)(batteryPercent + 0.5f));
+            (int)roundf(statistics.busyPercent),
+            (int)roundf(statistics.totalFPS),
+            (int)roundf(statistics.skippedFPS),
+            (int)roundf(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS),
+            (int)roundf(statistics.fullFPS),
+            (int)roundf((statistics.batteryVolts * 1000) ?: statistics.batteryLevel));
 
-        if (watchdogTimer <= rg_system_timer())
-        {
-            if (app.watchdog)
-                RG_PANIC("Application unresponsive!");
-            else
-                RG_LOGW("Application unresponsive!");
-            WDT_RELOAD(WDT_TIMEOUT);
-        }
+        if (statistics.batteryLevel < 2)
+            rg_system_set_led((batteryLedState ^= 1));
+        else if (batteryLedState)
+            rg_system_set_led((batteryLedState = 0));
 
         // Auto frameskip
         if (statistics.ticks > app.tickRate)
@@ -226,9 +227,17 @@ static void system_monitor_task(void *arg)
             }
         }
 
+        if (watchdogTimer <= rg_system_timer())
+        {
+            if (app.watchdog)
+                RG_PANIC("Application unresponsive!");
+            else
+                RG_LOGW("Application unresponsive!");
+            WDT_RELOAD(WDT_TIMEOUT);
+        }
+
         rg_task_delay(1000);
         rtcValue = time(NULL);
-        numLoop++;
     }
 }
 
@@ -894,7 +903,7 @@ void rg_system_exit(void)
 
 void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
 {
-    RG_LOGI("Switching to app %s (%s)!\n", partition, name ?: "-");
+    RG_LOGI("Switching to app %s (%s)!\n", partition ?: "-", name ?: "-");
     exitCalled = true;
 
     if (app.initialized)
