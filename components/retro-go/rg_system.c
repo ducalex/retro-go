@@ -219,12 +219,12 @@ static void system_monitor_task(void *arg)
             float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;
             // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
             // borderline in power and going back to 0 is just asking for stuttering...
-            if (speed > 99.f && statistics.busyPercent < 90.f && app.frameskip > 1)
+            if (speed > 99.f && statistics.busyPercent < 85.f && app.frameskip > 1)
             {
                 app.frameskip--;
                 RG_LOGI("Reduced frameskip to %d", app.frameskip);
             }
-            else if (speed < 95.f && statistics.busyPercent > 90.f && app.frameskip < 5)
+            else if (speed < 95.f && statistics.busyPercent > 85.f && app.frameskip < 5)
             {
                 app.frameskip++;
                 RG_LOGI("Raised frameskip to %d", app.frameskip);
