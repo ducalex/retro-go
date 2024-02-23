@@ -167,11 +167,11 @@ static esp_err_t http_download_handler(httpd_req_t *req)
 
     if ((fp = fopen(filename, "rb")))
     {
-        if (ext && (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0))
+        if (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0)
             httpd_resp_set_type(req, "text/plain");
-        else if (ext && (strcmp(ext, "png") == 0))
+        else if (strcmp(ext, "png") == 0)
             httpd_resp_set_type(req, "image/png");
-        else if (ext && (strcmp(ext, "jpg") == 0))
+        else if (strcmp(ext, "jpg") == 0)
             httpd_resp_set_type(req, "image/jpg");
         else
             httpd_resp_set_type(req, "application/binary");

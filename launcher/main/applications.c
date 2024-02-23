@@ -37,7 +37,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     if (entry->basename[0] == '.')
         return RG_SCANDIR_SKIP;
 
-    if (entry->is_file && ext != NULL)
+    if (entry->is_file && ext[0])
     {
         snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
         is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;

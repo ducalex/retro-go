@@ -62,8 +62,11 @@ const char *rg_extension(const char *path)
     if (!path)
         return NULL;
 
-    const char *ext = strrchr(rg_basename(path), '.');
-    return ext ? ext + 1 : NULL;
+    const char *ptr = rg_basename(path);
+    const char *ext = strrchr(ptr, '.');
+    if (!ext)
+        return ptr + strlen(ptr);
+    return ext + 1;
 }
 
 const char *rg_relpath(const char *path)
