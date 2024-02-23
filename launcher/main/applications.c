@@ -678,7 +678,7 @@ void applications_init(void)
     application("Sega Master System", "sms", "sms sg", "retro-core", 0);
     application("Sega Game Gear", "gg", "gg", "retro-core", 0);
     application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
-    application("Coleco ColecoVision", "col", "col", "retro-core", 0);
+    application("Coleco ColecoVision", "col", "col rom", "retro-core", 0);
     application("NEC PC Engine", "pce", "pce", "retro-core", 0);
     application("Atari Lynx", "lnx", "lnx", "retro-core", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);

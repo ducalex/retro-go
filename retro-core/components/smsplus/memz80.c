@@ -374,6 +374,8 @@ uint8 tms_port_r(uint16 port)
 /*--------------------------------------------------------------------------*/
 void coleco_port_w(uint16 port, uint8 data)
 {
+  port &= 0xFF;
+
   /* A7 is used as enable input */
   /* A6 & A5 are used to decode the address */
   switch(port & 0xE0)
@@ -393,14 +395,48 @@ void coleco_port_w(uint16 port, uint8 data)
     case 0xe0:
       psg_write(data);
       return;
+  }
 
-    default:
+  // printf("wr: %02X %02X\n", (int)port, (int)data);
+
+  // SGM ports
+  switch (port)
+  {
+    case 0x50: // AY register select
+      return;
+
+    case 0x51: // AY register write
+      return;
+
+    case 0x53: // SGM 24KB mapping
+      /* $2000-$7FFF mapped to SGM ram */
+      if (data & 1)
+      {
+        for (int i = 0x08; i < 0x20; i++)
+        {
+          cpu_readmap[i]  = &cart.sram[i << 10];
+          cpu_writemap[i] = &cart.sram[i << 10];
+        }
+      }
+      coleco.port53 = data;
+      return;
+
+    case 0x7F: // SGM 8KB mapping
+      /* $0000-$1FFF mapped to internal ROM (8K) or SGM RAM */
+      for (int i = 0x00; i < 0x08; i++)
+      {
+        cpu_readmap[i]  = (data & 2) == 0 ? &cart.sram[i << 10] : &coleco.rom[i << 10];
+        cpu_writemap[i] = (data & 2) == 0 ? &cart.sram[i << 10] : &dummy_memory[0];
+      }
+      coleco.port7F = data;
       return;
   }
 }
 
 uint8 coleco_port_r(uint16 port)
 {
+  port &= 0xFF;
+
   /* A7 is used as enable input */
   /* A6 & A5 are used to decode the address */
   switch(port & 0xE0)
@@ -410,8 +446,25 @@ uint8 coleco_port_r(uint16 port)
 
     case 0xe0:
       return coleco_pio_r((port>>1)&1);
-
-    default:
-      return 0xff;
   }
+
+  // printf("rd: %02X\n", (int)port);
+
+  // SGM ports
+  switch (port)
+  {
+    case 0x50: // AY register select
+      return 0x00;
+
+    case 0x52: // AY register read
+      return 0x00;
+
+    case 0x53: // SGM 24KB mapping
+      return coleco.port53;
+
+    case 0x7F: // SGM 8KB mapping
+      return coleco.port7F;
+  }
+
+  return data_bus_pullup;
 }

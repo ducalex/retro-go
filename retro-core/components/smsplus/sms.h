@@ -147,13 +147,15 @@ typedef struct {
   uint8* rom; //[0x2000];  /* BIOS ROM */
   uint8 pio_mode;     /* PIO mode */
   uint8 keypad[2];    /* Keypad inputs */
-} t_coleco;
+  uint8 port53;
+  uint8 port7F;
+} coleco_t;
 
 /* Global data */
 extern sms_t sms;
 extern bios_t bios;
 extern slot_t slot;
-extern t_coleco coleco;
+extern coleco_t coleco;
 extern uint8 dummy_memory[0x400];
 
 /* Function prototypes */

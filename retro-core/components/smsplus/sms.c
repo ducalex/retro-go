@@ -32,7 +32,7 @@ bios_t bios;
 slot_t slot;
 
 /* Colecovision support */
-t_coleco coleco;
+coleco_t coleco;
 
 uint8 dummy_memory[0x400];
 
@@ -43,7 +43,9 @@ static uint8 readmem_mapper_none(uint16 addr)
 
 static void writemem_mapper_none(uint16 offset, uint8 data)
 {
-  cpu_writemap[offset >> 10][offset & 0x03FF] = data;
+  unsigned char *page = cpu_writemap[offset >> 10];
+  if (page != dummy_memory)
+    page[offset & 0x03FF] = data;
 }
 
 static void writemem_mapper_sega(uint16 offset, uint8 data)

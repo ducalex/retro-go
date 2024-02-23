@@ -24,19 +24,12 @@
 
 #include "shared.h"
 
-//static unsigned char* state = (unsigned char*)ESP32_PSRAM + 0x100000; //[0x10000];
-//static unsigned int bufferptr;
-
 /*
-system_load_state: sizeof sms=8216
-system_load_state: sizeof vdp=16524
-system_load_state: sizeof Z80=72
-system_load_state: sizeof SN76489_Context=92
-
-system_save_state: sizeof sms=8216
-system_save_state: sizeof vdp=16524
-system_save_state: sizeof Z80=72
-system_save_state: sizeof SN76489_Context=92
+state: sizeof sms=8216
+state: sizeof vdp=16524
+state: sizeof Z80=72
+state: sizeof SN76489_Context=92
+state: sizeof coleco=8
 */
 
 int system_save_state(void *mem)
@@ -140,6 +133,11 @@ int system_save_state(void *mem)
 
   /*** Save SN76489 ***/
   fwrite(SN76489_GetContextPtr(0), SN76489_GetContextSize(), 1, mem);
+
+  fwrite(&coleco.pio_mode, 1, 1, mem);
+  fwrite(&coleco.port53, 1, 1, mem);
+  fwrite(&coleco.port7F, 1, 1, mem);
+  fwrite(&padding, 5, 1, mem);
 
   return 0;
 }
@@ -277,8 +275,17 @@ void system_load_state(void *mem)
   psg->Clock = psg_Clock;
   psg->dClock = psg_dClock;
 
+  fread(&coleco.pio_mode, 1, 1, mem);
+  fread(&coleco.port53, 1, 1, mem);
+  fread(&coleco.port7F, 1, 1, mem);
+  fread(&padding, 5, 1, mem);
 
-  if ((sms.console != CONSOLE_COLECO) && (sms.console != CONSOLE_SG1000))
+  if (sms.console == CONSOLE_COLECO)
+  {
+    coleco_port_w(0x53, coleco.port53);
+    coleco_port_w(0x7F, coleco.port7F);
+  }
+  else if (sms.console != CONSOLE_SG1000)
   {
     /* Cartridge by default */
     slot.rom    = cart.rom;
