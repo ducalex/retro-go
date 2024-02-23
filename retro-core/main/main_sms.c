@@ -149,21 +149,25 @@ void sms_main(void)
     updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
 
     system_reset_config();
+    option.sndrate = AUDIO_SAMPLE_RATE;
+    option.overscan = 0;
+    option.extra_gg = 0;
+    option.tms_pal = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
+
+    if (strcmp(rg_extension(app->romPath), "sg") == 0)
+        option.console = 5;
+    else if (strcmp(app->configNs, "col") == 0)
+        option.console = 6;
+    else
+        option.console = 0;
 
     if (!load_rom(app->romPath))
-    {
         RG_PANIC("ROM file loading failed!");
-    }
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
     bitmap.data = currentUpdate->buffer;
-
-    option.sndrate = AUDIO_SAMPLE_RATE;
-    option.overscan = 0;
-    option.extra_gg = 0;
-    option.tms_pal = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
     system_poweron();
 
