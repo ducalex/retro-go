@@ -255,7 +255,7 @@ extern "C" void lynx_main(void)
                 skipFrames = app->frameskip;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
             else if (elapsed > frameTime + 1500)
-                skipFrames = 1;
+                skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
         }

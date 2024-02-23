@@ -345,7 +345,7 @@ void gbc_main(void)
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
             else if (elapsed > frameTime + 1500) // Allow some jitter
-                skipFrames = (elapsed + frameTime / 2) / frameTime;
+                skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
         }
