@@ -483,6 +483,8 @@ static inline void write_update(const rg_video_update_t *update)
 
     if (lines_updated > display.screen.height * 0.80)
         counters.fullFrames++;
+    else
+        counters.partFrames++;
     counters.busyTime += rg_system_timer() - time_start;
 }
 

@@ -320,8 +320,8 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
 
     RELEASE_DEVICE();
 
+    counters.totalSamples += count;
     counters.busyTime += rg_system_timer() - time_start;
-    counters.samples += count;
 }
 
 const rg_audio_t *rg_audio_get_info(void)

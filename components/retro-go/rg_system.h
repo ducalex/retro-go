@@ -174,6 +174,7 @@ typedef struct
 typedef struct
 {
     float skippedFPS;
+    float partialFPS;
     float fullFPS;
     float totalFPS;
     float busyPercent;

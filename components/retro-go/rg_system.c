@@ -41,7 +41,7 @@ typedef struct
 
 typedef struct
 {
-    int32_t totalFrames, fullFrames, ticks;
+    int32_t totalFrames, fullFrames, partFrames, ticks;
     int64_t busyTime, updateTime;
 } counters_t;
 
@@ -144,9 +144,10 @@ static void update_statistics(void)
 
     counters.totalFrames = display.totalFrames;
     counters.fullFrames = display.fullFrames;
+    counters.partFrames = display.partFrames;
     counters.busyTime = statistics.busyTime;
     counters.ticks = statistics.ticks;
-    counters.updateTime = rg_system_timer();
+    counters.updateTime = statistics.lastTick;
 
     if (counters.ticks && previous.ticks)
     {
@@ -154,15 +155,18 @@ static void update_statistics(void)
         float totalTimeSecs = totalTime / 1000000.f;
         float busyTime = counters.busyTime - previous.busyTime;
         float ticks = counters.ticks - previous.ticks;
-        // Since we sample semi-randomly, display and ticks could be out of sync.
-        // RG_MIN won't prevent bogus skippedFPS=1, but at least no -1...
-        float fullFrames = RG_MIN(counters.fullFrames - previous.fullFrames, ticks);
-        float frames = RG_MIN(counters.totalFrames - previous.totalFrames, ticks);
+        float fullFrames = counters.fullFrames - previous.fullFrames;
+        float partFrames = counters.partFrames - previous.partFrames;
+        float frames = counters.totalFrames - previous.totalFrames;
+
+        // Hard to fix this sync issue without a lock, which I don't want to use...
+        ticks = RG_MAX(ticks, frames);
 
         statistics.busyPercent = busyTime / totalTime * 100.f;
         statistics.totalFPS = ticks / totalTimeSecs;
         statistics.skippedFPS = (ticks - frames) / totalTimeSecs;
         statistics.fullFPS = fullFrames / totalTimeSecs;
+        statistics.partialFPS = partFrames / totalTimeSecs;
     }
 
     float batteryPercent, batteryVolts;
@@ -200,7 +204,7 @@ static void system_monitor_task(void *arg)
             (int)roundf(statistics.busyPercent),
             (int)roundf(statistics.totalFPS),
             (int)roundf(statistics.skippedFPS),
-            (int)roundf(statistics.totalFPS - statistics.skippedFPS - statistics.fullFPS),
+            (int)roundf(statistics.partialFPS),
             (int)roundf(statistics.fullFPS),
             (int)roundf((statistics.batteryVolts * 1000) ?: statistics.batteryLevel));
 
