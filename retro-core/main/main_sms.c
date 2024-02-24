@@ -257,7 +257,7 @@ void sms_main(void)
 
             if (joystick & RG_KEY_SELECT)
             {
-                rg_input_wait_for_key(RG_KEY_SELECT, false);
+                rg_task_delay(100);
                 system_reset();
             }
 

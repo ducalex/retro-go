@@ -106,12 +106,39 @@ static rg_gui_event_t change_keymap_cb(rg_gui_option_t *option, rg_gui_event_t e
             keymap_id = 0;
         update_keymap(keymap_id);
         rg_settings_set_number(NS_APP, SETTING_KEYMAP, keymap_id);
-        return RG_DIALOG_CLOSE;
+        return RG_DIALOG_REDRAW;
     }
-    else if (event == RG_DIALOG_ENTER || event == RG_DIALOG_ALT)
+
+    if (event == RG_DIALOG_ENTER)
     {
-        return RG_DIALOG_DISMISS;
+        return RG_DIALOG_CANCEL;
     }
+
+    if (option->arg == -1)
+    {
+        strcat(strcat(strcpy(option->value, "< "), keymap.name), " >");
+    }
+    else if (option->arg >= 0)
+    {
+        int local_button = keymap.keys[option->arg].local_mask;
+        int mod_button = keymap.keys[option->arg].mod_mask;
+        int snes9x_button = log2(keymap.keys[option->arg].snes9x_mask); // convert bitmask to bit number
+
+        if (snes9x_button < 4 || (local_button & (RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT)))
+        {
+            option->flags = RG_DIALOG_FLAG_HIDDEN;
+            return RG_DIALOG_VOID;
+        }
+
+        if (keymap.keys[option->arg].mod_mask)
+            sprintf(option->value, "%s + %s", rg_input_get_key_name(mod_button), rg_input_get_key_name(local_button));
+        else
+            sprintf(option->value, "%s", rg_input_get_key_name(local_button));
+
+        option->label = SNES_BUTTONS[snes9x_button];
+        option->flags = RG_DIALOG_FLAG_NORMAL;
+    }
+
     return RG_DIALOG_VOID;
 }
 
@@ -119,69 +146,33 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        bool dismissed = false;
-
-        while (!dismissed)
-        {
-            rg_gui_option_t options[20];
-            rg_gui_option_t *option = options;
-            char values[16][20];
-            char profile[32];
-
-            option->label = "Profile";
-            option->value = strcat(strcat(strcpy(profile, "< "), keymap.name), " >");
-            option->flags = RG_DIALOG_FLAG_NORMAL;
-            option->update_cb = &change_keymap_cb;
-            option++;
-
-            option->label = "";
-            option->value = NULL;
-            option->flags = RG_DIALOG_FLAG_NORMAL;
-            option->update_cb = &change_keymap_cb;
-            option++;
-
-            option->label = "snes9x  ";
-            option->value = "handheld";
-            option->flags = RG_DIALOG_FLAG_NORMAL;
-            option->update_cb = &change_keymap_cb;
-            option++;
-
-            for (int i = 0; i < RG_COUNT(keymap.keys); i++)
-            {
-                int local_button = keymap.keys[i].local_mask;
-                int mod_button = keymap.keys[i].mod_mask;
-                int snes9x_button = log2(keymap.keys[i].snes9x_mask); // convert bitmask to bit number
-
-                // Empty mapping
-                if (snes9x_button < 4)
-                    continue;
-
-                // For now we don't display the D-PAD because it doesn't fit on large font
-                if (local_button & (RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT))
-                    continue;
-
-                if (keymap.keys[i].mod_mask)
-                    sprintf(values[i], "%s + %s", rg_input_get_key_name(mod_button), rg_input_get_key_name(local_button));
-                else
-                    sprintf(values[i], "%s", rg_input_get_key_name(local_button));
-
-                option->label = SNES_BUTTONS[snes9x_button];
-                option->value = values[i];
-                option->flags = RG_DIALOG_FLAG_NORMAL;
-                option->update_cb = &change_keymap_cb;
-                option++;
-            }
-
-            *option++ = (rg_gui_option_t)RG_DIALOG_END;
-
-            dismissed = rg_gui_dialog("Controls", options, 0) == RG_DIALOG_CANCELLED;
-            rg_display_submit(currentUpdate, 0);
-            rg_display_sync(true);
-        }
+        const rg_gui_option_t options[20] = {
+            {-1, "Profile", "<profile name>", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
+            {-2, "", NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
+            {-3, "snes9x  ", "handheld", RG_DIALOG_FLAG_MESSAGE, NULL},
+            {0, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {1, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {2, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {3, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {4, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {5, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {6, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {7, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {8, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {9, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {10, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {11, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {12, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {13, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {14, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            {15, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
+            RG_DIALOG_END,
+        };
+        rg_gui_dialog("Controls", options, 0);
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, keymap.name);
-
     return RG_DIALOG_VOID;
 }
 

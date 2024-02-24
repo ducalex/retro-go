@@ -824,11 +824,11 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     rg_input_wait_for_key(RG_KEY_ALL, false);
     rg_task_delay(80);
 
-    rg_gui_event_t event = RG_DIALOG_INIT;
+    rg_gui_event_t event = RG_DIALOG_VOID;
     uint32_t joystick = 0, joystick_old;
     uint64_t joystick_last = 0;
 
-    while (event != RG_DIALOG_CLOSE)
+    while (event != RG_DIALOG_CLOSE && event != RG_DIALOG_CANCEL)
     {
         // TO DO: Add acceleration!
         joystick_old = ((rg_system_timer() - joystick_last) > 300000) ? 0 : joystick;
@@ -847,7 +847,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 if (++sel > options_count - 1) sel = 0;
             }
             else if (joystick & (RG_KEY_B|RG_KEY_OPTION|RG_KEY_MENU)) {
-                event = RG_DIALOG_DISMISS;
+                event = RG_DIALOG_CANCEL;
             }
             else if (joystick & RG_KEY_LEFT && callback) {
                 event = callback(&options[sel], RG_DIALOG_PREV);
@@ -869,16 +869,8 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 event = RG_DIALOG_CLOSE;
             }
 
-            if (event == RG_DIALOG_DISMISS) {
-                event = RG_DIALOG_CLOSE;
-                sel = -1;
-            }
-
             joystick_last = rg_system_timer();
         }
-
-        if (event == RG_DIALOG_CLOSE)
-            break;
 
         if (sel_old != sel)
         {
@@ -935,7 +927,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
     free(text_buffer);
 
-    if (sel == -1)
+    if (event == RG_DIALOG_CANCEL || sel < 0)
         return RG_DIALOG_CANCELLED;
 
     return options[sel].arg;
@@ -1407,9 +1399,9 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     rg_gui_option_t options[16 + extra_options_count];
     rg_gui_option_t *opt = &options[0];
 
-    *opt++ = (rg_gui_option_t){0, "Version", build_ver,  RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t){0, "Date   ", build_date, RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t){0, "By     ", build_user, RG_DIALOG_FLAG_NORMAL, NULL};
+    *opt++ = (rg_gui_option_t){0, "Version", build_ver,  RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "Date   ", build_date, RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "By     ", build_user, RG_DIALOG_FLAG_MESSAGE, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
     *opt++ = (rg_gui_option_t){1000, "System information", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     for (size_t i = 0; i < extra_options_count; i++)
