@@ -315,7 +315,7 @@ bool rg_input_wait_for_key(rg_key_t mask, bool pressed, int timeout_ms)
     int64_t expiration = timeout_ms < 0 ? INT64_MAX : (rg_system_timer() + timeout_ms * 1000);
     while (rg_input_key_is_pressed(mask) != pressed)
     {
-        if (expiration < rg_system_timer())
+        if (rg_system_timer() > expiration)
             return false;
         rg_task_delay(10);
     }

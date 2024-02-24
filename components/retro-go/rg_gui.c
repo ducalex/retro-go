@@ -1478,7 +1478,10 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(screen_res, 20, "%dx%d", display->screen.width, display->screen.height);
     snprintf(source_res, 20, "%dx%d", display->source.width, display->source.height);
     snprintf(scaled_res, 20, "%dx%d", display->viewport.width, display->viewport.height);
-    snprintf(frame_time, 20, "%dms", (int)((display_stats.busyTime / display_stats.totalFrames) / 1000));
+    if (display_stats.totalFrames > 0)
+        snprintf(frame_time, 20, "%dms", (int)((display_stats.busyTime / display_stats.totalFrames) / 1000));
+    else
+        snprintf(frame_time, 20, "N/A");
     snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
