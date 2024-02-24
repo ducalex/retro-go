@@ -588,10 +588,10 @@ void rg_gui_draw_status_bars(void)
     if (!app->initialized || app->isLauncher)
         return;
 
-    snprintf(header, max_len, "SPEED: %d%% (%d:%d) / BUSY: %d%%",
+    snprintf(header, max_len, "SPEED: %d%% (%d %d) / BUSY: %d%%",
         (int)round(stats.totalFPS / app->tickRate * 100.f),
+        (int)round(stats.totalFPS),
         (int)app->frameskip,
-        (int)round(stats.skippedFPS),
         (int)round(stats.busyPercent));
 
     if (app->romPath && strlen(app->romPath) > max_len - 1)
@@ -1441,16 +1441,15 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
 void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 {
-    char screen_res[20], source_res[20], scaled_res[20], frame_time[20];
+    char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
-    char battery_info[25];
+    char battery_info[25], frame_time[20];
 
     const rg_gui_option_t options[] = {
         {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Source res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Scaled res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Frame time", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1458,6 +1457,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Timezone  ", timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
         {1, "Reboot to firmware", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Clear cache    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1560,7 +1560,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
 {
-    rg_gui_option_t choices[] = {
+    const rg_gui_option_t choices[] = {
         {0, "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {1, "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {2, "Slot 2", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
