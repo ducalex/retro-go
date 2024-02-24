@@ -130,7 +130,7 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
         if (gui.browse)
         {
             // Ugly hack otherwise gui_load_preview will abort...
-            rg_input_wait_for_key(RG_KEY_ALL, false);
+            rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
             gui.joystick = 0;
             gui_load_preview(gui_get_current_tab());
         }

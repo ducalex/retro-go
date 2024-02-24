@@ -821,8 +821,8 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
-    rg_input_wait_for_key(RG_KEY_ALL, false);
-    rg_task_delay(80);
+    rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
+    rg_task_delay(50);
 
     rg_gui_event_t event = RG_DIALOG_VOID;
     uint32_t joystick = 0, joystick_old;
@@ -921,10 +921,8 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
         rg_system_tick(0);
     }
 
-    rg_input_wait_for_key(joystick, false);
-
+    rg_input_wait_for_key(joystick, false, 1000);
     rg_display_force_redraw();
-
     free(text_buffer);
 
     if (event == RG_DIALOG_CANCEL || sel < 0)

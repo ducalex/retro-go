@@ -288,18 +288,21 @@ uint32_t rg_input_read_gamepad(void)
     return gamepad_state;
 }
 
-bool rg_input_key_is_pressed(rg_key_t key)
+bool rg_input_key_is_pressed(rg_key_t mask)
 {
-    return (rg_input_read_gamepad() & key) ? true : false;
+    return (bool)(rg_input_read_gamepad() & mask);
 }
 
-void rg_input_wait_for_key(rg_key_t key, bool pressed)
+bool rg_input_wait_for_key(rg_key_t mask, bool pressed, int timeout_ms)
 {
-    while (rg_input_key_is_pressed(key) != pressed)
+    int64_t expiration = timeout_ms < 0 ? INT64_MAX : (rg_system_timer() + timeout_ms * 1000);
+    while (rg_input_key_is_pressed(mask) != pressed)
     {
+        if (expiration < rg_system_timer())
+            return false;
         rg_task_delay(10);
-        rg_system_tick(0);
     }
+    return true;
 }
 
 bool rg_input_read_battery(float *percent, float *volts)
@@ -398,7 +401,7 @@ int rg_input_read_keyboard(/* const char *custom_map */)
     static size_t selected_map = 0;
     static size_t cursor = 0;
 
-    rg_input_wait_for_key(RG_KEY_ALL, false);
+    rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
 
     while (1)
     {
@@ -429,9 +432,9 @@ int rg_input_read_keyboard(/* const char *custom_map */)
         if (joystick & RG_KEY_B)
             break;
 
-        rg_input_wait_for_key(~(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT), false);
         rg_gui_draw_keyboard("[select] to change map", map, cursor);
 
+        rg_input_wait_for_key(~(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT), false, 100);
         rg_task_delay(50);
         rg_system_tick(0);
     }
