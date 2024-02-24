@@ -188,8 +188,6 @@ typedef struct
     int freeBlockInt;
     int freeBlockExt;
     int freeStackMain;
-    float batteryLevel;
-    float batteryVolts;
 } rg_stats_t;
 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);

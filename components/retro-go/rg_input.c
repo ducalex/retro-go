@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
@@ -27,28 +28,39 @@ static rg_keymap_t keymap[] = RG_GAMEPAD_MAP;
 #endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
-static int battery_level = -1;
+static rg_battery_t battery_state = {0};
 
-static inline int battery_read(void)
+
+bool rg_input_read_battery_raw(rg_battery_t *out)
 {
+    RG_ASSERT(out, "bad param");
+    uint32_t raw_value = 0;
+
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
-    uint32_t adc_sample = 0;
     for (int i = 0; i < 4; ++i)
-        adc_sample += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
-    return adc_sample / 4;
+        raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+    raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
     uint8_t data[5];
-    if (rg_i2c_read(0x20, -1, &data, 5))
-        return data[4];
-    return -1;
+    if (!rg_i2c_read(0x20, -1, &data, 5))
+        return false;
+    raw_value = data[4];
 #else
     // No battery or unknown
-    return -1;
+    return false;
 #endif
+
+    *out = (rg_battery_t) {
+        .level = RG_MAX(0.f, RG_MIN(100.f, RG_BATTERY_CALC_PERCENT(raw_value))),
+        .volts = RG_BATTERY_CALC_VOLTAGE(raw_value),
+        .present = true,
+    };
+    return true;
 }
 
-static inline uint32_t gamepad_read(void)
+bool rg_input_read_gamepad_raw(uint32_t *out)
 {
+    RG_ASSERT(out, "bad param");
     uint32_t state = 0;
 
 #if defined(RG_GAMEPAD_ADC1_MAP)
@@ -142,7 +154,8 @@ static inline uint32_t gamepad_read(void)
         state = RG_KEY_OPTION;
 #endif
 
-    return state;
+    *out = state;
+    return true;
 }
 
 static void input_task(void *arg)
@@ -150,43 +163,48 @@ static void input_task(void *arg)
     const uint8_t debounce_level = 0x03;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
-    uint32_t loop_count = 0;
+    uint32_t state;
+    int64_t next_battery_update = 0;
 
     memset(debounce, debounce_level, sizeof(debounce));
     input_task_running = true;
 
     while (input_task_running)
     {
-        uint32_t state = gamepad_read();
-
-        for (int i = 0; i < RG_KEY_COUNT; ++i)
+        if (rg_input_read_gamepad_raw(&state))
         {
-            debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
-            debounce[i] &= debounce_level;
+            for (int i = 0; i < RG_KEY_COUNT; ++i)
+            {
+                debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
+                debounce[i] &= debounce_level;
 
-            if (debounce[i] == debounce_level) // Pressed
-            {
-                local_gamepad_state |= (1 << i);
+                if (debounce[i] == debounce_level) // Pressed
+                {
+                    local_gamepad_state |= (1 << i);
+                }
+                else if (debounce[i] == 0x00) // Released
+                {
+                    local_gamepad_state &= ~(1 << i);
+                }
             }
-            else if (debounce[i] == 0x00) // Released
-            {
-                local_gamepad_state &= ~(1 << i);
-            }
+            gamepad_state = local_gamepad_state;
         }
 
-        gamepad_state = local_gamepad_state;
-
-        if ((loop_count % 100) == 0)
+        if (rg_system_timer() >= next_battery_update)
         {
-            int level = battery_read();
-            if (level > 0 && battery_level > 0)
-                battery_level = (battery_level + level) / 2;
-            else
-                battery_level = level;
+            rg_battery_t temp = {0};
+            if (rg_input_read_battery_raw(&temp))
+            {
+                if (fabsf(battery_state.level - temp.level) < 1.0f)
+                    temp.level = battery_state.level;
+                if (fabsf(battery_state.volts - temp.volts) < 0.010f)
+                    temp.volts = battery_state.volts;
+            }
+            battery_state = temp;
+            next_battery_update = rg_system_timer() + 2 * 1000000;
         }
 
         rg_task_delay(10);
-        loop_count++;
     }
 
     input_task_running = false;
@@ -195,8 +213,7 @@ static void input_task(void *arg)
 
 void rg_input_init(void)
 {
-    if (input_task_running)
-        return;
+    RG_ASSERT(!input_task_running, "Input already initialized!");
 
 #if defined(RG_GAMEPAD_ADC1_MAP)
     RG_LOGI("Initializing ADC1 gamepad driver...");
@@ -305,21 +322,9 @@ bool rg_input_wait_for_key(rg_key_t mask, bool pressed, int timeout_ms)
     return true;
 }
 
-bool rg_input_read_battery(float *percent, float *volts)
+rg_battery_t rg_input_read_battery(void)
 {
-    if (battery_level < 0) // No battery or error?
-        return false;
-
-    if (percent)
-    {
-        *percent = RG_BATTERY_CALC_PERCENT(battery_level);
-        *percent = RG_MAX(0.f, RG_MIN(100.f, *percent));
-    }
-
-    if (volts)
-        *volts = RG_BATTERY_CALC_VOLTAGE(battery_level);
-
-    return true;
+    return battery_state;
 }
 
 const char *rg_input_get_key_name(rg_key_t key)

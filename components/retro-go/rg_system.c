@@ -169,20 +169,6 @@ static void update_statistics(void)
         statistics.partialFPS = partFrames / totalTimeSecs;
     }
 
-    float batteryPercent, batteryVolts;
-    if (rg_input_read_battery(&batteryPercent, &batteryVolts))
-    {
-        if (fabsf(statistics.batteryLevel - batteryPercent) >= 1.0f)
-            statistics.batteryLevel = batteryPercent;
-        if (fabsf(statistics.batteryVolts - batteryVolts) >= 0.010f)
-            statistics.batteryVolts = batteryVolts;
-    }
-    else
-    {
-        statistics.batteryLevel = -1;
-        statistics.batteryVolts = -1;
-    }
-
     update_memory_statistics();
 }
 
@@ -197,6 +183,15 @@ static void system_monitor_task(void *arg)
     {
         update_statistics();
 
+        rg_battery_t battery = rg_input_read_battery();
+        if (battery.present)
+        {
+            if (battery.level < 2)
+                rg_system_set_led((batteryLedState ^= 1));
+            else if (batteryLedState)
+                rg_system_set_led((batteryLedState = 0));
+        }
+
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
             statistics.freeStackMain,
@@ -209,12 +204,7 @@ static void system_monitor_task(void *arg)
             (int)roundf(statistics.skippedFPS),
             (int)roundf(statistics.partialFPS),
             (int)roundf(statistics.fullFPS),
-            (int)roundf((statistics.batteryVolts * 1000) ?: statistics.batteryLevel));
-
-        if (statistics.batteryLevel < 2)
-            rg_system_set_led((batteryLedState ^= 1));
-        else if (batteryLedState)
-            rg_system_set_led((batteryLedState = 0));
+            (int)roundf((battery.volts * 1000) ?: battery.level));
 
         // Auto frameskip
         if (statistics.ticks > app.tickRate)

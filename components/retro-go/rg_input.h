@@ -47,11 +47,22 @@ typedef struct
     int src;
 } rg_keymap_t;
 
+typedef struct
+{
+    float level;
+    float volts;
+    bool present;
+    bool charging;
+} rg_battery_t;
+
 void rg_input_init(void);
 void rg_input_deinit(void);
 bool rg_input_key_is_pressed(rg_key_t mask);
 bool rg_input_wait_for_key(rg_key_t mask, bool pressed, int timeout_ms);
 const char *rg_input_get_key_name(rg_key_t key);
 uint32_t rg_input_read_gamepad(void);
-bool rg_input_read_battery(float *percent, float *volts);
 int rg_input_read_keyboard(void);
+rg_battery_t rg_input_read_battery(void);
+bool rg_input_read_gamepad_raw(uint32_t *out);
+bool rg_input_read_keyboard_raw(int *out);
+bool rg_input_read_battery_raw(rg_battery_t *out);

@@ -490,20 +490,20 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 void rg_gui_draw_icons(void)
 {
     const rg_app_t *app = rg_system_get_app();
-    rg_network_t net = rg_network_get_info();
+    rg_battery_t battery = rg_input_read_battery();
+    rg_network_t network = rg_network_get_info();
     rg_rect_t txt = TEXT_RECT("00:00", 0);
     int right = 0;
     int top = app->isLauncher ? 0 : -1;
-    float batteryLevel = rg_system_get_counters().batteryLevel;
 
-    if (batteryLevel >= 0)
+    if (battery.present)
     {
         right += 22;
 
         int width = 16;
         int height = 10;
-        int width_fill = width / 100.f * batteryLevel;
-        rg_color_t color_fill = (batteryLevel > 20 ? (batteryLevel > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
+        int width_fill = width / 100.f * battery.level;
+        rg_color_t color_fill = (battery.level > 20 ? (battery.level > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
         rg_color_t color_border = C_SILVER;
         rg_color_t color_empty = C_BLACK;
 
@@ -516,7 +516,7 @@ void rg_gui_draw_icons(void)
         rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
     }
 
-    if (net.state > RG_NETWORK_DISCONNECTED)
+    if (network.state > RG_NETWORK_DISCONNECTED)
     {
         right += 22;
 
@@ -526,8 +526,8 @@ void rg_gui_draw_icons(void)
         int width = 16;
         int height = 10;
         int seg_width = (width - 2 - 2) / 3;
-        rg_color_t color_fill = (net.state == RG_NETWORK_CONNECTED) ? C_GREEN : C_NONE;
-        rg_color_t color_border = (net.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
+        rg_color_t color_fill = (network.state == RG_NETWORK_CONNECTED) ? C_GREEN : C_NONE;
+        rg_color_t color_border = (network.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
         y_pos += height * 0.6;
         rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.4, 1, color_border, color_fill);
@@ -1483,10 +1483,10 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
-    float batteryPct, batteryVlt;
-    if (rg_input_read_battery(&batteryPct, &batteryVlt))
+    rg_battery_t battery;
+    if (rg_input_read_battery_raw(&battery))
     {
-        snprintf(battery_info, sizeof(battery_info), "%.2f%% | %.2fV", batteryPct, batteryVlt);
+        snprintf(battery_info, sizeof(battery_info), "%.2f%% | %.2fV", battery.level, battery.volts);
     }
     else
     {
