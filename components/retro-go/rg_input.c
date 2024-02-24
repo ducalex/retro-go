@@ -60,7 +60,6 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 
 bool rg_input_read_gamepad_raw(uint32_t *out)
 {
-    RG_ASSERT(out, "bad param");
     uint32_t state = 0;
 
 #if defined(RG_GAMEPAD_ADC1_MAP)
@@ -154,7 +153,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
         state = RG_KEY_OPTION;
 #endif
 
-    *out = state;
+    if (out) *out = state;
     return true;
 }
 
@@ -248,7 +247,8 @@ void rg_input_init(void)
 
     RG_LOGI("Initializing I2C gamepad driver...");
     rg_i2c_init();
-    gamepad_read();
+    // The first read returns bogus data, waste it.
+    rg_input_read_gamepad_raw(NULL);
 
 #elif RG_GAMEPAD_DRIVER == 4 // I2C w/AW9523
 
