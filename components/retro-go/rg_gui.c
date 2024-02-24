@@ -1441,16 +1441,16 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
 void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 {
-    char screen_res[20], source_res[20], scaled_res[20];
+    char screen_res[20], source_res[20], scaled_res[20], frame_time[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
     char battery_info[25];
 
-
     const rg_gui_option_t options[] = {
-        {0, "Screen Res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Source Res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Scaled Res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Source res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Scaled res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Frame time", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1469,6 +1469,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     };
 
     const rg_display_t *display = rg_display_get_info();
+    rg_display_counters_t display_stats = rg_display_get_counters();
     rg_stats_t stats = rg_system_get_counters();
     time_t now = time(NULL);
 
@@ -1477,6 +1478,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(screen_res, 20, "%dx%d", display->screen.width, display->screen.height);
     snprintf(source_res, 20, "%dx%d", display->source.width, display->source.height);
     snprintf(scaled_res, 20, "%dx%d", display->viewport.width, display->viewport.height);
+    snprintf(frame_time, 20, "%dms", (int)((display_stats.busyTime / display_stats.totalFrames) / 1000));
     snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
