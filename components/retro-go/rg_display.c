@@ -147,7 +147,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY_7, 1);
 }
 
 static void spi_deinit(void)
@@ -261,7 +261,7 @@ static void lcd_init(void)
     ILI9341_CMD(0x29);  // Display on
 
     rg_display_clear(C_BLACK);
-    rg_task_delay(10);
+    rg_usleep(10 * 1000);
     lcd_set_backlight(config.backlight);
 }
 
@@ -915,8 +915,10 @@ void rg_display_deinit(void)
 {
     void *stop = (void *)-1;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
-    while (display_task_queue)
-        rg_task_delay(1);
+    // display_task_queue has len == 1. When xQueueSend returns, we know that the only
+    // thing in it is our quit request which won't touch the LCD or SPI anymore
+    // while (display_task_queue)
+    //     rg_task_yield();
     lcd_deinit();
     RG_LOGI("Display terminated.\n");
 }
@@ -940,7 +942,7 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
+    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, RG_TASK_PRIORITY_6, 1);
     if (config.border_file)
         load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");

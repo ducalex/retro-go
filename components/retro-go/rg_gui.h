@@ -32,8 +32,7 @@ enum
     RG_TEXT_ALIGN_RIGHT  = (1 << 3),
     RG_TEXT_DUMMY_DRAW   = (1 << 4),
     RG_TEXT_NO_PADDING   = (1 << 5),
-    RG_TEXT_DOUBLE_WIDTH = (1 << 6),
-    RG_TEXT_DOUBLE_HEIGHT= (1 << 7),
+    RG_TEXT_BIGGER       = (1 << 6),
 };
 
 enum

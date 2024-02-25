@@ -146,6 +146,11 @@ static void update_statistics(void)
     counters.ticks = statistics.ticks;
     counters.updateTime = statistics.lastTick;
 
+    // We prefer to use the tick time for more accurate FPS
+    // but if we're not ticking, we need to use current time
+    if (counters.ticks == previous.ticks)
+        counters.updateTime = rg_system_timer();
+
     if (counters.ticks && previous.ticks)
     {
         float totalTime = counters.updateTime - previous.updateTime;
@@ -173,12 +178,16 @@ static void update_statistics(void)
 static void system_monitor_task(void *arg)
 {
     bool batteryLedState = false;
+    int64_t nextLoopTime = 0;
 
     // Give the app 30 seconds to start ticking
     WDT_RELOAD(30 * 1000000);
 
     while (!exitCalled)
     {
+        nextLoopTime = rg_system_timer() + 1000000;
+        rtcValue = time(NULL);
+
         update_statistics();
 
         rg_battery_t battery = rg_input_read_battery();
@@ -215,7 +224,7 @@ static void system_monitor_task(void *arg)
                 app.frameskip--;
                 RG_LOGI("Reduced frameskip to %d", app.frameskip);
             }
-            else if (speed < 95.f && statistics.busyPercent > 85.f && app.frameskip < 5)
+            else if (speed < 96.f && statistics.busyPercent > 85.f && app.frameskip < 5)
             {
                 app.frameskip++;
                 RG_LOGI("Raised frameskip to %d", app.frameskip);
@@ -231,8 +240,10 @@ static void system_monitor_task(void *arg)
             WDT_RELOAD(WDT_TIMEOUT);
         }
 
-        rg_task_delay(1000);
-        rtcValue = time(NULL);
+        if (nextLoopTime > rg_system_timer())
+        {
+            rg_task_delay((nextLoopTime - rg_system_timer()) / 1000 + 1);
+        }
     }
 }
 
@@ -426,7 +437,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = xSemaphoreCreateMutex();
 #endif
 
-    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY, -1);
+    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
 
     app.initialized = true;
 
@@ -497,13 +508,20 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
 
 void rg_task_delay(int ms)
 {
-    // Note: rg_task_delay MUST yield at least once, even if ms = 0
-    // Keep in mind that delay may not be very accurate, use rg_usleep().
 #ifdef ESP_PLATFORM
     vTaskDelay(pdMS_TO_TICKS(ms));
 #else
     SDL_PumpEvents();
     SDL_Delay(ms);
+#endif
+}
+
+void rg_task_yield(void)
+{
+#ifdef ESP_PLATFORM
+    vPortYield();
+#else
+    SDL_PumpEvents();
 #endif
 }
 

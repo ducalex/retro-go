@@ -330,7 +330,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = (flags & RG_TEXT_DOUBLE_HEIGHT) ? gui.style.font_points * 2 : gui.style.font_points;
+    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_points * 2 : gui.style.font_points;
     int line_height = font_height + padding * 2;
     int line_count = 0;
     const rg_font_t *font = gui.style.font;
@@ -822,7 +822,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
-    rg_task_delay(50);
+    rg_task_delay(80);
 
     rg_gui_event_t event = RG_DIALOG_VOID;
     uint32_t joystick = 0, joystick_old;
@@ -883,7 +883,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                     break;
 
                 // Otherwise move to the next
-                sel += (joystick == RG_KEY_DOWN) ? 1 : -1;
+                sel += (joystick == RG_KEY_UP) ? -1 : 1;
 
                 if (sel < 0)
                     sel = options_count - 1;
@@ -1444,7 +1444,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
-    char battery_info[25], frame_time[20];
+    char battery_info[25], frame_time[32];
 
     const rg_gui_option_t options[] = {
         {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1479,7 +1479,11 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(source_res, 20, "%dx%d", display->source.width, display->source.height);
     snprintf(scaled_res, 20, "%dx%d", display->viewport.width, display->viewport.height);
     if (display_stats.totalFrames > 0)
-        snprintf(frame_time, 20, "%dms", (int)((display_stats.busyTime / display_stats.totalFrames) / 1000));
+    {
+        int ms = (float)display_stats.busyTime / display_stats.totalFrames / 1000.f;
+        int full = (float)display_stats.fullFrames / display_stats.totalFrames * 100.f;
+        snprintf(frame_time, 20, "%dms (FULL: %d%%)", ms, full);
+    }
     else
         snprintf(frame_time, 20, "N/A");
     snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
@@ -1547,7 +1551,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
         rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_points * 2 + 6, 0, C_BLACK, C_BLACK);
-        rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_DOUBLE_HEIGHT|RG_TEXT_NO_PADDING);
+        rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
         rg_image_free(preview);
     }
     else if (event == RG_DIALOG_ENTER)

@@ -130,8 +130,8 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
             RG_LOGE("Write failure at %d bytes", received);
             break;
         }
-        rg_task_delay(0);
         received += length;
+        rg_task_yield();
     }
 
     fclose(fp);
@@ -177,7 +177,10 @@ static esp_err_t http_download_handler(httpd_req_t *req)
             httpd_resp_set_type(req, "application/binary");
 
         for (size_t len; (len = fread(http_buffer, 1, 0x8000, fp));)
+        {
             httpd_resp_send_chunk(req, http_buffer, len);
+            rg_task_yield();
+        }
 
         httpd_resp_send_chunk(req, NULL, 0);
         fclose(fp);

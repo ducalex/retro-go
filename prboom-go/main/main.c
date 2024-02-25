@@ -116,10 +116,9 @@ static rg_gui_event_t gamma_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (gamma != usegamma)
     {
         usegamma = gamma;
-        I_SetPalette(current_palette);
-        rg_display_submit(&update, 0);
         rg_settings_set_number(NS_APP, SETTING_GAMMA, gamma);
-        rg_task_delay(50);
+        I_SetPalette(current_palette);
+        return RG_DIALOG_REDRAW;
     }
 
     sprintf(option->value, "%d/%d", gamma, max);
@@ -355,7 +354,7 @@ void I_InitSound(void)
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    rg_task_create("doom_sound", &soundTask, NULL, 2048, 5, 1);
+    rg_task_create("doom_sound", &soundTask, NULL, 2048, RG_TASK_PRIORITY_2, 1);
 }
 
 void I_ShutdownSound(void)

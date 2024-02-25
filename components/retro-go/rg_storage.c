@@ -173,6 +173,12 @@ void rg_storage_init(void)
 
 void rg_storage_deinit(void)
 {
+    if (!disk_mounted)
+    {
+        RG_LOGW("Nothing to do.\n");
+        return;
+    }
+
     rg_storage_commit();
 
     int error_code = 0;

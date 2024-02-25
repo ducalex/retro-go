@@ -283,9 +283,9 @@ void rg_input_init(void)
 #endif
 
     // Start background polling
-    rg_task_create("rg_input", &input_task, NULL, 3 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_input", &input_task, NULL, 3 * 1024, RG_TASK_PRIORITY_6, 1);
     while (gamepad_state == -1)
-        rg_task_delay(1);
+        rg_task_yield();
     RG_LOGI("Input ready. state=" PRINTF_BINARY_16 "\n", PRINTF_BINVAL_16(gamepad_state));
 }
 
@@ -293,7 +293,7 @@ void rg_input_deinit(void)
 {
     input_task_running = false;
     // while (gamepad_state != -1)
-    //     rg_task_delay(1);
+    //     rg_task_yield();
     RG_LOGI("Input terminated.\n");
 }
 

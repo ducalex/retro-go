@@ -147,7 +147,7 @@ static void audioTask(void *arg)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
-            rg_task_delay(20);
+            rg_task_yield();
         psg_update((void*)audioBuffer, numSamples, 0xFF);
         rg_audio_submit(audioBuffer, numSamples);
     }
@@ -208,7 +208,7 @@ void pce_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     emulationPaused = true;
-    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, 5, 1);
+    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);

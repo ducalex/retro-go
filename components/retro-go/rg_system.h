@@ -65,6 +65,20 @@ enum
     // bits 8-31: unused...
 };
 
+// RG_TASK_PRIORITY_1 is the same as the main task's. Anything
+// higher will run even if main task never yields
+typedef enum
+{
+    RG_TASK_PRIORITY_1 = 1,
+    RG_TASK_PRIORITY_2,
+    RG_TASK_PRIORITY_3,
+    RG_TASK_PRIORITY_4,
+    RG_TASK_PRIORITY_5,
+    RG_TASK_PRIORITY_6,
+    RG_TASK_PRIORITY_7,
+    RG_TASK_PRIORITY_8,
+} rg_task_priority_t;
+
 enum
 {
     RG_LOG_PRINT = 0,
@@ -221,7 +235,11 @@ void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
+// The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
+// to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
+// is more accurate but rg_task_delay is more multitasking-friendly.
 void rg_task_delay(int ms);
+void rg_task_yield(void);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

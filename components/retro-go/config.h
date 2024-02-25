@@ -30,12 +30,6 @@
 // #define RG_ENABLE_PROFILING 0
 // #endif
 
-// This is the base task priority used for system tasks.
-// It should be higher than user tasks but lower than esp-idf's tasks.
-#ifndef RG_TASK_PRIORITY
-#define RG_TASK_PRIORITY 10
-#endif
-
 #ifndef RG_APP_LAUNCHER
 #define RG_APP_LAUNCHER "launcher"
 #endif
