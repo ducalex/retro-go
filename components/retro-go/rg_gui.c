@@ -1368,7 +1368,7 @@ void rg_gui_sysinfo_menu(void)
 
     snprintf(screen_str, 32, "%dx%d (%d)", display->screen.width, display->screen.height, display->screen.format);
     snprintf(memory_str, 32, "%dKB + %dKB", stats.totalMemoryInt / 1024, stats.totalMemoryExt / 1024);
-    snprintf(uptime, 32, "%ds", (int)(rg_system_timer() / 1000000));
+    snprintf(uptime, 32, "%ds", stats.uptime);
     snprintf(storage_str, 32, "%s", "N/A");
 
 #ifdef RG_ENABLE_NETWORKING
