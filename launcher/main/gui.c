@@ -13,6 +13,7 @@
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
 retro_gui_t gui;
+rg_video_update_t update;
 
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
@@ -49,7 +50,9 @@ void gui_init(void)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
                  (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_update_theme();
-    rg_gui_set_buffered(true);
+
+    update.buffer = rg_alloc(gui.width * gui.height * 2, MEM_SLOW);
+    rg_display_set_source_format(gui.width, gui.height, 0, 0, gui.width * 2, RG_PIXEL_565_LE);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -369,6 +372,9 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 
 void gui_redraw(void)
 {
+    rg_display_sync(true);
+    rg_gui_set_buffered(update.buffer);
+
     tab_t *tab = gui_get_current_tab();
     if (!tab)
     {
@@ -392,7 +398,9 @@ void gui_redraw(void)
         gui_draw_background(tab, 0);
         gui_draw_header(tab, (gui.height - HEADER_HEIGHT) / 2);
     }
-    rg_gui_flush();
+
+    rg_gui_set_buffered(NULL);
+    rg_display_submit(&update, 0);
 }
 
 void gui_draw_background(tab_t *tab, int shade)

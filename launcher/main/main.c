@@ -270,37 +270,7 @@ static void retro_loop(void)
             rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
             redraw_pending = true;
             rg_task_delay(100);
-            goto next_tick;
-        }
-
-        if (!tab->enabled && !change_tab)
-        {
-            change_tab = 1;
-        }
-
-        if (change_tab || gui.browse != browse_last)
-        {
-            if (change_tab)
-            {
-                gui_event(TAB_LEAVE, tab);
-                tab = gui_set_current_tab(gui.selected_tab + change_tab);
-                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
-                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
-                change_tab = 0;
-            }
-
-            if (gui.browse)
-            {
-                if (!tab->initialized)
-                {
-                    gui_redraw();
-                    gui_init_tab(tab);
-                }
-                gui_event(TAB_ENTER, tab);
-            }
-
-            browse_last = gui.browse;
-            redraw_pending = true;
+            continue;
         }
 
         prev_joystick = gui.joystick;
@@ -334,6 +304,38 @@ static void retro_loop(void)
             gui_update_theme();
             gui_save_config();
             rg_settings_commit();
+            redraw_pending = true;
+        }
+
+        int64_t start_time = rg_system_timer();
+
+        if (!tab->enabled && !change_tab)
+        {
+            change_tab = 1;
+        }
+
+        if (change_tab || gui.browse != browse_last)
+        {
+            if (change_tab)
+            {
+                gui_event(TAB_LEAVE, tab);
+                tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
+                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                change_tab = 0;
+            }
+
+            if (gui.browse)
+            {
+                if (!tab->initialized)
+                {
+                    gui_redraw();
+                    gui_init_tab(tab);
+                }
+                gui_event(TAB_ENTER, tab);
+            }
+
+            browse_last = gui.browse;
             redraw_pending = true;
         }
 
@@ -388,6 +390,8 @@ static void retro_loop(void)
             gui_redraw();
         }
 
+        rg_system_tick(rg_system_timer() - start_time);
+
         if ((gui.joystick|joystick) & RG_KEY_ANY)
         {
             gui.idle_counter = 0;
@@ -406,9 +410,6 @@ static void retro_loop(void)
         {
             rg_task_delay(10);
         }
-
-next_tick:
-        rg_system_tick(0);
     }
 }
 

@@ -106,9 +106,7 @@ struct rg_gui_option_s
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
-void rg_gui_flush(void); // no effect if buffered = false
-void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui screen buffering into account
-void rg_gui_set_buffered(bool buffered);
+void rg_gui_set_buffered(uint16_t *framebuffer);
 bool rg_gui_set_font_type(int type);
 bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);

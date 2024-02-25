@@ -214,18 +214,9 @@ bool rg_gui_set_font_type(int type)
     return true;
 }
 
-void rg_gui_set_buffered(bool buffered)
+void rg_gui_set_buffered(uint16_t *framebuffer)
 {
-    if (!buffered)
-        free(gui.screen_buffer), gui.screen_buffer = NULL;
-    else if (!gui.screen_buffer)
-        gui.screen_buffer = rg_alloc(gui.screen_width * gui.screen_height * 2, MEM_SLOW);
-}
-
-void rg_gui_flush(void)
-{
-    if (gui.screen_buffer)
-        rg_display_write(0, 0, gui.screen_width, gui.screen_height, 0, gui.screen_buffer, 0);
+    gui.screen_buffer = framebuffer;
 }
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
@@ -564,18 +555,6 @@ void rg_gui_draw_hourglass(void)
         (uint16_t*)image_hourglass.pixel_data, 0);
 }
 
-void rg_gui_clear(rg_color_t color)
-{
-    if (gui.screen_buffer)
-    {
-        size_t pixels = gui.screen_width * gui.screen_height;
-        while (pixels > 0)
-            gui.screen_buffer[--pixels] = color;
-    }
-    else
-        rg_display_clear(color);
-}
-
 void rg_gui_draw_status_bars(void)
 {
     size_t max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99) + 1;
@@ -785,8 +764,6 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
         rg_gui_draw_rect(x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
     }
-
-    rg_gui_flush();
 }
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
@@ -1038,8 +1015,6 @@ void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_
         buf[0] = map->data[i];
         rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
     }
-
-    rg_gui_flush();
 }
 
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
