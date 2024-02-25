@@ -19,8 +19,8 @@ static struct
     struct
     {
         const rg_font_t *font;
-        int font_type;
-        int font_points;
+        int font_height;
+        int font_width;
         rg_color_t box_background;
         rg_color_t box_header;
         rg_color_t box_border;
@@ -31,6 +31,7 @@ static struct
     } style;
     char theme_name[32];
     cJSON *theme_obj;
+    int font_index;
     bool show_clock;
     bool initialized;
 } gui;
@@ -98,7 +99,7 @@ void rg_gui_init(void)
     gui.screen_width = rg_display_get_info()->screen.width;
     gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
-    rg_gui_set_font_type(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
+    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
     gui.initialized = true;
@@ -181,9 +182,9 @@ rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color
 rg_image_t *rg_gui_get_theme_image(const char *name)
 {
     char pathbuf[RG_PATH_MAX];
-    if (!name || !rg_gui_get_theme_name())
+    if (!name || !gui.theme_name[0])
         return NULL;
-    snprintf(pathbuf, RG_PATH_MAX, "%s/%s/%s", RG_BASE_PATH_THEMES, rg_gui_get_theme_name(), name);
+    snprintf(pathbuf, RG_PATH_MAX, "%s/%s/%s", RG_BASE_PATH_THEMES, gui.theme_name, name);
     return rg_image_load_from_file(pathbuf, 0);
 }
 
@@ -192,24 +193,22 @@ const char *rg_gui_get_theme_name(void)
     return gui.theme_name[0] ? gui.theme_name : NULL;
 }
 
-bool rg_gui_set_font_type(int type)
+bool rg_gui_set_font(int index)
 {
-    if (type < 0)
-        type += RG_FONT_MAX;
-
-    if (type < 0 || type > RG_FONT_MAX - 1)
+    if (index < 0 || index > RG_FONT_MAX - 1)
         return false;
 
-    const rg_font_t *font = fonts[type];
+    const rg_font_t *font = fonts[index];
 
+    gui.font_index = index;
     gui.style.font = font;
-    gui.style.font_type = type;
-    gui.style.font_points = (type < 3) ? (8 + type * 4) : font->height;
+    gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
+    gui.style.font_width = font->width ?: 8;
 
-    rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, type);
+    rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
     RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
-        gui.style.font_points, (float)gui.style.font_points / font->height);
+        gui.style.font_height, (float)gui.style.font_height / font->height);
 
     return true;
 }
@@ -247,12 +246,12 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
 }
 
-static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, uint8_t c)
+static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, int c)
 {
     size_t glyph_width = 8;
 
     // Some glyphs are always zero width
-    if (c == '\r' || c == '\n')
+    if (c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
     if (font->type == 0) // Bitmap
@@ -321,7 +320,8 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_points * 2 : gui.style.font_points;
+    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
+    int monospace = ((flags & RG_TEXT_MONOSPACE) || gui.style.font->type == 0) ? gui.style.font_width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
     const rg_font_t *font = gui.style.font;
@@ -336,7 +336,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         for (const char *ptr = text; *ptr;)
         {
             int chr = *ptr++;
-            line_width += get_glyph(NULL, font, font_height, chr);
+            line_width += monospace ?: get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
             {
@@ -369,7 +369,8 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int width = get_glyph(0, font, font_height, *line++);
+                int chr = *line++;
+                int width = monospace ?: get_glyph(NULL, font, font_height, chr);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
                 x_offset += width;
@@ -388,7 +389,8 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         while (x_offset < draw_width)
         {
             uint16_t bitmap[32] = {0};
-            int width = get_glyph(bitmap, font, font_height, *ptr++);
+            int glyph_width = get_glyph(bitmap, font, font_height, *ptr++);
+            int width = monospace ?: glyph_width;
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
             {
@@ -557,7 +559,7 @@ void rg_gui_draw_hourglass(void)
 
 void rg_gui_draw_status_bars(void)
 {
-    size_t max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font->width, 7), 99) + 1;
+    size_t max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font_width, 7), 99) + 1;
     char header[max_len];
     char footer[max_len];
 
@@ -601,7 +603,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 {
     const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
-    const int font_height = gui.style.font_points;
+    const int font_height = gui.style.font_height;
     const int max_box_width = 0.82f * gui.screen_width;
     const int max_box_height = 0.82f * gui.screen_height;
     const int box_padding = 6;
@@ -1218,6 +1220,7 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
     {
         gui.show_clock = !gui.show_clock;
         rg_settings_set_number(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
+        return RG_DIALOG_REDRAW;
     }
     strcpy(option->value, gui.show_clock ? "On " : "Off");
     return RG_DIALOG_VOID;
@@ -1225,19 +1228,11 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        if (event == RG_DIALOG_PREV && !rg_gui_set_font_type(gui.style.font_type - 1))
-        {
-            rg_gui_set_font_type(0);
-        }
-        if (event == RG_DIALOG_NEXT && !rg_gui_set_font_type(gui.style.font_type + 1))
-        {
-            rg_gui_set_font_type(0);
-        }
+    if (event == RG_DIALOG_PREV && rg_gui_set_font(gui.font_index - 1))
         return RG_DIALOG_REDRAW;
-    }
-    sprintf(option->value, "%s %d", gui.style.font->name, gui.style.font_points);
+    if (event == RG_DIALOG_NEXT && rg_gui_set_font(gui.font_index + 1))
+        return RG_DIALOG_REDRAW;
+    sprintf(option->value, "%s %d", gui.style.font->name, gui.style.font_height);
     return RG_DIALOG_VOID;
 }
 
@@ -1525,7 +1520,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         }
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
-        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_points * 2 + 6, 0, C_BLACK, C_BLACK);
+        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
         rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
         rg_image_free(preview);
     }

@@ -397,6 +397,7 @@ void gui_redraw(void)
     {
         gui_draw_background(tab, 0);
         gui_draw_header(tab, (gui.height - HEADER_HEIGHT) / 2);
+        // gui_draw_tab_indicator();
     }
 
     rg_gui_set_buffered(NULL);
@@ -436,6 +437,16 @@ void gui_draw_header(tab_t *tab, int offset)
 {
     rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, gui_get_image("logo", tab->name));
     rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, gui_get_image("banner", tab->name));
+}
+
+void gui_draw_tab_indicator(void)
+{
+    char buffer[64] = {0};
+    memset(buffer, '-', gui.tabs_count);
+    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_DIM_GRAY, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
+    memset(buffer, ' ', gui.tabs_count);
+    buffer[gui.selected_tab] = '-';
+    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_SNOW, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
 }
 
 void gui_draw_status(tab_t *tab)

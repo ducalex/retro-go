@@ -33,6 +33,7 @@ enum
     RG_TEXT_DUMMY_DRAW   = (1 << 4),
     RG_TEXT_NO_PADDING   = (1 << 5),
     RG_TEXT_BIGGER       = (1 << 6),
+    RG_TEXT_MONOSPACE    = (1 << 7),
 };
 
 enum
@@ -52,10 +53,10 @@ typedef struct
 
 typedef struct
 {
-    uint8_t type;
-    uint8_t width; // In prop fonts this must be set to avg char width
-    uint8_t height;
-    uint8_t chars;
+    uint8_t type;   // 0=bitmap, 1=prop
+    uint8_t width;  // width of largest glyph
+    uint8_t height; // height of tallest glyph
+    uint8_t chars;  // glyph count
     char name[16];
     uint8_t data[];
 } rg_font_t;
@@ -107,7 +108,7 @@ struct rg_gui_option_s
 
 void rg_gui_init(void);
 void rg_gui_set_buffered(uint16_t *framebuffer);
-bool rg_gui_set_font_type(int type);
+bool rg_gui_set_font(int index);
 bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
