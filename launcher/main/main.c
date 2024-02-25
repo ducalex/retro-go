@@ -269,11 +269,8 @@ static void retro_loop(void)
         {
             rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
             redraw_pending = true;
-            while (gui.http_lock)
-            {
-                rg_task_delay(100);
-                rg_system_tick(0);
-            }
+            rg_task_delay(100);
+            goto next_tick;
         }
 
         if (!tab->enabled && !change_tab)
@@ -410,6 +407,7 @@ static void retro_loop(void)
             rg_task_delay(10);
         }
 
+next_tick:
         rg_system_tick(0);
     }
 }

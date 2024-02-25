@@ -78,16 +78,12 @@ static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
 static int ledValue = -1;
-static int64_t watchdogTimer = INT64_MAX;
 static bool exitCalled = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
-
-#define WDT_TIMEOUT (10 * 1000000)
-#define WDT_RELOAD(val) watchdogTimer = rg_system_timer() + (val)
 
 #define logbuf_putc(buf, c) (buf)->console[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
@@ -180,9 +176,6 @@ static void system_monitor_task(void *arg)
     bool batteryLedState = false;
     int64_t nextLoopTime = 0;
 
-    // Give the app 30 seconds to start ticking
-    WDT_RELOAD(30 * 1000000);
-
     while (!exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
@@ -231,13 +224,17 @@ static void system_monitor_task(void *arg)
             }
         }
 
-        if (watchdogTimer <= rg_system_timer())
+        if (statistics.lastTick < rg_system_timer() - 4000000)
         {
-            if (app.watchdog)
-                RG_PANIC("Application unresponsive!");
-            else
-                RG_LOGW("Application unresponsive!");
-            WDT_RELOAD(WDT_TIMEOUT);
+            // App hasn't ticked in a while, listen for MENU presses to give feedback to the user
+            if (rg_input_wait_for_key(RG_KEY_MENU, true, 1000))
+            {
+                const char *message = "App unresponsive... Hold MENU to quit!";
+                // Drawing at this point isn't safe. But the alternative is being frozen...
+                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, message, C_RED, C_BLACK, RG_TEXT_BIGGER);
+                if (!rg_input_wait_for_key(RG_KEY_MENU, false, 2000))
+                    RG_PANIC("Application terminated!"); // We're not in a nice state, don't normal exit
+            }
         }
 
         if (nextLoopTime > rg_system_timer())
@@ -592,7 +589,7 @@ void rg_system_tick(int busyTime)
     statistics.lastTick = rg_system_timer();
     statistics.busyTime += busyTime;
     statistics.ticks++;
-    WDT_RELOAD(WDT_TIMEOUT);
+    // WDT_RELOAD(WDT_TIMEOUT);
 }
 
 IRAM_ATTR int64_t rg_system_timer(void)
@@ -699,7 +696,6 @@ bool rg_emu_load_state(uint8_t slot)
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
     RG_LOGI("Loading state from '%s'.\n", filename);
-    WDT_RELOAD(30 * 1000000);
 
     rg_gui_draw_hourglass();
 
@@ -712,7 +708,6 @@ bool rg_emu_load_state(uint8_t slot)
         emu_update_save_slot(slot);
     }
 
-    WDT_RELOAD(WDT_TIMEOUT);
     free(filename);
 
     return success;
@@ -731,7 +726,6 @@ bool rg_emu_save_state(uint8_t slot)
     bool success = false;
 
     RG_LOGI("Saving state to '%s'.\n", filename);
-    WDT_RELOAD(30 * 1000000);
 
     rg_system_set_led(1);
     rg_gui_draw_hourglass();
@@ -773,8 +767,6 @@ bool rg_emu_save_state(uint8_t slot)
 
     #undef tempname
     free(filename);
-
-    WDT_RELOAD(WDT_TIMEOUT);
 
     rg_storage_commit();
     rg_system_set_led(0);

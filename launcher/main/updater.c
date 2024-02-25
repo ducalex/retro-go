@@ -59,7 +59,6 @@ static int download_file(const char *url, const char *filename)
         fwrite(buffer, 1, len, fp);
         sprintf(buffer, "Received %d / %d", received, req->content_length);
         rg_gui_draw_dialog(buffer, NULL, 0);
-        rg_system_tick(0);
     }
 
     if (req->content_length == received)
