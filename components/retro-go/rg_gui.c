@@ -944,7 +944,7 @@ static int file_picker_cb(const rg_scandir_t *entry, void *arg)
 {
     file_picker_opts_t *f = arg;
     if (f->validator && !(f->validator)(entry->path))
-        return RG_SCANDIR_STOP;
+        return RG_SCANDIR_SKIP;
     char *path = strdup(entry->path);
     f->options[f->count].arg = (intptr_t)path;
     f->options[f->count].flags = RG_DIALOG_FLAG_NORMAL;
