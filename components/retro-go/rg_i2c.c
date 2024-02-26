@@ -151,8 +151,11 @@ bool rg_i2c_gpio_init(void)
     rg_usleep(10 * 1000);
 
     uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
-    RG_LOGI("AW9523 ID code 0x%x found\n", id);
-    RG_ASSERT(id == 0x23, "Invalid AW9523 ID");
+    if (id != 0x23)
+    {
+        RG_LOGE("AW9523 invalid ID 0x%x found", id);
+        return false;
+    }
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);

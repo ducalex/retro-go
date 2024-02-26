@@ -957,13 +957,14 @@ static int file_picker_cb(const rg_scandir_t *entry, void *arg)
 
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option)
 {
-    RG_ASSERT(title && path, "Bad param");
-
     file_picker_opts_t options = {
         .options = {},
         .count = 0,
         .validator = validator,
     };
+
+    if (!title)
+        title = "Select file";
 
     if (none_option)
     {

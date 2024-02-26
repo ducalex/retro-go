@@ -33,7 +33,6 @@ static rg_battery_t battery_state = {0};
 
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
-    RG_ASSERT(out, "bad param");
     uint32_t raw_value = 0;
 
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
@@ -46,11 +45,12 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
         return false;
     raw_value = data[4];
 #else
-    // No battery or unknown
     return false;
 #endif
+    if (!out)
+        return true;
 
-    *out = (rg_battery_t) {
+    *out = (rg_battery_t){
         .level = RG_MAX(0.f, RG_MIN(100.f, RG_BATTERY_CALC_PERCENT(raw_value))),
         .volts = RG_BATTERY_CALC_VOLTAGE(raw_value),
         .present = true,

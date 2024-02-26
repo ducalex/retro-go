@@ -27,6 +27,12 @@ static bool disk_led = true;
 
 static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
 
+#define CHECK_PATH(path)          \
+    if (!(path && path[0]))       \
+    {                             \
+        RG_LOGE("No path given"); \
+        return false;             \
+    }
 
 void rg_storage_set_activity_led(bool enable)
 {
@@ -210,7 +216,7 @@ void rg_storage_commit(void)
 
 bool rg_storage_mkdir(const char *dir)
 {
-    RG_ASSERT(dir, "Bad param");
+    CHECK_PATH(dir);
 
     if (mkdir(dir, 0777) == 0)
         return true;
@@ -252,7 +258,7 @@ static int delete_cb(const rg_scandir_t *file, void *arg)
 
 bool rg_storage_delete(const char *path)
 {
-    RG_ASSERT(path, "Bad param");
+    CHECK_PATH(path);
 
     // Try the fast way first
     if (remove(path) == 0 || rmdir(path) == 0)
@@ -285,13 +291,13 @@ rg_stat_t rg_storage_stat(const char *path)
 
 bool rg_storage_exists(const char *path)
 {
-    RG_ASSERT(path, "Bad param");
+    CHECK_PATH(path);
     return access(path, F_OK) == 0;
 }
 
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
 {
-    RG_ASSERT(path && callback, "Bad param");
+    CHECK_PATH(path);
     uint32_t types = flags & (RG_SCANDIR_FILES|RG_SCANDIR_DIRS);
     size_t path_len = strlen(path) + 1;
     struct stat statbuf;

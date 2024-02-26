@@ -77,15 +77,6 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     return RG_SCANDIR_CONTINUE;
 }
 
-static void scan_folder(retro_app_t *app, const char* path, void *parent)
-{
-    RG_ASSERT(app && path, "Bad param");
-
-    RG_LOGI("Scanning directory '%s'", path);
-
-    rg_storage_scandir(path, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
-}
-
 static void application_init(retro_app_t *app)
 {
     RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
@@ -96,7 +87,8 @@ static void application_init(retro_app_t *app)
     rg_storage_mkdir(app->paths.covers);
     rg_storage_mkdir(app->paths.saves);
     rg_storage_mkdir(app->paths.roms);
-    scan_folder(app, app->paths.roms, 0);
+
+    rg_storage_scandir(app->paths.roms, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
 
     app->use_crc_covers = rg_storage_exists(strcat(app->paths.covers, "/0"));
     app->paths.covers[strlen(app->paths.covers) - 2] = 0;

@@ -1001,41 +1001,44 @@ void rg_system_log(int level, const char *context, const char *format, ...)
 
 bool rg_system_save_trace(const char *filename, bool panic_trace)
 {
-    RG_ASSERT(filename, "bad param");
-
-    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    if (!filename)
+        filename = RG_STORAGE_ROOT "/trace.txt";
 
     RG_LOGI("Saving debug trace to '%s'...\n", filename);
     FILE *fp = fopen(filename, "w");
-    if (fp)
+    if (!fp)
     {
-        fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
-        fprintf(fp, "Version: %s\n", app.version);
-        fprintf(fp, "Build date: %s\n", app.buildDate);
-        fprintf(fp, "Toolchain: %s\n", app.buildTool);
-        fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
-        fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
-        fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
-        fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
-        fprintf(fp, "Uptime: %ds (%d ticks)\n", stats->uptime, stats->ticks);
-        if (panic_trace && panicTrace.configNs[0])
-            fprintf(fp, "Panic configNs: %.16s\n", panicTrace.configNs);
-        if (panic_trace && panicTrace.message[0])
-            fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
-        if (panic_trace && panicTrace.context[0])
-            fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
-        fputs("\nLog output:\n", fp);
-        for (size_t i = 0; i < RG_LOGBUF_SIZE; i++)
-        {
-            size_t index = (panicTrace.cursor + i) % RG_LOGBUF_SIZE;
-            if (panicTrace.console[index])
-                fputc(panicTrace.console[index], fp);
-        }
-        fputs("\n\nEnd of trace\n\n", fp);
-        fclose(fp);
+        RG_LOGE("Open file '%s' failed, can't save trace!", filename);
+        return false;
     }
 
-    return (fp != NULL);
+    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
+    fprintf(fp, "Version: %s\n", app.version);
+    fprintf(fp, "Build date: %s\n", app.buildDate);
+    fprintf(fp, "Toolchain: %s\n", app.buildTool);
+    fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
+    fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
+    fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
+    fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
+    fprintf(fp, "Uptime: %ds (%d ticks)\n", stats->uptime, stats->ticks);
+    if (panic_trace && panicTrace.configNs[0])
+        fprintf(fp, "Panic configNs: %.16s\n", panicTrace.configNs);
+    if (panic_trace && panicTrace.message[0])
+        fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
+    if (panic_trace && panicTrace.context[0])
+        fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
+    fputs("\nLog output:\n", fp);
+    for (size_t i = 0; i < RG_LOGBUF_SIZE; i++)
+    {
+        size_t index = (panicTrace.cursor + i) % RG_LOGBUF_SIZE;
+        if (panicTrace.console[index])
+            fputc(panicTrace.console[index], fp);
+    }
+    fputs("\n\nEnd of trace\n\n", fp);
+    fclose(fp);
+
+    return true;
 }
 
 void rg_system_set_led(int value)
