@@ -573,8 +573,8 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 {
     const char *rom_path = get_file_path(file);
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
-    rg_emu_state_t *savestate = rg_emu_get_states(rom_path, 4);
-    bool has_save = savestate->used > 0;
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
+    bool has_save = savestates->used > 0;
     bool has_sram = rg_storage_exists(sram_path);
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
@@ -606,8 +606,8 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     case 2:
         while ((slot = rg_gui_savestate_menu("Delete save?", rom_path, 0)) != -1)
         {
-            remove(savestate->slots[slot].preview);
-            remove(savestate->slots[slot].file);
+            remove(savestates->slots[slot].preview);
+            remove(savestates->slots[slot].file);
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
@@ -631,7 +631,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     }
 
     free(sram_path);
-    free(savestate);
+    free(savestates);
 
     // gui_redraw();
 }

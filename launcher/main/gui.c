@@ -572,14 +572,12 @@ void gui_load_preview(tab_t *tab)
         else if (type == 0x4) // Save state screenshot (png)
         {
             path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
-            rg_emu_state_t *state = rg_emu_get_states(path, 4);
-            if (state->lastused)
-                path_len = snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
-            else if (state->latest)
-                path_len = snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
+            rg_emu_states_t *savestates = rg_emu_get_states(path, 4);
+            if (savestates->lastused)
+                path_len = snprintf(path, RG_PATH_MAX, "%s", savestates->lastused->preview);
             else
                 path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
-            free(state);
+            free(savestates);
         }
         else
             continue;

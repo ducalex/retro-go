@@ -1493,22 +1493,20 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     }
 }
 
-static rg_emu_state_t *savestate;
-
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_FOCUS)
     {
-        rg_emu_slot_t *slot = &savestate->slots[option->arg % 4];
+        rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
         rg_image_t *preview = NULL;
         rg_color_t color = C_BLUE;
         size_t margin = 0; // TEXT_RECT("ABC", 0).height;
         size_t border = 3;
         char buffer[100];
-        if (slot->exists)
+        if (slot->is_used)
         {
             preview = rg_image_load_from_file(slot->preview, 0);
-            if (slot == savestate->lastused)
+            if (slot->is_lastused)
                 snprintf(buffer, sizeof(buffer), "Slot %d (last used)", slot->id);
             else
                 snprintf(buffer, sizeof(buffer), "Slot %d", slot->id);
@@ -1534,30 +1532,28 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
 {
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: rg_system_get_app()->romPath, 4);
     const rg_gui_option_t choices[] = {
-        {0, "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {1, "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {2, "Slot 2", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {3, "Slot 3", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[0], "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[1], "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[2], "Slot 2", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[3], "Slot 3", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         RG_DIALOG_END
     };
-    int sel;
-
-    savestate = rg_emu_get_states(rom_path ?: rg_system_get_app()->romPath, 4);
+    int sel = 0;
 
     if (!rom_path)
         sel = rg_system_get_app()->saveSlot;
-    else if (savestate->lastused)
-        sel = savestate->lastused->id;
+    else if (savestates->lastused)
+        sel = savestates->lastused->id;
+
+    intptr_t ret = rg_gui_dialog(title, choices, sel);
+    if (ret && ret != RG_DIALOG_CANCELLED)
+        sel = ((rg_emu_slot_t *)ret)->id;
     else
-        sel = 0;
+        sel = -1;
 
-    sel = rg_gui_dialog(title, choices, sel);
-
-    free(savestate);
-
-    if (sel == RG_DIALOG_CANCELLED)
-        return -1;
+    free(savestates);
 
     return sel;
 }
