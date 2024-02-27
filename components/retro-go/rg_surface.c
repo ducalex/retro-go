@@ -18,7 +18,7 @@
         return retval;                                                                                     \
     }
 
-rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags)
+rg_surface_t *rg_surface_create(int width, int height, uint32_t format, uint32_t alloc_flags)
 {
     size_t stride = width * (format & RG_PIXEL_PAL ? 1 : 2);
     size_t size = sizeof(rg_surface_t) + (height * stride);

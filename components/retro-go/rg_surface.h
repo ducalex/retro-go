@@ -31,14 +31,14 @@ typedef enum
 
 typedef struct
 {
-    uint16_t width;
-    uint16_t height;
+    int top, left;
+    int width, height;
 } rg_rect_t;
 
 typedef struct
 {
-    uint16_t width, height;
-    uint16_t stride, offset;
+    int width, height;
+    int stride, offset;
     uint32_t format;
     uint16_t palette[256];
     union {
@@ -50,7 +50,7 @@ typedef struct
 // rg_image_t always contains a RG_PIXEL_565_LE surface
 typedef rg_surface_t rg_image_t;
 
-rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags);
+rg_surface_t *rg_surface_create(int width, int height, uint32_t format, uint32_t alloc_flags);
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags);
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);
 void rg_surface_free(rg_surface_t *surface);

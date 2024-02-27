@@ -424,7 +424,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             break;
     }
 
-    return (rg_rect_t){draw_width, y_offset};
+    return (rg_rect_t){0, 0, draw_width, y_offset};
 }
 
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
@@ -621,7 +621,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 
     for (size_t i = 0; i < options_count; i++)
     {
-        rg_rect_t label = {0, min_row_height};
+        rg_rect_t label = {0, 0, 0, min_row_height};
         rg_rect_t value = {0};
 
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)
