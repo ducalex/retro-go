@@ -32,29 +32,6 @@ static const byte cycles_table[256] =
 	3, 3, 2, 1, 0, 4, 2, 4, 3, 2, 4, 1, 0, 0, 2, 4,
 };
 
-static const byte cb_cycles_table[256] =
-{
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-
-	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-	2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 3, 2,
-
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-	2, 2, 2, 2, 2, 2, 4, 2, 2, 2, 2, 2, 2, 2, 4, 2,
-};
-
 typedef uint32_t un32;
 typedef uint16_t un16;
 typedef uint8_t un8;
@@ -113,17 +90,17 @@ A = LB(acc); }
 
 #define RLCA(r) { r = (r>>7) | (r<<1); F = ((r&0x01)<<4); }
 #define RRCA(r) { r = (r<<7) | (r>>1); F = ((r&0x80)>>3); }
-#define RLA(r) { LB(acc) = ((r&0x80)>>3); r = (r<<1) | ((F&FC)>>4); F = LB(acc); }
-#define RRA(r) { LB(acc) = ((r&0x01)<<4); r = (r>>1) | ((F&FC)<<3); F = LB(acc); }
+#define RLA(r) { b = ((r&0x80)>>3); r = (r<<1) | ((F&FC)>>4); F = b; }
+#define RRA(r) { b = ((r&0x01)<<4); r = (r>>1) | ((F&FC)<<3); F = b; }
 
 #define RLC(r) { RLCA(r); F |= ZFLAG(r); }
 #define RRC(r) { RRCA(r); F |= ZFLAG(r); }
 #define RL(r)  { RLA(r); F |= ZFLAG(r); }
 #define RR(r)  { RRA(r); F |= ZFLAG(r); }
 
-#define SLA(r) { LB(acc) = ((r&0x80)>>3); r <<= 1; F = ZFLAG(r) | LB(acc); }
-#define SRA(r) { LB(acc) = ((r&0x01)<<4); r = (un8)(((n8)r)>>1); F = ZFLAG(r) | LB(acc); }
-#define SRL(r) { LB(acc) = ((r&0x01)<<4); r >>= 1; F = ZFLAG((r)) | LB(acc); }
+#define SLA(r) { b = ((r&0x80)>>3); r <<= 1; F = ZFLAG(r) | b; }
+#define SRA(r) { b = ((r&0x01)<<4); r = (un8)(((n8)r)>>1); F = ZFLAG(r) | b; }
+#define SRL(r) { b = ((r&0x01)<<4); r >>= 1; F = ZFLAG((r)) | b; }
 
 #define CPL(r) { r = ~r; F |= (FH|FN); }
 
@@ -154,41 +131,6 @@ A = LB(acc); }
 
 #define COND_EXEC_INT(i, n) if (temp & i) { DI; PUSH(PC); R_IF &= ~i; PC = 0x40+((n)<<3); clen = 5; goto _skip; }
 
-#define CB_REG_CASES(r, n) \
-case 0x00|(n): RLC(r); break; \
-case 0x08|(n): RRC(r); break; \
-case 0x10|(n): RL(r); break; \
-case 0x18|(n): RR(r); break; \
-case 0x20|(n): SLA(r); break; \
-case 0x28|(n): SRA(r); break; \
-case 0x30|(n): SWAP(r); break; \
-case 0x38|(n): SRL(r); break; \
-case 0x40|(n): BIT(0, r); break; \
-case 0x48|(n): BIT(1, r); break; \
-case 0x50|(n): BIT(2, r); break; \
-case 0x58|(n): BIT(3, r); break; \
-case 0x60|(n): BIT(4, r); break; \
-case 0x68|(n): BIT(5, r); break; \
-case 0x70|(n): BIT(6, r); break; \
-case 0x78|(n): BIT(7, r); break; \
-case 0x80|(n): RES(0, r); break; \
-case 0x88|(n): RES(1, r); break; \
-case 0x90|(n): RES(2, r); break; \
-case 0x98|(n): RES(3, r); break; \
-case 0xA0|(n): RES(4, r); break; \
-case 0xA8|(n): RES(5, r); break; \
-case 0xB0|(n): RES(6, r); break; \
-case 0xB8|(n): RES(7, r); break; \
-case 0xC0|(n): SET(0, r); break; \
-case 0xC8|(n): SET(1, r); break; \
-case 0xD0|(n): SET(2, r); break; \
-case 0xD8|(n): SET(3, r); break; \
-case 0xE0|(n): SET(4, r); break; \
-case 0xE8|(n): SET(5, r); break; \
-case 0xF0|(n): SET(6, r); break; \
-case 0xF8|(n): SET(7, r); break;
-
-
 #define ALU_CASES(base, imm, op, label) \
 case (imm): b = FETCH; goto label; \
 case (base): b = B; goto label; \
@@ -205,13 +147,13 @@ label: op(b); break;
 static gb_cpu_t cpu;
 
 
-gb_cpu_t *cpu_init(void)
+gb_cpu_t *gb_cpu_init(void)
 {
 	return &cpu;
 }
 
 /* reset */
-void cpu_reset(bool hard)
+void gb_cpu_reset(bool hard)
 {
 	cpu.double_speed = 0;
 	cpu.halted = 0;
@@ -248,8 +190,8 @@ static inline void timer_advance(int cycles)
 			cpu.timer &= 0x1ff;
 			if (tima >= 256)
 			{
-				hw_interrupt(IF_TIMER, 1);
-				hw_interrupt(IF_TIMER, 0);
+				gb_hw_interrupt(IF_TIMER, 1);
+				gb_hw_interrupt(IF_TIMER, 0);
 				tima = R_TMA;
 			}
 			R_TIMA = tima;
@@ -268,13 +210,81 @@ static inline void serial_advance(int cycles)
 			R_SB = 0xFF;
 			R_SC &= 0x7f;
 			GB.serial = 0;
-			hw_interrupt(IF_SERIAL, 1);
-			hw_interrupt(IF_SERIAL, 0);
+			gb_hw_interrupt(IF_SERIAL, 1);
+			gb_hw_interrupt(IF_SERIAL, 0);
 		}
 	}
 }
 
-/* cpu_emulate()
+static inline int exec_cb(void)
+{
+	// All instructions use 2 cycles + 1 additional cycle per HL read or write
+	uint8_t op = FETCH;
+	uint8_t b, hl, val;
+	uint8_t *r;
+
+	switch (op & 7)
+	{
+	case 0: r = &B; break;
+	case 1: r = &C; break;
+	case 2: r = &D; break;
+	case 3: r = &E; break;
+	case 4: r = &H; break;
+	case 5: r = &L; break;
+	case 6: r = &hl; hl = readb(HL); break;
+	case 7: r = &A; break;
+	}
+
+	op >>= 3;
+	val = *r;
+
+	switch (op)
+	{
+	case 0x00: RLC(val); break;
+	case 0x01: RRC(val); break;
+	case 0x02: RL(val); break;
+	case 0x03: RR(val); break;
+	case 0x04: SLA(val); break;
+	case 0x05: SRA(val); break;
+	case 0x06: SWAP(val); break;
+	case 0x07: SRL(val); break;
+	case 0x08:
+	case 0x09:
+	case 0x0A:
+	case 0x0B:
+	case 0x0C:
+	case 0x0D:
+	case 0x0E:
+	case 0x0F: BIT((op & 7), val); return 2 | (r == &hl);
+	case 0x10:
+	case 0x11:
+	case 0x12:
+	case 0x13:
+	case 0x14:
+	case 0x15:
+	case 0x16:
+	case 0x17: RES((op & 7), val); break;
+	case 0x18:
+	case 0x19:
+	case 0x1A:
+	case 0x1B:
+	case 0x1C:
+	case 0x1D:
+	case 0x1E:
+	case 0x1F: SET((op & 7), val); break;
+	}
+
+	*r = val;
+
+	if (r == &hl)
+	{
+		writeb(HL, hl);
+		return 4;
+	}
+	return 2;
+}
+
+/* gb_cpu_emulate()
 	Emulate CPU for time no less than specified
 
 	cycles - time to emulate, expressed in double-speed cycles
@@ -283,13 +293,13 @@ static inline void serial_advance(int cycles)
 	Might emulate up to cycles+(11) time units (longest op takes 12
 	cycles in single-speed mode)
 */
-IRAM_ATTR int cpu_emulate(int cycles)
+IRAM_ATTR int gb_cpu_emulate(int cycles)
 {
 	int clen, temp;
 	int remaining = cycles;
 	int count = 0;
 	byte op, b;
-	cpu_reg_t acc;
+	gb_cpu_reg_t acc;
 
 	if (!cpu.double_speed)
 		remaining >>= 1;
@@ -315,7 +325,7 @@ next:
 
 #if CPU_DISASSEMBLER
 	if (cpu.disassemble && !rg_input_read_gamepad())
-		cpu_disassemble(PC, 1);
+		gb_cpu_disassemble(PC, 1);
 #endif
 
 	op = FETCH;
@@ -687,21 +697,14 @@ next:
 		if (F&FC) CALL; else NOCALL; break;
 
 	case 0xC7: /* RST 0 */
-		RST(0x00); break;
 	case 0xCF: /* RST 8 */
-		RST(0x08); break;
 	case 0xD7: /* RST 10 */
-		RST(0x10); break;
 	case 0xDF: /* RST 18 */
-		RST(0x18); break;
 	case 0xE7: /* RST 20 */
-		RST(0x20); break;
 	case 0xEF: /* RST 28 */
-		RST(0x28); break;
 	case 0xF7: /* RST 30 */
-		RST(0x30); break;
 	case 0xFF: /* RST 38 */
-		RST(0x38); break;
+		RST(op & 0x38); break;
 
 	case 0xC1: /* POP BC */
 		POP(BC); break;
@@ -763,27 +766,7 @@ next:
 		break;
 
 	case 0xCB: /* CB prefix */
-		op = FETCH;
-		clen = cb_cycles_table[op];
-		switch (op)
-		{
-			CB_REG_CASES(B, 0);
-			CB_REG_CASES(C, 1);
-			CB_REG_CASES(D, 2);
-			CB_REG_CASES(E, 3);
-			CB_REG_CASES(H, 4);
-			CB_REG_CASES(L, 5);
-			CB_REG_CASES(A, 7);
-		default:
-			b = readb(HL);
-			switch (op)
-			{
-				CB_REG_CASES(b, 6);
-			}
-			if ((op & 0xC0) != 0x40) /* exclude BIT */
-				writeb(HL, b);
-			break;
-		}
+		clen = exec_cb();
 		break;
 
 	default:
@@ -809,9 +792,9 @@ _skip:
 			count <<= 1;
 
 		/* Advance fixed-speed counters */
-		lcd_emulate(count);
-		sound_advance(count);
-		// sound_emulate(count);
+		gb_lcd_emulate(count);
+		gb_sound_advance(count);
+		// gb_sound_emulate(count);
 
 		// Here we could calculate when the next event is going to happen
 		// So that we can skip even more cycles, but it doesn't seem to save
@@ -884,7 +867,7 @@ static const char *cb_mnemonic_table[256] =
 	"SET 7,B", "SET 7,C", "SET 7,D", "SET 7,E", "SET 7,H", "SET 7,L", "SET 7,(HL)", "SET 7,A",
 };
 
-void cpu_disassemble(unsigned pc, int count)
+void gb_cpu_disassemble(unsigned pc, int count)
 {
 	while (count-- > 0)
 	{

@@ -15,9 +15,9 @@ typedef struct
 	} ch[4];
 } gb_snd_t;
 
-gb_snd_t *sound_init(void);
-void sound_write(byte r, byte b);
-void sound_dirty(void);
-void sound_reset(bool hard);
-void sound_emulate(void);
-#define sound_advance(count) GB.snd->cycles += (count)
+gb_snd_t *gb_sound_init(void);
+void gb_sound_write(byte r, byte b);
+void gb_sound_dirty(void);
+void gb_sound_reset(bool hard);
+void gb_sound_emulate(void);
+#define gb_sound_advance(count) GB.snd->cycles += (count)

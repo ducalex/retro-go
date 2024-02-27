@@ -76,7 +76,7 @@ static const int dmc_clocks[16] =
 static const int duty_flip[4] = { 2, 4, 8, 12 };
 
 
-IRAM_ATTR void apu_fc_advance(int cycles)
+void apu_fc_advance(int cycles)
 {
    // https://wiki.nesdev.com/w/index.php/APU_Frame_Counter
    const int int_period = 4 * 7457;
@@ -99,16 +99,14 @@ IRAM_ATTR void apu_fc_advance(int cycles)
    }
 }
 
-void apu_setcontext(apu_t *src_apu)
+void apu_setcontext(const apu_t *src)
 {
-   ASSERT(src_apu);
-   apu = *src_apu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
-void apu_getcontext(apu_t *dest_apu)
+void apu_getcontext(apu_t *dest)
 {
-   ASSERT(dest_apu);
-   *dest_apu = apu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
 static void apu_build_luts(int num_samples)
@@ -758,8 +756,9 @@ int apu_getopt(apu_option_t n)
 void apu_reset(void)
 {
    /* Update region if needed */
-   apu.samples_per_frame = apu.sample_rate / NES_REFRESH_RATE;
-   apu.cycle_rate = (float)NES_CPU_CLOCK / apu.sample_rate;
+   nes_t *nes = nes_getptr();
+   apu.samples_per_frame = apu.sample_rate / nes->refresh_rate;
+   apu.cycle_rate = (float)nes->cpu_clock / apu.sample_rate;
    apu.noise.shift_reg = 0x4000;
    apu_build_luts(apu.samples_per_frame);
 
@@ -794,19 +793,13 @@ apu_t *apu_init(int sample_rate, bool stereo)
    return &apu;
 }
 
-void apu_shutdown()
+void apu_shutdown(void)
 {
-   if (apu.ext && apu.ext->shutdown)
-      apu.ext->shutdown();
    free(apu.buffer);
    apu.buffer = NULL;
 }
 
-void apu_setext(apuext_t *ext)
+void apu_setext(const apuext_t *ext)
 {
    apu.ext = ext;
-
-   /* initialize it */
-   if (apu.ext && NULL != apu.ext->init)
-      apu.ext->init();
 }

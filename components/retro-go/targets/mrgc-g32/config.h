@@ -1,34 +1,3 @@
-// REF: https://www.myretrogamecase.com/products/game-mini-g32-esp32-retro-gaming-console-1
-
-// Parts:
-// - ESP32-WROVER-B (SoC)
-// - STM32F071cbu7 (Apparently buttons, charging, LED, backlight?)
-// - NXP 1334A (I2S DAC)
-// - CS5082E (Power controller)
-// - P8302E (Amplifier)
-// - YT280S002 (ILI9341 LCD)
-//
-
-/**
- * IO35 - MENU BTN
- * IO25 - I2S DAC
- * IO26 - I2S DAC
- * IO15 - SD CARD
- * IO2 - SD CARD
- * IO0 - SELECT BTN
- * IO4 - AMP EN
- * IO5 - LCD SPI CS
- * IO12 - LCD DC
- * IO18 - SPI CLK
- * IO23 - SPI MOSI
- * IO21 - STM32F (I2C)
- * IO22 - STM32F (I2C)
- *
- * IO27 - resistor then STM32?
- *
- * Power LED is connected to the STM32
- */
-
 // Target definition
 #define RG_TARGET_NAME             "MRGC-G32"
 
@@ -90,7 +59,7 @@
 }
 
 // Battery
-// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_DRIVER           2
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
@@ -108,6 +77,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_12
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_27
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_26

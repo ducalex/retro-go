@@ -8,7 +8,7 @@
 #include "gfx.h"
 #include "tile.h"
 
-static uint32_t HeadMask [4] =
+static const uint32_t HeadMask[4] =
 {
 #ifdef MSB_FIRST
    0xffffffff, 0x00ffffff, 0x0000ffff, 0x000000ff
@@ -16,7 +16,8 @@ static uint32_t HeadMask [4] =
    0xffffffff, 0xffffff00, 0xffff0000, 0xff000000
 #endif
 };
-static uint32_t TailMask [5] =
+
+static const uint32_t TailMask[5] =
 {
 #ifdef MSB_FIRST
    0x00000000, 0xff000000, 0xffff0000, 0xffffff00, 0xffffffff
@@ -25,108 +26,35 @@ static uint32_t TailMask [5] =
 #endif
 };
 
-static uint32_t odd_high[4][16];
-static uint32_t odd_low[4][16];
-static uint32_t even_high[4][16];
-static uint32_t even_low[4][16];
-
-void S9xBuildTileBitmasks(void)
+static const uint32_t odd[4][16] =
 {
-   uint32_t r, g, b;
-   uint32_t PixelOdd = 1;
-   uint32_t PixelEven = 2;
-   uint8_t bitshift;
-   for (bitshift = 0; bitshift < 4; bitshift++)
-   {
-      int32_t i;
-      for (i = 0; i < 16; i++)
-      {
-         uint32_t h = 0;
-         uint32_t l = 0;
-
-#if defined(MSB_FIRST)
-         if (i & 8)
-            h |= (PixelOdd << 24);
-         if (i & 4)
-            h |= (PixelOdd << 16);
-         if (i & 2)
-            h |= (PixelOdd << 8);
-         if (i & 1)
-            h |= PixelOdd;
-         if (i & 8)
-            l |= (PixelOdd << 24);
-         if (i & 4)
-            l |= (PixelOdd << 16);
-         if (i & 2)
-            l |= (PixelOdd << 8);
-         if (i & 1)
-            l |= PixelOdd;
+#ifdef MSB_FIRST
+   {0x00000000, 0x00000001, 0x00000100, 0x00000101, 0x00010000, 0x00010001, 0x00010100, 0x00010101, 0x01000000, 0x01000001, 0x01000100, 0x01000101, 0x01010000, 0x01010001, 0x01010100, 0x01010101},
+   {0x00000000, 0x00000004, 0x00000400, 0x00000404, 0x00040000, 0x00040004, 0x00040400, 0x00040404, 0x04000000, 0x04000004, 0x04000400, 0x04000404, 0x04040000, 0x04040004, 0x04040400, 0x04040404},
+   {0x00000000, 0x00000010, 0x00001000, 0x00001010, 0x00100000, 0x00100010, 0x00101000, 0x00101010, 0x10000000, 0x10000010, 0x10001000, 0x10001010, 0x10100000, 0x10100010, 0x10101000, 0x10101010},
+   {0x00000000, 0x00000040, 0x00004000, 0x00004040, 0x00400000, 0x00400040, 0x00404000, 0x00404040, 0x40000000, 0x40000040, 0x40004000, 0x40004040, 0x40400000, 0x40400040, 0x40404000, 0x40404040}
 #else
-         if (i & 8)
-            h |= PixelOdd;
-         if (i & 4)
-            h |= PixelOdd << 8;
-         if (i & 2)
-            h |= PixelOdd << 16;
-         if (i & 1)
-            h |= PixelOdd << 24;
-         if (i & 8)
-            l |= PixelOdd;
-         if (i & 4)
-            l |= PixelOdd << 8;
-         if (i & 2)
-            l |= PixelOdd << 16;
-         if (i & 1)
-            l |= PixelOdd << 24;
+   {0x00000000, 0x01000000, 0x00010000, 0x01010000, 0x00000100, 0x01000100, 0x00010100, 0x01010100, 0x00000001, 0x01000001, 0x00010001, 0x01010001, 0x00000101, 0x01000101, 0x00010101, 0x01010101},
+   {0x00000000, 0x04000000, 0x00040000, 0x04040000, 0x00000400, 0x04000400, 0x00040400, 0x04040400, 0x00000004, 0x04000004, 0x00040004, 0x04040004, 0x00000404, 0x04000404, 0x00040404, 0x04040404},
+   {0x00000000, 0x10000000, 0x00100000, 0x10100000, 0x00001000, 0x10001000, 0x00101000, 0x10101000, 0x00000010, 0x10000010, 0x00100010, 0x10100010, 0x00001010, 0x10001010, 0x00101010, 0x10101010},
+   {0x00000000, 0x40000000, 0x00400000, 0x40400000, 0x00004000, 0x40004000, 0x00404000, 0x40404000, 0x00000040, 0x40000040, 0x00400040, 0x40400040, 0x00004040, 0x40004040, 0x00404040, 0x40404040}
 #endif
+};
 
-         odd_high[bitshift][i] = h;
-         odd_low[bitshift][i] = l;
-         h = l = 0;
-
-#if defined(MSB_FIRST)
-         if (i & 8)
-            h |= (PixelEven << 24);
-         if (i & 4)
-            h |= (PixelEven << 16);
-         if (i & 2)
-            h |= (PixelEven << 8);
-         if (i & 1)
-            h |= PixelEven;
-         if (i & 8)
-            l |= (PixelEven << 24);
-         if (i & 4)
-            l |= (PixelEven << 16);
-         if (i & 2)
-            l |= (PixelEven << 8);
-         if (i & 1)
-            l |= PixelEven;
+static const uint32_t even[4][16] =
+{
+#ifdef MSB_FIRST
+   {0x00000000, 0x00000002, 0x00000200, 0x00000202, 0x00020000, 0x00020002, 0x00020200, 0x00020202, 0x02000000, 0x02000002, 0x02000200, 0x02000202, 0x02020000, 0x02020002, 0x02020200, 0x02020202},
+   {0x00000000, 0x00000008, 0x00000800, 0x00000808, 0x00080000, 0x00080008, 0x00080800, 0x00080808, 0x08000000, 0x08000008, 0x08000800, 0x08000808, 0x08080000, 0x08080008, 0x08080800, 0x08080808},
+   {0x00000000, 0x00000020, 0x00002000, 0x00002020, 0x00200000, 0x00200020, 0x00202000, 0x00202020, 0x20000000, 0x20000020, 0x20002000, 0x20002020, 0x20200000, 0x20200020, 0x20202000, 0x20202020},
+   {0x00000000, 0x00000080, 0x00008000, 0x00008080, 0x00800000, 0x00800080, 0x00808000, 0x00808080, 0x80000000, 0x80000080, 0x80008000, 0x80008080, 0x80800000, 0x80800080, 0x80808000, 0x80808080}
 #else
-         if (i & 8)
-            h |= PixelEven;
-         if (i & 4)
-            h |= PixelEven << 8;
-         if (i & 2)
-            h |= PixelEven << 16;
-         if (i & 1)
-            h |= PixelEven << 24;
-         if (i & 8)
-            l |= PixelEven;
-         if (i & 4)
-            l |= PixelEven << 8;
-         if (i & 2)
-            l |= PixelEven << 16;
-         if (i & 1)
-            l |= PixelEven << 24;
+   {0x00000000, 0x02000000, 0x00020000, 0x02020000, 0x00000200, 0x02000200, 0x00020200, 0x02020200, 0x00000002, 0x02000002, 0x00020002, 0x02020002, 0x00000202, 0x02000202, 0x00020202, 0x02020202},
+   {0x00000000, 0x08000000, 0x00080000, 0x08080000, 0x00000800, 0x08000800, 0x00080800, 0x08080800, 0x00000008, 0x08000008, 0x00080008, 0x08080008, 0x00000808, 0x08000808, 0x00080808, 0x08080808},
+   {0x00000000, 0x20000000, 0x00200000, 0x20200000, 0x00002000, 0x20002000, 0x00202000, 0x20202000, 0x00000020, 0x20000020, 0x00200020, 0x20200020, 0x00002020, 0x20002020, 0x00202020, 0x20202020},
+   {0x00000000, 0x80000000, 0x00800000, 0x80800000, 0x00008000, 0x80008000, 0x00808000, 0x80808000, 0x00000080, 0x80000080, 0x00800080, 0x80800080, 0x00008080, 0x80008080, 0x00808080, 0x80808080}
 #endif
-
-         even_high[bitshift][i] = h;
-         even_low[bitshift][i] = l;
-      }
-      PixelEven <<= 2;
-      PixelOdd <<= 2;
-   }
-}
+};
 
 static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
 {
@@ -146,43 +74,43 @@ static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
          p1 = p2 = 0;
          if((pix = tp[0]))
          {
-            p1 |= odd_high[0][pix >> 4];
-            p2 |= odd_low[0][pix & 0xf];
+            p1 |= odd[0][pix >> 4];
+            p2 |= odd[0][pix & 0xf];
          }
          if((pix = tp[1]))
          {
-            p1 |= even_high[0][pix >> 4];
-            p2 |= even_low[0][pix & 0xf];
+            p1 |= even[0][pix >> 4];
+            p2 |= even[0][pix & 0xf];
          }
          if((pix = tp[16]))
          {
-            p1 |= odd_high[1][pix >> 4];
-            p2 |= odd_low[1][pix & 0xf];
+            p1 |= odd[1][pix >> 4];
+            p2 |= odd[1][pix & 0xf];
          }
          if((pix = tp[17]))
          {
-            p1 |= even_high[1][pix >> 4];
-            p2 |= even_low[1][pix & 0xf];
+            p1 |= even[1][pix >> 4];
+            p2 |= even[1][pix & 0xf];
          }
          if((pix = tp[32]))
          {
-            p1 |= odd_high[2][pix >> 4];
-            p2 |= odd_low[2][pix & 0xf];
+            p1 |= odd[2][pix >> 4];
+            p2 |= odd[2][pix & 0xf];
          }
          if((pix = tp[33]))
          {
-            p1 |= even_high[2][pix >> 4];
-            p2 |= even_low[2][pix & 0xf];
+            p1 |= even[2][pix >> 4];
+            p2 |= even[2][pix & 0xf];
          }
          if((pix = tp[48]))
          {
-            p1 |= odd_high[3][pix >> 4];
-            p2 |= odd_low[3][pix & 0xf];
+            p1 |= odd[3][pix >> 4];
+            p2 |= odd[3][pix & 0xf];
          }
          if((pix = tp[49]))
          {
-            p1 |= even_high[3][pix >> 4];
-            p2 |= even_low[3][pix & 0xf];
+            p1 |= even[3][pix >> 4];
+            p2 |= even[3][pix & 0xf];
          }
          *p++ = p1;
          *p++ = p2;
@@ -195,23 +123,23 @@ static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
          p1 = p2 = 0;
          if((pix = tp[0]))
          {
-            p1 |= odd_high[0][pix >> 4];
-            p2 |= odd_low[0][pix & 0xf];
+            p1 |= odd[0][pix >> 4];
+            p2 |= odd[0][pix & 0xf];
          }
          if((pix = tp[1]))
          {
-            p1 |= even_high[0][pix >> 4];
-            p2 |= even_low[0][pix & 0xf];
+            p1 |= even[0][pix >> 4];
+            p2 |= even[0][pix & 0xf];
          }
          if((pix = tp[16]))
          {
-            p1 |= odd_high[1][pix >> 4];
-            p2 |= odd_low[1][pix & 0xf];
+            p1 |= odd[1][pix >> 4];
+            p2 |= odd[1][pix & 0xf];
          }
          if((pix = tp[17]))
          {
-            p1 |= even_high[1][pix >> 4];
-            p2 |= even_low[1][pix & 0xf];
+            p1 |= even[1][pix >> 4];
+            p2 |= even[1][pix & 0xf];
          }
          *p++ = p1;
          *p++ = p2;
@@ -224,13 +152,13 @@ static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
          p1 = p2 = 0;
          if((pix = tp[0]))
          {
-            p1 |= odd_high[0][pix >> 4];
-            p2 |= odd_low[0][pix & 0xf];
+            p1 |= odd[0][pix >> 4];
+            p2 |= odd[0][pix & 0xf];
          }
          if((pix = tp[1]))
          {
-            p1 |= even_high[0][pix >> 4];
-            p2 |= even_low[0][pix & 0xf];
+            p1 |= even[0][pix >> 4];
+            p2 |= even[0][pix & 0xf];
          }
          *p++ = p1;
          *p++ = p2;

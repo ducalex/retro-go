@@ -1,7 +1,5 @@
-// REF: https://wiki.odroid.com/odroid_go/odroid_go
-
 // Target definition
-#define RG_TARGET_NAME             "ODROID-GO"
+#define RG_TARGET_NAME             "RETRO-ESP32"
 
 // Storage and Settings
 #define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
@@ -45,19 +43,24 @@
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
 // Input
-#define RG_GAMEPAD_DRIVER           1   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
+#define RG_GAMEPAD_DRIVER           1   // 2 = Serial, 3 = I2C, 4 = AW9523, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     0
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
-// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
-// Refer to rg_input.h to see all available RG_KEY_*
-#define RG_GAMEPAD_MAP {\
-    {RG_KEY_SELECT, RG_GPIO_GAMEPAD_SELECT},\
-    {RG_KEY_START,  RG_GPIO_GAMEPAD_START},\
-    {RG_KEY_A,      RG_GPIO_GAMEPAD_A},\
-    {RG_KEY_B,      RG_GPIO_GAMEPAD_B},\
+#define RG_GAMEPAD_ADC1_MAP {\
+    {RG_KEY_UP,    ADC1_CHANNEL_7, ADC_ATTEN_DB_11, 2048, 4096},\
+    {RG_KEY_DOWN,  ADC1_CHANNEL_7, ADC_ATTEN_DB_11, 1024, 2048},\
+    {RG_KEY_LEFT,  ADC1_CHANNEL_6, ADC_ATTEN_DB_11, 2048, 4096},\
+    {RG_KEY_RIGHT, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2048},\
+}
+#define RG_GAMEPAD_GPIO_MAP {\
+    {RG_KEY_SELECT, GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_START,  GPIO_NUM_39, GPIO_FLOATING,    0},\
+    {RG_KEY_A,      GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_B,      GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
 }
 
 // Battery
+#define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
@@ -69,16 +72,6 @@
 // #define RG_GPIO_I2C_SDA             GPIO_NUM_15
 // #define RG_GPIO_I2C_SCL             GPIO_NUM_4
 
-// Built-in gamepad
-#define RG_GPIO_GAMEPAD_X           ADC1_CHANNEL_6
-#define RG_GPIO_GAMEPAD_Y           ADC1_CHANNEL_7
-#define RG_GPIO_GAMEPAD_SELECT      GPIO_NUM_27
-#define RG_GPIO_GAMEPAD_START       GPIO_NUM_39
-#define RG_GPIO_GAMEPAD_A           GPIO_NUM_32
-#define RG_GPIO_GAMEPAD_B           GPIO_NUM_33
-#define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_13
-#define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_0
-
 // SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_19
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_23
@@ -86,6 +79,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_21
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_14
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // SPI SD Card
 #define RG_GPIO_SDSPI_MISO          GPIO_NUM_19

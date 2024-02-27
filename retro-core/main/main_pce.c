@@ -4,7 +4,6 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
 
 #include <pce-go.h>
@@ -18,6 +17,8 @@ static int current_height = 0;
 static int current_width = 0;
 static int overscan = false;
 static int skipFrames = 0;
+static bool drawFrame = true;
+static bool slowFrame = false;
 static uint8_t *framebuffers[2];
 
 static const char *SETTING_OVERSCAN  = "overscan";
@@ -31,6 +32,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
         current_width = current_height = 0;
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, overscan ? "On " : "Off");
@@ -54,26 +56,26 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
         current_width = width;
         current_height = height;
     }
-    return skipFrames ? NULL : currentUpdate->buffer;
+    return drawFrame ? currentUpdate->buffer : NULL;
 }
 
 void osd_vsync(void)
 {
     static int64_t lasttime, prevtime;
 
-    if (skipFrames == 0)
+    if (drawFrame)
     {
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_queue_update(currentUpdate, NULL);
-        currentUpdate = previousUpdate;
+        slowFrame = !rg_display_sync(false);
+        rg_display_submit(currentUpdate, 0);
+        currentUpdate = &updates[currentUpdate == &updates[0]];
     }
 
     // See if we need to skip a frame to keep up
     if (skipFrames == 0)
     {
-        if (app->speed > 1.f)
-            skipFrames = app->speed * 2.5f;
-        else
+        if (app->frameskip > 0)
+            skipFrames = app->frameskip;
+        else if (drawFrame && slowFrame)
             skipFrames = 1;
     }
     else if (skipFrames > 0)
@@ -82,7 +84,7 @@ void osd_vsync(void)
     }
 
     int64_t curtime = rg_system_timer();
-    int frameTime = 1000000 / 60 / app->speed;
+    int frameTime = 1000000 / (app->tickRate * app->speed);
     int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
@@ -91,7 +93,7 @@ void osd_vsync(void)
     }
     else if (sleep > 0)
     {
-        usleep(sleep);
+        rg_usleep(sleep);
     }
     else if (sleep < -(frameTime / 2))
     {
@@ -105,6 +107,8 @@ void osd_vsync(void)
 
     if ((lasttime + frameTime) < prevtime)
         lasttime = prevtime;
+
+    drawFrame = (skipFrames == 0);
 }
 
 void osd_input_read(uint8_t joypads[8])
@@ -119,7 +123,6 @@ void osd_input_read(uint8_t joypads[8])
             rg_gui_game_menu();
         else
             rg_gui_options_menu();
-        rg_audio_set_sample_rate(app->sampleRate * app->speed);
         emulationPaused = false;
     }
 
@@ -139,14 +142,24 @@ static void audioTask(void *arg)
 {
     const size_t numSamples = 62; // TODO: Find the best value
 
-    RG_LOGI("task started. numSamples=%d.", numSamples);
+    RG_LOGI("task started. numSamples=%d.", (int)numSamples);
     while (1)
     {
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
-            rg_task_delay(20);
+            rg_task_yield();
         psg_update((void*)audioBuffer, numSamples, 0xFF);
         rg_audio_submit(audioBuffer, numSamples);
+    }
+}
+
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        // We must use previous update because at this point current has been wiped.
+        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
+        rg_display_submit(previousUpdate, 0);
     }
 }
 
@@ -185,16 +198,17 @@ void pce_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {2, "Overscan      ", "On ", 1, &overscan_update_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "Overscan", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     emulationPaused = true;
-    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, 5, 1);
+    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
     framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
     framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
@@ -216,6 +230,9 @@ void pce_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    app->tickRate = 60;
+    app->frameskip = 1;
 
     emulationPaused = false;
     RunPCE();

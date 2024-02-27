@@ -23,16 +23,15 @@
 
 #include "nes/nes.h"
 
-#define  MAP40_IRQ_PERIOD  (4096 / NES_CYCLES_PER_SCANLINE)
-
 static struct
 {
     bool  enabled;
     uint8 counter;
+    uint8 reload;
 } irq;
 
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
     if (irq.enabled && irq.counter)
     {
@@ -52,7 +51,7 @@ static void map_write(uint32 address, uint8 value)
     {
     case 0: /* 0x8000-0x9FFF */
         irq.enabled = false;
-        irq.counter = MAP40_IRQ_PERIOD;
+        irq.counter = irq.reload;
         break;
 
     case 1: /* 0xA000-0xBFFF */
@@ -88,7 +87,8 @@ static void map_init(rom_t *cart)
     mmc_bankrom(8, 0xE000, 7);
 
     irq.enabled = false;
-    irq.counter = MAP40_IRQ_PERIOD;
+    irq.reload = 4096 / nes_getptr()->cycles_per_scanline;
+    irq.counter = irq.reload;
 }
 
 

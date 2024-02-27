@@ -7,7 +7,11 @@
 #include "dma.h"
 #include "apu.h"
 
-extern int32_t HDMA_ModeByteCounts [8];
+/*modified per anomie Mode 5 findings */
+static const int32_t HDMA_ModeByteCounts [8] =
+{
+   1, 2, 2, 4, 4, 4, 2, 4
+};
 extern uint8_t* HDMAMemPointers [8];
 extern uint8_t* HDMABasePointers [8];
 

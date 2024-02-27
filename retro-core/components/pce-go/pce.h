@@ -88,6 +88,9 @@ typedef enum {
 #define PSG_CHANNELS            6
 
 
+#include "h6280.h"
+
+
 typedef union {
 	struct {
 		uint8_t l, h;
@@ -164,8 +167,8 @@ typedef struct {
 	uint8_t MMR[8];
 
 	// Effective memory map
-	uint8_t *MemoryMapR[256];
-	uint8_t *MemoryMapW[256];
+	uint8_t **MemoryMapR; // [256];
+	uint8_t **MemoryMapW; // [256];
 
 	// Street Fighter 2 Mapper
 	uint8_t SF2;
@@ -218,14 +221,14 @@ typedef struct {
 		uint8_t padding[16];
 	} PSG;
 
+	// Main Processor H6280
+	h6280_t CPU;
+
 } PCE_t;
-
-
-#include "h6280.h"
-
 
 // The global structure for all hardware variables
 extern PCE_t PCE;
+#define CPU PCE.CPU
 
 // physical address on emulator machine of each of the 256 banks
 extern uint8_t *PageR[8];

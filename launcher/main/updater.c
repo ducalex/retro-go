@@ -59,7 +59,6 @@ static int download_file(const char *url, const char *filename)
         fwrite(buffer, 1, len, fp);
         sprintf(buffer, "Received %d / %d", received, req->content_length);
         rg_gui_draw_dialog(buffer, NULL, 0);
-        rg_system_tick(0);
     }
 
     if (req->content_length == received)
@@ -145,6 +144,11 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 void updater_show_dialog(void)
 {
     cJSON *releases_json = fetch_json(GITHUB_RELEASES_URL);
+    if (!releases_json)
+    {
+        rg_gui_alert("Connection failed", "Make sure that you are online!");
+        return;
+    }
     size_t releases_count = RG_MIN(cJSON_GetArraySize(releases_json), 20);
 
     release_t *releases = calloc(releases_count, sizeof(release_t));

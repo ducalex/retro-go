@@ -51,5 +51,3 @@ typedef struct
 #define VEC_IRQ1   0xFFF8
 #define VEC_IRQ2   0xFFF6
 #define VEC_BRK    0xFFF6
-
-extern h6280_t CPU;

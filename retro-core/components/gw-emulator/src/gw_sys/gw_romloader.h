@@ -21,7 +21,6 @@ __license__ = "GPLv3"
 #ifndef _GW_ROMLOADER_H_
 #define _GW_ROMLOADER_H_
 
-#include <unistd.h>
 
 #define  ZLIB_MAGIC "ZLIB"
 #define  LZMA_MAGIC "LZMA"

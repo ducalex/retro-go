@@ -34,8 +34,8 @@ typedef rg_audio_frame_t rg_audio_sample_t;
 
 typedef struct
 {
+    int64_t totalSamples;
     int64_t busyTime;
-    int32_t samples;
 } rg_audio_counters_t;
 
 typedef struct

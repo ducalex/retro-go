@@ -11,23 +11,19 @@
 // Set in the far future for VBA-M support
 #define RTC_BASE 1893456000
 
-gb_host_t host;
-
-
 // Note: Eventually we'll just pass a gb_host_t to init...
 // But for now assume it's been configured before we were alled!
-int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
+int gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback)
 {
-	host = (gb_host_t){
+	GB = (gb_t){
 		.video.colorize = GB_PALETTE_CGB,
-		.video.format = pixformat,
-		.video.blit_func = blit_func,
-		.audio.buffer = malloc(samplerate / 4),
-		.audio.len = samplerate / 8,
+		.video.format = video_fmt,
+		.video.callback = video_callback,
 		.audio.samplerate = samplerate,
-		.audio.stereo = stereo,
+		.audio.format = audio_fmt,
+		.audio.callback = audio_callback,
 	};
-	if (!hw_init())
+	if (!gb_hw_init())
 		return -1;
 	return 0;
 }
@@ -40,10 +36,23 @@ int gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func)
  */
 void gnuboy_reset(bool hard)
 {
-	hw_reset(hard);
-	lcd_reset(hard);
-	cpu_reset(hard);
-	sound_reset(hard);
+	gb_hw_reset(hard);
+	gb_lcd_reset(hard);
+	gb_cpu_reset(hard);
+	gb_sound_reset(hard);
+}
+
+
+void gnuboy_set_framebuffer(void *buffer)
+{
+	GB.video.buffer = buffer;
+}
+
+
+void gnuboy_set_soundbuffer(void *buffer, size_t length)
+{
+	GB.audio.buffer = buffer;
+	GB.audio.len = length;
 }
 
 
@@ -67,34 +76,40 @@ void gnuboy_reset(bool hard)
 */
 void gnuboy_run(bool draw)
 {
-	host.video.enabled = draw;
+	GB.video.enabled = draw;
+	GB.audio.pos = 0;
+
 	int cycles = 0;
 
 	// LCD is powered down, it won't touch LY or do vblank
 	if (!(R_LCDC & 0x80)) {
 		cycles += 154 * 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
 		return;
 	}
 
 	// We emulate until vblank (0..144)
 	while (R_LY <= 144) {
 		cycles += 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
 	}
 
 	/* When using GB_PIXEL_PALETTED, the host should draw the frame in this callback
 	   because the palette can be modified below before gnuboy_run returns. */
-	if (draw && host.video.blit_func) {
-		(host.video.blit_func)();
+	if (draw && GB.video.callback) {
+		(GB.video.callback)(GB.video.buffer);
 	}
 
-	hw_vblank();
+	gb_hw_vblank();
 
 	// Emulate vblank (145...0)
 	while (R_LY > 0) {
 		cycles += 228;
-		cycles -= cpu_emulate(cycles);
+		cycles -= gb_cpu_emulate(cycles);
+	}
+
+	if (GB.audio.callback && GB.audio.pos > 0) {
+		(GB.audio.callback)(GB.audio.buffer, GB.audio.pos);
 	}
 }
 
@@ -103,7 +118,7 @@ void gnuboy_set_pad(int pad)
 {
 	if (hw.pad != pad)
 	{
-		hw_setpad(pad);
+		gb_hw_setpad(pad);
 	}
 }
 
@@ -265,11 +280,18 @@ int gnuboy_load_rom(const char *file)
 		cart.ramsize = 1;
 	}
 
-	cart.rambanks = malloc(8192 * cart.ramsize);
+	cart.rambanks = calloc(cart.ramsize, 0x2000);
 	if (!cart.rambanks)
 	{
 		MESSAGE_ERROR("SRAM alloc failed");
 		return -3;
+	}
+
+	cart.rombanks = calloc(cart.romsize, sizeof(uint8_t *));
+	if (!cart.rombanks)
+	{
+		MESSAGE_ERROR("ROMBANKS alloc failed");
+		return -4;
 	}
 
 	// Detect colorization palette that the real GBC would be using
@@ -387,13 +409,16 @@ int gnuboy_load_rom(const char *file)
 
 void gnuboy_free_rom(void)
 {
-	for (int i = 0; i < 512; i++)
+	for (int i = 0; i < cart.romsize; i++)
 	{
 		if (cart.rombanks[i]) {
 			free(cart.rombanks[i]);
 			cart.rombanks[i] = NULL;
 		}
 	}
+	free(cart.rombanks);
+	cart.rombanks = NULL;
+
 	free(cart.rambanks);
 	cart.rambanks = NULL;
 
@@ -447,14 +472,14 @@ void gnuboy_set_hwtype(gb_hwtype_t type)
 
 int gnuboy_get_palette(void)
 {
-	return host.video.colorize;
+	return GB.video.colorize;
 }
 
 
 void gnuboy_set_palette(gb_palette_t pal)
 {
-	host.video.colorize = pal;
-	lcd_pal_dirty();
+	GB.video.colorize = pal;
+	gb_lcd_pal_dirty();
 }
 
 
@@ -810,9 +835,9 @@ static int do_save_load(const char *file, bool save)
 		// Older saves might overflow this
 		cart.rambank &= (cart.ramsize - 1);
 
-		lcd_pal_dirty();
-		sound_dirty();
-		hw_updatemap();
+		gb_lcd_pal_dirty();
+		gb_sound_dirty();
+		gb_hw_updatemap();
 	}
 
 	fclose(fp);

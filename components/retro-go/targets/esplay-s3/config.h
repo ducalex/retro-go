@@ -1,5 +1,3 @@
-// REF: https://wiki.odroid.com/odroid_go/odroid_go
-
 // Target definition
 #define RG_TARGET_NAME             "ESPLAY-S3"
 
@@ -45,8 +43,6 @@
 #define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   1
-// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
-// Refer to rg_input.h to see all available RG_KEY_*
 #define RG_GAMEPAD_MAP {\
     {RG_KEY_UP,     (1<<2)},\
     {RG_KEY_RIGHT,  (1<<5)},\
@@ -57,8 +53,15 @@
     {RG_KEY_A,      (1<<6)},\
     {RG_KEY_B,      (1<<7)},\
 }
+#define RG_GAMEPAD_GPIO_MAP {\
+    {RG_KEY_L,      GPIO_NUM_40, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_R,      GPIO_NUM_41, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_MENU,   GPIO_NUM_42, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_OPTION, GPIO_NUM_41, GPIO_PULLUP_ONLY, 0},\
+}
 
 // Battery
+#define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
@@ -70,12 +73,6 @@
 #define RG_GPIO_I2C_SDA             GPIO_NUM_10
 #define RG_GPIO_I2C_SCL             GPIO_NUM_11
 
-// Built-in gamepad
-#define RG_GPIO_GAMEPAD_L           GPIO_NUM_40
-#define RG_GPIO_GAMEPAD_R           GPIO_NUM_41
-#define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_42
-#define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_41
-
 // SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_12
@@ -83,6 +80,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_8
 #define RG_GPIO_LCD_DC              GPIO_NUM_47
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_39
+#define RG_GPIO_LCD_RST             GPIO_NUM_3
 
 // SPI SD Card
 #define RG_GPIO_SDSPI_CMD          GPIO_NUM_14

@@ -30,9 +30,15 @@
 #include <string.h>
 
 typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
 typedef uint8_t uint8;
 typedef uint16_t uint16;
 typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef struct nes_s nes_t;
 
 #include <nofrendo.h>
 #include "apu.h"
@@ -51,31 +57,25 @@ typedef uint32_t uint32;
 
 #define NES_SCREEN_GETPTR(buf, x, y)     ((buf) + ((y) * NES_SCREEN_PITCH) + (x) + NES_SCREEN_OVERDRAW)
 
-#define NES_CPU_CLOCK_NTSC      (1789772.72727)
-#define NES_CPU_CLOCK_PAL       (1662607.03125)
+#define NES_CPU_CLOCK_NTSC      (1789773)
+#define NES_CPU_CLOCK_PAL       (1662607)
 #define NES_REFRESH_RATE_NTSC   (60)
 #define NES_REFRESH_RATE_PAL    (50)
 #define NES_SCANLINES_NTSC      (262)
 #define NES_SCANLINES_PAL       (312)
 
-#define NES_REFRESH_RATE        (nes_getptr()->refresh_rate)
-#define NES_SCANLINES           (nes_getptr()->scanlines_per_frame)
-#define NES_CPU_CLOCK           (nes_getptr()->cpu_clock)
-#define NES_CYCLES_PER_SCANLINE (nes_getptr()->cycles_per_scanline)
-#define NES_CURRENT_SCANLINE    (nes_getptr()->scanline)
-
 typedef enum
 {
-    SYS_UNKNOWN,
     SYS_NES_NTSC,
     SYS_NES_PAL,
     SYS_FAMICOM,
-    SYS_DETECT = 0,
+    SYS_UNKNOWN,
+    SYS_DETECT = -1,
 } nes_type_t;
 
 typedef void (nes_timer_t)(int cycles);
 
-typedef struct
+typedef struct nes_s
 {
     /* Hardware */
     nes6502_t *cpu;
@@ -95,29 +95,21 @@ typedef struct
     int overscan;
 
     /* Timing constants */
-    /* TO DO: re-check if float is still necessary...*/
     int refresh_rate;
     int scanlines_per_frame;
-    float cycles_per_scanline;
-    float cpu_clock;
+    int cycles_per_scanline;
+    int cpu_clock;
 
     /* Timing counters */
     int scanline;
-    float cycles;
+    int cycles;
 
     /* Periodic timer */
     nes_timer_t *timer_func;
-    long timer_period;
+    int timer_period;
 
     /* Port functions */
     void (*blit_func)(uint8 *);
-    void (*vsync_func)(void);
-    void (*input_func)(void); // uint8 *, uint8 *
-
-    /* Control */
-    bool frameskip;
-    bool poweroff;
-    bool pause;
 } nes_t;
 
 nes_t *nes_getptr(void);
@@ -125,8 +117,6 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo);
 void nes_shutdown(void);
 int nes_insertcart(const char *filename, const char *biosfile);
 int nes_insertdisk(const char *filename, const char *biosfile);
-void nes_settimer(nes_timer_t *func, long period);
+void nes_settimer(nes_timer_t *func, int period);
 void nes_emulate(bool draw);
 void nes_reset(bool hard_reset);
-void nes_poweroff(void);
-void nes_togglepause(void);

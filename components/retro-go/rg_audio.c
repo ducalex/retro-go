@@ -23,6 +23,7 @@ static SemaphoreHandle_t audioDevLock;
 #define CREATE_DEVICE_LOCK()
 #define ACQUIRE_DEVICE(timeout) (1)
 #define RELEASE_DEVICE()
+static SDL_AudioDeviceID audioDevice;
 #endif
 
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
@@ -60,7 +61,6 @@ static const rg_audio_sink_t sinks[] = {
 
 static rg_audio_t audio;
 static rg_audio_counters_t counters;
-static int64_t dummyBusyUntil = 0;
 
 static const char *SETTING_OUTPUT = "AudioSink";
 static const char *SETTING_VOLUME = "Volume";
@@ -84,11 +84,11 @@ void rg_audio_init(int sampleRate)
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
 
-    int error_code = -1;
+    const char *error_string = NULL;
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-        error_code = 0;
+        error_string = NULL;
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC)
     {
@@ -105,9 +105,10 @@ void rg_audio_init(int sampleRate)
         }, 0, NULL);
         if (ret == ESP_OK)
             ret = i2s_set_dac_mode(RG_AUDIO_USE_INT_DAC);
-        error_code = ret;
+        if (ret != ESP_OK)
+            error_string = esp_err_to_name(ret);
     #else
-        RG_LOGE("This device does not support internal DAC mode!\n");
+        error_string = "This device does not support internal DAC mode!";
     #endif
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
@@ -141,30 +142,38 @@ void rg_audio_init(int sampleRate)
                 .data_in_num = GPIO_NUM_NC
             });
         }
-        error_code = ret;
+        if (ret != ESP_OK)
+            error_string = esp_err_to_name(ret);
     #else
-        RG_LOGE("This device does not support external DAC mode!\n");
+        error_string = "This device does not support external DAC mode!";
     #endif
     }
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
     #if RG_AUDIO_USE_SDL2
-        SDL_AudioSpec sdl2_config = {0};
-        error_code = 0;
+        SDL_AudioSpec desired = {
+            .freq = sampleRate,
+            .format = AUDIO_S16,
+            .channels = 2,
+        };
+        audioDevice = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
+        if (!audioDevice)
+            error_string = SDL_GetError();
     #else
-        RG_LOGE("This device does not support SDL2!\n");
+        error_string = "This device does not support SDL2!";
     #endif
     }
 
-    if (!error_code)
+    if (error_string == NULL)
     {
         RG_LOGI("Audio ready. sink='%s', samplerate=%d, volume=%d\n",
             audio.sink->name, audio.sampleRate, audio.volume);
     }
     else
     {
-        RG_LOGE("Failed to initialize audio. sink='%s', samplerate=%d, err=0x%x\n",
-            audio.sink->name, audio.sampleRate, error_code);
+        RG_LOGE("Failed to initialize audio. sink='%s', samplerate=%d, volume=%d\n",
+            audio.sink->name, audio.sampleRate, audio.volume);
+        RG_LOGE(" - Error: %s\n", error_string);
         audio.sink = &sinks[0];
     }
 
@@ -215,7 +224,7 @@ void rg_audio_deinit(void)
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
     #if RG_AUDIO_USE_SDL2
-        // ...
+        SDL_CloseAudioDevice(audioDevice);
     #endif
     }
 
@@ -240,8 +249,7 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-        // usleep(RG_MAX(dummyBusyUntil - rg_system_timer(), 1000));
-        dummyBusyUntil = rg_system_timer() + ((audio.sampleRate * 1000) / count);
+        rg_usleep((uint32_t)(count * (1000000.f / audio.sampleRate)));
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
@@ -299,14 +307,21 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
     else if (audio.sink->type == RG_AUDIO_SINK_SDL2)
     {
     #if RG_AUDIO_USE_SDL2
-        //
+        SDL_QueueAudio(audioDevice, (void *)frames, count * 4);
+        SDL_PauseAudioDevice(audioDevice, 0);
+        // This is ugly, but we must emulate how it works on the ESP32, where the audio does the pacing!
+        static int64_t frame_start = 0;
+        int64_t frame_end = frame_start + (uint32_t)(count * (1000000.f / audio.sampleRate)) - 500;
+        if (frame_end > rg_system_timer())
+            rg_usleep((frame_end - rg_system_timer()));
+        frame_start = rg_system_timer();
     #endif
     }
 
     RELEASE_DEVICE();
 
+    counters.totalSamples += count;
     counters.busyTime += rg_system_timer() - time_start;
-    counters.samples += count;
 }
 
 const rg_audio_t *rg_audio_get_info(void)
@@ -389,17 +404,19 @@ void rg_audio_set_sample_rate(int sampleRate)
     if (audio.sampleRate == sampleRate)
         return;
 
-    if (!ACQUIRE_DEVICE(1000))
-        return;
-
 #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
-        RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
-        i2s_set_sample_rates(I2S_NUM_0, sampleRate);
+        if (ACQUIRE_DEVICE(1000))
+        {
+            RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
+            i2s_set_sample_rates(I2S_NUM_0, sampleRate);
+            audio.sampleRate = sampleRate;
+            RELEASE_DEVICE();
+        }
     }
+#else
+    rg_audio_deinit();
+    rg_audio_init(sampleRate);
 #endif
-
-    audio.sampleRate = sampleRate;
-    RELEASE_DEVICE();
 }

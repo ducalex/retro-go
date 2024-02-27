@@ -68,7 +68,7 @@ static void setup_song(int song)
     memcpy(cart->prg_ram, program, sizeof(program));
 
     // Load song data into ROM
-    if (*((uint64_t*)header->banks) == 0)
+    if (memcmp(header->banks, "\x00\x00\x00\x00\x00\x00\x00\x00", 8) == 0)
     {
         size_t offset = header->load_addr - 0x8000;
         size_t len = MIN(cart->data_len - 128, 0x7FF8 - offset);
@@ -89,14 +89,14 @@ static void setup_song(int song)
 }
 
 // That whole thing should be written in 6502 assembly above instead but for now I'm lazy
-static void map_vblank(void)
+static void map_vblank(nes_t *nes)
 {
-    if (playing && nes_getptr()->input->state)
+    if (playing && nes->input->state)
     {
         setup_song(++current_song);
         nes6502_reset();
         apu_reset();
-        nes6502_burn(NES_CPU_CLOCK / 2);
+        nes6502_burn(nes->cpu_clock / 2);
     }
 }
 
@@ -109,7 +109,7 @@ static void map_write(uint32 address, uint8 value)
     else if (address == 0x5800) // playback sync
     {
 #if !SYNC_TO_VBLANK
-        nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK / 1000000.f) - 214);
+        nes6502_burn(header->ntsc_speed * (NES_CPU_CLOCK_NTSC / 1000000.f) - 214);
 #endif
         playing = true;
     }

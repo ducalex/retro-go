@@ -38,12 +38,12 @@ static void map_irq_reset(void)
     irq.counter = 0x0000;
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
     /* Increment the counter if it is enabled and check for strike */
     if (irq.enabled)
     {
-        irq.counter += NES_CYCLES_PER_SCANLINE;
+        irq.counter += nes->cycles_per_scanline;
 
         /* IRQ is triggered after 24576 M2 cycles */
         if (irq.counter >= 0x6000)

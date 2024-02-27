@@ -1,11 +1,13 @@
 #include "shared.h"
 
 #include <sys/time.h>
-#include <unistd.h>
 #include <gnuboy.h>
 
-static bool fullFrame = false;
 static int skipFrames = 20; // The 20 is to hide startup flicker in some games
+static bool slowFrame = false;
+
+static int video_time;
+static int audio_time;
 
 static const char *sramFile;
 static int autoSaveSRAM = 0;
@@ -25,6 +27,14 @@ static void update_rtc_time(void)
     time_t timer = time(NULL);
     struct tm *info = localtime(&timer);
     gnuboy_set_time(info->tm_yday, info->tm_hour, info->tm_min, info->tm_sec);
+}
+
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, 0);
+    }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -64,7 +74,6 @@ static bool reset_handler(bool hard)
     gnuboy_reset(hard);
     update_rtc_time();
 
-    fullFrame = false;
     skipFrames = 20;
     autoSaveSRAM_Timer = 0;
 
@@ -87,7 +96,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         gnuboy_set_palette(pal);
         gnuboy_run(true);
-        rg_task_delay(50);
+        return RG_DIALOG_REDRAW;
     }
 
     if (pal == GB_PALETTE_DMG)
@@ -168,13 +177,13 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
 static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER) {
-        rg_gui_option_t choices[] = {
-            {'d', "Day", "000", 1, &rtc_t_update_cb},
-            {'h', "Hour", "00", 1, &rtc_t_update_cb},
-            {'m', "Min",  "00", 1, &rtc_t_update_cb},
-            {'s', "Sec",  "00", 1, &rtc_t_update_cb},
-            {'x', "Sync",  "Yes", 1, &rtc_t_update_cb},
-            RG_DIALOG_CHOICE_LAST
+        const rg_gui_option_t choices[] = {
+            {'d', "Day ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'h', "Hour", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'m', "Min ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'s', "Sec ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'x', "Sync", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            RG_DIALOG_END
         };
         rg_gui_dialog("RTC config", choices, 0);
     }
@@ -184,12 +193,20 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static void blit_frame(void)
+static void video_callback(void *buffer)
 {
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-    currentUpdate = previousUpdate;
-    host.video.buffer = currentUpdate->buffer;
+    int64_t startTime = rg_system_timer();
+    slowFrame = !rg_display_sync(false);
+    rg_display_submit(currentUpdate, 0);
+    video_time += rg_system_timer() - startTime;
+}
+
+
+static void audio_callback(void *buffer, size_t length)
+{
+    int64_t startTime = rg_system_timer();
+    rg_audio_submit(buffer, length >> 1);
+    audio_time += rg_system_timer() - startTime;
 }
 
 void gbc_main(void)
@@ -199,12 +216,13 @@ void gbc_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Palette", "7/7", 1, &palette_update_cb},
-        {0, "RTC config", "00:00", 1, &rtc_update_cb},
-        {0, "SRAM autosave", "Off", 1, &sram_autosave_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "Palette      ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, "RTC config   ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
+        {0, "SRAM autosave", "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
@@ -222,8 +240,11 @@ void gbc_main(void)
         RG_LOGE("Unable to create SRAM folder...");
 
     // Initialize the emulator
-    if (gnuboy_init(app->sampleRate, true, GB_PIXEL_565_BE, &blit_frame) < 0)
+    if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, GB_PIXEL_565_BE, &video_callback, &audio_callback) < 0)
         RG_PANIC("Emulator init failed!");
+
+    gnuboy_set_framebuffer(currentUpdate->buffer);
+    gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
     if (gnuboy_load_rom(app->romPath) < 0)
@@ -254,10 +275,8 @@ void gbc_main(void)
 
     // Ready!
 
-    int joystick_old = -1;
-    int joystick = 0;
-
-    host.video.buffer = currentUpdate->buffer;
+    uint32_t joystick_old = -1;
+    uint32_t joystick = 0;
 
     while (true)
     {
@@ -273,7 +292,6 @@ void gbc_main(void)
             }
             else
                 rg_gui_options_menu();
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
         else if (joystick != joystick_old)
         {
@@ -293,6 +311,13 @@ void gbc_main(void)
         int64_t startTime = rg_system_timer();
         bool drawFrame = !skipFrames;
 
+        video_time = audio_time = 0;
+
+        if (drawFrame)
+        {
+            currentUpdate = &updates[currentUpdate == &updates[0]];
+            gnuboy_set_framebuffer(currentUpdate->buffer);
+        }
         gnuboy_run(drawFrame);
 
         if (autoSaveSRAM > 0)
@@ -310,28 +335,23 @@ void gbc_main(void)
             }
         }
 
-        int elapsed = rg_system_timer() - startTime;
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime - audio_time);
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (60 * app->speed);
-            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
-                skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = 1; // (elapsed / frameTime)
+            else if (drawFrame && slowFrame)
                 skipFrames = 1;
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        // Tick before submitting audio/syncing
-        rg_system_tick(elapsed);
-
-        // Audio is used to pace emulation :)
-        rg_audio_submit((void*)host.audio.buffer, host.audio.pos >> 1);
-        host.audio.pos = 0;
     }
 }

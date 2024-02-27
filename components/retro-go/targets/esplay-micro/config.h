@@ -1,18 +1,3 @@
-// REF: https://www.makerfabs.com/esplay-micro-v2.html
-// This port developed for the Micro V2 listed above. Compatibility with the elusive V1 is unknown.
-
-// WORK IN PROGRESS!
-// Issues: Menu, L, and R aren't properly mapped yet.
-
-// Parts:
-// - ESP32-WROVER-B (SoC 16MB Flash + 8MB PSRAM)
-// - PCF8574 I2C GPIO (To connect the extra buttons)
-// - UDA1334A (I2S DAC)
-// - YT240L010 (ILI9341 LCD)
-// - TP4054 (Lipo Charger IC)
-// - CH340C (USB to Serial)
-// - 3.5mm Headphone jack 0_o
-
 // Target definition
 #define RG_TARGET_NAME             "ESPLAY-MICRO"
 
@@ -82,18 +67,8 @@
     {RG_KEY_B,      (1<<6)},\
 }
 
-// Experimental. Caused "Menu" to be mapped to a D-pad direction.
-//#define RG_GPIO_GAMEPAD_X           GPIO_NUM_NC
-//#define RG_GPIO_GAMEPAD_Y           GPIO_NUM_NC
-//#define RG_GPIO_GAMEPAD_SELECT      GPIO_NUM_0
-//#define RG_GPIO_GAMEPAD_START       GPIO_NUM_36
-//#define RG_GPIO_GAMEPAD_A           GPIO_NUM_32
-//#define RG_GPIO_GAMEPAD_B           GPIO_NUM_33
-//#define RG_GPIO_GAMEPAD_MENU        GPIO_NUM_35
-//#define RG_GPIO_GAMEPAD_OPTION      GPIO_NUM_NC
-
 // Battery
-// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
+#define RG_BATTERY_DRIVER           2
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
@@ -111,6 +86,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_12
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_27
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_26

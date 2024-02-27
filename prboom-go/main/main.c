@@ -116,10 +116,9 @@ static rg_gui_event_t gamma_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (gamma != usegamma)
     {
         usegamma = gamma;
-        I_SetPalette(current_palette);
-        rg_display_queue_update(&update, NULL);
         rg_settings_set_number(NS_APP, SETTING_GAMMA, gamma);
-        rg_task_delay(50);
+        I_SetPalette(current_palette);
+        return RG_DIALOG_REDRAW;
     }
 
     sprintf(option->value, "%d/%d", gamma, max);
@@ -140,7 +139,7 @@ void I_UpdateNoBlit(void)
 
 void I_FinishUpdate(void)
 {
-    rg_display_queue_update(&update, NULL);
+    rg_display_submit(&update, 0);
     rg_display_sync(true); // Wait for update->buffer to be released
 }
 
@@ -197,7 +196,7 @@ int I_GetTime(void)
 
 void I_uSleep(unsigned long usecs)
 {
-    usleep(usecs);
+    rg_usleep(usecs);
 }
 
 void I_SafeExit(int rc)
@@ -355,7 +354,7 @@ void I_InitSound(void)
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    rg_task_create("doom_sound", &soundTask, NULL, 2048, 5, 1);
+    rg_task_create("doom_sound", &soundTask, NULL, 2048, RG_TASK_PRIORITY_2, 1);
 }
 
 void I_ShutdownSound(void)
@@ -428,11 +427,13 @@ void I_StartTic(void)
     {
         if (joystick & RG_KEY_OPTION)
         {
+            Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
             rg_gui_options_menu();
             changed = 0;
         }
         else if (rg_menu_delay++ == TICRATE / 2)
         {
+            Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
             rg_gui_game_menu();
         }
         realtic_clock_rate = app->speed * 100;
@@ -502,7 +503,10 @@ static void event_handler(int event, void *arg)
         Z_FreeTags(0, PU_MAX);
         rg_audio_set_mute(true);
     }
-    return;
+    else if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(&update, 0);
+    }
 }
 
 bool is_iwad(const char *path)
@@ -523,12 +527,12 @@ void app_main()
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Gamma Boost", "0/5", 1, &gamma_update_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "Gamma Boost", "-", RG_DIALOG_FLAG_NORMAL, &gamma_update_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
-    app->refreshRate = TICRATE;
+    app->tickRate = TICRATE;
 
     update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);
 
@@ -547,7 +551,7 @@ void app_main()
     }
 
     if (!iwad)
-        iwad = rg_gui_file_picker("Select WAD file", I_DoomExeDir(), is_iwad);
+        iwad = rg_gui_file_picker("Select IWAD file", I_DoomExeDir(), is_iwad, false) ?: "";
 
     if (pwad)
     {

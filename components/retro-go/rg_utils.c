@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 char *rg_strtolower(char *str)
 {
     if (!str)
@@ -63,8 +62,11 @@ const char *rg_extension(const char *path)
     if (!path)
         return NULL;
 
-    const char *ext = strrchr(rg_basename(path), '.');
-    return ext ? ext + 1 : NULL;
+    const char *ptr = rg_basename(path);
+    const char *ext = strrchr(ptr, '.');
+    if (!ext)
+        return ptr + strlen(ptr);
+    return ext + 1;
 }
 
 const char *rg_relpath(const char *path)
@@ -81,7 +83,7 @@ const char *rg_relpath(const char *path)
     return path;
 }
 
-uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
+uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len)
 {
 #ifdef ESP_PLATFORM
     // This is part of the ROM but finding the correct header is annoying as it differs per SOC...
@@ -103,27 +105,93 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len)
 #endif
 }
 
+/**
+ * This function is the SuperFastHash from:
+ *  http://www.azillionmonkeys.com/qed/hash.html
+*/
+uint32_t rg_hash(const char *data, size_t len)
+{
+    #define get16bits(d) (*((const uint16_t *)(d)))
+
+    if (len <= 0 || data == NULL)
+        return 0;
+
+    uint32_t hash = len, tmp;
+    int rem = len & 3;
+    len >>= 2;
+
+    /* Main loop */
+    for (; len > 0; len--)
+    {
+        hash += get16bits(data);
+        tmp = (get16bits(data + 2) << 11) ^ hash;
+        hash = (hash << 16) ^ tmp;
+        data += 2 * sizeof(uint16_t);
+        hash += hash >> 11;
+    }
+
+    /* Handle end cases */
+    switch (rem)
+    {
+    case 3:
+        hash += get16bits(data);
+        hash ^= hash << 16;
+        hash ^= ((signed char)data[sizeof(uint16_t)]) << 18;
+        hash += hash >> 11;
+        break;
+    case 2:
+        hash += get16bits(data);
+        hash ^= hash << 11;
+        hash += hash >> 17;
+        break;
+    case 1:
+        hash += (signed char)*data;
+        hash ^= hash << 10;
+        hash += hash >> 1;
+    }
+
+    /* Force "avalanching" of final 127 bits */
+    hash ^= hash << 3;
+    hash += hash >> 5;
+    hash ^= hash << 4;
+    hash += hash >> 17;
+    hash ^= hash << 25;
+    hash += hash >> 6;
+
+    #undef get16bits
+    return hash;
+}
+
 const char *const_string(const char *str)
 {
-    static const char **strings = NULL;
+    static const rg_str_t **strings = NULL;
     static size_t strings_count = 0;
 
     if (!str)
         return NULL;
 
-    // To do : use hashmap or something faster
-    for (int i = 0; i < strings_count; i++)
-        if (strcmp(strings[i], str) == 0)
-            return strings[i];
+    size_t len = strlen(str);
 
-    str = strdup(str);
+    for (int i = 0; i < strings_count; i++)
+    {
+        if (strings[i]->length != len)
+            continue;
+        if (memcmp(strings[i]->data, str, len + 1) == 0)
+            return strings[i]->data;
+    }
+
+    rg_str_t *obj = malloc(sizeof(rg_str_t) + len + 1);
 
     strings = realloc(strings, (strings_count + 1) * sizeof(char *));
-    RG_ASSERT(strings && str, "alloc failed");
+    RG_ASSERT(strings && obj, "alloc failed");
 
-    strings[strings_count++] = str;
+    memcpy(obj->data, str, len + 1);
+    obj->capacity = len;
+    obj->length = len;
 
-    return str;
+    strings[strings_count++] = obj;
+
+    return obj->data;
 }
 
 // Note: You should use calloc/malloc everywhere possible. This function is used to ensure
@@ -158,8 +226,8 @@ void *rg_alloc(size_t size, uint32_t caps)
         // Loosen the caps and try again
         if ((ptr = heap_caps_calloc(1, size, esp_caps & ~(MALLOC_CAP_SPIRAM | MALLOC_CAP_INTERNAL))))
         {
-            RG_LOGW("SIZE=%u, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n", size, caps_list, ptr,
-                    available);
+            RG_LOGW("SIZE=%d, CAPS=%s, PTR=%p << CAPS not fully met! (available: %d)\n",
+                    (int)size, caps_list, ptr, (int)available);
             return ptr;
         }
     }
@@ -169,10 +237,22 @@ void *rg_alloc(size_t size, uint32_t caps)
 
     if (!ptr)
     {
-        RG_LOGE("SIZE=%u, CAPS=%s << FAILED! (available: %d)\n", size, caps_list, available);
+        RG_LOGE("SIZE=%d, CAPS=%s << FAILED! (available: %d)\n", (int)size, caps_list, (int)available);
         RG_PANIC("Memory allocation failed!");
     }
 
-    RG_LOGI("SIZE=%u, CAPS=%s, PTR=%p\n", size, caps_list, ptr);
+    RG_LOGI("SIZE=%d, CAPS=%s, PTR=%p\n", (int)size, caps_list, ptr);
     return ptr;
+}
+
+void rg_usleep(uint32_t us)
+{
+    int64_t goal = rg_system_timer() + us;
+    int64_t ms = us / 1000;
+    // We yield only if we have more than tick time (anywhere from 0 to 10ms)
+    if (ms >= 10)
+        rg_task_delay(ms);
+    // Then we busy wait, which is fine as it's a short delay
+    while (rg_system_timer() < goal)
+        continue;
 }

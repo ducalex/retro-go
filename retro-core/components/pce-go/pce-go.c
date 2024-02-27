@@ -211,7 +211,8 @@ LoadCard(const char *name)
 
 	// Allocate the card's onboard ram
 	if (romFlags[IDX].Flags & ONBOARD_RAM) {
-		PCE.ExRAM = PCE.ExRAM ?: malloc(0x8000);
+		if (!PCE.ExRAM)
+			PCE.ExRAM = malloc(0x8000);
 		PCE.MemoryMapR[0x40] = PCE.MemoryMapW[0x40] = PCE.ExRAM;
 		PCE.MemoryMapR[0x41] = PCE.MemoryMapW[0x41] = PCE.ExRAM + 0x2000;
 		PCE.MemoryMapR[0x42] = PCE.MemoryMapW[0x42] = PCE.ExRAM + 0x4000;

@@ -14,11 +14,20 @@ void S9xEndScreenRefresh(void);
 void S9xSetupOBJ(void);
 void S9xUpdateScreen(void);
 void RenderLine(uint8_t line);
-void S9xBuildDirectColourMaps(void);
-void S9xBuildTileBitmasks(void);
 
 bool S9xInitGFX(void);
 void S9xDeinitGFX(void);
+
+typedef struct
+{
+   uint8_t RTOFlags;
+   int16_t Tiles;
+   struct
+   {
+      int8_t  Sprite;
+      uint8_t Line;
+   } OBJ[32];
+} SOBJLines;
 
 typedef struct
 {
@@ -49,19 +58,7 @@ typedef struct
    uint32_t    Mode7PriorityMask;
    uint8_t     OBJWidths[128];
    uint8_t     OBJVisibleTiles[128];
-
-   struct
-   {
-      uint8_t RTOFlags;
-      int16_t Tiles;
-
-      struct
-      {
-         int8_t  Sprite;
-         uint8_t Line;
-      } OBJ[32];
-   } OBJLines [SNES_HEIGHT_EXTENDED];
-
+   SOBJLines   *OBJLines; // [SNES_HEIGHT_EXTENDED];
    uint8_t     r212c;
    uint8_t     r212d;
    uint8_t     r2130;
@@ -113,7 +110,6 @@ typedef struct
 } SLineMatrixData;
 
 extern SBG BG;
-extern uint16_t DirectColourMaps [8][256];
 
 /* Could use BSWAP instruction on Intel port... */
 #define SWAP_DWORD(dword) dword = ((((dword) & 0x000000ff) << 24) \

@@ -18,7 +18,7 @@
 static gb_snd_t snd;
 
 
-void sound_dirty(void)
+void gb_sound_dirty(void)
 {
 	S1.swlen = ((R_NR10>>4) & 7) << 14;
 	S1.len = (64-(R_NR11&63)) << 13;
@@ -70,33 +70,33 @@ static void sound_off(void)
 	R_NR50 = 0x77;
 	R_NR51 = 0xF3;
 	R_NR52 = 0x70;
-	sound_dirty();
+	gb_sound_dirty();
 }
 
-gb_snd_t *sound_init(void)
+gb_snd_t *gb_sound_init(void)
 {
 	return &snd;
 }
 
-void sound_reset(bool hard)
+void gb_sound_reset(bool hard)
 {
 	memset(&snd, 0, sizeof(snd));
 	memcpy(snd.wave, IS_CGB ? cgbwave : dmgwave, 16);
 	memcpy(GB.ioregs + 0x30, snd.wave, 16);
 	snd.rate = (int)(((1<<21) / (double)host.audio.samplerate) + 0.5);
-	host.audio.pos = 0;
+	GB.audio.pos = 0;
 	sound_off();
 	R_NR52 = 0xF1;
 }
 
-void sound_emulate(void)
+void gb_sound_emulate(void)
 {
 	if (!snd.rate || snd.cycles < snd.rate)
 		return;
 
 	int16_t *output_buf = host.audio.buffer + host.audio.pos;
 	int16_t *output_end = host.audio.buffer + host.audio.len;
-	bool stereo = host.audio.stereo;
+	bool stereo = host.audio.format == GB_AUDIO_STEREO_S16;
 
 	for (; snd.cycles >= snd.rate; snd.cycles -= snd.rate)
 	{
@@ -223,11 +223,19 @@ void sound_emulate(void)
 		l <<= 4;
 		r <<= 4;
 
-		if (!output_buf || output_buf >= output_end)
-		{
+		if (!output_buf)
 			continue;
+
+		if (output_buf >= output_end)
+		{
+			// MESSAGE_WARN("Overflow\n");
+			if (host.audio.callback)
+				(host.audio.callback)(host.audio.buffer, output_buf - host.audio.buffer);
+			output_buf = host.audio.buffer;
+			host.audio.pos = 0;
 		}
-		else if (stereo)
+
+		if (stereo)
 		{
 			*output_buf++ = (int16_t)l; //+128;
 			*output_buf++ = (int16_t)r; //+128;
@@ -243,13 +251,13 @@ void sound_emulate(void)
 	R_NR52 = (R_NR52&0xf0) | S1.on | (S2.on<<1) | (S3.on<<2) | (S4.on<<3);
 }
 
-void sound_write(byte r, byte b)
+void gb_sound_write(byte r, byte b)
 {
 	if (!(R_NR52 & 128) && r != RI_NR52)
 		return;
 
 	if (snd.cycles >= snd.rate)
-		sound_emulate();
+		gb_sound_emulate();
 
 	switch (r)
 	{

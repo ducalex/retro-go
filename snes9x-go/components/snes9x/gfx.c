@@ -9,12 +9,7 @@
 #include "gfx.h"
 #include "apu.h"
 
-
-#define M7 19
-
-void ComputeClipWindows(void);
-
-static uint8_t BitShifts[8][4] =
+static const uint8_t BitShifts[8][4] =
 {
    {2, 2, 2, 2}, /* 0 */
    {4, 4, 2, 0}, /* 1 */
@@ -25,7 +20,7 @@ static uint8_t BitShifts[8][4] =
    {4, 0, 0, 0}, /* 6 */
    {8, 0, 0, 0}  /* 7 */
 };
-static uint8_t TileShifts[8][4] =
+static const uint8_t TileShifts[8][4] =
 {
    {4, 4, 4, 4}, /* 0 */
    {5, 5, 4, 0}, /* 1 */
@@ -36,7 +31,7 @@ static uint8_t TileShifts[8][4] =
    {5, 0, 0, 0}, /* 6 */
    {6, 0, 0, 0}  /* 7 */
 };
-static uint8_t PaletteShifts[8][4] =
+static const uint8_t PaletteShifts[8][4] =
 {
    {2, 2, 2, 2}, /* 0 */
    {4, 4, 2, 0}, /* 1 */
@@ -47,7 +42,7 @@ static uint8_t PaletteShifts[8][4] =
    {4, 0, 0, 0}, /* 6 */
    {0, 0, 0, 0}  /* 7 */
 };
-static uint8_t PaletteMasks[8][4] =
+static const uint8_t PaletteMasks[8][4] =
 {
    {7, 7, 7, 7}, /* 0 */
    {7, 7, 7, 0}, /* 1 */
@@ -58,7 +53,7 @@ static uint8_t PaletteMasks[8][4] =
    {7, 0, 0, 0}, /* 6 */
    {0, 0, 0, 0}  /* 7 */
 };
-static uint8_t Depths[8][4] =
+static const uint8_t Depths[8][4] =
 {
    {TILE_2BIT, TILE_2BIT, TILE_2BIT, TILE_2BIT}, /* 0 */
    {TILE_4BIT, TILE_4BIT, TILE_2BIT, 0},         /* 1 */
@@ -69,22 +64,22 @@ static uint8_t Depths[8][4] =
    {TILE_4BIT, 0,         0,         0},         /* 6 */
    {0,         0,         0,         0}          /* 7 */
 };
-static uint8_t BGSizes [2] =
-{
-   8, 16
-};
+
 static NormalTileRenderer  DrawTilePtr;
 static ClippedTileRenderer DrawClippedTilePtr;
 static NormalTileRenderer  DrawHiResTilePtr;
 static ClippedTileRenderer DrawHiResClippedTilePtr;
 static LargePixelRenderer  DrawLargePixelPtr;
-
-extern SBG BG;
-
-static SLineData LineData[240];
-static SLineMatrixData LineMatrixData [240];
-
 static uint8_t  Mode7Depths [2];
+
+static struct {
+   SLineData LineData[240];
+   SLineMatrixData LineMatrixData[240];
+   SOBJLines OBJLines[SNES_HEIGHT_EXTENDED];
+} *LocalState;
+
+#define LineData LocalState->LineData
+#define LineMatrixData LocalState->LineMatrixData
 
 #define CLIP_10_BIT_SIGNED(a) \
    ((a) & ((1 << 10) - 1)) + (((((a) & (1 << 13)) ^ (1 << 13)) - (1 << 13)) >> 3)
@@ -130,6 +125,9 @@ static uint8_t  Mode7Depths [2];
     }
 
 #define BLACK BUILD_PIXEL(0,0,0)
+#define M7 19
+
+void ComputeClipWindows(void);
 
 void DrawTile16(uint32_t Tile, int32_t Offset, uint32_t StartLine, uint32_t LineCount);
 void DrawClippedTile16(uint32_t Tile, int32_t Offset, uint32_t StartPixel, uint32_t Width, uint32_t StartLine, uint32_t LineCount);
@@ -160,6 +158,11 @@ void DrawLargePixel16Sub1_2(uint32_t Tile, int32_t Offset, uint32_t StartPixel, 
 
 bool S9xInitGFX(void)
 {
+   LocalState = calloc(1, sizeof(*LocalState));
+   if (!LocalState)
+      return false;
+
+   GFX.OBJLines = LocalState->OBJLines;
    GFX.RealPitch = GFX.Pitch2 = GFX.Pitch;
    GFX.ZPitch = GFX.Pitch;
    GFX.ZPitch >>= 1;
@@ -168,7 +171,6 @@ bool S9xInitGFX(void)
 
    IPPU.OBJChanged = true;
 
-   IPPU.DirectColourMapsNeedRebuild = true;
    GFX.PixSize = 1;
    DrawTilePtr = DrawTile16;
    DrawClippedTilePtr = DrawClippedTile16;
@@ -178,8 +180,6 @@ bool S9xInitGFX(void)
    GFX.PPL = GFX.Pitch >> 1;
    GFX.PPLx2 = GFX.Pitch;
    S9xFixColourBrightness();
-
-   S9xBuildTileBitmasks();
 
 #ifndef NO_ZERO_LUT
    if (!(GFX.ZERO = (uint16_t*) malloc(sizeof(uint16_t) * 0x10000)))
@@ -227,15 +227,11 @@ void S9xDeinitGFX(void)
       free(GFX.ZERO);
       GFX.ZERO = NULL;
    }
-}
-
-void S9xBuildDirectColourMaps(void)
-{
-   uint32_t p, c;
-   for (p = 0; p < 8; p++)
-      for (c = 0; c < 256; c++)
-         DirectColourMaps [p][c] = BUILD_PIXEL(((c & 7) << 2) | ((p & 1) << 1), ((c & 0x38) >> 1) | (p & 2), ((c & 0xc0) >> 3) | (p & 4)); /* XXX: Brightness */
-   IPPU.DirectColourMapsNeedRebuild = false;
+   if (LocalState)
+   {
+      free(LocalState);
+      LocalState = NULL;
+   }
 }
 
 void S9xStartScreenRefresh(void)
@@ -1583,7 +1579,7 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
    int32_t OffsetShift;
    GFX.PixSize = 1;
 
-   BG.TileSize = BGSizes [PPU.BG[bg].BGSize];
+   BG.TileSize = 8 << (PPU.BG[bg].BGSize);
    BG.BitShift = BitShifts[BGMode][bg];
    BG.TileShift = TileShifts[BGMode][bg];
    BG.TileAddress = PPU.BG[bg].NameBase << 1;
@@ -1871,7 +1867,7 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
     uint32_t Left = 0; \
     uint32_t Right = 256; \
     uint32_t ClipCount; \
-    uint16_t* ScreenColors = IPPU.ScreenColors; \
+    uint16_t* ScreenColors; \
     uint8_t* VRAM1; \
     uint32_t Line; \
     uint8_t* Depth; \
@@ -1880,11 +1876,9 @@ static void DrawBackground(uint32_t BGMode, uint32_t bg, uint8_t Z1, uint8_t Z2)
 \
     VRAM1 = Memory.VRAM + 1; \
     if (GFX.r2130 & 1) \
-    { \
-    if (IPPU.DirectColourMapsNeedRebuild) \
-       S9xBuildDirectColourMaps (); \
-    ScreenColors = DirectColourMaps [0]; \
-    } \
+        ScreenColors = IPPU.DirectColors; \
+    else \
+        ScreenColors = IPPU.ScreenColors; \
 \
     ClipCount = GFX.pCurrentClip->Count [bg]; \
 \
@@ -2055,11 +2049,7 @@ static void DrawBGMode7Background16Sub1_2(uint8_t * Screen, int32_t bg)
     uint8_t *VRAM1 = Memory.VRAM + 1; \
     uint32_t b; \
     if (GFX.r2130 & 1) \
-    { \
-        if (IPPU.DirectColourMapsNeedRebuild) \
-            S9xBuildDirectColourMaps (); \
-        ScreenColors = DirectColourMaps [0]; \
-    } \
+        ScreenColors = IPPU.DirectColors; \
     else \
         ScreenColors = IPPU.ScreenColors; \
     \

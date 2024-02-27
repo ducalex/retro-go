@@ -36,7 +36,6 @@ typedef struct
    uint8_t  HDMA;
    bool     OBJChanged;
    bool     RenderThisFrame;
-   bool     DirectColourMapsNeedRebuild;
    uint32_t FrameCount;
    uint8_t* TileCache;
    uint8_t* TileCached;
@@ -50,8 +49,9 @@ typedef struct
    uint8_t  Red          [256];
    uint8_t  Green        [256];
    uint8_t  Blue         [256];
-   uint8_t* XB;
-   uint16_t ScreenColors [256];
+   const uint8_t* XB;
+   uint16_t *ScreenColors; // [256];
+   uint16_t *DirectColors; // [256 * 8];
    int32_t  PreviousLine;
    int32_t  CurrentLine;
    int32_t  Controller;
@@ -225,16 +225,12 @@ extern InternalPPU IPPU;
 
 #include "memmap.h"
 
-typedef struct
-{
-   uint8_t _5C77;
-   uint8_t _5C78;
-   uint8_t _5A22;
-} SnesModel;
-
-extern SnesModel* Model;
-extern SnesModel M1SNES;
-extern SnesModel M2SNES;
+#define SNES_5C77 1
+#define SNES_5C78 3
+#define SNES_5A22 4
+// #define SNES_5C77 2
+// #define SNES_5C78 4
+// #define SNES_5A22 3
 
 #define MAX_5C77_VERSION 0x01
 #define MAX_5A22_VERSION 0x02

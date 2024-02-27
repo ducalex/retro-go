@@ -17,73 +17,11 @@
 */
 
 #include "gw_type_defs.h"
-#include "sm510.h"
 #include "gw_romloader.h"
 #include "gw_system.h"
+#include "sm510.h"
 
-	int m_prgwidth;
-	int m_datawidth;
-	int m_prgmask;
-	int m_datamask;
-
-	// internal RAM 128x4 bits
-	un8 gw_ram[128];
-	un8 gw_ram_state[128];
-
-	u16 m_pc, m_prev_pc;
-	u16 m_op, m_prev_op;
-	u8 m_param;
-	int m_stack_levels=2;
-	u16 m_stack[4]; // max 4
-	int m_icount;
-
-	u8 m_acc;
-	u8 m_bl;
-	u8 m_bm;
-	bool m_sbm;
-	bool m_sbl;
-	u8 m_c;
-	bool m_skip;
-	u8 m_w,m_s_out;
-	u8 m_r, m_r_out;
-	int m_r_mask_option;
-	bool m_k_active;
-	bool m_halt;
-	int m_clk_div;
-
-	// melody controller
-	u8 m_melody_rd;
-	u8 m_melody_step_count;
-	u8 m_melody_duty_count;
-	u8 m_melody_duty_index;
-	u8 m_melody_address;
-
-	// freerun time counter
-	u16 m_div;
-	bool m_1s;
-
-	// lcd driver
-	u8 flag_lcd_deflicker_level=2;
-	u8 m_l, m_x;
-	u8 m_y;
-	u8 m_bp;
-	bool m_bc;
-
-	// SM500 internals
-	int m_o_pins; // number of 4-bit O pins
-	u8 m_ox[9];   // W' latch, max 9
-	u8 m_o[9];    // W latch
-	u8 m_ox_state[9];   // W' latch, max 9
-	u8 m_o_state[9];    // W latch
-
-	u8 m_cn;
-	u8 m_mx;
-	u8 trs_field;
-	 
-	u8 m_cb;
-	u8 m_s;
-	bool m_rsub;
-	
+sm510_t sm510;
 
 void update_w_latch() { m_write_s(m_w); } // W is connected directly to S
 
@@ -166,7 +104,7 @@ void writeb(un8 ram_address,un8 ram_data)
 // External IO functions */
 /*************************/
 
-inline un8 m_read_k() 
+inline un8 m_read_k()
 {
 	return gw_readK(m_s_out);
 }

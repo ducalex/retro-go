@@ -119,7 +119,7 @@ static bool memory_zone_dirty(const void *ptr, size_t size)
 int state_save(const char* fn)
 {
    uint32 numberOfBlocks = 0;
-   uint8 buffer[512];
+   uint8 buffer[600];
    nes_t *machine = nes_getptr();
    FILE *file;
 
@@ -158,10 +158,10 @@ int state_save(const char* fn)
    for (int i = 0; i < 32; i++)
       buffer[i] = machine->ppu->palette[i] & 0x3F;
 
-   buffer[32] = machine->ppu->nt1;
-   buffer[33] = machine->ppu->nt2;
-   buffer[34] = machine->ppu->nt3;
-   buffer[35] = machine->ppu->nt4;
+   buffer[32] = machine->ppu->nt_map[0];
+   buffer[33] = machine->ppu->nt_map[1];
+   buffer[34] = machine->ppu->nt_map[2];
+   buffer[35] = machine->ppu->nt_map[3];
    buffer[36] = machine->ppu->vaddr / 256;
    buffer[37] = machine->ppu->vaddr % 256;
    buffer[38] = machine->ppu->oam_addr;
@@ -241,17 +241,19 @@ int state_save(const char* fn)
    {
       MESSAGE_INFO("  - Saving mapper block\n");
 
+      memset(buffer, 0, sizeof(buffer));
+
       for (int i = 0; i < 4; i++)
       {
-         uint16 temp = swap16((mem_getpage((i + 4) * 4) - machine->cart->prg_rom) >> 13);
+         uint16 temp = (mem_getpage((i + 4) * 4) - machine->cart->prg_rom) >> 13;
+         temp = swap16(temp);
          buffer[(i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[(i * 2) + 1] = ((uint8 *) &temp)[1];
       }
 
       for (int i = 0; i < 8; i++)
       {
-         uint16 temp = (machine->cart->chr_rom_banks) ?
-            ((ppu_getpage(i) - machine->cart->chr_rom + (i * 0x400)) >> 10) : (i);
+         uint16 temp = (machine->cart->chr_rom_banks) ? ((ppu_getpage(i) - machine->cart->chr_rom) >> 10) : (i);
          temp = swap16(temp);
          buffer[8 + (i * 2) + 0] = ((uint8 *) &temp)[0];
          buffer[8 + (i * 2) + 1] = ((uint8 *) &temp)[1];
@@ -262,8 +264,8 @@ int state_save(const char* fn)
          machine->mapper->get_state(buffer + 0x18);
       }
 
-      _fwrite("MPRD\x00\x00\x00\x01\x00\x00\x00\x98", 12);
-      _fwrite(&buffer, 0x98);
+      _fwrite("MPRD\x00\x00\x00\x01\x00\x00\x02\x18", 12);
+      _fwrite(&buffer, 0x218);
       numberOfBlocks++;
    }
 
@@ -290,7 +292,7 @@ _error:
 
 int state_load(const char* fn)
 {
-   uint8 buffer[512];
+   uint8 buffer[600];
 
    nes_t *machine = nes_getptr();
    FILE *file;
@@ -309,18 +311,18 @@ int state_load(const char* fn)
       goto _error;
    }
 
-   size_t numberOfBlocks = swap32(*((uint32*)&buffer[4]));
-   size_t nextBlock = 8;
+   uint32 numberOfBlocks = swap32(*((uint32*)&buffer[4]));
+   uint32 nextBlock = 8;
 
-   MESSAGE_INFO("state_load: file '%s' opened, blocks=%d.\n", fn, numberOfBlocks);
+   MESSAGE_INFO("state_load: file '%s' opened, blocks=%u.\n", fn, numberOfBlocks);
 
-   for (size_t blk = 0; blk < numberOfBlocks; blk++)
+   for (uint32 blk = 0; blk < numberOfBlocks; blk++)
    {
       fseek(file, nextBlock, SEEK_SET);
       _fread(buffer, 12);
 
-      unsigned blockVersion = swap32(*((uint32*)&buffer[4]));
-      size_t blockLength = swap32(*((uint32*)&buffer[8]));
+      uint32 blockVersion = swap32(*((uint32*)&buffer[4]));
+      uint32 blockLength = swap32(*((uint32*)&buffer[8]));
 
       UNUSED(blockVersion);
 
@@ -330,7 +332,7 @@ int state_load(const char* fn)
 
       if (memcmp(buffer, "BASR", 4) == 0)
       {
-         MESSAGE_INFO("  - Found base block\n");
+         MESSAGE_INFO("  - Found base block (%u bytes)\n", blockLength);
 
          _fread(buffer, 9);
 
@@ -362,7 +364,11 @@ int state_load(const char* fn)
          machine->ppu->flipflop = 0;
          machine->ppu->strikeflag = false;
 
-         ppu_setnametables(buffer[0], buffer[1], buffer[2], buffer[3]);
+         ppu_setnametable(0, buffer[0]);
+         ppu_setnametable(1, buffer[1]);
+         ppu_setnametable(2, buffer[2]);
+         ppu_setnametable(3, buffer[3]);
+
          ppu_write(PPU_CTRL0, machine->ppu->ctrl0);
          ppu_write(PPU_CTRL1, machine->ppu->ctrl1);
          ppu_write(PPU_VADDR, machine->ppu->vaddr >> 8);
@@ -374,7 +380,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "VRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found VRAM block\n");
+         MESSAGE_INFO("  - Found VRAM block (%u bytes)\n", blockLength);
 
          if (machine->cart->chr_ram_banks < (blockLength / ROM_CHR_BANK_SIZE))
          {
@@ -390,7 +396,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SRAM", 4) == 0)
       {
-         MESSAGE_INFO("  - Found SRAM block\n");
+         MESSAGE_INFO("  - Found SRAM block (%u bytes)\n", blockLength);
 
          if (machine->cart->prg_ram_banks < ((blockLength-1) / ROM_PRG_BANK_SIZE))
          {
@@ -407,22 +413,22 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "MPRD", 4) == 0)
       {
-         MESSAGE_INFO("  - Found mapper block\n");
+         MESSAGE_INFO("  - Found mapper block (%u bytes)\n", blockLength);
 
-         _fread(buffer, 0x98);
+         _fread(buffer, MIN(blockLength, sizeof(buffer)));
 
          for (int i = 0; i < 4; i++)
-            mmc_bankrom(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]));
+            mmc_bankprg(8, 0x8000 + (i * 0x2000), swap16(((uint16*)buffer)[i]), PRG_ROM);
 
          if (machine->cart->chr_rom_banks)
          {
             for (int i = 0; i < 8; i++)
-               mmc_bankvrom(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]));
+               mmc_bankchr(1, i * 0x400, swap16(((uint16*)buffer)[4 + i]), CHR_ROM);
          }
          else if (machine->cart->chr_ram)
          {
             for (int i = 0; i < 8; i++)
-               ppu_setpage(1, i, machine->cart->chr_ram);
+               mmc_bankchr(1, i * 0x400, i, CHR_RAM);
          }
 
          if (machine->mapper->set_state)
@@ -434,7 +440,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "SOUN", 4) == 0)
       {
-         MESSAGE_INFO("  - Found sound block\n");
+         MESSAGE_INFO("  - Found sound block (%u bytes)\n", blockLength);
 
          _fread(buffer, 0x16);
 
@@ -449,7 +455,7 @@ int state_load(const char* fn)
 
       else if (memcmp(buffer, "INFO", 4) == 0)
       {
-         MESSAGE_INFO("  - Found info block\n");
+         MESSAGE_INFO("  - Found info block (%u bytes)\n", blockLength);
 
          _fread(buffer, 0x100);
 

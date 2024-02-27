@@ -3,8 +3,6 @@
 
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_server.h>
-#include <sys/unistd.h>
-#include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <cJSON.h>
@@ -33,6 +31,18 @@ static char *urldecode(const char *str)
     return new_string;
 }
 
+static int add_file(const rg_scandir_t *entry, void *arg)
+{
+    cJSON *obj = cJSON_CreateObject();
+    cJSON_AddStringToObject(obj, "name", entry->basename);
+    cJSON_AddNumberToObject(obj, "size", entry->size);
+    cJSON_AddNumberToObject(obj, "mtime", entry->mtime);
+    // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);
+    cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
+    cJSON_AddItemToArray((cJSON *)arg, obj);
+    return RG_SCANDIR_CONTINUE;
+}
+
 static esp_err_t http_api_handler(httpd_req_t *req)
 {
     char http_buffer[1024] = {0};
@@ -57,19 +67,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
     if (strcmp(cmd, "list") == 0)
     {
         cJSON *array = cJSON_AddArrayToObject(response, "files");
-        rg_scandir_t *files = rg_storage_scandir(arg1, NULL, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
-        for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
-        {
-            cJSON *obj = cJSON_CreateObject();
-            cJSON_AddStringToObject(obj, "name", entry->name);
-            cJSON_AddNumberToObject(obj, "size", entry->size);
-            cJSON_AddNumberToObject(obj, "mtime", entry->mtime);
-            // cJSON_AddBoolToObject(obj, "is_file", entry->is_file);
-            cJSON_AddBoolToObject(obj, "is_dir", entry->is_dir);
-            cJSON_AddItemToArray(array, obj);
-        }
-        success = array && files;
-        free(files);
+        success = array && rg_storage_scandir(arg1, add_file, array, RG_SCANDIR_SORT | RG_SCANDIR_STAT);
     }
     else if (strcmp(cmd, "rename") == 0)
     {
@@ -110,7 +108,7 @@ static esp_err_t http_api_handler(httpd_req_t *req)
 static esp_err_t http_upload_handler(httpd_req_t *req)
 {
     char *filename = urldecode(req->uri);
-
+    bool success = false;
     RG_LOGI("Receiving file: %s", filename);
 
     gui.http_lock = true;
@@ -118,7 +116,7 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
 
     FILE *fp = fopen(filename, "wb");
     if (!fp)
-        return ESP_FAIL;
+        goto _done;
 
     size_t received = 0;
 
@@ -129,28 +127,30 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
             break;
         if (!fwrite(http_buffer, length, 1, fp))
         {
-            RG_LOGI("Write failure at %d bytes", received);
+            RG_LOGE("Write failure at %d bytes", received);
             break;
         }
-        rg_task_delay(0);
         received += length;
+        rg_task_yield();
     }
 
     fclose(fp);
-    free(filename);
+
+    RG_LOGI("Received %d/%d bytes", received, req->content_len);
+    success = received == req->content_len;
 
     gui.http_lock = false;
     gui_invalidate();
 
-    if (received < req->content_len)
+_done:
+    free(filename);
+    if (!success)
     {
-        RG_LOGE("Received %d/%d bytes", received, req->content_len);
+        RG_LOGE("File receive error!");
         httpd_resp_sendstr(req, "ERROR");
-        unlink(filename);
+        remove(filename);
         return ESP_FAIL;
     }
-
-    RG_LOGI("Received %d/%d bytes", received, req->content_len);
     httpd_resp_sendstr(req, "OK");
     return ESP_OK;
 }
@@ -167,17 +167,20 @@ static esp_err_t http_download_handler(httpd_req_t *req)
 
     if ((fp = fopen(filename, "rb")))
     {
-        if (ext && (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0))
+        if (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0)
             httpd_resp_set_type(req, "text/plain");
-        else if (ext && (strcmp(ext, "png") == 0))
+        else if (strcmp(ext, "png") == 0)
             httpd_resp_set_type(req, "image/png");
-        else if (ext && (strcmp(ext, "jpg") == 0))
+        else if (strcmp(ext, "jpg") == 0)
             httpd_resp_set_type(req, "image/jpg");
         else
             httpd_resp_set_type(req, "application/binary");
 
         for (size_t len; (len = fread(http_buffer, 1, 0x8000, fp));)
+        {
             httpd_resp_send_chunk(req, http_buffer, len);
+            rg_task_yield();
+        }
 
         httpd_resp_send_chunk(req, NULL, 0);
         fclose(fp);

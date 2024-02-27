@@ -16,6 +16,7 @@ typedef struct
 
 typedef enum
 {
+    RG_NETWORK_DISABLED,
     RG_NETWORK_DISCONNECTED,
     RG_NETWORK_CONNECTING,
     RG_NETWORK_CONNECTED,

@@ -13,22 +13,45 @@
 #define RG_BASE_PATH_ROMS   RG_STORAGE_ROOT "/roms"
 #define RG_BASE_PATH_SAVES  RG_BASE_PATH "/saves"
 #define RG_BASE_PATH_THEMES RG_BASE_PATH "/themes"
+#define RG_BASE_PATH_BORDERS RG_BASE_PATH "/borders"
 
-typedef struct __attribute__((packed))
+typedef struct
 {
-    uint8_t is_valid : 1;
-    uint8_t is_file  : 1;
-    uint8_t is_dir   : 1;
-    uint8_t unused   : 5;
-    char name[91];
-    int32_t mtime, size;
+    char path[RG_PATH_MAX + 1];
+    const char *basename;
+    const char *dirname;
+    size_t size;
+    time_t mtime;
+    bool is_file;
+    bool is_dir;
 } rg_scandir_t;
+
+typedef int (rg_scandir_cb_t)(const rg_scandir_t *file, void *arg);
 
 enum
 {
-    RG_SCANDIR_STAT = 1, // This will populate file size
-    RG_SCANDIR_SORT = 2, // This will sort using natural order
+    RG_SCANDIR_FILES = (1 << 0),
+    RG_SCANDIR_DIRS  = (1 << 1),
+    RG_SCANDIR_STAT  = (1 << 8),
+    RG_SCANDIR_SORT  = (1 << 9),
+    RG_SCANDIR_RECURSIVE = (1 << 10),
+
+    RG_SCANDIR_CONTINUE = 1,
+    RG_SCANDIR_SKIP = 2,
+    RG_SCANDIR_STOP = 0,
 };
+
+typedef struct
+{
+    const char *basename;
+    const char *extension;
+    size_t size;
+    time_t mtime;
+    bool is_dir;
+    bool is_file;
+    bool is_link;
+    bool exists;
+} rg_stat_t;
 
 void rg_storage_init(void);
 void rg_storage_deinit(void);
@@ -40,5 +63,7 @@ bool rg_storage_get_activity_led(void);
 bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
 bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
+bool rg_storage_exists(const char *path);
 bool rg_storage_mkdir(const char *dir);
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags);
+bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);
+rg_stat_t rg_storage_stat(const char *path);

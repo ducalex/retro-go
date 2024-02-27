@@ -1,7 +1,5 @@
 #include <rg_system.h>
-#include <sys/stat.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <stdio.h>
 #include <ctype.h>
 #include <string.h>
@@ -27,6 +25,76 @@ static bool crc_cache_dirty = true;
 static retro_app_t *apps[24];
 static int apps_count = 0;
 
+static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
+{
+    retro_app_t *app = (retro_app_t *)arg;
+    const char *ext = rg_extension(entry->basename);
+    uint8_t is_valid = false;
+    uint8_t type = 0x00;
+    char ext_buf[32];
+
+    // Skip hidden files
+    if (entry->basename[0] == '.')
+        return RG_SCANDIR_SKIP;
+
+    if (entry->is_file && ext[0])
+    {
+        snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
+        is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
+        type = 0x00;
+    }
+    else if (entry->is_dir)
+    {
+        RG_LOGI("Found subdirectory '%s'", entry->path);
+        is_valid = true;
+        type = 0xFF;
+    }
+
+    if (!is_valid)
+        return RG_SCANDIR_CONTINUE;
+
+    if (app->files_count + 1 > app->files_capacity)
+    {
+        size_t new_capacity = app->files_capacity * 1.5;
+        retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
+        if (!new_buf)
+        {
+            RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...", app->files_count);
+            return RG_SCANDIR_STOP;
+        }
+        app->files = new_buf;
+        app->files_capacity = new_capacity;
+    }
+
+    app->files[app->files_count++] = (retro_file_t) {
+        .name = strdup(entry->basename),
+        .folder = const_string(entry->dirname),
+        .app = (void*)app,
+        .type = type,
+        .is_valid = true,
+    };
+
+    return RG_SCANDIR_CONTINUE;
+}
+
+static void application_init(retro_app_t *app)
+{
+    RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
+
+    if (app->initialized)
+        app->files_count = 0;
+
+    rg_storage_mkdir(app->paths.covers);
+    rg_storage_mkdir(app->paths.saves);
+    rg_storage_mkdir(app->paths.roms);
+
+    rg_storage_scandir(app->paths.roms, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
+
+    app->use_crc_covers = rg_storage_exists(strcat(app->paths.covers, "/0"));
+    app->paths.covers[strlen(app->paths.covers) - 2] = 0;
+
+    app->initialized = true;
+}
 
 static const char *get_file_path(retro_file_t *file)
 {
@@ -34,94 +102,6 @@ static const char *get_file_path(retro_file_t *file)
     RG_ASSERT(file, "Bad param");
     snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
     return buffer;
-}
-
-static void scan_folder(retro_app_t *app, const char* path, void *parent)
-{
-    RG_ASSERT(app && path, "Bad param");
-
-    RG_LOGI("Scanning directory %s\n", path);
-
-    const char *folder = const_string(path);
-    rg_scandir_t *files = rg_storage_scandir(path, NULL, false);
-    char ext_buf[32];
-
-    for (rg_scandir_t *entry = files; entry && entry->is_valid; ++entry)
-    {
-        const char *ext = rg_extension(entry->name);
-        uint8_t is_valid = false;
-        uint8_t type = 0x00;
-
-        if (entry->is_file && ext != NULL)
-        {
-            snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
-            is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
-            type = 0x00;
-        }
-        else if (entry->is_dir)
-        {
-            is_valid = true;
-            type = 0xFF;
-        }
-
-        if (!is_valid)
-            continue;
-
-        if (app->files_count + 1 > app->files_capacity)
-        {
-            size_t new_capacity = app->files_capacity * 1.5;
-            retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
-            if (!new_buf)
-            {
-                RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...\n", app->files_count);
-                break;
-            }
-            app->files = new_buf;
-            app->files_capacity = new_capacity;
-        }
-
-        app->files[app->files_count++] = (retro_file_t) {
-            .name = strdup(entry->name),
-            .folder = folder,
-            .app = (void*)app,
-            .type = type,
-            .is_valid = true,
-        };
-
-        if (type == 0xFF)
-        {
-            retro_file_t *file = &app->files[app->files_count-1];
-            scan_folder(app, get_file_path(file), file);
-        }
-    }
-
-    free(files);
-}
-
-static void application_init(retro_app_t *app)
-{
-    RG_LOGI("Initializing application '%s' (%s)\n", app->description, app->partition);
-
-    if (app->initialized)
-        app->files_count = 0;
-
-    // This checks if we have crc cover folders, the idea is to skip the crc later on if we don't!
-    // It adds very little delay but it could become an issue if someone has thousands of named files...
-    rg_scandir_t *files = rg_storage_scandir(app->paths.covers, NULL, false);
-    if (!files)
-        rg_storage_mkdir(app->paths.covers);
-    else
-    {
-        for (rg_scandir_t *entry = files; entry->is_valid && !app->use_crc_covers; ++entry)
-            app->use_crc_covers = entry->name[1] == 0 && isalnum(entry->name[0]);
-        free(files);
-    }
-
-    rg_storage_mkdir(app->paths.saves);
-    rg_storage_mkdir(app->paths.roms);
-    scan_folder(app, app->paths.roms, 0);
-
-    app->initialized = true;
 }
 
 static void application_start(retro_file_t *file, int load_state)
@@ -145,7 +125,7 @@ static void crc_cache_init(void)
     crc_cache = calloc(1, sizeof(*crc_cache));
     if (!crc_cache)
     {
-        RG_LOGE("Failed to allocate crc_cache!\n");
+        RG_LOGE("Failed to allocate crc_cache!");
         return;
     }
     // File format: {magic:U32 count:U32} {{key:U32 crc:U32}, ...}
@@ -155,7 +135,7 @@ static void crc_cache_init(void)
         fread(crc_cache, 8, 1, fp);
         if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
         {
-            RG_LOGI("Loaded CRC cache (entries: %d)\n", crc_cache->count);
+            RG_LOGI("Loaded CRC cache (entries: %d)", crc_cache->count);
             fread(crc_cache->entries, crc_cache->count, 8, fp);
             crc_cache_dirty = false;
         }
@@ -195,7 +175,7 @@ static void crc_cache_save(void)
     if (!crc_cache || !crc_cache_dirty)
         return;
 
-    RG_LOGI("Saving cache\n");
+    RG_LOGI("Saving cache");
 
     FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "wb");
     if (fp)
@@ -225,7 +205,7 @@ static void crc_cache_update(retro_file_t *file)
     crc_cache->entries[index].crc = file->checksum;
     crc_cache_dirty = true;
 
-    RG_LOGI("Adding %08X => %08X to cache (new total: %d)\n",
+    RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
         key, file->checksum, crc_cache->count);
 
     // crc_cache_save();
@@ -294,7 +274,6 @@ void crc_cache_idle_task(tab_t *tab)
 
             gui_set_status(tab, "", "");
             gui_redraw(); // gui_draw_status(tab);
-            rg_system_tick(0);
         }
     }
 
@@ -532,9 +511,9 @@ static void show_file_info(retro_file_t *file)
 {
     char filesize[16];
     char filecrc[16] = "Compute";
-    struct stat st;
+    rg_stat_t info = rg_storage_stat(get_file_path(file));
 
-    if (stat(get_file_path(file), &st) != 0)
+    if (!info.exists)
     {
         rg_gui_alert("File not found", file->name);
         return;
@@ -551,7 +530,7 @@ static void show_file_info(retro_file_t *file)
         RG_DIALOG_END,
     };
 
-    sprintf(filesize, "%ld KB", st.st_size / 1024);
+    sprintf(filesize, "%d KB", (int)info.size / 1024);
 
     while (true) // We loop in case we need to update the CRC
     {
@@ -566,7 +545,7 @@ static void show_file_info(retro_file_t *file)
         case 5:
             if (rg_gui_confirm("Delete selected file?", 0, 0))
             {
-                if (unlink(get_file_path(file)) == 0)
+                if (remove(get_file_path(file)) == 0)
                 {
                     bookmark_remove(BOOK_TYPE_FAVORITE, file);
                     bookmark_remove(BOOK_TYPE_RECENT, file);
@@ -586,9 +565,9 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 {
     const char *rom_path = get_file_path(file);
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
-    rg_emu_state_t *savestate = rg_emu_get_states(rom_path, 4);
-    bool has_save = savestate->used > 0;
-    bool has_sram = access(sram_path, F_OK) == 0;
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
+    bool has_save = savestates->used > 0;
+    bool has_sram = rg_storage_exists(sram_path);
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
 
@@ -619,12 +598,12 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     case 2:
         while ((slot = rg_gui_savestate_menu("Delete save?", rom_path, 0)) != -1)
         {
-            unlink(savestate->slots[slot].preview);
-            unlink(savestate->slots[slot].file);
+            remove(savestates->slots[slot].preview);
+            remove(savestates->slots[slot].file);
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
-            unlink(sram_path);
+            remove(sram_path);
         }
         break;
 
@@ -644,7 +623,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     }
 
     free(sram_path);
-    free(savestate);
+    free(savestates);
 
     // gui_redraw();
 }
@@ -655,7 +634,7 @@ static void application(const char *desc, const char *name, const char *exts, co
 
     if (!rg_system_have_app(part))
     {
-        RG_LOGI("Application '%s' (%s) not present, skipping\n", desc, part);
+        RG_LOGI("Application '%s' (%s) not present, skipping", desc, part);
         return;
     }
 
@@ -687,10 +666,10 @@ void applications_init(void)
     application("Nintendo Gameboy", "gb", "gb gbc", "retro-core", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-core", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
-    application("Sega Master System", "sms", "sms sg", "smsplusgx-go", 0);
-    application("Sega Game Gear", "gg", "gg", "smsplusgx-go", 0);
+    application("Sega Master System", "sms", "sms sg", "retro-core", 0);
+    application("Sega Game Gear", "gg", "gg", "retro-core", 0);
     application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
-    application("Coleco ColecoVision", "col", "col", "smsplusgx-go", 0);
+    application("Coleco ColecoVision", "col", "col rom", "retro-core", 0);
     application("NEC PC Engine", "pce", "pce", "retro-core", 0);
     application("Atari Lynx", "lnx", "lnx", "retro-core", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);

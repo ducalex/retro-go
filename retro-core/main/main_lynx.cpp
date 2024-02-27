@@ -104,6 +104,14 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, 0);
+    }
+}
+
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -154,13 +162,13 @@ extern "C" void lynx_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
-        .event = NULL,
+        .event = &event_handler,
         .memRead = NULL,
         .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
-        {100, "Rotation", (char *)"Auto", 1, &rotation_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "Rotation", (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
@@ -170,7 +178,7 @@ extern "C" void lynx_main(void)
     updates[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
 
     // The Lynx has a variable framerate but 60 is typical
-    app->refreshRate = 60;
+    app->tickRate = 60;
 
     // Init emulator
     lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
@@ -193,7 +201,7 @@ extern "C" void lynx_main(void)
 
     float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
-    bool fullFrame = 0;
+    bool slowFrame = false;
 
     // Start emulation
     while (1)
@@ -207,7 +215,6 @@ extern "C" void lynx_main(void)
             else
                 rg_gui_options_menu();
             sampleTime = 1000000.f / (app->sampleRate * app->speed);
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
         }
 
         int64_t startTime = rg_system_timer();
@@ -224,40 +231,38 @@ extern "C" void lynx_main(void)
     	if (joystick & RG_KEY_SELECT) buttons |= BUTTON_OPT1;
 
         lynx->SetButtonData(buttons);
-
         lynx->UpdateFrame(drawFrame);
 
         if (drawFrame)
         {
-            rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-
-            fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-
-            currentUpdate = previousUpdate;
+            slowFrame = !rg_display_sync(false);
+            rg_display_submit(currentUpdate, 0);
+            currentUpdate = &updates[currentUpdate == &updates[0]];
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
         }
 
-        int elapsed = rg_system_timer() - startTime;
+        app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);
+        rg_system_tick(rg_system_timer() - startTime);
+
+        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            if (app->speed > 1.f)
-                skipFrames += (int)app->speed * 2;
+            int frameTime = ((gAudioBufferPointer / 2) * sampleTime);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            else if (elapsed > ((gAudioBufferPointer / 2) * sampleTime))
-                skipFrames += 1;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
-                skipFrames += 1;
+            else if (elapsed > frameTime + 1500)
+                skipFrames = 1; // (elapsed / frameTime)
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        rg_system_tick(elapsed);
-
-        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
         gAudioBufferPointer = 0;
     }
 }

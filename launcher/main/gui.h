@@ -163,3 +163,4 @@ void gui_draw_background(tab_t *tab, int shade);
 void gui_draw_header(tab_t *tab, int offset);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
+void gui_draw_tab_indicator(void);

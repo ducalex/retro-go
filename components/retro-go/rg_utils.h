@@ -40,6 +40,20 @@
 #define PRINTF_BINARY_32 PRINTF_BINARY_16 " " PRINTF_BINARY_16
 #define PRINTF_BINVAL_32(i) PRINTF_BINVAL_16((i) >> 16), PRINTF_BINVAL_16(i)
 
+typedef struct
+{
+    uint16_t capacity;
+    uint16_t length;
+    // uint32_t hash;
+    char data[];
+} rg_str_t;
+
+/**
+ * Const strings are unique strings that will be valid for the lifetime of the application.
+ * Things like const_string("abc") == const_string("abc") are guaranteed to be true
+*/
+const char *const_string(const char *str);
+
 size_t strlcpy(char *dst, const char *src, size_t size);
 size_t strlcat(char *dst, const char *src, size_t size);
 
@@ -49,9 +63,10 @@ const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *path);
 const char *rg_relpath(const char *path);
-const char *const_string(const char *str);
-uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, uint32_t len);
+uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
+uint32_t rg_hash(const char *buf, size_t len);
 void *rg_alloc(size_t size, uint32_t caps);
+void rg_usleep(uint32_t us);
 
 #define MEM_ANY   (0)
 #define MEM_SLOW  (1)

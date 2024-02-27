@@ -33,9 +33,9 @@ static uint16 command = 0;
 static uint16 vrombase = 0x0000;
 
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
-    if (scanline >= 241)
+    if (nes->scanline >= 241)
         return;
 
     irq.reset = false;
@@ -67,13 +67,17 @@ static void map_write(uint32 address, uint8 value)
         switch (command & 0xF)
         {
         case 0:
-            mmc_bankvrom(1, 0x0000 ^ vrombase, value);
-            mmc_bankvrom(1, 0x0400 ^ vrombase, value);
+            if (command & 0x20)
+                mmc_bankvrom(1, 0x0000 ^ vrombase, value);
+            else
+                mmc_bankvrom(2, 0x0000 ^ vrombase, value >> 1);
             break;
 
         case 1:
-            mmc_bankvrom(1, 0x0800 ^ vrombase, value);
-            mmc_bankvrom(1, 0x0C00 ^ vrombase, value);
+            if (command & 0x20)
+                mmc_bankvrom(1, 0x0800 ^ vrombase, value);
+            else
+                mmc_bankvrom(2, 0x0800 ^ vrombase, value >> 1);
             break;
 
         case 2:
@@ -101,11 +105,13 @@ static void map_write(uint32 address, uint8 value)
             break;
 
         case 8:
-            mmc_bankvrom(1, 0x0400, value);
+            if (command & 0x20)
+                mmc_bankvrom(1, 0x0400 ^ vrombase, value);
             break;
 
         case 9:
-            mmc_bankvrom(1, 0x0C00, value);
+            if (command & 0x20)
+                mmc_bankvrom(1, 0x0C00 ^ vrombase, value);
             break;
 
         case 15:

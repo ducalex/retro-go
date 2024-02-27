@@ -24,6 +24,8 @@ __license__ = "GPLv3"
 #include <stdlib.h>
 #include <assert.h>
 
+#define GW_NO_SM510_DEFINES
+
 /* Emulated system */
 #include "sm510.h"
 #include "sm500.h"
@@ -249,12 +251,12 @@ static void gw_system_sound_melody(unsigned char data)
 
 			// R1(+S1) to piezo
 		case FLAG_SOUND_R1S1_PIEZO:
-			mspeaker_data = (m_s_out & ~1) | (data & 1);
+			mspeaker_data = (sm510.m_s_out & ~1) | (data & 1);
 			break;
 
 			// S1(+R1) to piezo, other to input mux
 		case FLAG_SOUND_S1R1_PIEZO:
-			mspeaker_data = (m_s_out & ~2) | (data << 1 & 2);
+			mspeaker_data = (sm510.m_s_out & ~2) | (data << 1 & 2);
 			break;
 
 			// R1 to piezo
@@ -369,23 +371,23 @@ static unsigned int patch_gnw_ghouse_keys_rotated_view(unsigned int keys_pressed
 	if ( gw_keyboard[1] != ( (GW_BUTTON_LEFT << 24) + (GW_BUTTON_RIGHT << 8) + (GW_BUTTON_UP << 16)  + GW_BUTTON_DOWN) ) return keys_pressed;
 
 	// Check position CFGI
-	if (gw_ram[108] & 0x1) return keys_pressed;
-	if (gw_ram[114] & 0x4) return keys_pressed;
-	if (gw_ram[114] & 0x2) return keys_pressed;
-	if (gw_ram[114] & 0x1) return keys_pressed;
+	if (sm510.gw_ram[108] & 0x1) return keys_pressed;
+	if (sm510.gw_ram[114] & 0x4) return keys_pressed;
+	if (sm510.gw_ram[114] & 0x2) return keys_pressed;
+	if (sm510.gw_ram[114] & 0x1) return keys_pressed;
 
 	// Check position AH
-	if ( (gw_ram[118] & 0x1) | (gw_ram[99] & 0x1) ) {
+	if ( (sm510.gw_ram[118] & 0x1) | (sm510.gw_ram[99] & 0x1) ) {
 		if ( (keys_pressed & (GW_BUTTON_RIGHT+GW_BUTTON_UP) ) )
 			keys_pressed = GW_BUTTON_A;
 	}
 	// Check position BD
-	if ( (gw_ram[123] & 0x1) | (gw_ram[124] & 0x1) ) {
+	if ( (sm510.gw_ram[123] & 0x1) | (sm510.gw_ram[124] & 0x1) ) {
 		if ( (keys_pressed & GW_BUTTON_RIGHT) )
 			keys_pressed = GW_BUTTON_A;
 	}
 	// Check position EJ
-	if ( (gw_ram[110] & 0x1) | (gw_ram[98] & 0x1) ) {
+	if ( (sm510.gw_ram[110] & 0x1) | (sm510.gw_ram[98] & 0x1) ) {
 		if ( (keys_pressed & (GW_BUTTON_RIGHT+GW_BUTTON_DOWN)) )
 			keys_pressed = GW_BUTTON_A;
 	}
@@ -644,20 +646,20 @@ int gw_system_run(int clock_cycles)
 {
 	// check if a key is pressed to wakeup the system
 	// set K input lines active state
-	m_k_active = (gw_get_buttons() != 0);
+	sm510.m_k_active = (gw_get_buttons() != 0);
 
 	//1 CPU operation in 2 clock cycles
-	if (m_clk_div == 2)
-		m_icount += (clock_cycles / 2);
+	if (sm510.m_clk_div == 2)
+		sm510.m_icount += (clock_cycles / 2);
 
 	//1 CPU operation in 4 clock cycles
-	if (m_clk_div == 4)
-		m_icount += (clock_cycles / 4);
+	if (sm510.m_clk_div == 4)
+		sm510.m_icount += (clock_cycles / 4);
 
 	device_run();
 
 	// return cycles really executed according to divider
-	return m_icount * m_clk_div;
+	return sm510.m_icount * sm510.m_clk_div;
 }
 
 /* Shutdown gw */
@@ -679,68 +681,68 @@ bool gw_state_save(void *dest_ptr)
 	/* dump all variables from sm510base.c */
 
 	// internal RAM 128x4 bits
-	memcpy(&save_state.gw_ram, &gw_ram, sizeof(gw_ram));
-	memcpy(&save_state.gw_ram_state, &gw_ram_state, sizeof(gw_ram_state));
+	memcpy(&save_state.gw_ram, &sm510.gw_ram, sizeof(sm510.gw_ram));
+	memcpy(&save_state.gw_ram_state, &sm510.gw_ram_state, sizeof(sm510.gw_ram_state));
 
 	//program counter, opcode,...
-	save_state.m_pc = m_pc;
-	save_state.m_prev_pc = m_prev_pc;
-	save_state.m_op = m_op;
-	save_state.m_prev_op = m_prev_op;
+	save_state.m_pc = sm510.m_pc;
+	save_state.m_prev_pc = sm510.m_prev_pc;
+	save_state.m_op = sm510.m_op;
+	save_state.m_prev_op = sm510.m_prev_op;
 
-	save_state.m_param = m_param;
-	save_state.m_stack_levels = m_stack_levels;
-	memcpy(save_state.m_stack, &m_stack, sizeof(m_stack));
-	save_state.m_icount = m_icount;
+	save_state.m_param = sm510.m_param;
+	save_state.m_stack_levels = sm510.m_stack_levels;
+	memcpy(save_state.m_stack, &sm510.m_stack, sizeof(sm510.m_stack));
+	save_state.m_icount = sm510.m_icount;
 
-	save_state.m_acc = m_acc;
-	save_state.m_bl = m_bl;
-	save_state.m_bm = m_bm;
-	save_state.m_c = m_c;
-	save_state.m_w = m_w;
-	save_state.m_s_out = m_s_out;
-	save_state.m_r = m_r;
-	save_state.m_r_out = m_r_out;
+	save_state.m_acc = sm510.m_acc;
+	save_state.m_bl = sm510.m_bl;
+	save_state.m_bm = sm510.m_bm;
+	save_state.m_c = sm510.m_c;
+	save_state.m_w = sm510.m_w;
+	save_state.m_s_out = sm510.m_s_out;
+	save_state.m_r = sm510.m_r;
+	save_state.m_r_out = sm510.m_r_out;
 
-	save_state.bool_m_k_active = (un8)m_k_active;
-	save_state.bool_m_halt = (un8)m_halt;
-	save_state.bool_m_sbm = (un8)m_sbm;
-	save_state.bool_m_sbl = (un8)m_sbl;
-	save_state.bool_m_skip = (un8)m_skip;
+	save_state.bool_m_k_active = (un8)sm510.m_k_active;
+	save_state.bool_m_halt = (un8)sm510.m_halt;
+	save_state.bool_m_sbm = (un8)sm510.m_sbm;
+	save_state.bool_m_sbl = (un8)sm510.m_sbl;
+	save_state.bool_m_skip = (un8)sm510.m_skip;
 
 	// freerun time counter
-	save_state.m_div = m_div;
-	save_state.bool_m_1s = (un8)m_1s;
-	save_state.m_clk_div = m_clk_div;
+	save_state.m_div = sm510.m_div;
+	save_state.bool_m_1s = (un8)sm510.m_1s;
+	save_state.m_clk_div = sm510.m_clk_div;
 
 	// melody controller
-	save_state.m_r_mask_option = m_r_mask_option;
-	save_state.m_melody_rd = m_melody_rd;
-	save_state.m_melody_step_count = m_melody_step_count;
-	save_state.m_melody_duty_count = m_melody_duty_count;
-	save_state.m_melody_duty_index = m_melody_duty_index;
-	save_state.m_melody_address = m_melody_address;
+	save_state.m_r_mask_option = sm510.m_r_mask_option;
+	save_state.m_melody_rd = sm510.m_melody_rd;
+	save_state.m_melody_step_count = sm510.m_melody_step_count;
+	save_state.m_melody_duty_count = sm510.m_melody_duty_count;
+	save_state.m_melody_duty_index = sm510.m_melody_duty_index;
+	save_state.m_melody_address = sm510.m_melody_address;
 
 	// lcd driver
-	save_state.m_l = m_l;
-	save_state.m_x = m_x;
-	save_state.m_y = m_y;
-	save_state.m_bp = m_bp;
-	save_state.bool_m_bc = (un8)m_bc;
+	save_state.m_l = sm510.m_l;
+	save_state.m_x = sm510.m_x;
+	save_state.m_y = sm510.m_y;
+	save_state.m_bp = sm510.m_bp;
+	save_state.bool_m_bc = (un8)sm510.m_bc;
 
 	// SM500 internals
-	save_state.m_o_pins = m_o_pins;
-	memcpy(&save_state.m_ox, &m_ox, sizeof(m_ox));
-	memcpy(&save_state.m_o, &m_o, sizeof(m_o));
-	memcpy(&save_state.m_ox_state, &m_ox_state, sizeof(m_ox_state));
-	memcpy(&save_state.m_o_state, &m_o_state, sizeof(m_o_state));
+	save_state.m_o_pins = sm510.m_o_pins;
+	memcpy(&save_state.m_ox, &sm510.m_ox, sizeof(sm510.m_ox));
+	memcpy(&save_state.m_o, &sm510.m_o, sizeof(sm510.m_o));
+	memcpy(&save_state.m_ox_state, &sm510.m_ox_state, sizeof(sm510.m_ox_state));
+	memcpy(&save_state.m_o_state, &sm510.m_o_state, sizeof(sm510.m_o_state));
 
-	save_state.m_cn = m_cn;
-	save_state.m_mx = m_mx;
+	save_state.m_cn = sm510.m_cn;
+	save_state.m_mx = sm510.m_mx;
 
-	save_state.m_cb = m_cb;
-	save_state.m_s = m_s;
-	save_state.bool_m_rsub = (un8)m_rsub;
+	save_state.m_cb = sm510.m_cb;
+	save_state.m_s = sm510.m_s;
+	save_state.bool_m_rsub = (un8)sm510.m_rsub;
 
 	/* save state */
 	memcpy(dest_ptr, &save_state, sizeof(save_state));
@@ -762,70 +764,70 @@ bool gw_state_load(void *src_ptr)
 	/* set all variables from sm510base.c */
 
 	// internal RAM 128x4 bits
-	memcpy(&gw_ram, &save_state.gw_ram, sizeof(gw_ram));
-	memcpy(&gw_ram_state, &save_state.gw_ram_state, sizeof(gw_ram_state));
+	memcpy(&sm510.gw_ram, &save_state.gw_ram, sizeof(sm510.gw_ram));
+	memcpy(&sm510.gw_ram_state, &save_state.gw_ram_state, sizeof(sm510.gw_ram_state));
 
 	//program counter, opcode
-	m_pc = save_state.m_pc;
-	m_prev_pc = save_state.m_prev_pc;
-	m_op = save_state.m_op;
-	m_prev_op = save_state.m_prev_op;
+	sm510.m_pc = save_state.m_pc;
+	sm510.m_prev_pc = save_state.m_prev_pc;
+	sm510.m_op = save_state.m_op;
+	sm510.m_prev_op = save_state.m_prev_op;
 
-	m_param = save_state.m_param;
-	m_stack_levels = save_state.m_stack_levels;
-	memcpy(m_stack, &save_state.m_stack, sizeof(m_stack));
-	m_icount = save_state.m_icount;
+	sm510.m_param = save_state.m_param;
+	sm510.m_stack_levels = save_state.m_stack_levels;
+	memcpy(sm510.m_stack, &save_state.m_stack, sizeof(sm510.m_stack));
+	sm510.m_icount = save_state.m_icount;
 
-	m_acc = save_state.m_acc;
-	m_bl = save_state.m_bl;
-	m_bm = save_state.m_bm;
-	m_c = save_state.m_c;
-	m_w = save_state.m_w;
-	m_s_out = save_state.m_s_out;
-	m_r = save_state.m_r;
-	m_r_out = save_state.m_r_out;
+	sm510.m_acc = save_state.m_acc;
+	sm510.m_bl = save_state.m_bl;
+	sm510.m_bm = save_state.m_bm;
+	sm510.m_c = save_state.m_c;
+	sm510.m_w = save_state.m_w;
+	sm510.m_s_out = save_state.m_s_out;
+	sm510.m_r = save_state.m_r;
+	sm510.m_r_out = save_state.m_r_out;
 
-	m_k_active = (bool)save_state.bool_m_k_active;
-	m_halt = (bool)save_state.bool_m_halt;
-	m_sbm = (bool)save_state.bool_m_sbm;
-	m_sbl = (bool)save_state.bool_m_sbl;
-	m_skip = (bool)save_state.bool_m_skip;
+	sm510.m_k_active = (bool)save_state.bool_m_k_active;
+	sm510.m_halt = (bool)save_state.bool_m_halt;
+	sm510.m_sbm = (bool)save_state.bool_m_sbm;
+	sm510.m_sbl = (bool)save_state.bool_m_sbl;
+	sm510.m_skip = (bool)save_state.bool_m_skip;
 
 	// melody controller
-	m_r_mask_option = save_state.m_r_mask_option;
-	m_melody_rd = save_state.m_melody_rd;
-	m_melody_step_count = save_state.m_melody_step_count;
-	m_melody_duty_count = save_state.m_melody_duty_count;
-	m_melody_duty_index = save_state.m_melody_duty_index;
-	m_melody_address = save_state.m_melody_address;
+	sm510.m_r_mask_option = save_state.m_r_mask_option;
+	sm510.m_melody_rd = save_state.m_melody_rd;
+	sm510.m_melody_step_count = save_state.m_melody_step_count;
+	sm510.m_melody_duty_count = save_state.m_melody_duty_count;
+	sm510.m_melody_duty_index = save_state.m_melody_duty_index;
+	sm510.m_melody_address = save_state.m_melody_address;
 
 	// freerun time counter
-	m_clk_div = save_state.m_clk_div;
-	m_div = save_state.m_div;
-	m_1s = (bool)save_state.bool_m_1s;
-	m_melody_duty_index = save_state.m_melody_duty_index;
-	m_melody_address = save_state.m_melody_address;
+	sm510.m_clk_div = save_state.m_clk_div;
+	sm510.m_div = save_state.m_div;
+	sm510.m_1s = (bool)save_state.bool_m_1s;
+	sm510.m_melody_duty_index = save_state.m_melody_duty_index;
+	sm510.m_melody_address = save_state.m_melody_address;
 
 	// lcd driver
-	m_l = save_state.m_l;
-	m_x = save_state.m_x;
-	m_y = save_state.m_y;
-	m_bp = save_state.m_bp;
-	m_bc = (bool)save_state.bool_m_bc;
+	sm510.m_l = save_state.m_l;
+	sm510.m_x = save_state.m_x;
+	sm510.m_y = save_state.m_y;
+	sm510.m_bp = save_state.m_bp;
+	sm510.m_bc = (bool)save_state.bool_m_bc;
 
 	// SM500 internals
-	m_o_pins = save_state.m_o_pins;
-	memcpy(&m_ox, &save_state.m_ox, sizeof(m_ox));
-	memcpy(&m_o, &save_state.m_o, sizeof(m_o));
-	memcpy(&m_ox_state, &save_state.m_ox_state, sizeof(m_ox_state));
-	memcpy(&m_o_state, &save_state.m_o_state, sizeof(m_o_state));
+	sm510.m_o_pins = save_state.m_o_pins;
+	memcpy(&sm510.m_ox, &save_state.m_ox, sizeof(sm510.m_ox));
+	memcpy(&sm510.m_o, &save_state.m_o, sizeof(sm510.m_o));
+	memcpy(&sm510.m_ox_state, &save_state.m_ox_state, sizeof(sm510.m_ox_state));
+	memcpy(&sm510.m_o_state, &save_state.m_o_state, sizeof(sm510.m_o_state));
 
-	m_cn = save_state.m_cn;
-	m_mx = save_state.m_mx;
+	sm510.m_cn = save_state.m_cn;
+	sm510.m_mx = save_state.m_mx;
 
-	m_cb = save_state.m_cb;
-	m_s = save_state.m_s;
-	m_rsub = (bool)save_state.bool_m_rsub;
+	sm510.m_cb = save_state.m_cb;
+	sm510.m_s = save_state.m_s;
+	sm510.m_rsub = (bool)save_state.bool_m_rsub;
 
 	return true;
 }
@@ -855,17 +857,17 @@ gw_time_t gw_system_get_time()
 	unsigned int pm_flag;
 
 
-	hour_msb = gw_ram[gw_head.time_hour_address_msb];
-	hour_lsb = gw_ram[gw_head.time_hour_address_lsb];
+	hour_msb = sm510.gw_ram[gw_head.time_hour_address_msb];
+	hour_lsb = sm510.gw_ram[gw_head.time_hour_address_lsb];
 	pm_flag  = gw_head.time_hour_msb_pm;
 
 	/* Minutes */
-	time.minutes = (gw_ram[gw_head.time_min_address_msb] * 10) + \
-	gw_ram[gw_head.time_min_address_lsb];
+	time.minutes = (sm510.gw_ram[gw_head.time_min_address_msb] * 10) + \
+	sm510.gw_ram[gw_head.time_min_address_lsb];
 
 	/* Seconds */
-	time.seconds = (gw_ram[gw_head.time_sec_address_msb] * 10) + \
-	gw_ram[gw_head.time_sec_address_lsb];
+	time.seconds = (sm510.gw_ram[gw_head.time_sec_address_msb] * 10) + \
+	sm510.gw_ram[gw_head.time_sec_address_lsb];
 
 	//PM
 	if (hour_msb & pm_flag) {
@@ -900,36 +902,36 @@ void gw_system_set_time(gw_time_t time)
 	// AM1 <-> AM11
 	if ((time.hours > 0) && (time.hours < 12))
 	{
-		gw_ram[gw_head.time_hour_address_msb] = time.hours / 10;
-		gw_ram[gw_head.time_hour_address_lsb] = time.hours % 10;
+		sm510.gw_ram[gw_head.time_hour_address_msb] = time.hours / 10;
+		sm510.gw_ram[gw_head.time_hour_address_lsb] = time.hours % 10;
 	}
 
 	// AM12
 	if (time.hours == 0)
 	{
-		gw_ram[gw_head.time_hour_address_msb] = 1;
-		gw_ram[gw_head.time_hour_address_lsb] = 2;
+		sm510.gw_ram[gw_head.time_hour_address_msb] = 1;
+		sm510.gw_ram[gw_head.time_hour_address_lsb] = 2;
 	}
 
 	// PM12
 	if (time.hours == 12)
 	{
-		gw_ram[gw_head.time_hour_address_msb] = gw_head.time_hour_msb_pm + 1;
-		gw_ram[gw_head.time_hour_address_lsb] = 2;
+		sm510.gw_ram[gw_head.time_hour_address_msb] = gw_head.time_hour_msb_pm + 1;
+		sm510.gw_ram[gw_head.time_hour_address_lsb] = 2;
 	}
 
 	// PM1 <-> PM11
 	if (time.hours > 12)
 	{
-		gw_ram[gw_head.time_hour_address_msb] = gw_head.time_hour_msb_pm + ((time.hours - 12) / 10);
-		gw_ram[gw_head.time_hour_address_lsb] = (time.hours - 12) % 10;
+		sm510.gw_ram[gw_head.time_hour_address_msb] = gw_head.time_hour_msb_pm + ((time.hours - 12) / 10);
+		sm510.gw_ram[gw_head.time_hour_address_lsb] = (time.hours - 12) % 10;
 	}
 
 	/* Minutes */
-	gw_ram[gw_head.time_min_address_msb] = time.minutes / 10;
-	gw_ram[gw_head.time_min_address_lsb] = time.minutes % 10;
+	sm510.gw_ram[gw_head.time_min_address_msb] = time.minutes / 10;
+	sm510.gw_ram[gw_head.time_min_address_lsb] = time.minutes % 10;
 
 	/* Seconds */
-	gw_ram[gw_head.time_sec_address_msb] = time.seconds / 10;
-	gw_ram[gw_head.time_sec_address_lsb] = time.seconds % 10;
+	sm510.gw_ram[gw_head.time_sec_address_msb] = time.seconds / 10;
+	sm510.gw_ram[gw_head.time_sec_address_lsb] = time.seconds % 10;
 }

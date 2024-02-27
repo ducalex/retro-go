@@ -23,6 +23,13 @@
 
 #pragma once
 
+/* PPU Memory defines */
+#define PPU_ADDRSPACE 0x4000
+#define PPU_PAGESIZE  0x400
+#define PPU_PAGEMASK  0x3FF
+#define PPU_PAGESHIFT (10)
+#define PPU_PAGECOUNT (PPU_ADDRSPACE / PPU_PAGESIZE)
+
 /* PPU register defines */
 #define  PPU_CTRL0            0x2000
 #define  PPU_CTRL1            0x2001
@@ -94,7 +101,7 @@ typedef struct
 typedef struct
 {
    /* The NES has only 2 nametables, but we allocate 4 for mappers to use */
-   uint8 nametab[0x400 * 4];
+   uint8 *nametab; // [PPU_PAGESIZE * 4];
 
    /* Sprite memory */
    uint8 oam[256];
@@ -103,13 +110,13 @@ typedef struct
    uint8 palette[32];
 
    /* VRAM (CHR RAM/ROM) paging */
-   uint8 *page[16];
+   uint8 *page[PPU_PAGECOUNT];
 
    /* Hardware registers */
    uint8 ctrl0, ctrl1, stat, oam_addr, nametab_base;
    uint8 latch, vdata_latch, tile_xofs, flipflop;
    int   vaddr, vaddr_latch, vaddr_inc;
-   uint8 nt1, nt2, nt3, nt4;
+   uint8 nt_map[4];
 
    int  obj_height, obj_base, bg_base;
    bool left_bg_on, left_obj_on;
@@ -118,8 +125,8 @@ typedef struct
    bool strikeflag;
    uint32 strike_cycle;
 
+   int scanlines;
    int scanline;
-   int last_scanline;
 
    /* Determines if left column can be cropped/blanked */
    int left_bg_counter;
@@ -136,35 +143,33 @@ typedef struct
 } ppu_t;
 
 /* Mirroring / Paging */
-void ppu_setpage(int size, int page_num, uint8 *location);
-void ppu_setnametables(int nt1, int nt2, int nt3, int nt4);
+void ppu_setpage(uint32 page_num, uint8 *location);
+void ppu_setnametable(uint8 index, uint8 table);
 void ppu_setmirroring(ppu_mirror_t type);
-uint8 *ppu_getpage(int page_num);
-uint8 *ppu_getnametable(int nt);
+uint8 *ppu_getpage(uint32 page_num);
+uint8 *ppu_getnametable(uint8 table);
 
 /* Control */
 ppu_t *ppu_init(void);
-void ppu_refresh(void);
 void ppu_reset(void);
 void ppu_shutdown(void);
 bool ppu_enabled(void);
-bool ppu_inframe(void);
 void ppu_setopt(ppu_option_t n, int val);
-int  ppu_getopt(ppu_option_t n);
+int ppu_getopt(ppu_option_t n);
 
 void ppu_setlatchfunc(ppu_latchfunc_t func);
 void ppu_setvreadfunc(ppu_vreadfunc_t func);
 
-void ppu_getcontext(ppu_t *dest_ppu);
-void ppu_setcontext(ppu_t *src_ppu);
+void ppu_setcontext(const ppu_t *src);
+void ppu_getcontext(ppu_t *dst);
 
 /* IO */
 uint8 ppu_read(uint32 address);
 void ppu_write(uint32 address, uint8 value);
 
 /* Rendering */
-void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag);
-void ppu_endscanline(void);
+void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag);
+void ppu_endline(void);
 
 /* Debugging */
 void ppu_dumppattern(uint8 *bmp, int table_num, int x_loc, int y_loc, int col);

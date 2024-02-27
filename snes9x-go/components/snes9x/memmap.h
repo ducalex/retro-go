@@ -97,6 +97,12 @@ enum
 
 typedef struct
 {
+   uint8_t Speed:5;
+   uint8_t Type:3;
+} SMapInfo;
+
+typedef struct
+{
    uint8_t* RAM;
    uint8_t* ROM;
    uint8_t* VRAM;
@@ -107,9 +113,8 @@ typedef struct
    bool     LoROM;
    uint16_t SRAMMask;
    uint8_t  SRAMSize;
-   uint8_t* Map[MEMMAP_NUM_BLOCKS];
-   uint8_t  MemorySpeed[MEMMAP_NUM_BLOCKS];
-   uint8_t  BlockType[MEMMAP_NUM_BLOCKS];
+   uint8_t**Map; // [MEMMAP_NUM_BLOCKS];
+   SMapInfo*MapInfo;// [MEMMAP_NUM_BLOCKS];
    char     ROMName     [ROM_NAME_LEN];
    char     ROMId       [5];
    char     CompanyId   [3];

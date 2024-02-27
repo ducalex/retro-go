@@ -5,26 +5,10 @@
 
 typedef enum
 {
-    RG_UPDATE_EMPTY = 0,
-    RG_UPDATE_FULL,
-    RG_UPDATE_PARTIAL,
-    RG_UPDATE_ERROR,
-} rg_update_t;
-
-typedef enum
-{
-    RG_DISPLAY_UPDATE_PARTIAL = 0,
-    RG_DISPLAY_UPDATE_FULL,
-    // RG_DISPLAY_UPDATE_INTERLACE,
-    // RG_DISPLAY_UPDATE_SMART,
-    RG_DISPLAY_UPDATE_COUNT,
-} display_update_t;
-
-typedef enum
-{
     RG_DISPLAY_SCALING_OFF = 0, // No scaling, center image on screen
     RG_DISPLAY_SCALING_FIT,     // Scale and preserve aspect ratio
-    RG_DISPLAY_SCALING_FILL,    // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_FULL,    // Scale and stretch to fill screen
+    RG_DISPLAY_SCALING_CUSTOM,  // Custom width and height
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -46,7 +30,13 @@ typedef enum
     RG_DISPLAY_ROTATION_COUNT,
 } display_rotation_t;
 
-enum
+typedef enum
+{
+    RG_DISPLAY_BACKLIGHT_MIN = 1,
+    RG_DISPLAY_BACKLIGHT_MAX = 100,
+} display_backlight_t;
+
+typedef enum
 {
     // These are legacy flags, don't use them. Still needed for now
     RG_PIXEL_565 = 0b0000, // 16bit 565
@@ -60,22 +50,32 @@ enum
     RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
     RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
     RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
-};
+
+    // Additional misc flags
+    RG_PIXEL_NOSYNC = 0b100000000,
+
+    // Masks
+    RG_PIXEL_FORMAT = 0x00FF,
+    RG_PIXEL_FLAGS = 0xFF00,
+} rg_pixel_flags_t;
 
 typedef struct
 {
     display_rotation_t rotation;
     display_scaling_t scaling;
     display_filter_t filter;
-    display_update_t update_mode;
-    int backlight;
+    display_backlight_t backlight;
+    char *border_file;
+    int custom_width, custom_height;
 } rg_display_config_t;
 
 typedef struct
 {
     int32_t totalFrames;
     int32_t fullFrames;
-    int64_t busyTime; // This is only time spent blocking the main task
+    int32_t partFrames;
+    int32_t delayedFrames;
+    int64_t busyTime;
 } rg_display_counters_t;
 
 typedef struct
@@ -112,40 +112,29 @@ typedef struct
         int crop_h;
         int crop_v;
         int format;
+        bool ready;
     } source;
     bool changed;
 } rg_display_t;
 
 typedef struct
 {
-    short left;   // int32_t left:10;
-    short width;  // int32_t width:10;
-    short repeat; // int32_t repeat:10;
-} rg_line_diff_t;
-
-typedef struct
-{
-    rg_update_t type;
     void *buffer;          // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
     uint16_t palette[256]; // Used in RG_PIXEL_PAL is set
-    rg_line_diff_t diff[256];
 } rg_video_update_t;
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride,
-                      const uint16_t *buffer); // , bool little_endian);
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
+                      rg_pixel_flags_t flags);
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format);
-
-rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate);
-#define rg_display_queue_update rg_display_submit
+void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format);
+void rg_display_submit(const rg_video_update_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);
-rg_display_config_t rg_display_get_config(void);
 const rg_display_t *rg_display_get_info(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
@@ -154,7 +143,11 @@ void rg_display_set_filter(display_filter_t filter);
 display_filter_t rg_display_get_filter(void);
 void rg_display_set_rotation(display_rotation_t rotation);
 display_rotation_t rg_display_get_rotation(void);
-void rg_display_set_backlight(int percent);
-int rg_display_get_backlight(void);
-void rg_display_set_update_mode(display_update_t update);
-display_update_t rg_display_get_update_mode(void);
+void rg_display_set_backlight(display_backlight_t percent);
+display_backlight_t rg_display_get_backlight(void);
+void rg_display_set_border(const char *filename);
+char *rg_display_get_border(void);
+void rg_display_set_custom_width(int width);
+int rg_display_get_custom_width(void);
+void rg_display_set_custom_height(int height);
+int rg_display_get_custom_height(void);

@@ -42,11 +42,11 @@ typedef union
 {
 	uint8_t b[2];
 	uint16_t w;
-} cpu_reg_t;
+} gb_cpu_reg_t;
 
 typedef struct
 {
-	cpu_reg_t pc, sp, bc, de, hl, af;
+	gb_cpu_reg_t pc, sp, bc, de, hl, af;
 	unsigned timer, div;
 	unsigned ime, ima;
 	unsigned halted;
@@ -54,8 +54,8 @@ typedef struct
 	unsigned disassemble;
 } gb_cpu_t;
 
-gb_cpu_t *cpu_init(void);
-void cpu_reset(bool hard);
-int  cpu_emulate(int cycles);
-void cpu_burn(int cycles);
-void cpu_disassemble(unsigned a, int c);
+gb_cpu_t *gb_cpu_init(void);
+void gb_cpu_reset(bool hard);
+int  gb_cpu_emulate(int cycles);
+void gb_cpu_burn(int cycles);
+void gb_cpu_disassemble(unsigned a, int c);

@@ -19,7 +19,7 @@
 const rg_font_t font_DejaVu15 = {
     .name = "DejaVu",
     .type = 1,
-    .width = 8,
+    .width = 14,
     .height = 15,
     .chars = 95,
     .data = {

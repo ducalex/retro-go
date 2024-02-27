@@ -10,14 +10,18 @@ typedef enum
 {
     RG_DIALOG_VOID,
     RG_DIALOG_INIT,
+    RG_DIALOG_FOCUS,
+    RG_DIALOG_LEAVE,
+
+    RG_DIALOG_REDRAW,
+    RG_DIALOG_CANCEL,
+    RG_DIALOG_CLOSE,
+
     RG_DIALOG_PREV,
     RG_DIALOG_NEXT,
     RG_DIALOG_ENTER,
     RG_DIALOG_BACK,
     RG_DIALOG_ALT,
-    RG_DIALOG_FOCUS,
-    RG_DIALOG_CLOSE,
-    RG_DIALOG_DISMISS,
 } rg_gui_event_t;
 
 enum
@@ -27,18 +31,32 @@ enum
     RG_TEXT_ALIGN_CENTER = (1 << 2),
     RG_TEXT_ALIGN_RIGHT  = (1 << 3),
     RG_TEXT_DUMMY_DRAW   = (1 << 4),
-    RG_TEXT_ALIGN_TOP    = (1 << 5),
-    RG_TEXT_ALIGN_MIDDLE = (1 << 6),
-    RG_TEXT_ALIGN_BOTTOM = (1 << 7),
-    RG_TEXT_NO_PADDING   = (1 << 8),
+    RG_TEXT_NO_PADDING   = (1 << 5),
+    RG_TEXT_BIGGER       = (1 << 6),
+    RG_TEXT_MONOSPACE    = (1 << 7),
+};
+
+enum
+{
+    RG_GUI_CENTER = 0xF18000,
+    RG_GUI_TOP    = 0xF28000,
+    RG_GUI_BOTTOM = 0xF38000,
+    RG_GUI_LEFT   = 0xF48000,
+    RG_GUI_RIGHT  = 0xF58000,
 };
 
 typedef struct
 {
-    uint8_t type;
-    uint8_t width; // In prop fonts this must be set to avg char width
-    uint8_t height;
-    uint8_t chars;
+    size_t columns, rows;
+    char data[];
+} rg_gui_keyboard_t;
+
+typedef struct
+{
+    uint8_t type;   // 0=bitmap, 1=prop
+    uint8_t width;  // width of largest glyph
+    uint8_t height; // height of tallest glyph
+    uint8_t chars;  // glyph count
     char name[16];
     uint8_t data[];
 } rg_font_t;
@@ -52,6 +70,13 @@ typedef struct
     uint16_t height;
 } rg_rect_t;
 
+typedef struct
+{
+    intptr_t arg;
+    size_t index;
+    bool cancelled;
+} rg_dialog_t;
+
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
@@ -64,42 +89,47 @@ struct rg_gui_option_s
     rg_gui_callback_t update_cb;
 };
 
-#define RG_DIALOG_FLAG_DISABLED (0)  // (1 << 0)
-#define RG_DIALOG_FLAG_NORMAL   (1)  // (1 << 1)
-#define RG_DIALOG_FLAG_SKIP     (-1) // (1 << 2)
+#define RG_DIALOG_FLAG_MODE_MASK 0x0F
+#define RG_DIALOG_FLAG_DISABLED  0x00
+#define RG_DIALOG_FLAG_NORMAL    0x01
+#define RG_DIALOG_FLAG_SKIP      0x02
+#define RG_DIALOG_FLAG_HIDDEN    0x03
+
+#define RG_DIALOG_FLAG_TYPE_MASK 0xF0
+#define RG_DIALOG_FLAG_MESSAGE   0x11
+#define RG_DIALOG_FLAG_SEPARATOR 0x22
 
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
 #define RG_DIALOG_END         {0, NULL, NULL, 0, NULL}
-#define RG_DIALOG_CHOICE_LAST RG_DIALOG_END
 
 #define RG_DIALOG_CANCELLED -0x7654321
 
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
-void rg_gui_flush(void); // no effect if buffered = false
-void rg_gui_clear(rg_color_t color); // like rg_display_clear but takes gui screen buffering into account
-void rg_gui_set_buffered(bool buffered);
-bool rg_gui_set_font_type(int type);
+void rg_gui_set_buffered(uint16_t *framebuffer);
+bool rg_gui_set_font(int index);
 bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
+                           rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
-void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size, rg_color_t border_color, rg_color_t fill_color);
-void rg_gui_draw_battery(int x_pos, int y_pos);
-void rg_gui_draw_radio(int x_pos, int y_pos);
-void rg_gui_draw_clock(int x_pos, int y_pos);
+void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
+                      rg_color_t border_color, rg_color_t fill_color);
+void rg_gui_draw_icons(void);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
+void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_t cursor);
 
-int  rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
+intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path));
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
+char *rg_gui_prompt(const char *title, const char *message, const char *default_value);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
 void rg_gui_options_menu(void);
@@ -257,4 +287,5 @@ enum colors565
     C_WHITE                    = 0xFFFF,
     // C_TRANSPARENT              = -1,
     C_TRANSPARENT              = C_MAGENTA,
+    C_NONE = -1,
 };

@@ -71,8 +71,10 @@ pce_init(void)
 	PCE.VRAM = malloc(0x10000);
 	PCE.NULLRAM = malloc(0x2000);
 	PCE.IOAREA = PCE.NULLRAM + 4;
+	PCE.MemoryMapR = calloc(256, sizeof(uint8_t *));
+	PCE.MemoryMapW = calloc(256, sizeof(uint8_t *));
 
-	if (!PCE.RAM || !PCE.VRAM || !PCE.NULLRAM) {
+	if (!PCE.RAM || !PCE.VRAM || !PCE.NULLRAM || !PCE.MemoryMapR || !PCE.MemoryMapW) {
 		pce_term();
 		return -1;
 	}
@@ -109,6 +111,10 @@ pce_term(void)
 	PCE.ROM = NULL;
 	free(PCE.NULLRAM);
 	PCE.NULLRAM = NULL;
+	free(PCE.MemoryMapR);
+	PCE.MemoryMapR = NULL;
+	free(PCE.MemoryMapW);
+	PCE.MemoryMapW = NULL;
 }
 
 

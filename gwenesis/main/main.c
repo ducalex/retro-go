@@ -33,19 +33,15 @@ static rg_video_update_t *currentUpdate = &updates[0];
 static rg_app_t *app;
 
 static bool yfm_enabled = true;
-static bool yfm_resample = true;
 static bool z80_enabled = true;
 static bool sn76489_enabled = true;
-static int frameskip = 3;
 
 static FILE *savestate_fp = NULL;
 static int savestate_errors = 0;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
-static const char *SETTING_YFM_RESAMPLE = "sampling";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
 static const char *SETTING_SN76489_EMULATION = "sn_enable";
-static const char *SETTING_FRAMESKIP = "frameskip";
 
 // --- MAIN
 
@@ -158,33 +154,6 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t sampling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        yfm_resample = !yfm_resample;
-        rg_settings_set_number(NS_APP, SETTING_YFM_RESAMPLE, yfm_resample);
-        rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
-    }
-    strcpy(option->value, yfm_resample ? "On " : "Off");
-
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t frameskip_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-    {
-        frameskip += (event == RG_DIALOG_PREV) ? -1 : 1;
-        frameskip = RG_MAX(frameskip, 1);
-        rg_settings_set_number(NS_APP, SETTING_FRAMESKIP, frameskip);
-    }
-
-    sprintf(option->value, "%d", frameskip);
-
-    return RG_DIALOG_VOID;
-}
-
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     return rg_display_save_frame(filename, currentUpdate, width, height);
@@ -222,6 +191,14 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void event_handler(int event, void *arg)
+{
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, 0);
+    }
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -229,31 +206,25 @@ void app_main(void)
         .saveState = &save_state_handler,
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
+        .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {1, "YFM emulation", "On", 1, &yfm_update_cb},
-        {1, "SN76489 emulation", "On", 1, &sn76489_update_cb},
-        // {2, "Down sampling", "On", 1, &sampling_update_cb},
-        {3, "Z80 emulation", "On", 1, &z80_update_cb},
-		{2, "Frameskip", "", 1, &frameskip_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "YM2612 audio ", "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb},
+        {0, "SN76489 audio", "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb},
+        {0, "Z80 emulation", "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, options);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
-    // yfm_resample = rg_settings_get_number(NS_APP, SETTING_YFM_RESAMPLE, 1);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
-    frameskip = rg_settings_get_number(NS_APP, SETTING_FRAMESKIP, frameskip);
 
-    updates[0].buffer = rg_alloc(320 * 240, MEM_FAST);
-    // updates[1].buffer = rg_alloc(320 * 240, MEM_FAST);
+    updates[0].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
+    // updates[1].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
-
-    // rg_task_create("gen_sound", &sound_task, NULL, 2048, 7, 1);
-    // rg_audio_set_sample_rate(yfm_resample ? 26634 : 53267);
 
     RG_LOGI("Genesis start\n");
 
@@ -282,6 +253,9 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
+    app->tickRate = 60;
+    app->frameskip = 3;
+
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
     extern unsigned short CRAM565[256];
@@ -292,9 +266,10 @@ void app_main(void)
 
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t joystick = 0, joystick_old;
-    uint32_t frames = 0;
 
     RG_LOGI("rg_display_set_source_format()\n");
+
+    int skipFrames = 0;
 
     RG_LOGI("emulation loop\n");
     while (true)
@@ -321,7 +296,8 @@ void app_main(void)
         }
 
         int64_t startTime = rg_system_timer();
-        bool drawFrame = (frames++ % frameskip) == 0;
+        bool drawFrame = skipFrames == 0;
+        bool slowFrame = false;
 
         int lines_per_frame = REG1_PAL ? LINES_PER_FRAME_PAL : LINES_PER_FRAME_NTSC;
         int hint_counter = gwenesis_vdp_regs[10];
@@ -422,16 +398,31 @@ void app_main(void)
         {
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
-            // rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-            rg_display_queue_update(currentUpdate, NULL);
-            // currentUpdate = previousUpdate;
+            slowFrame = !rg_display_sync(false);
+            rg_display_submit(currentUpdate, 0);
         }
 
-        int elapsed = rg_system_timer() - startTime;
-        rg_system_tick(elapsed);
+        rg_system_tick(rg_system_timer() - startTime);
 
         if (yfm_enabled || z80_enabled) {
+            // TODO: Mix in gwenesis_sn76489_buffer
             rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
+        }
+
+        if (skipFrames == 0)
+        {
+            int frameTime = 1000000 / (app->tickRate * app->speed);
+            int elapsed = rg_system_timer() - startTime;
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = 1; // (elapsed / frameTime)
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
         }
     }
 }

@@ -160,8 +160,6 @@ enum
 /* external sound chip stuff */
 typedef struct
 {
-   int   (*init)(void);
-   void  (*shutdown)(void);
    void  (*reset)(void);
    int   (*process)(void);
 } apuext_t;
@@ -209,7 +207,7 @@ typedef struct
    int trilength_lut[128];
 
    /* external sound chip */
-   apuext_t *ext;
+   const apuext_t *ext;
 
    /* Misc runtime options */
    int options[16];
@@ -219,15 +217,15 @@ typedef struct
 apu_t *apu_init(int sample_rate, bool stereo);
 void apu_reset(void);
 void apu_shutdown(void);
-void apu_setext(apuext_t *ext);
+void apu_setext(const apuext_t *ext);
 
 void apu_emulate(void);
 
 void apu_setopt(apu_option_t n, int val);
 int  apu_getopt(apu_option_t n);
 
-void apu_setcontext(apu_t *src_apu);
-void apu_getcontext(apu_t *dest_apu);
+void apu_setcontext(const apu_t *src);
+void apu_getcontext(apu_t *dest);
 
 void apu_process(short *buffer, size_t num_samples, bool stereo);
 void apu_fc_advance(int cycles);

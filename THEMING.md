@@ -34,7 +34,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "header": "0xFFFF",
         "scrollbar": "0xFFFF",
         "item_standard": "0xFFFF",
-        "item_disabled": "0x8410"
+        "item_disabled": "0x8410",
+        "item_message": "0xBDF7"
     },
     "launcher_1": {
         "__comment": "This section contains launcher theme variant 1",

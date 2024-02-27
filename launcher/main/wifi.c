@@ -111,12 +111,12 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
 void wifi_show_dialog(void)
 {
     const rg_gui_option_t options[] = {
-        {0, "Wi-Fi"       , "...", 1, &wifi_switch_cb},
-        {0, "Wi-Fi select", "...", 1, &wifi_select_cb},
-        {0, "Wi-Fi Access Point", NULL, 1, &wifi_access_point_cb},
+        {0, "Wi-Fi             ", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_switch_cb},
+        {0, "Wi-Fi select      ", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_select_cb},
+        {0, "Wi-Fi Access Point", NULL, RG_DIALOG_FLAG_NORMAL, &wifi_access_point_cb},
         RG_DIALOG_SEPARATOR,
-        {0, "File server" , "...", 1, &webui_switch_cb},
-        {0, "Time sync" , "On", 0, NULL},
+        {0, "File server" ,  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+        {0, "Time sync  " , "On", RG_DIALOG_FLAG_DISABLED, NULL},
         RG_DIALOG_END,
     };
     gui_redraw(); // clear main menu
@@ -126,7 +126,7 @@ void wifi_show_dialog(void)
 void wifi_init(void)
 {
     rg_network_init();
-    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, true));
+    wifi_toggle(rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false));
     webui_toggle(rg_settings_get_number(NS_APP, SETTING_WEBUI, true));
 }
 #endif

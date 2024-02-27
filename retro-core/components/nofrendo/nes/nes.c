@@ -33,53 +33,38 @@ nes_t *nes_getptr(void)
 /* run emulation for one frame */
 void nes_emulate(bool draw)
 {
-    int elapsed_cycles = 0;
-
-    if (nes.input_func)
-    {
-        nes.input_func();
-    }
-
     while (nes.scanline < nes.scanlines_per_frame)
     {
-        nes.cycles += nes.cycles_per_scanline;
+        // Running a little bit ahead seems to fix both Battletoads games...
+        int elapsed_cycles = nes6502_execute(86 - 12);
 
-        ppu_scanline(nes.vidbuf, nes.scanline, draw);
+        ppu_renderline(nes.vidbuf, nes.scanline, draw);
 
         if (nes.scanline == 241)
         {
-            /* 7-9 cycle delay between when VINT flag goes up and NMI is taken */
-            elapsed_cycles = nes6502_execute(7);
-            nes.cycles -= elapsed_cycles;
-
+            elapsed_cycles += nes6502_execute(6);
             if (nes.ppu->ctrl0 & PPU_CTRL0F_NMI)
                 nes6502_nmi();
 
             if (nes.mapper->vblank)
-                nes.mapper->vblank();
+                nes.mapper->vblank(&nes);
         }
 
         if (nes.mapper->hblank)
-            nes.mapper->hblank(nes.scanline);
-
-        if (nes.timer_func == NULL)
         {
-            elapsed_cycles = nes6502_execute(nes.cycles);
-            apu_fc_advance(elapsed_cycles);
-            nes.cycles -= elapsed_cycles;
-        }
-        else
-        {
-            while (nes.cycles >= 1)
-            {
-                elapsed_cycles = nes6502_execute(MIN(nes.timer_period, nes.cycles));
-                apu_fc_advance(elapsed_cycles);
-                nes.timer_func(elapsed_cycles);
-                nes.cycles -= elapsed_cycles;
-            }
+            // Mappers use various techniques to detect horizontal blank and we can't accommodate
+            // all of them unfortunately. But ~86 cycles seems to work fine for everything tested.
+            elapsed_cycles += nes6502_execute(86 - elapsed_cycles);
+            nes.mapper->hblank(&nes);
         }
 
-        ppu_endscanline();
+        nes.cycles += nes.cycles_per_scanline;
+
+        elapsed_cycles += nes6502_execute(nes.cycles - elapsed_cycles);
+        apu_fc_advance(elapsed_cycles);
+        nes.cycles -= elapsed_cycles;
+
+        ppu_endline();
         nes.scanline++;
     }
 
@@ -92,42 +77,13 @@ void nes_emulate(bool draw)
     }
 
     apu_emulate();
-
-    if (nes.vsync_func)
-    {
-        nes.vsync_func();
-    }
 }
 
 /* This sets a timer to be fired every `period` cpu cycles. It is NOT accurate. */
-void nes_settimer(nes_timer_t *func, long period)
+void nes_settimer(nes_timer_t *func, int period)
 {
     nes.timer_func = func;
     nes.timer_period = period;
-}
-
-void nes_poweroff(void)
-{
-    nes.poweroff = true;
-}
-
-void nes_togglepause(void)
-{
-    nes.pause ^= true;
-}
-
-void nes_setcompathacks(void)
-{
-    // Hack to fix many MMC3 games with status bar vertical alignment issues
-    // The issue is that the CPU and PPU aren't running in sync
-    if (nes.cart->checksum == 0xD8578BFD || // Zen Intergalactic
-        nes.cart->checksum == 0x2E6301ED || // Super Mario Bros 3
-        nes.cart->checksum == 0x5ED6F221 || // Kirby's Adventure
-        nes.cart->checksum == 0xD273B409)   // Power Blade 2
-    {
-        nes.cycles_per_scanline += 2.5;
-        MESSAGE_INFO("NES: Enabled MMC3 Timing Hack\n");
-    }
 }
 
 /* insert a cart into the NES */
@@ -205,8 +161,6 @@ int nes_insertcart(const char *filename, const char *biosfile)
         MESSAGE_INFO("NES: BIOS file loaded from '%s'.\n", biosfile);
     }
 
-    nes_setcompathacks();
-
     nes_reset(true);
 
     return status;
@@ -268,8 +222,6 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
 {
     memset(&nes, 0, sizeof(nes_t));
 
-    nes.poweroff = false;
-    nes.pause = false;
     nes.system = system;
     nes.refresh_rate = 60;
 
@@ -285,7 +237,7 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
         goto _fail;
 
     /* cpu */
-    nes.cpu = nes6502_init(nes.mem);
+    nes.cpu = nes6502_init(nes.mem->pages);
     if (NULL == nes.cpu)
         goto _fail;
 

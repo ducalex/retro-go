@@ -3,11 +3,11 @@
 #include <nofrendo.h>
 #include <nes/nes.h>
 
-static int fullFrame = 0;
 static int overscan = true;
 static int autocrop = 0;
 static int palette = 0;
 static int crop_h, crop_v;
+static bool slowFrame = false;
 static nes_t *nes;
 
 static const char *SETTING_AUTOCROP = "autocrop";
@@ -19,8 +19,10 @@ static const char *SETTING_SPRITELIMIT = "spritelimit";
 
 static void event_handler(int event, void *arg)
 {
-#ifdef RG_ENABLE_NETPLAY
-#endif
+    if (event == RG_EVENT_REDRAW)
+    {
+        rg_display_submit(currentUpdate, 0);
+    }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
@@ -72,7 +74,6 @@ static void build_palette(int n)
         updates[1].palette[i] = color;
     }
     free(pal);
-    previousUpdate = NULL;
 }
 
 static rg_gui_event_t sprite_limit_cb(rg_gui_option_t *option, rg_gui_event_t event)
@@ -98,6 +99,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, overscan ? "Auto" : "Off ");
@@ -118,6 +120,7 @@ static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t
         autocrop = val;
         rg_settings_set_number(NS_APP, SETTING_AUTOCROP, val);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     if (val == 0) strcpy(option->value, "Never ");
@@ -140,9 +143,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         palette = pal;
         rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         build_palette(pal);
-        rg_display_queue_update(currentUpdate, NULL);
-        rg_display_queue_update(currentUpdate, NULL);
-        rg_task_delay(50);
+        return RG_DIALOG_REDRAW;
     }
 
     if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");
@@ -161,9 +162,8 @@ static void blit_screen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
-    fullFrame = rg_display_queue_update(currentUpdate, previousUpdate) == RG_UPDATE_FULL;
-    previousUpdate = currentUpdate;
-    currentUpdate = &updates[currentUpdate == &updates[0]];
+    slowFrame = !rg_display_sync(false);
+    rg_display_submit(currentUpdate, 0);
 }
 
 static void nsf_draw_overlay(void)
@@ -172,11 +172,11 @@ static void nsf_draw_overlay(void)
     char song[32];
     const nsfheader_t *header = (nsfheader_t *)nes->cart->data_ptr;
     const rg_gui_option_t options[] = {
-        {0, "Name      ", (char *)header->name, 1, NULL},
-        {0, "Artist    ", (char *)header->artist, 1, NULL},
-        {0, "Copyright ", (char *)header->copyright, 1, NULL},
-        {0, "Playing   ", (char *)song, 1, NULL},
-        RG_DIALOG_CHOICE_LAST,
+        {0, "Name      ", (char*)header->name,      RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Artist    ", (char*)header->artist,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Copyright ", (char*)header->copyright, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Playing   ", (char*)song,              RG_DIALOG_FLAG_NORMAL, NULL},
+        RG_DIALOG_END,
     };
     snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
     rg_gui_draw_dialog("NSF Player", options, -1);
@@ -193,11 +193,11 @@ void nes_main(void)
         .screenshot = &screenshot_handler,
     };
     const rg_gui_option_t options[] = {
-        {1, "Palette     ", "Default", 1, &palette_update_cb},
-        {2, "Overscan    ", "Auto ", 1, &overscan_update_cb},
-        {3, "Crop sides  ", "Never", 1, &autocrop_update_cb},
-        {4, "Sprite limit", "On   ", 1, &sprite_limit_cb},
-        RG_DIALOG_CHOICE_LAST
+        {0, "Palette     ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, "Overscan    ", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
+        {0, "Crop sides  ", "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb},
+        {0, "Sprite limit", "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb},
+        RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
@@ -222,7 +222,7 @@ void nes_main(void)
     else if (ret < 0)
         RG_PANIC("Unsupported ROM.");
 
-    app->refreshRate = nes->refresh_rate;
+    app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
@@ -253,7 +253,6 @@ void nes_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            rg_audio_set_sample_rate(app->sampleRate * app->speed);
             if (nsfPlayer)
                 rg_display_clear(C_BLACK);
         }
@@ -270,35 +269,38 @@ void nes_main(void)
         if (joystick & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
         if (joystick & RG_KEY_A)      buttons |= NES_PAD_A;
         if (joystick & RG_KEY_B)      buttons |= NES_PAD_B;
-        input_update(0, buttons);
 
+        if (drawFrame)
+        {
+            currentUpdate = &updates[currentUpdate == &updates[0]];
+        }
+
+        input_update(0, buttons);
         nes_emulate(drawFrame);
 
-        int elapsed = rg_system_timer() - startTime;
+        // Tick before submitting audio/syncing
+        rg_system_tick(rg_system_timer() - startTime);
+
+        // Audio is used to pace emulation :)
+        rg_audio_submit((void*)nes->apu->buffer, nes->apu->samples_per_frame);
 
         if (skipFrames == 0)
         {
             int frameTime = 1000000 / (nes->refresh_rate * app->speed);
-            if (elapsed > frameTime - 2000) // It takes about 2ms to copy the audio buffer
-                skipFrames = (elapsed + frameTime / 2) / frameTime;
-            else if (drawFrame && fullFrame) // This could be avoided when scaling != full
-                skipFrames = 1;
-            else if (nsfPlayer)
+            int elapsed = rg_system_timer() - startTime;
+            if (nsfPlayer)
                 skipFrames = 10, nsf_draw_overlay();
-
-            if (app->speed > 1.f) // This is a hack until we account for audio speed...
-                skipFrames += (int)app->speed;
+            else if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (elapsed > frameTime + 1500) // Allow some jitter
+                skipFrames = 1; // (elapsed / frameTime)
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
         }
         else if (skipFrames > 0)
         {
             skipFrames--;
         }
-
-        // Tick before submitting audio/syncing
-        rg_system_tick(elapsed);
-
-        // Audio is used to pace emulation :)
-        rg_audio_submit((void*)nes->apu->buffer, nes->apu->samples_per_frame);
     }
 
     RG_PANIC("Nofrendo died!");

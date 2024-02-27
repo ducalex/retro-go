@@ -4,7 +4,6 @@ rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 
 rg_video_update_t updates[2];
 rg_video_update_t *currentUpdate = &updates[0];
-rg_video_update_t *previousUpdate = NULL;
 
 rg_app_t *app;
 
@@ -21,10 +20,20 @@ void app_main(void)
         nes_main();
     else if (strcmp(app->configNs, "pce") == 0)
         pce_main();
+    else if (strcmp(app->configNs, "sms") == 0)
+        sms_main();
+    else if (strcmp(app->configNs, "gg") == 0)
+        sms_main();
+    else if (strcmp(app->configNs, "col") == 0)
+        sms_main();
     else if (strcmp(app->configNs, "gw") == 0)
         gw_main();
+    else if (strcmp(app->configNs, "snes") == 0)
+        snes_main();
+#ifndef __TINYC__
     else if (strcmp(app->configNs, "lnx") == 0)
         lynx_main();
+#endif
     else
         launcher_main();
 

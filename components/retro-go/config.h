@@ -14,6 +14,8 @@
 #include "targets/esplay-micro/config.h"
 #elif defined(RG_TARGET_ESPLAY_S3)
 #include "targets/esplay-s3/config.h"
+#elif defined(RG_TARGET_ESP32S3_DEVKIT_C)
+#include "targets/esp32s3-devkit-c/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
@@ -27,12 +29,6 @@
 // #ifndef RG_ENABLE_PROFILING
 // #define RG_ENABLE_PROFILING 0
 // #endif
-
-// This is the base task priority used for system tasks.
-// It should be higher than user tasks but lower than esp-idf's tasks.
-#ifndef RG_TASK_PRIORITY
-#define RG_TASK_PRIORITY 10
-#endif
 
 #ifndef RG_APP_LAUNCHER
 #define RG_APP_LAUNCHER "launcher"
@@ -89,8 +85,4 @@
 
 #ifndef RG_GPIO_LED
 #define RG_GPIO_LED (-1)
-#endif
-
-#ifndef RG_GAMEPAD_MAP
-#define RG_GAMEPAD_MAP {}
 #endif

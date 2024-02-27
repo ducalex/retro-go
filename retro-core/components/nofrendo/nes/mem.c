@@ -20,6 +20,7 @@
 ** nes/mem.c: Memory emulation
 **
 */
+#pragma GCC diagnostic ignored "-Warray-bounds="
 
 #include "nes.h"
 
@@ -52,97 +53,90 @@ static const mem_write_handler_t write_handlers[] =
 };
 
 /* Set 2KB memory page */
-IRAM_ATTR void mem_setpage(uint32 page, uint8 *ptr)
+void mem_setpage(uint32 page, uint8 *ptr)
 {
-   ASSERT(page < 32);
-   ASSERT(ptr);
-
-   mem.pages[page] = ptr - (page * MEM_PAGESIZE);
-
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_read[page]))
+   if (page >= MEM_PAGECOUNT)
    {
-      mem.pages_read[page] = mem.pages[page];
+      MESSAGE_ERROR("Invalid CPU page #%d (max: %d) !\n", (int)page, MEM_PAGECOUNT);
+      return;
    }
 
-   if (!MEM_PAGE_HAS_HANDLERS(mem.pages_write[page]))
+   if (ptr == MEM_PAGE_NOT_MAPPED)
    {
-      mem.pages_write[page] = mem.pages[page];
+      mem.pages[page] = mem.dummy - (page * MEM_PAGESIZE);
+      mem.flags[page] &= ~MEM_PAGE_HAS_MEMORY;
+   }
+   else
+   {
+      mem.pages[page] = ptr - (page * MEM_PAGESIZE);
+      mem.flags[page] |= MEM_PAGE_HAS_MEMORY;
    }
 }
 
 /* Get 2KB memory page */
 uint8 *mem_getpage(uint32 page)
 {
-   ASSERT(page < 32);
-
-   uint8 *page_ptr = mem.pages[page];
-
-   if (MEM_PAGE_IS_VALID_PTR(page_ptr))
+   if (page >= MEM_PAGECOUNT)
    {
-      return page_ptr + (page * MEM_PAGESIZE);
+      MESSAGE_ERROR("Invalid CPU page #%d (max: %d) !\n", (int)page, MEM_PAGECOUNT);
+      return MEM_PAGE_NOT_MAPPED;
    }
 
-   return page_ptr;
+   if (mem.flags[page] & MEM_PAGE_HAS_MEMORY)
+   {
+      return mem.pages[page] + (page * MEM_PAGESIZE);
+   }
+
+   return MEM_PAGE_NOT_MAPPED;
 }
 
 /* read a byte of 6502 memory space */
 IRAM_ATTR uint8 mem_getbyte(uint32 address)
 {
-   uint8 *page = mem.pages_read[address >> MEM_PAGESHIFT];
+   uint32 flags = mem.flags[address >> MEM_PAGESHIFT];
 
-   /* Special memory handlers */
-   if (MEM_PAGE_HAS_HANDLERS(page))
+   if (flags & MEM_PAGE_HAS_READ_HANDLER)
    {
-      for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
+      for (mem_read_handler_t *mr = mem.read_handlers; mr->handler != NULL; mr++)
       {
          if (address >= mr->min_range && address <= mr->max_range)
-            return mr->read_func(address);
+            return mr->handler(address);
       }
-      page = mem.pages[address >> MEM_PAGESHIFT];
    }
 
-   /* Unmapped region */
-   if (page == NULL)
+   if (flags & MEM_PAGE_HAS_MEMORY)
    {
-      MESSAGE_DEBUG("Read unmapped region: $%4X\n", address);
-      return 0xFF;
+      return mem.pages[address >> MEM_PAGESHIFT][address];
    }
-   /* Paged memory */
-   else
-   {
-      return page[address];
-   }
+
+   MESSAGE_DEBUG("Read unmapped region: $%4X\n", address);
+   return 0xFF;
 }
 
 /* write a byte of data to 6502 memory space */
 IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
 {
-   uint8 *page = mem.pages_write[address >> MEM_PAGESHIFT];
+   uint32 flags = mem.flags[address >> MEM_PAGESHIFT];
 
-   /* Special memory handlers */
-   if (MEM_PAGE_HAS_HANDLERS(page))
+   if (flags & MEM_PAGE_HAS_WRITE_HANDLER)
    {
-      for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
+      for (mem_write_handler_t *mw = mem.write_handlers; mw->handler != NULL; mw++)
       {
          if (address >= mw->min_range && address <= mw->max_range)
          {
-            mw->write_func(address, value);
+            mw->handler(address, value);
             return;
          }
       }
-      page = mem.pages[address >> MEM_PAGESHIFT];
    }
 
-   /* Unmapped region */
-   if (page == NULL)
+   if (flags & MEM_PAGE_HAS_MEMORY)
    {
-      MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
+      mem.pages[address >> MEM_PAGESHIFT][address] = value;
+      return;
    }
-   /* Paged memory */
-   else
-   {
-      page[address] = value;
-   }
+
+   MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
 }
 
 IRAM_ATTR uint32 mem_getword(uint32 address)
@@ -152,64 +146,63 @@ IRAM_ATTR uint32 mem_getword(uint32 address)
 
 void mem_reset(void)
 {
-   memset(&mem, 0, sizeof(mem));
+   memset(mem.ram, 0, MEM_RAMSIZE);
 
-   mem_setpage(0, mem.ram);
+   mem_setpage(0, mem.ram); // $000 - $7FF
    mem_setpage(1, mem.ram); // $800 - $FFF mirror
    mem_setpage(2, mem.ram); // $1000 - $07FF mirror
    mem_setpage(3, mem.ram); // $1800 - $1FFF mirror
 
-   int num_read_handlers = 0, num_write_handlers = 0;
+   for (size_t i = 4; i < MEM_PAGECOUNT; ++i)
+   {
+      mem_setpage(i, MEM_PAGE_NOT_MAPPED);
+   }
+
+   mem_read_handler_t *mem_r = mem.read_handlers;
+   mem_write_handler_t *mem_w = mem.write_handlers;
    mapper_t *mapper = nes_getptr()->mapper;
 
    // NES cartridge handlers
    if (mapper)
    {
-      for (int i = 0, rc = 0, wc = 0; i < 4; i++)
-      {
-         if (mapper->mem_read[rc].read_func)
-            mem.read_handlers[num_read_handlers++] = mapper->mem_read[rc++];
-
-         if (mapper->mem_write[wc].write_func)
-            mem.write_handlers[num_write_handlers++] = mapper->mem_write[wc++];
-      }
+      for (size_t i = 0; i < 4 && mapper->mem_read[i].handler; i++)
+         *mem_r++ = mapper->mem_read[i];
+      for (size_t i = 0; i < 4 && mapper->mem_write[i].handler; i++)
+         *mem_w++ = mapper->mem_write[i];
    }
 
    // NES hardware handlers
-   for (int i = 0, rc = 0, wc = 0; i < MEM_HANDLERS_MAX; i++)
-   {
-      if (read_handlers[rc].read_func)
-         mem.read_handlers[num_read_handlers++] = read_handlers[rc++];
+   for (size_t i = 0; i < MEM_HANDLERS_MAX - 5 && read_handlers[i].handler; i++)
+      *mem_r++ = read_handlers[i];
+   for (size_t i = 0; i < MEM_HANDLERS_MAX - 5 && write_handlers[i].handler; i++)
+      *mem_w++ = write_handlers[i];
 
-      if (write_handlers[wc].write_func)
-         mem.write_handlers[num_write_handlers++] = write_handlers[wc++];
-   }
+   mem_r->handler = NULL;
+   mem_w->handler = NULL;
 
    // Mark pages if they contain handlers (used for fast access in nes6502)
-   for (mem_read_handler_t *mr = mem.read_handlers; mr->read_func != NULL; mr++)
+   for (mem_read_handler_t *mr = mem.read_handlers; mr < mem_r; mr++)
    {
       for (int i = mr->min_range; i < mr->max_range; i++)
-         mem.pages_read[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+         mem.flags[i >> MEM_PAGESHIFT] |= MEM_PAGE_HAS_READ_HANDLER;
    }
-
-   for (mem_write_handler_t *mw = mem.write_handlers; mw->write_func != NULL; mw++)
+   for (mem_write_handler_t *mw = mem.write_handlers; mw < mem_w; mw++)
    {
       for (int i = mw->min_range; i < mw->max_range; i++)
-         mem.pages_write[i >> MEM_PAGESHIFT] = MEM_PAGE_USE_HANDLERS;
+         mem.flags[i >> MEM_PAGESHIFT] |= MEM_PAGE_HAS_WRITE_HANDLER;
    }
-
-   ASSERT(num_read_handlers <= MEM_HANDLERS_MAX);
-   ASSERT(num_write_handlers <= MEM_HANDLERS_MAX);
 }
 
 mem_t *mem_init_(void)
 {
-   // memset(&mem, 0, sizeof(mem));
+   // Don't care if the alloc fails, dummy is just a safety net
+   mem.dummy = malloc(MEM_PAGESIZE);
    mem_reset();
    return &mem;
 }
 
 void mem_shutdown(void)
 {
-   //
+   free(mem.dummy);
+   mem.dummy = NULL;
 }

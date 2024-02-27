@@ -24,11 +24,7 @@
     if (BG.Buffered [TileNumber] == BLANK_TILE) \
        return; \
     if (BG.DirectColourMode) \
-    { \
-       if (IPPU.DirectColourMapsNeedRebuild) \
-          S9xBuildDirectColourMaps (); \
-       ScreenColors = DirectColourMaps [(Tile >> 10) & BG.PaletteMask]; \
-    } \
+       ScreenColors = &IPPU.DirectColors [((Tile >> 10) & BG.PaletteMask) << 8]; \
     else \
        ScreenColors = &IPPU.ScreenColors [(((Tile >> 10) & BG.PaletteMask) << BG.PaletteShift) + BG.StartPalette]
 

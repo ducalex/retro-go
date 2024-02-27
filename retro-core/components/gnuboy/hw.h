@@ -181,7 +181,7 @@ typedef struct
 	int ramsize;
 
 	// Memory
-	byte *rombanks[512];
+	byte **rombanks; // [512];
 	byte (*rambanks)[8192];
 	unsigned sram_dirty;
 	unsigned sram_saved;
@@ -227,42 +227,66 @@ typedef struct
 	int hwtype;		// type of emulated device
 	int frames;		// total frames counter
 
+	gb_cpu_t *cpu;
+	gb_snd_t *snd;
+	gb_cart_t *cart;
+
+	struct {
+		bool enabled;
+		gb_video_fmt_t format;
+		gb_palette_t colorize;
+		gb_video_cb_t *callback;
+		union {
+			uint16_t *buffer16;
+			uint8_t *buffer8;
+			void *buffer;
+		};
+		uint16_t palette[64];
+	} video;
+
+	struct {
+		bool enabled;
+		gb_audio_fmt_t format;
+		long samplerate;
+		gb_audio_cb_t *callback;
+		int16_t *buffer;
+		int16_t *buffer_ptr;
+		size_t pos, len;
+	} audio;
+
 	struct {
 		// Fix for Fushigi no Dungeon - Fuurai no Shiren GB2 and Donkey Kong
 		// This hack simply constrains the window top position
 		int window_offset;
 	} compat;
-
-	gb_cpu_t *cpu;
-	gb_snd_t *snd;
-	gb_cart_t *cart;
-} gb_hw_t;
+} gb_t;
 
 extern gb_cart_t cart;
-extern gb_hw_t GB;
+extern gb_t GB;
+#define host GB
 
-gb_hw_t *hw_init(void);
-void hw_reset(bool hard);
-void hw_setpad(int new_pad);
-void hw_interrupt(byte i, int level);
-void hw_updatemap(void);
-void hw_hdma_cont(void);
-void hw_write(unsigned a, byte b);
-byte hw_read(unsigned a);
-void hw_vblank(void);
+bool gb_hw_init(void);
+void gb_hw_reset(bool hard);
+void gb_hw_setpad(int new_pad);
+void gb_hw_interrupt(byte i, int level);
+void gb_hw_updatemap(void);
+void gb_hw_hdma_cont(void);
+void gb_hw_write(unsigned a, byte b);
+byte gb_hw_read(unsigned a);
+void gb_hw_vblank(void);
 
 
 static inline byte readb(unsigned a)
 {
 	const byte *p = GB.rmap[a>>12];
-	return p ? p[a] : hw_read(a);
+	return p ? p[a] : gb_hw_read(a);
 }
 
 static inline void writeb(unsigned a, byte b)
 {
 	byte *p = GB.wmap[a>>12];
 	if (p) p[a] = b;
-	else hw_write(a, b);
+	else gb_hw_write(a, b);
 }
 
 static inline uint16_t readw(unsigned a)

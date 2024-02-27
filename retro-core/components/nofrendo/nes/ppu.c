@@ -24,8 +24,8 @@
 #include "nes.h"
 
 /* PPU access */
-#define PPU_MEM_READ(x)      (ppu.page[(x) >> 10][(x)])
-#define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> 10][(x)] = (v))
+#define PPU_MEM_READ(x)      (ppu.page[(x) >> PPU_PAGESHIFT][(x)])
+#define PPU_MEM_WRITE(x,v)   (ppu.page[(x) >> PPU_PAGESHIFT][(x)] = (v))
 
 /* Background (color 0) and solid sprite pixel flags */
 #define BG_TRANS             (0x80)
@@ -42,6 +42,14 @@
 
 #define INLINE static inline __attribute__((__always_inline__))
 
+static const uint8 mirroring_maps[][4] = {
+   [PPU_MIRROR_SCR0] = {0, 0, 0, 0},
+   [PPU_MIRROR_SCR1] = {1, 1, 1, 1},
+   [PPU_MIRROR_HORI] = {0, 0, 1, 1},
+   [PPU_MIRROR_VERT] = {0, 1, 0, 1},
+   [PPU_MIRROR_FOUR] = {0, 1, 2, 3},
+};
+
 /* the NES PPU */
 static ppu_t ppu;
 
@@ -56,102 +64,86 @@ INLINE uint8 PPU_MEM_READ(uint32 x)
 }
 #endif
 
-void ppu_setcontext(ppu_t *src_ppu)
+void ppu_setcontext(const ppu_t *src)
 {
-   ASSERT(src_ppu);
-   ppu = *src_ppu;
-   ppu_setnametables(ppu.nt1, ppu.nt2, ppu.nt3, ppu.nt4);
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
-void ppu_getcontext(ppu_t *dest_ppu)
+void ppu_getcontext(ppu_t *dest)
 {
-   ASSERT(dest_ppu);
-   *dest_ppu = ppu;
+   MESSAGE_ERROR("%s: Not implemented!\n", __func__);
 }
 
-void ppu_setpage(int size, int page_num, uint8 *location)
+void ppu_setpage(uint32 page, uint8 *location)
 {
-   while (size--)
+   if (page >= PPU_PAGECOUNT || location == NULL)
    {
-      ppu.page[page_num++] = location;
+      MESSAGE_ERROR("Invalid PPU page #%d!\n", (int)page);
+      return;
    }
+   ppu.page[page] = location - (page << PPU_PAGESHIFT);
+
+   /* Setup mirror if required (8-11 <=> 12-15) */
+   if (page >= 12)
+      ppu.page[page - 4] = location - ((page - 4) << PPU_PAGESHIFT);
+   else if (page >= 8)
+      ppu.page[page + 4] = location - ((page + 4) << PPU_PAGESHIFT);
 }
 
-uint8 *ppu_getpage(int page)
+uint8 *ppu_getpage(uint32 page)
 {
-   return ppu.page[page];
+   if (page >= PPU_PAGECOUNT || ppu.page[page] == NULL)
+   {
+      MESSAGE_ERROR("Invalid PPU page #%d!\n", (int)page);
+      return NULL;
+   }
+   return ppu.page[page] + (page << PPU_PAGESHIFT);
 }
 
-uint8 *ppu_getnametable(int table)
+void ppu_setnametable(uint8 index, uint8 table)
 {
-   return ppu.nametab + (0x400 * (table & 3));
+   index &= 3;
+   table &= 3;
+   ppu.nt_map[index] = table;
+   ppu_setpage(8 + index, ppu.nametab + (table * PPU_PAGESIZE));
 }
 
-void ppu_setnametables(int nt1, int nt2, int nt3, int nt4)
+uint8 *ppu_getnametable(uint8 table)
 {
-   ppu.nt1 = nt1 & 0x3; ppu.nt2 = nt2 & 0x3;
-   ppu.nt3 = nt3 & 0x3; ppu.nt4 = nt4 & 0x3;
-
-   ppu.page[8]  = ppu.nametab + (ppu.nt1 * 0x400) - 0x2000;
-   ppu.page[9]  = ppu.nametab + (ppu.nt2 * 0x400) - 0x2400;
-   ppu.page[10] = ppu.nametab + (ppu.nt3 * 0x400) - 0x2800;
-   ppu.page[11] = ppu.nametab + (ppu.nt4 * 0x400) - 0x2C00;
-
-   /* make sure $3000-$3F00 mirrors $2000-$2F00 */
-   ppu.page[12] = ppu.page[8] - 0x1000;
-   ppu.page[13] = ppu.page[9] - 0x1000;
-   ppu.page[14] = ppu.page[10] - 0x1000;
-   ppu.page[15] = ppu.page[11] - 0x1000;
+   return ppu.nametab + ((table & 3) * PPU_PAGESIZE);
 }
 
 void ppu_setmirroring(ppu_mirror_t type)
 {
-   switch (type)
-   {
-      case PPU_MIRROR_SCR0: ppu_setnametables(0, 0, 0, 0); break;
-      case PPU_MIRROR_SCR1: ppu_setnametables(1, 1, 1, 1); break;
-      case PPU_MIRROR_FOUR: ppu_setnametables(0, 1, 2, 3); break;
-      case PPU_MIRROR_VERT: ppu_setnametables(0, 1, 0, 1); break;
-      case PPU_MIRROR_HORI: ppu_setnametables(0, 0, 1, 1); break;
-   }
+   const uint8 *map = mirroring_maps[type % 5];
+   ppu_setnametable(0, map[0]);
+   ppu_setnametable(1, map[1]);
+   ppu_setnametable(2, map[2]);
+   ppu_setnametable(3, map[3]);
 }
 
 INLINE void ppu_oamdma(uint8 value)
 {
-   uint32 cpu_address;
-   uint8 oam_loc;
+   uint32 cpu_address = (uint32) (value << 8);
 
-   cpu_address = (uint32) (value << 8);
+   for (size_t i = 0; i < 256; ++i)
+      ppu.oam[ppu.oam_addr++] = mem_getbyte(cpu_address++);
 
-   /* Sprite DMA starts at the current SPRRAM address */
-   oam_loc = ppu.oam_addr;
-   do
-   {
-      ppu.oam[oam_loc++] = mem_getbyte(cpu_address++);
-   }
-   while (oam_loc != ppu.oam_addr);
-
-   /* TODO: enough with houdini */
-   cpu_address -= 256;
-   /* Odd address in $2003 */
-   if ((ppu.oam_addr >> 2) & 1)
-   {
-      for (oam_loc = 4; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-      cpu_address += 248;
-      for (oam_loc = 0; oam_loc < 4; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-   }
-   /* Even address in $2003 */
-   else
-   {
-      for (oam_loc = 0; oam_loc < 8; oam_loc++)
-         ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
-   }
+   // This is unlike other emulators or documented behavior. Workaround for something, maybe?
+   // cpu_address -= 256;
+   // if ((ppu.oam_addr >> 2) & 1) {
+   //    for (oam_loc = 4; oam_loc < 8; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   //    cpu_address += 248;
+   //    for (oam_loc = 0; oam_loc < 4; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   // } else {
+   //    for (oam_loc = 0; oam_loc < 8; oam_loc++)
+   //       ppu.oam[oam_loc] = mem_getbyte(cpu_address++);
+   // }
 
    /* make the CPU spin for DMA cycles */
    nes6502_burn(513);
-   // nes6502_release();
 }
 
 /* Read from $2000-$2007 */
@@ -185,7 +177,7 @@ IRAM_ATTR uint8 ppu_read(uint32 address)
       {
          ppu.vdata_latch = 0xFF;
          MESSAGE_DEBUG("VRAM read at $%04X, scanline %d\n",
-                        ppu.vaddr, NES_CURRENT_SCANLINE);
+                        ppu.vaddr, nes_getptr()->scanline);
       }
       else
       {
@@ -302,7 +294,7 @@ IRAM_ATTR void ppu_write(uint32 address, uint8 value)
          if ((ppu.bg_on || ppu.obj_on) && !ppu.vram_accessible)
          {
             MESSAGE_DEBUG("VRAM write to $%04X, scanline %d\n",
-                           ppu.vaddr, NES_CURRENT_SCANLINE);
+                           ppu.vaddr, nes_getptr()->scanline);
             PPU_MEM_WRITE(ppu.vaddr, 0xFF); /* corrupt */
          }
          else
@@ -367,10 +359,10 @@ void ppu_setvreadfunc(ppu_vreadfunc_t func)
 /* rendering routines */
 INLINE uint32 get_patpix(uint32 tile_addr)
 {
-   uint8 pat1 = PPU_MEM_READ(tile_addr);
-   uint8 pat2 = PPU_MEM_READ(tile_addr + 8);
+   uint32 pat1 = PPU_MEM_READ(tile_addr);
+   uint32 pat2 = PPU_MEM_READ(tile_addr + 8);
    return ((pat2 & 0xAA) << 8) | ((pat2 & 0x55) << 1)
-        | ((pat1 & 0xAA) << 7) | (pat1 & 0x55);
+        | ((pat1 & 0xAA) << 7) | ((pat1 & 0x55) << 0);
 }
 
 INLINE void build_tile_colors(bool flip, uint32 pattern, uint8 *colors)
@@ -636,12 +628,7 @@ bool ppu_enabled(void)
    return (ppu.bg_on || ppu.obj_on);
 }
 
-bool ppu_inframe(void)
-{
-   return (ppu.scanline < 240);
-}
-
-IRAM_ATTR void ppu_endscanline()
+void ppu_endline(void)
 {
    /* modify vram address at end of scanline */
    if (ppu.scanline < 240 && (ppu.bg_on || ppu.obj_on))
@@ -670,7 +657,7 @@ IRAM_ATTR void ppu_endscanline()
    }
 }
 
-IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
+IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
 {
    ppu.scanline = scanline;
 
@@ -689,9 +676,6 @@ IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
             ppu.vaddr = (ppu.vaddr & ~0x041F) | (ppu.vaddr_latch & 0x041F);
       }
 
-      if (scanline == 0)
-         ppu.left_bg_counter = 0;
-
       uint8 *vidbuf = NES_SCREEN_GETPTR(bmp, 0, scanline);
 
       if (draw_flag && OPT(PPU_DRAW_BACKGROUND))
@@ -705,22 +689,22 @@ IRAM_ATTR void ppu_scanline(uint8 *bmp, int scanline, bool draw_flag)
    {
       ppu.stat |= PPU_STATF_VBLANK;
       ppu.vram_accessible = true;
-      ppu.last_scanline = NES_SCANLINES - 1;
    }
    // End of frame
-   else if (scanline == ppu.last_scanline)
+   else if (scanline == ppu.scanlines - 1)
    {
       ppu.stat &= ~PPU_STATF_VBLANK;
       ppu.strikeflag = false;
       ppu.strike_cycle = (uint32) -1;
       ppu.vram_accessible = false;
+      ppu.left_bg_counter = 0;
    }
 }
 
-void ppu_reset()
+void ppu_reset(void)
 {
-   memset(ppu.nametab, 0, sizeof(ppu.nametab));
-   memset(ppu.oam, 0, sizeof(ppu.oam));
+   memset(ppu.nametab, 0, 0x400 * 4);
+   memset(ppu.oam, 0, 0x100);
 
    ppu.ctrl0 = 0;
    ppu.ctrl1 = PPU_CTRL1F_OBJON | PPU_CTRL1F_BGON;
@@ -731,12 +715,16 @@ void ppu_reset()
    ppu.tile_xofs = 0;
    ppu.latch = 0;
    ppu.vram_accessible = true;
-   ppu.last_scanline = NES_SCANLINES - 1;
+   ppu.scanlines = nes_getptr()->scanlines_per_frame;
 }
 
 ppu_t *ppu_init(void)
 {
    memset(&ppu, 0, sizeof(ppu_t));
+
+   ppu.nametab = malloc(0x400 * 4);
+   if (!ppu.nametab)
+      return NULL;
 
    ppu_setopt(PPU_DRAW_BACKGROUND, true);
    ppu_setopt(PPU_DRAW_SPRITES, true);
@@ -747,7 +735,8 @@ ppu_t *ppu_init(void)
 
 void ppu_shutdown(void)
 {
-   //
+   free(ppu.nametab);
+   ppu.nametab = NULL;
 }
 
 

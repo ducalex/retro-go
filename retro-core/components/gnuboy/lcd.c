@@ -449,19 +449,19 @@ static inline void spr_scan(gb_vs_t *VS, int ns, byte *PRI)
 }
 
 
-void lcd_init(void)
+void gb_lcd_init(void)
 {
 	return;
 }
 
 
-void lcd_pal_dirty(void)
+void gb_lcd_pal_dirty(void)
 {
 	pal_dirty = true;
 }
 
 
-void lcd_reset(bool hard)
+void gb_lcd_reset(bool hard)
 {
 	if (hard)
 	{
@@ -475,13 +475,13 @@ void lcd_reset(bool hard)
 	WX = 0;
 	WY = R_WY;
 
-	lcd_pal_dirty();
+	gb_lcd_pal_dirty();
 
 	/* set lcdc ahead of cpu by 19us; see A
 			Set lcdc ahead of cpu by 19us (matches minimal hblank duration according
 			to some docs). Value from CYCLES (when positive) is used to drive CPU,
 			setting some ahead-time at startup is necessary to begin emulation.
-	FIXME: leave value at 0, use lcd_emulate() to actually send lcdc ahead
+	FIXME: leave value at 0, use gb_lcd_emulate() to actually send lcdc ahead
 	*/
 	CYCLES = 40;
 }
@@ -494,7 +494,7 @@ void lcd_reset(bool hard)
 /*
  * stat_change is called when a transition results in a change to the
  * LCD STAT condition (the low 2 bits of R_STAT).  It raises or lowers
- * the VBLANK interrupt line appropriately and calls lcd_stat_trigger to
+ * the VBLANK interrupt line appropriately and calls gb_lcd_stat_trigger to
  * update the STAT interrupt line.
  * FIXME: function now will only lower vblank interrupt, description does not match anymore
  */
@@ -502,21 +502,21 @@ static void inline stat_change(int stat)
 {
 	R_STAT = (R_STAT & 0x7C) | (stat & 3);
 	if (stat != 1)
-		hw_interrupt(IF_VBLANK, 0);
-	lcd_stat_trigger();
+		gb_hw_interrupt(IF_VBLANK, 0);
+	gb_lcd_stat_trigger();
 }
 
 
 /*
- * lcd_stat_trigger updates the STAT interrupt line to reflect whether any
+ * gb_lcd_stat_trigger updates the STAT interrupt line to reflect whether any
  * of the conditions set to be tested (by bits 3-6 of R_STAT) are met.
  * This function should be called whenever any of the following occur:
  * 1) LY or LYC changes.
  * 2) A state transition affects the low 2 bits of R_STAT (see below).
  * 3) The program writes to the upper bits of R_STAT.
- * lcd_stat_trigger also updates bit 2 of R_STAT to reflect whether LY=LYC.
+ * gb_lcd_stat_trigger also updates bit 2 of R_STAT to reflect whether LY=LYC.
  */
-void lcd_stat_trigger()
+void gb_lcd_stat_trigger()
 {
 	int condbits[4] = { 0x08, 0x10, 0x20, 0x00 };
 	int mask = condbits[R_STAT & 3];
@@ -526,11 +526,11 @@ void lcd_stat_trigger()
 	else
 		R_STAT &= ~0x04;
 
-	hw_interrupt(IF_STAT, (R_LCDC & 0x80) && ((R_STAT & 0x44) == 0x44 || (R_STAT & mask)));
+	gb_hw_interrupt(IF_STAT, (R_LCDC & 0x80) && ((R_STAT & 0x44) == 0x44 || (R_STAT & mask)));
 }
 
 
-void lcd_lcdc_change(byte b)
+void gb_lcd_lcdc_change(byte b)
 {
 	byte old = R_LCDC;
 	R_LCDC = b;
@@ -604,7 +604,7 @@ static inline void sync_palette(void)
 	#0..#143 are visible and lines #144..#153 are processed in vblank
 	state.
 
-	lcd_emulate() performs cyclic switching between lcdc states (OAM
+	gb_lcd_emulate() performs cyclic switching between lcdc states (OAM
 	search/data transfer/hblank/vblank), updates system state and time
 	counters accordingly. Control is returned to the caller immediately
 	after a step that sets LCDC ahead of CPU, so that LCDC is always
@@ -622,7 +622,7 @@ static inline void sync_palette(void)
 
 	LCDC emulation begins with R_LCDC set to "operation enabled", R_LY
 	set to line #0 and R_STAT set to state-hblank. CYCLES is also
-	set to zero, to begin emulation we call lcd_emulate() once to
+	set to zero, to begin emulation we call gb_lcd_emulate() once to
 	force-advance LCD through the first iteration.
 
 	Docs aren't entirely accurate about time intervals within single
@@ -704,7 +704,7 @@ static inline void lcd_renderline()
 	}
 }
 
-void lcd_emulate(int cycles)
+void gb_lcd_emulate(int cycles)
 {
 	CYCLES -= cycles;
 
@@ -733,7 +733,7 @@ void lcd_emulate(int cycles)
 				stat_change(0);
 				/* FIXME: check docs; HDMA might require operating LCDC */
 				if (GB.hdma & 0x80)
-					hw_hdma_cont();
+					gb_hw_hdma_cont();
 				else
 					CYCLES += 102;
 				break;
@@ -756,7 +756,7 @@ void lcd_emulate(int cycles)
 				before interrupt is triggered */
 				if (GB.cpu->halted)
 				{
-					hw_interrupt(IF_VBLANK, 1);
+					gb_hw_interrupt(IF_VBLANK, 1);
 					CYCLES += 228;
 				}
 				else
@@ -769,7 +769,7 @@ void lcd_emulate(int cycles)
 
 			// Hack for Worms Armageddon
 			if (R_STAT == 0x48)
-				hw_interrupt(IF_STAT, 0);
+				gb_hw_interrupt(IF_STAT, 0);
 
 			stat_change(2); /* -> search */
 			CYCLES += 40;
@@ -778,7 +778,7 @@ void lcd_emulate(int cycles)
 			/* vblank -> */
 			if (!(GB.ilines & IF_VBLANK))
 			{
-				hw_interrupt(IF_VBLANK, 1);
+				gb_hw_interrupt(IF_VBLANK, 1);
 				CYCLES += 218;
 				break;
 			}
@@ -803,7 +803,7 @@ void lcd_emulate(int cycles)
 				CYCLES += 200;
 			}
 			R_LY++;
-			lcd_stat_trigger();
+			gb_lcd_stat_trigger();
 			break;
 		case 2:
 			/* search -> */
@@ -815,7 +815,7 @@ void lcd_emulate(int cycles)
 			/* transfer -> */
 			stat_change(0); /* -> hblank */
 			if (GB.hdma & 0x80)
-				hw_hdma_cont();
+				gb_hw_hdma_cont();
 			/* FIXME -- how much of the hblank does hdma use?? */
 			/* else */
 			CYCLES += 102;

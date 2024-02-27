@@ -1,5 +1,3 @@
-// REF: https://wiki.odroid.com/odroid_go/odroid_go
-
 // Target definition
 #define RG_TARGET_NAME             "QTPY ESP32"
 
@@ -49,7 +47,7 @@
 }
 
 // Battery
-// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_DRIVER           0
 #define RG_BATTERY_CALC_PERCENT(raw) (99)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
@@ -73,6 +71,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_27
 #define RG_GPIO_LCD_DC              GPIO_NUM_7
 // #define RG_GPIO_LCD_BCKL            GPIO_NUM_5  // not used!
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // SPI SD Card
 #define RG_GPIO_SDSPI_MISO          GPIO_NUM_12

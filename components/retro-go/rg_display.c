@@ -3,7 +3,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
@@ -17,33 +16,31 @@
 #include <SDL2/SDL.h>
 #endif
 
-#define LCD_BUFFER_LENGTH     (RG_SCREEN_WIDTH * 4) // In pixels
+#define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 static QueueHandle_t display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_display_osd_t osd;
+static rg_image_t *border;
 static rg_display_t display;
-static struct
-{
-    uint8_t start  : 1; // Indicates this line or column is safe to start an update on
-    uint8_t stop   : 1; // Indicates this line or column is safe to end an update on
-    uint8_t repeat : 6; // How many times the line or column is repeated by the scaler or filter
-} filter_lines[320]; // This is source height
 static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT + 1];
+static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING = "DispScaling";
 static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
-static const char *SETTING_UPDATE = "DispUpdate";
+static const char *SETTING_BORDER = "DispBorder";
+static const char *SETTING_CUSTOM_WIDTH = "DispCustomWidth";
+static const char *SETTING_CUSTOM_HEIGHT = "DispCustomHeight";
 
 #ifdef ESP_PLATFORM
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
 
-#define SPI_TRANSACTION_COUNT (8)
+#define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT      (5)
 #define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
 
@@ -102,8 +99,8 @@ static void spi_task(void *arg)
     while (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
     {
         if ((int)t->user & 2)
-            xQueueSend(spi_buffers, &t->tx_buffer, 0);
-        xQueueSend(spi_transactions, &t, 0);
+            xQueueSend(spi_buffers, &t->tx_buffer, portMAX_DELAY);
+        xQueueSend(spi_transactions, &t, portMAX_DELAY);
     }
 }
 
@@ -150,7 +147,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY - 1, 1);
+    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY_7, 1);
 }
 
 static void spi_deinit(void)
@@ -196,7 +193,7 @@ static void lcd_set_window(int left, int top, int width, int height)
 
     ILI9341_CMD(0x2A, left >> 8, left & 0xff, right >> 8, right & 0xff); // Horiz
     ILI9341_CMD(0x2B, top >> 8, top & 0xff, bottom >> 8, bottom & 0xff); // Vert
-    ILI9341_CMD(0x2C); // Memory write
+    ILI9341_CMD(0x2C);                                                   // Memory write
 }
 
 static inline void lcd_send_data(const uint16_t *buffer, size_t length)
@@ -212,15 +209,9 @@ static inline uint16_t *lcd_get_buffer(void)
     return buffer;
 }
 
-static void lcd_send_buffer(int left, int top, int width, int height, const uint16_t *buffer)
+static void lcd_sync(void)
 {
-    // FIXME: Here we should probably acquire a lock to avoid parallel lcd_send_buffer calls...
-    lcd_set_window(left, top, width, height);
-    if (osd.buffer)
-    {
-        // FIXME: Here we should check if we draw over the OSD region and, if so, redraw the OSD to buffer->ptr.
-    }
-    lcd_send_data(buffer, width * height);
+    // Unused for SPI LCD
 }
 
 static void lcd_init(void)
@@ -249,8 +240,16 @@ static void lcd_init(void)
     gpio_set_direction(RG_GPIO_LCD_DC, GPIO_MODE_OUTPUT);
     gpio_set_level(RG_GPIO_LCD_DC, 1);
 
+#if defined(RG_GPIO_LCD_RST)
+    gpio_set_direction(RG_GPIO_LCD_RST, GPIO_MODE_OUTPUT);
+    gpio_set_level(RG_GPIO_LCD_RST, 0);
+    rg_usleep(100 * 1000);
+    gpio_set_level(RG_GPIO_LCD_RST, 1);
+    rg_usleep(10 * 1000);
+#endif
+
     ILI9341_CMD(0x01);          // Reset
-    usleep(5 * 1000);           // Wait 5ms after reset
+    rg_usleep(5 * 1000);           // Wait 5ms after reset
     ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565
     #ifdef RG_SCREEN_INIT
         RG_SCREEN_INIT();
@@ -258,11 +257,11 @@ static void lcd_init(void)
         #warning "LCD init sequence is not defined for this device!"
     #endif
     ILI9341_CMD(0x11);  // Exit Sleep
-    usleep(5 * 1000);   // Wait 5ms after sleep out
+    rg_usleep(5 * 1000);// Wait 5ms after sleep out
     ILI9341_CMD(0x29);  // Display on
 
     rg_display_clear(C_BLACK);
-    rg_task_delay(10);
+    rg_usleep(10 * 1000);
     lcd_set_backlight(config.backlight);
 }
 
@@ -313,48 +312,43 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
     return (v << 8) | (v >> 8);
 }
 
-static inline void write_rect(int left, int top, int width, int height,
-                              const void *framebuffer, const uint16_t *palette)
+static inline void write_update(const rg_video_update_t *update)
 {
+    const int64_t time_start = rg_system_timer();
+
     const int screen_width = display.screen.width;
     const int screen_height = display.screen.height;
-    const int x_inc = display.viewport.x_inc;
-    const int y_inc = display.viewport.y_inc;
-    const int scaled_left = ((screen_width * left) + (x_inc - 1)) / x_inc;
-    const int scaled_top = ((screen_height * top) + (y_inc - 1)) / y_inc;
-    const int scaled_right = ((screen_width * (left + width)) + (x_inc - 1)) / x_inc;
-    const int scaled_bottom = ((screen_height * (top + height)) + (y_inc - 1)) / y_inc;
-    const int scaled_width = scaled_right - scaled_left;
-    const int scaled_height = scaled_bottom - scaled_top;
-    const int screen_top = display.viewport.y_pos + scaled_top;
-    const int screen_left = display.viewport.x_pos + scaled_left;
-    const int screen_bottom = RG_MIN(screen_top + scaled_height, screen_height);
-    const int lines_per_buffer = LCD_BUFFER_LENGTH / scaled_width;
-    const int ix_acc = (x_inc * scaled_left) % screen_width;
-    const int filter_mode = config.scaling ? config.filter : 0;
-    const bool filter_y = filter_mode == RG_DISPLAY_FILTER_VERT || filter_mode == RG_DISPLAY_FILTER_BOTH;
-    const bool filter_x = filter_mode == RG_DISPLAY_FILTER_HORIZ || filter_mode == RG_DISPLAY_FILTER_BOTH;
+
+    const int width = display.source.width;
+    const int height = display.source.height;
     const int format = display.source.format;
     const int stride = display.source.stride;
-    union { const uint8_t *u8; const uint16_t *u16; } buffer;
 
-    if (scaled_width < 1 || scaled_height < 1)
+    const int x_inc = display.viewport.x_inc;
+    const int y_inc = display.viewport.y_inc;
+    const int draw_left = display.viewport.x_pos;
+    const int draw_top = display.viewport.y_pos;
+    const int draw_width = ((screen_width * width) + (x_inc - 1)) / x_inc;
+    const int draw_height = ((screen_height * height) + (y_inc - 1)) / y_inc;
+
+    const bool filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                          (config.scaling && (display.viewport.height % display.source.height) != 0);
+    const bool filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                          (config.scaling && (display.viewport.width % display.source.width) != 0);
+
+    union {const uint8_t *u8; const uint16_t *u16; } buffer = {update->buffer + display.source.offset};
+    const uint16_t *palette = update->palette;
+
+    bool partial = true; // config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
+
+    int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
+    int lines_remaining = draw_height;
+    int lines_updated = 0;
+    int window_top = -1;
+
+    for (int y = 0, screen_y = draw_top; y < height;)
     {
-        return;
-    }
-
-    buffer.u8 = framebuffer + display.source.offset + (top * stride) + (left * display.source.pixlen);
-
-    lcd_set_window(
-        screen_left + RG_SCREEN_MARGIN_LEFT,
-        screen_top + RG_SCREEN_MARGIN_TOP,
-        scaled_width,
-        scaled_height
-    );
-
-    for (int y = 0, screen_y = screen_top; y < height;)
-    {
-        int lines_to_copy = RG_MIN(lines_per_buffer, screen_bottom - screen_y);
+        int lines_to_copy = RG_MIN(lines_per_buffer, lines_remaining);
 
         // The vertical filter requires a block to start and end with unscaled lines
         if (filter_y)
@@ -372,23 +366,26 @@ static inline void write_rect(int left, int top, int width, int height,
         uint16_t *line_buffer = lcd_get_buffer();
         uint16_t *line_buffer_ptr = line_buffer;
 
+        uint32_t checksum = 0xFFFFFFFF;
+        bool need_update = !partial;
+
         for (int i = 0; i < lines_to_copy; ++i)
         {
             if (i > 0 && screen_line_is_empty[screen_y])
             {
-                memcpy(line_buffer_ptr, line_buffer_ptr - scaled_width, scaled_width * 2);
-                line_buffer_ptr += scaled_width;
+                memcpy(line_buffer_ptr, line_buffer_ptr - draw_width, draw_width * 2);
+                line_buffer_ptr += draw_width;
             }
             else
             {
                 #define RENDER_LINE(pixel) { \
-                    for (int x = 0, x_acc = ix_acc; x < width;) { \
-                        *line_buffer_ptr++ = (pixel); \
-                        x_acc += x_inc; \
-                        while (x_acc >= screen_width) { \
-                            x_acc -= screen_width; \
-                            ++x; \
+                    for (size_t x = 0, x_acc = 0; x < width; ++x) { \
+                        uint16_t _pixel = (pixel);\
+                        while (x_acc < screen_width) { \
+                            *line_buffer_ptr++ = _pixel; \
+                            x_acc += x_inc; \
                         } \
+                        x_acc -= screen_width; \
                     } \
                 }
                 if (format & RG_PIXEL_PAL)
@@ -397,6 +394,17 @@ static inline void write_rect(int left, int top, int width, int height,
                     RENDER_LINE((buffer.u16[x] << 8) | (buffer.u16[x] >> 8))
                 else
                     RENDER_LINE(buffer.u16[x])
+
+                if (partial)
+                {
+                    checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
+                }
+            }
+
+            if (screen_line_checksum[screen_y] != checksum)
+            {
+                screen_line_checksum[screen_y] = checksum;
+                need_update = true;
             }
 
             if (!screen_line_is_empty[++screen_y])
@@ -406,56 +414,78 @@ static inline void write_rect(int left, int top, int width, int height,
             }
         }
 
-        if (filter_y || filter_x)
+        if (need_update)
         {
-            const int top = screen_y - lines_to_copy;
-
-            for (int y = 0, fill_line = -1; y < lines_to_copy; y++)
+            if (filter_y || filter_x)
             {
-                if (filter_y && y && screen_line_is_empty[top + y])
-                {
-                    fill_line = y;
-                    continue;
-                }
+                const int top = screen_y - lines_to_copy;
 
-                // Filter X
-                if (filter_x)
+                for (int y = 0, fill_line = -1; y < lines_to_copy; y++)
                 {
-                    uint16_t *buffer = line_buffer + y * scaled_width;
-                    for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = ix_acc; x < scaled_width; ++x)
+                    if (filter_y && y && screen_line_is_empty[top + y])
                     {
-                        if (frame_x == prev_frame_x && x > 0 && x + 1 < scaled_width)
-                        {
-                            buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
-                        }
-                        prev_frame_x = frame_x;
+                        fill_line = y;
+                        continue;
+                    }
 
-                        x_acc += x_inc;
-                        while (x_acc >= screen_width)
+                    // Filter X
+                    if (filter_x)
+                    {
+                        uint16_t *buffer = line_buffer + y * draw_width;
+                        for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = 0; x < draw_width; ++x)
                         {
-                            x_acc -= screen_width;
-                            ++frame_x;
+                            if (frame_x == prev_frame_x && x > 0 && x + 1 < draw_width)
+                            {
+                                buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
+                            }
+                            prev_frame_x = frame_x;
+
+                            x_acc += x_inc;
+                            while (x_acc >= screen_width)
+                            {
+                                x_acc -= screen_width;
+                                ++frame_x;
+                            }
                         }
                     }
-                }
 
-                // Filter Y
-                if (filter_y && fill_line > 0)
-                {
-                    uint16_t *lineA = line_buffer + (fill_line - 1) * scaled_width;
-                    uint16_t *lineB = line_buffer + (fill_line + 0) * scaled_width;
-                    uint16_t *lineC = line_buffer + (fill_line + 1) * scaled_width;
-                    for (size_t x = 0; x < scaled_width; ++x)
+                    // Filter Y
+                    if (filter_y && fill_line > 0)
                     {
-                        lineB[x] = blend_pixels(lineA[x], lineC[x]);
+                        uint16_t *lineA = line_buffer + (fill_line - 1) * draw_width;
+                        uint16_t *lineB = line_buffer + (fill_line + 0) * draw_width;
+                        uint16_t *lineC = line_buffer + (fill_line + 1) * draw_width;
+                        for (size_t x = 0; x < draw_width; ++x)
+                        {
+                            lineB[x] = blend_pixels(lineA[x], lineC[x]);
+                        }
+                        fill_line = -1;
                     }
-                    fill_line = -1;
                 }
             }
+
+            int left = RG_SCREEN_MARGIN_LEFT + draw_left;
+            int top = RG_SCREEN_MARGIN_TOP + screen_y - lines_to_copy;
+            if (top != window_top)
+                lcd_set_window(left, top, draw_width, lines_remaining);
+            lcd_send_data(line_buffer, draw_width * lines_to_copy);
+            window_top = top + lines_to_copy;
+            lines_updated += lines_to_copy;
+        }
+        else
+        {
+            // Return buffer
+            xQueueSend(spi_buffers, &line_buffer, portMAX_DELAY);
         }
 
-        lcd_send_data(line_buffer, scaled_width * lines_to_copy);
+        lines_remaining -= lines_to_copy;
     }
+
+    if (lines_updated > display.screen.height * 0.80)
+        counters.fullFrames++;
+    else
+        counters.partFrames++;
+    counters.busyTime += rg_system_timer() - time_start;
 }
 
 static void update_viewport_scaling(void)
@@ -466,26 +496,35 @@ static void update_viewport_scaling(void)
     int new_height = src_height;
     double new_ratio = 0.0;
 
-    if (config.scaling == RG_DISPLAY_SCALING_FILL)
+    if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
         new_ratio = display.screen.width / (double)display.screen.height;
+        new_width = display.screen.height * new_ratio;
+        new_height = display.screen.height;
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
         new_ratio = src_width / (double)src_height;
-    }
-
-    if (new_ratio > 0.0)
-    {
         new_width = display.screen.height * new_ratio;
         new_height = display.screen.height;
+    }
+    else if (config.scaling == RG_DISPLAY_SCALING_CUSTOM)
+    {
+        new_ratio = config.custom_width / (double)config.custom_height;
+        new_width = config.custom_width;
+        new_height = config.custom_height;
+    }
 
-        if (new_width > display.screen.width)
-        {
-            RG_LOGW("new_width too large: %d, reducing new_height to maintain ratio.\n", new_width);
-            new_height = display.screen.height * (display.screen.width / (double)new_width);
-            new_width = display.screen.width;
-        }
+    if (new_width > display.screen.width)
+    {
+        RG_LOGW("new_width too large: %d, cropping to %d", new_width, display.screen.width);
+        new_width = display.screen.width;
+    }
+
+    if (new_height > display.screen.height)
+    {
+        RG_LOGW("new_height too large: %d, cropping to %d", new_height, display.screen.height);
+        new_height = display.screen.height;
     }
 
     display.viewport.x_pos = (display.screen.width - new_width) / 2;
@@ -495,20 +534,17 @@ static void update_viewport_scaling(void)
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
-    // Build boundary tables used by filtering
-
-    memset(filter_lines, 1, sizeof(filter_lines));
+    memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
     memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
     int y_acc = (display.viewport.y_inc * display.viewport.y_pos) % display.screen.height;
+    int prev = -1;
 
+    // Build boundary tables used by filtering
     for (int y = 0, screen_y = display.viewport.y_pos; y < src_height && screen_y < display.screen.height; ++screen_y)
     {
-        int repeat = ++filter_lines[y].repeat;
-
-        filter_lines[y].start = repeat == 1 || repeat == 2;
-        filter_lines[y].stop = repeat == 1;
-        screen_line_is_empty[screen_y] = repeat > 1;
+        screen_line_is_empty[screen_y] |= (prev == y);
+        prev = y;
 
         y_acc += display.viewport.y_inc;
         while (y_acc >= display.screen.height)
@@ -523,13 +559,39 @@ static void update_viewport_scaling(void)
             display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
 }
 
+static bool load_border_file(const char *filename)
+{
+    RG_LOGI("Loading border file: %s", filename ?: "(none)");
+
+    free(border), border = NULL;
+    display.changed = true;
+
+    if (filename && (border = rg_image_load_from_file(filename, 0)))
+    {
+        if (border->width != display.screen.width || border->height != display.screen.height)
+        {
+            rg_image_t *resized = rg_image_copy_resampled(border, display.screen.width, display.screen.height, 0);
+            if (resized)
+            {
+                rg_image_free(border);
+                border = resized;
+            }
+        }
+        // rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+        return true;
+    }
+    // rg_display_clear(C_BLACK);
+    return false;
+}
+
+IRAM_ATTR
 static void display_task(void *arg)
 {
     display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));
 
     while (1)
     {
-        rg_video_update_t *update;
+        const rg_video_update_t *update;
 
         xQueuePeek(display_task_queue, &update, portMAX_DELAY);
         // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
@@ -540,40 +602,28 @@ static void display_task(void *arg)
 
         if (display.changed)
         {
-            if (config.scaling != RG_DISPLAY_SCALING_FILL)
-                rg_display_clear(C_BLACK);
+            if (config.scaling != RG_DISPLAY_SCALING_FULL)
+            {
+                if (border)
+                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+                else
+                    rg_display_clear(C_BLACK);
+            }
             update_viewport_scaling();
-            update->type = RG_UPDATE_FULL;
             display.changed = false;
         }
 
-        if (update->type == RG_UPDATE_FULL)
-        {
-            // write_rect();
-            update->diff[0] = (rg_line_diff_t){
-                .left = 0,
-                .width = display.source.width,
-                .repeat = display.source.height,
-            };
-        }
-
-        // It's better to update the counters before we start the transfer, in case someone needs it
-        if (update->type == RG_UPDATE_FULL)
-            counters.fullFrames++;
-        counters.totalFrames++;
-
-        for (int y = 0; y < display.source.height;)
-        {
-            rg_line_diff_t *diff = &update->diff[y];
-
-            if (diff->width > 0)
-            {
-                write_rect(diff->left, y, diff->width, diff->repeat, update->buffer, update->palette);
-            }
-            y += diff->repeat;
-        }
+        write_update(update);
 
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
+
+        // We update OSD *after* receiving the update, because the update would block rg_display_write
+        if (osd.buffer)
+        {
+            // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, 0);
+        }
+
+        lcd_sync();
     }
 
     vQueueDelete(display_task_queue);
@@ -583,6 +633,9 @@ static void display_task(void *arg)
 void rg_display_force_redraw(void)
 {
     display.changed = true;
+    // memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
+    rg_system_event(RG_EVENT_REDRAW, NULL);
+    rg_display_sync(true);
 }
 
 const rg_display_t *rg_display_get_info(void)
@@ -595,23 +648,6 @@ rg_display_counters_t rg_display_get_counters(void)
     return counters;
 }
 
-rg_display_config_t rg_display_get_config(void)
-{
-    return config;
-}
-
-void rg_display_set_update_mode(display_update_t update_mode)
-{
-    config.update_mode = RG_MIN(RG_MAX(0, update_mode), RG_DISPLAY_UPDATE_COUNT - 1);
-    rg_settings_set_number(NS_APP, SETTING_UPDATE, config.update_mode);
-    display.changed = true;
-}
-
-display_update_t rg_display_get_update_mode(void)
-{
-    return config.update_mode;
-}
-
 void rg_display_set_scaling(display_scaling_t scaling)
 {
     config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
@@ -622,6 +658,30 @@ void rg_display_set_scaling(display_scaling_t scaling)
 display_scaling_t rg_display_get_scaling(void)
 {
     return config.scaling;
+}
+
+void rg_display_set_custom_width(int width)
+{
+    config.custom_width = RG_MIN(RG_MAX(64, width), display.screen.width);
+    rg_settings_set_number(NS_APP, SETTING_CUSTOM_WIDTH, config.custom_width);
+    display.changed = true;
+}
+
+int rg_display_get_custom_width(void)
+{
+    return config.custom_width;
+}
+
+void rg_display_set_custom_height(int height)
+{
+    config.custom_height = RG_MIN(RG_MAX(64, height), display.screen.height);
+    rg_settings_set_number(NS_APP, SETTING_CUSTOM_HEIGHT, config.custom_height);
+    display.changed = true;
+}
+
+int rg_display_get_custom_height(void)
+{
+    return config.custom_height;
 }
 
 void rg_display_set_filter(display_filter_t filter)
@@ -648,20 +708,45 @@ display_rotation_t rg_display_get_rotation(void)
     return config.rotation;
 }
 
-void rg_display_set_backlight(int percent)
+void rg_display_set_backlight(display_backlight_t percent)
 {
-    config.backlight = RG_MIN(RG_MAX(percent, 0), 100);
+    config.backlight = RG_MIN(RG_MAX(percent, RG_DISPLAY_BACKLIGHT_MIN), RG_DISPLAY_BACKLIGHT_MAX);
     rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, config.backlight);
     lcd_set_backlight(config.backlight);
 }
 
-int rg_display_get_backlight(void)
+display_backlight_t rg_display_get_backlight(void)
 {
     return config.backlight;
 }
 
+void rg_display_set_border(const char *filename)
+{
+    free(config.border_file);
+    config.border_file = NULL;
+
+    if (load_border_file(filename))
+    {
+        rg_settings_set_string(NS_APP, SETTING_BORDER, filename);
+        config.border_file = strdup(filename);
+    }
+    else
+    {
+        rg_settings_set_string(NS_APP, SETTING_BORDER, NULL);
+        config.border_file = NULL;
+    }
+    display.changed = true;
+}
+
+char *rg_display_get_border(void)
+{
+    return rg_settings_get_string(NS_APP, SETTING_BORDER, NULL);
+}
+
 bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
 {
+    RG_ASSERT(filename && frame, "Bad param");
+
     rg_image_t *original = rg_image_alloc(display.source.width, display.source.height);
     if (!original)
         return false;
@@ -698,153 +783,23 @@ bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame,
     return success;
 }
 
-IRAM_ATTR
-rg_update_t rg_display_submit(/*const*/ rg_video_update_t *update, const rg_video_update_t *previousUpdate)
+void rg_display_submit(const rg_video_update_t *update, uint32_t flags)
 {
     const int64_t time_start = rg_system_timer();
-    // RG_ASSERT(display.source.width && display.source.height, "Source format not set!");
-    RG_ASSERT(update, "update is null!");
 
-    if (!previousUpdate || display.changed || config.update_mode == RG_DISPLAY_UPDATE_FULL)
-    {
-        update->type = RG_UPDATE_FULL;
-    }
-    else if (PTR_IN_SPIRAM(update->buffer) && PTR_IN_SPIRAM(previousUpdate->buffer))
-    {
-        // There's no speed benefit in trying to diff when both buffers are in SPIRAM,
-        // it will almost always be faster to just update it everything...
-        update->type = RG_UPDATE_FULL;
-    }
-    else // RG_UPDATE_PARTIAL
-    {
-        const uint32_t *frame_buffer = update->buffer + display.source.offset; // uint64_t is 0.7% faster!
-        const uint32_t *prev_buffer = previousUpdate->buffer + display.source.offset;
-        const int frame_width = display.source.width;
-        const int frame_height = display.source.height;
-        const int stride = display.source.stride;
-        const int blocks = (frame_width * display.source.pixlen) / sizeof(*frame_buffer);
-        const int pixels_per_block = sizeof(*frame_buffer) / display.source.pixlen;
-        rg_line_diff_t *out_diff = update->diff;
-
-        // If more than 50% of the screen has changed then stop the comparison and assume that the
-        // rest also changed. This is true in 77% of the cases in Pokemon, resulting in a net
-        // benefit. The other 23% of cases would have benefited from finishing the diff, so a better
-        // heuristic might be preferable (interlaced compare perhaps?).
-        int threshold = (frame_width * frame_height) / 2;
-        int changed = 0;
-
-        for (int y = 0; y < frame_height; ++y)
-        {
-            int left = 0, width = 0;
-
-            for (int x = 0; x < blocks && changed < threshold; ++x)
-            {
-                if (frame_buffer[x] != prev_buffer[x])
-                {
-                    for (int xl = blocks - 1; xl >= x; --xl)
-                    {
-                        if (frame_buffer[xl] != prev_buffer[xl])
-                        {
-                            left = x * pixels_per_block;
-                            width = ((xl + 1) - x) * pixels_per_block;
-                            changed += width;
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-
-            out_diff[y].left = left;
-            out_diff[y].width = width;
-            out_diff[y].repeat = 1;
-
-            frame_buffer = (void *)frame_buffer + stride;
-            prev_buffer = (void *)prev_buffer + stride;
-        }
-
-        if (changed == 0)
-        {
-            update->type = RG_UPDATE_EMPTY;
-        }
-        else if (changed >= threshold)
-        {
-            update->type = RG_UPDATE_FULL;
-        }
-        else
-        {
-            update->type = RG_UPDATE_PARTIAL;
-
-            // If filtering is enabled we must adjust our diff blocks to be on appropriate boundaries
-            if (config.filter && config.scaling)
-            {
-                for (int y = 0; y < frame_height; ++y)
-                {
-                    if (out_diff[y].width < 1)
-                        continue;
-
-                    int block_start = y;
-                    int block_end = y;
-                    int left = out_diff[y].left;
-                    int right = left + out_diff[y].width;
-
-                    while (block_start > 0 && (out_diff[block_start].width > 0 || !filter_lines[block_start].start))
-                        block_start--;
-
-                    while (block_end < frame_height - 1 &&
-                           (out_diff[block_end].width > 0 || !filter_lines[block_end].stop))
-                        block_end++;
-
-                    for (int i = block_start; i <= block_end; i++)
-                    {
-                        if (out_diff[i].width > 0)
-                        {
-                            right = RG_MAX(right, out_diff[i].left + out_diff[i].width);
-                            left = RG_MIN(left, out_diff[i].left);
-                        }
-                    }
-
-                    left = RG_MAX(left - 1, 0);
-                    right = RG_MIN(right + 1, frame_width);
-
-                    for (int i = block_start; i <= block_end; i++)
-                    {
-                        out_diff[i].left = left;
-                        out_diff[i].width = right - left;
-                    }
-
-                    y = block_end;
-                }
-            }
-
-            // Combine consecutive lines with similar changes location to optimize the SPI transfer
-            rg_line_diff_t *line = &out_diff[frame_height - 1];
-            rg_line_diff_t *prev_line = line - 1;
-
-            for (; line > out_diff; --line, --prev_line)
-            {
-                int right = line->left + line->width;
-                int right_prev = prev_line->left + prev_line->width;
-
-                if (abs(line->left - prev_line->left) <= 8 && abs(right - right_prev) <= 8)
-                {
-                    if (line->left < prev_line->left)
-                        prev_line->left = line->left;
-                    prev_line->width = RG_MAX(right, right_prev) - prev_line->left;
-                    prev_line->repeat = line->repeat + 1;
-                }
-            }
-        }
-    }
+    // Those things should probably be asserted, but this is a new system let's be forgiving...
+    if (!update || !update->buffer || !display.source.ready)
+        return;
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
+    if (rg_system_timer() - time_start > 1000)
+        counters.delayedFrames++;
+    counters.totalFrames++;
     counters.busyTime += rg_system_timer() - time_start;
-
-    return update->type;
 }
 
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, int format)
+void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format)
 {
     rg_display_sync(true);
 
@@ -861,6 +816,7 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
     display.source.stride = stride;
     display.source.pixlen = format & RG_PIXEL_PAL ? 1 : 2;
     display.source.offset = (display.source.crop_v * stride) + (display.source.crop_h * display.source.pixlen);
+    display.source.ready = true;
     display.changed = true;
 }
 
@@ -870,11 +826,16 @@ bool rg_display_sync(bool block)
     while (block && uxQueueMessagesWaiting(display_task_queue))
         continue; // Wait until display queue is done
     return uxQueueMessagesWaiting(display_task_queue) == 0;
+#else
+    return true;
 #endif
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer)
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
+                      rg_pixel_flags_t flags)
 {
+    RG_ASSERT(buffer, "Bad param");
+
     // Offsets can be negative to indicate N pixels from the end
     if (left < 0)
         left += display.screen.width;
@@ -895,7 +856,13 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
-    rg_display_sync(true);
+    if (!(flags & RG_PIXEL_NOSYNC))
+        rg_display_sync(true);
+
+    // This isn't really necessary but it makes sense to invalidate
+    // the lines we're about to overwrite...
+    for (size_t y = 0; y < height; ++y)
+        screen_line_checksum[top + y] = 0;
 
     lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
 
@@ -909,13 +876,22 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            for (size_t i = 0; i < width; ++i)
-                dst[i] = (src[i] >> 8) | (src[i] << 8);
+            if (flags & RG_PIXEL_LE)
+            {
+                memcpy(dst, src, width * 2);
+            }
+            else
+            {
+                for (size_t i = 0; i < width; ++i)
+                    dst[i] = (src[i] >> 8) | (src[i] << 8);
+            }
         }
 
         lcd_send_data(lcd_buffer, width * num_lines);
         y += num_lines;
     }
+
+    lcd_sync();
 }
 
 void rg_display_clear(uint16_t color_le)
@@ -939,8 +915,10 @@ void rg_display_deinit(void)
 {
     void *stop = (void *)-1;
     xQueueSend(display_task_queue, &stop, portMAX_DELAY);
-    while (display_task_queue)
-        rg_task_delay(1);
+    // display_task_queue has len == 1. When xQueueSend returns, we know that the only
+    // thing in it is our quit request which won't touch the LCD or SPI anymore
+    // while (display_task_queue)
+    //     rg_task_yield();
     lcd_deinit();
     RG_LOGI("Display terminated.\n");
 }
@@ -951,10 +929,12 @@ void rg_display_init(void)
     // TO DO: We probably should call the setters to ensure valid values...
     config = (rg_display_config_t){
         .backlight = rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
-        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FILL),
+        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FULL),
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
-        .update_mode = rg_settings_get_number(NS_APP, SETTING_UPDATE, RG_DISPLAY_UPDATE_PARTIAL),
+        .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
+        .custom_width = rg_settings_get_number(NS_APP, SETTING_CUSTOM_WIDTH, 240),
+        .custom_height = rg_settings_get_number(NS_APP, SETTING_CUSTOM_HEIGHT, 240),
     };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
@@ -962,6 +942,8 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, 5, 1);
+    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, RG_TASK_PRIORITY_6, 1);
+    if (config.border_file)
+        load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");
 }

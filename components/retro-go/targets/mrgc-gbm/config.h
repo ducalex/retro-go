@@ -1,22 +1,3 @@
-// REF: https://www.myretrogamecase.com/products/game-mini-esp32
-// Original firmware source code: GBA ESP32 link on https://www.myretrogamecase.com/pages/retro-handheld-gaming-firmware
-// Source code is in the "esplay-base-firmware" directory of the .rar archive in the above link.
-
-// Note: As of Late 2022, the owner of this shop has vanished from the net. Orders may not be fulfilled.
-
-// Known issues:
-// Battery meter needs to be configured.
-// Cropping most noticeable on NES, SNES, Genesis, PC Engine.
-// Scaling option for above should eventually be removed or changed if downscaling is added.
-// Disk LED does nothing (or isn't mapped yet) and should be removed for this target.
-// Sometimes takes more than one attempt to flash. (Stock bootloader problem? Hardware?)
-// Would benefit from a custom theme for small screens.
-
-
-// Parts:
-// Unknown ESP-32 (Most likely ESP32-WROVER-B) (SOC)
-
-
 // Target definition
 #define RG_TARGET_NAME             "MRGC-GBM"
 
@@ -78,7 +59,7 @@
 }
 
 // Battery
-// #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0 // Default 0, commented out.
+#define RG_BATTERY_DRIVER           2
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 
@@ -97,6 +78,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_12
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_27
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_26

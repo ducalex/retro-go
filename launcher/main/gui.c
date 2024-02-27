@@ -3,7 +3,6 @@
 #include <string.h>
 #include <dirent.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "applications.h"
 #include "gui.h"
@@ -14,6 +13,7 @@
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
 retro_gui_t gui;
+rg_video_update_t update;
 
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
@@ -24,6 +24,7 @@ retro_gui_t gui;
 #define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
+#define SETTING_WIFI_ENABLE     "Enable"
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
 {
@@ -49,7 +50,9 @@ void gui_init(void)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
                  (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
     gui_update_theme();
-    rg_gui_set_buffered(true);
+
+    update.buffer = rg_alloc(gui.width * gui.height * 2, MEM_SLOW);
+    rg_display_set_source_format(gui.width, gui.height, 0, 0, gui.width * 2, RG_PIXEL_565_LE);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -369,6 +372,9 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 
 void gui_redraw(void)
 {
+    rg_display_sync(true);
+    rg_gui_set_buffered(update.buffer);
+
     tab_t *tab = gui_get_current_tab();
     if (!tab)
     {
@@ -391,8 +397,11 @@ void gui_redraw(void)
     {
         gui_draw_background(tab, 0);
         gui_draw_header(tab, (gui.height - HEADER_HEIGHT) / 2);
+        // gui_draw_tab_indicator();
     }
-    rg_gui_flush();
+
+    rg_gui_set_buffered(NULL);
+    rg_display_submit(&update, 0);
 }
 
 void gui_draw_background(tab_t *tab, int shade)
@@ -430,6 +439,16 @@ void gui_draw_header(tab_t *tab, int offset)
     rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, gui_get_image("banner", tab->name));
 }
 
+void gui_draw_tab_indicator(void)
+{
+    char buffer[64] = {0};
+    memset(buffer, '-', gui.tabs_count);
+    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_DIM_GRAY, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
+    memset(buffer, ' ', gui.tabs_count);
+    buffer[gui.selected_tab] = '-';
+    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_SNOW, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
+}
+
 void gui_draw_status(tab_t *tab)
 {
     const int status_x = LOGO_WIDTH + 12;
@@ -437,17 +456,9 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_battery(-22, 3);
-
-#ifdef RG_ENABLE_NETWORKING
-    rg_gui_draw_radio(-45, 3);
-    rg_gui_draw_clock(-(50 + TEXT_RECT("00:00", 0).width), 3);
-#else
-    rg_gui_draw_clock(-(20 + TEXT_RECT("00:00", 0).width), 3);
-#endif
-
-    rg_gui_draw_text(status_x, status_y, gui.width, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_icons();
 }
 
 void gui_draw_list(tab_t *tab)
@@ -561,19 +572,17 @@ void gui_load_preview(tab_t *tab)
         else if (type == 0x4) // Save state screenshot (png)
         {
             path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
-            rg_emu_state_t *state = rg_emu_get_states(path, 4);
-            if (state->lastused)
-                path_len = snprintf(path, RG_PATH_MAX, "%s", state->lastused->preview);
-            else if (state->latest)
-                path_len = snprintf(path, RG_PATH_MAX, "%s", state->latest->preview);
+            rg_emu_states_t *savestates = rg_emu_get_states(path, 4);
+            if (savestates->lastused)
+                path_len = snprintf(path, RG_PATH_MAX, "%s", savestates->lastused->preview);
             else
                 path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
-            free(state);
+            free(savestates);
         }
         else
             continue;
 
-        if (path_len < RG_PATH_MAX && access(path, F_OK) == 0)
+        if (path_len < RG_PATH_MAX && rg_storage_exists(path))
         {
             gui_set_preview(tab, rg_image_load_from_file(path, 0));
             if (!tab->preview)

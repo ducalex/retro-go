@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #ifdef ESP_PLATFORM
 #include <esp_heap_caps.h>
@@ -43,7 +42,6 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
         rg_gui_dialog("Tabs Visibility", options, 0);
-        gui_redraw();
     }
     return RG_DIALOG_VOID;
 }
@@ -61,7 +59,7 @@ static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t eve
     gui.scroll_mode %= SCROLL_MODE_COUNT;
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
 
     strcpy(option->value, modes[gui.scroll_mode]);
     return RG_DIALOG_VOID;
@@ -81,7 +79,7 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
         int sel = rg_gui_dialog("Timezone", options, 0);
         if (sel != RG_DIALOG_CANCELLED)
             rg_system_set_timezone(timezones[sel].TZ);
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, getenv("TZ") ?: "N/A");
@@ -132,11 +130,11 @@ static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t ev
         if (gui.browse)
         {
             // Ugly hack otherwise gui_load_preview will abort...
-            rg_input_wait_for_key(RG_KEY_ALL, false);
+            rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
             gui.joystick = 0;
             gui_load_preview(gui_get_current_tab());
         }
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, modes[gui.show_preview]);
@@ -155,7 +153,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
     gui.color_theme %= RG_COUNT(gui.themes);
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
 
     sprintf(option->value, "%d/%d", gui.color_theme + 1, max + 1);
     return RG_DIALOG_VOID;
@@ -199,7 +197,7 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (event == RG_DIALOG_ENTER)
     {
         wifi_show_dialog();
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }
@@ -209,7 +207,7 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         updater_show_dialog();
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }
@@ -217,21 +215,24 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static void show_about_menu(void)
 {
+    bool online = rg_network_get_info().state == RG_NETWORK_CONNECTED;
     const rg_gui_option_t options[] = {
     #ifdef RG_ENABLE_NETWORKING
-        {0, "Check for updates", NULL, 1, &updater_cb},
+        {0, "Check for updates", NULL, online ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, &updater_cb},
     #endif
         RG_DIALOG_END,
     };
     rg_gui_about_menu(options);
 }
 
+#if !RG_GAMEPAD_HAS_OPTION_BTN
 static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
         show_about_menu();
     return RG_DIALOG_VOID;
 }
+#endif
 
 static void retro_loop(void)
 {
@@ -268,41 +269,8 @@ static void retro_loop(void)
         {
             rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
             redraw_pending = true;
-            while (gui.http_lock)
-            {
-                rg_task_delay(100);
-                rg_system_tick(0);
-            }
-        }
-
-        if (!tab->enabled && !change_tab)
-        {
-            change_tab = 1;
-        }
-
-        if (change_tab || gui.browse != browse_last)
-        {
-            if (change_tab)
-            {
-                gui_event(TAB_LEAVE, tab);
-                tab = gui_set_current_tab(gui.selected_tab + change_tab);
-                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
-                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
-                change_tab = 0;
-            }
-
-            if (gui.browse)
-            {
-                if (!tab->initialized)
-                {
-                    gui_redraw();
-                    gui_init_tab(tab);
-                }
-                gui_event(TAB_ENTER, tab);
-            }
-
-            browse_last = gui.browse;
-            redraw_pending = true;
+            rg_task_delay(100);
+            continue;
         }
 
         prev_joystick = gui.joystick;
@@ -336,6 +304,38 @@ static void retro_loop(void)
             gui_update_theme();
             gui_save_config();
             rg_settings_commit();
+            redraw_pending = true;
+        }
+
+        int64_t start_time = rg_system_timer();
+
+        if (!tab->enabled && !change_tab)
+        {
+            change_tab = 1;
+        }
+
+        if (change_tab || gui.browse != browse_last)
+        {
+            if (change_tab)
+            {
+                gui_event(TAB_LEAVE, tab);
+                tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                for (int tabs = gui.tabs_count; !tab->enabled && --tabs > 0;)
+                    tab = gui_set_current_tab(gui.selected_tab + change_tab);
+                change_tab = 0;
+            }
+
+            if (gui.browse)
+            {
+                if (!tab->initialized)
+                {
+                    gui_redraw();
+                    gui_init_tab(tab);
+                }
+                gui_event(TAB_ENTER, tab);
+            }
+
+            browse_last = gui.browse;
             redraw_pending = true;
         }
 
@@ -390,6 +390,8 @@ static void retro_loop(void)
             gui_redraw();
         }
 
+        rg_system_tick(rg_system_timer() - start_time);
+
         if ((gui.joystick|joystick) & RG_KEY_ANY)
         {
             gui.idle_counter = 0;
@@ -408,8 +410,6 @@ static void retro_loop(void)
         {
             rg_task_delay(10);
         }
-
-        rg_system_tick(0);
     }
 }
 
@@ -431,7 +431,7 @@ static void try_migrate(void)
     if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1390)
     {
     #ifdef RG_TARGET_ODROID_GO
-        if (access(RG_STORAGE_ROOT "/odroid/data", F_OK) == 0)
+        if (rg_storage_exists(RG_STORAGE_ROOT "/odroid/data"))
             rg_gui_alert("Save path changed in 1.32",
                 "Save format is no longer fully compatible with Go-Play and can cause corruption.\n\n"
                 "Please copy the contents of:\n /odroid/data\nto\n /retro-go/saves.");
@@ -453,8 +453,8 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Timezone    ", "...", 1, &timezone_cb},
+        {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
     #ifdef RG_ENABLE_NETWORKING
         {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},

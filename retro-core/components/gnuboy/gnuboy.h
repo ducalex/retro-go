@@ -44,13 +44,6 @@ typedef enum
 
 typedef enum
 {
-	GB_PIXEL_PALETTED,
-	GB_PIXEL_565_LE,
-	GB_PIXEL_565_BE,
-} gb_pixformat_t;
-
-typedef enum
-{
 	GB_PALETTE_0,
 	GB_PALETTE_1,
 	GB_PALETTE_2,
@@ -91,33 +84,23 @@ typedef enum
 	GB_PALETTE_COUNT,
 } gb_palette_t;
 
-typedef struct
+typedef enum
 {
-	struct {
-		bool enabled;
-		int format; // gb_pixformat_t
-		int colorize; // gb_palette_t
-		void (*blit_func)(void);
-		union {
-			uint16_t *buffer16;
-			uint8_t *buffer8;
-			void *buffer;
-		};
-		uint16_t palette[64];
-	} video;
+	GB_PIXEL_PALETTED,
+	GB_PIXEL_565_LE,
+	GB_PIXEL_565_BE,
+} gb_video_fmt_t;
 
-	struct {
-		bool enabled;
-		bool stereo;
-		long samplerate;
-		int16_t *buffer;
-		size_t pos, len;
-	} audio;
-} gb_host_t;
+typedef enum
+{
+	GB_AUDIO_STEREO_S16,
+	GB_AUDIO_MONO_S16,
+} gb_audio_fmt_t;
 
-extern gb_host_t host;
+typedef void (gb_video_cb_t)(void *buffer);
+typedef void (gb_audio_cb_t)(void *buffer, size_t length);
 
-int  gnuboy_init(int samplerate, bool stereo, int pixformat, void *blit_func);
+int  gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback);
 int  gnuboy_load_bios(const char *file);
 void gnuboy_free_bios(void);
 int  gnuboy_load_rom(const char *file);
@@ -127,6 +110,9 @@ void gnuboy_run(bool draw);
 bool gnuboy_sram_dirty(void);
 void gnuboy_load_bank(int);
 void gnuboy_set_pad(int);
+
+void gnuboy_set_framebuffer(void *buffer);
+void gnuboy_set_soundbuffer(void *buffer, size_t length);
 
 void gnuboy_get_time(int *day, int *hour, int *minute, int *second);
 void gnuboy_set_time(int day, int hour, int minute, int second);

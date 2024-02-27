@@ -1,5 +1,3 @@
-// REF: https://wiki.libsdl.org/
-
 // Target definition
 #define RG_TARGET_NAME             "SDL2"
 
@@ -7,7 +5,7 @@
 #define RG_STORAGE_DRIVER           0       // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
 #define RG_STORAGE_HOST             0       // Used by SDSPI and SDMMC
 #define RG_STORAGE_SPEED            0       // Used by SDSPI and SDMMC
-#define RG_STORAGE_ROOT             "."     // Storage mount point
+#define RG_STORAGE_ROOT             "./sd"  // Storage mount point
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -15,7 +13,7 @@
 #define RG_AUDIO_USE_SDL2           1   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            99   // 0 = ILI9341
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
 #define RG_SCREEN_WIDTH             320
@@ -54,3 +52,10 @@
 // #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
 // #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 // #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
+#if !defined(__VERSION__) && defined(__TINYC__)
+#define __VERSION__ "TinyC"
+#endif
+
+#define app_main(...) main(int argc, char **argv)
+// #define rg_system_init(a, b, c) rg_system_init(argc, argv, a, b, c)

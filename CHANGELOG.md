@@ -1,3 +1,20 @@
+# Retro-Go 1.40 (2024-02-27)
+- NES: Added sound emulation to mapper 19 (Pacman Championship Edition)
+- NES: Added 2KB CHR support to mapper 64 (Rolling Thunder)
+- NES: Fixed Battletoads (now works past level 2 but there's still occasional jitter)
+- NES: Fixed Battletoads Double Dragon (freezing)
+- NES: Fixed Teenage Mutant Ninja Turtles 3 (HUD jumping around in level 2)
+- NES: Fixed other minor glitching in mapper 4 (MMC3) games
+- NES: Fixed text garbled in Gun-Nac
+- COL: Added palette selector (also for SG-1000)
+- COL: Added support for SGM
+- All: Added support for custom scaling dimensions
+- All: Added border support (to replace black bars when not using full screen scaling)
+- All: Fixed savestate wouldn't be loaded on next boot after saving
+- All: Fixed partial screen updating sometimes caused artifacts
+- Launcher: Long file names are now working correctly (though still not recommended)
+
+
 # Retro-Go 1.39 (2023-??-??)
 - Launcher: Reject names that are too long instead of being weird
 - Theming support is now tested and documented

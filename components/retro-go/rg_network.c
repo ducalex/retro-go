@@ -294,6 +294,9 @@ bool rg_network_init(void)
     TRY(esp_wifi_init(&cfg));
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
+    // Tell rg_network_get_info() that we're enabled but not yet connected
+    network.state = RG_NETWORK_DISCONNECTED;
+
     // We try loading the specified slot (if any), and fallback to no slot
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0);
     if (!rg_network_wifi_load_config(slot) && slot != -1)

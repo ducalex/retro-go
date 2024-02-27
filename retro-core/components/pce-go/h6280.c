@@ -9,8 +9,6 @@
 #define OPCODE(n, f) case n: f; break;
 #define Cycles PCE.Cycles
 
-h6280_t CPU;
-
 #include "h6280_instr.h"
 #include "h6280_dbg.h"
 

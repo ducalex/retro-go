@@ -2,12 +2,10 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <dirent.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
 #include <driver/sdmmc_host.h>
@@ -15,7 +13,13 @@
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
+#include <io.h>
+#include <windows.h>
+#define access _access
 #define mkdir(A, B) mkdir(A)
+#else
+#include <dirent.h>
+#include <unistd.h>
 #endif
 
 static bool disk_mounted = false;
@@ -23,6 +27,12 @@ static bool disk_led = true;
 
 static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
 
+#define CHECK_PATH(path)          \
+    if (!(path && path[0]))       \
+    {                             \
+        RG_LOGE("No path given"); \
+        return false;             \
+    }
 
 void rg_storage_set_activity_led(bool enable)
 {
@@ -169,6 +179,12 @@ void rg_storage_init(void)
 
 void rg_storage_deinit(void)
 {
+    if (!disk_mounted)
+    {
+        RG_LOGW("Nothing to do.\n");
+        return;
+    }
+
     rg_storage_commit();
 
     int error_code = 0;
@@ -200,7 +216,7 @@ void rg_storage_commit(void)
 
 bool rg_storage_mkdir(const char *dir)
 {
-    RG_ASSERT(dir, "Bad param");
+    CHECK_PATH(dir);
 
     if (mkdir(dir, 0777) == 0)
         return true;
@@ -234,112 +250,133 @@ bool rg_storage_mkdir(const char *dir)
     return false;
 }
 
+static int delete_cb(const rg_scandir_t *file, void *arg)
+{
+    rg_storage_delete(file->path);
+    return RG_SCANDIR_CONTINUE;
+}
+
 bool rg_storage_delete(const char *path)
 {
-    RG_ASSERT(path, "Bad param");
+    CHECK_PATH(path);
 
-    // errno has proven to be somewhat unreliable across our targets
-    // let's use a bruteforce approach...
-    if (unlink(path) == 0 || rmdir(path) == 0)
+    // Try the fast way first
+    if (remove(path) == 0 || rmdir(path) == 0)
         return true;
 
-    DIR *dir = opendir(path);
-    if (dir)
-    {
-        char pathbuf[128]; // Smaller than RG_PATH_MAX to prevent issues due to lazy recursion...
-        struct dirent *ent;
-        while ((ent = readdir(dir)))
-        {
-            if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
-                continue;
-            if (snprintf(pathbuf, sizeof(pathbuf), "%s/%s", path, ent->d_name) > sizeof(pathbuf))
-                continue; // path truncated or error, don't do anything...
-            rg_storage_delete(pathbuf);
-        }
-        closedir(dir);
+    // If that fails, it's likely a non-empty directory and we go recursive
+    // (errno could confirm but it has proven unreliable across platforms...)
+    if (rg_storage_scandir(path, delete_cb, NULL, 0))
         return rmdir(path) == 0;
-    }
 
     return false;
 }
 
-static int scandir_natural_sort(const void *a, const void *b)
+rg_stat_t rg_storage_stat(const char *path)
 {
-    // FIXME: Do something...
-    return 0;
+    rg_stat_t ret = {0};
+    struct stat statbuf;
+    if (path && stat(path, &statbuf) == 0)
+    {
+        ret.basename = rg_basename(path);
+        ret.extension = rg_extension(path);
+        ret.size = statbuf.st_size;
+        ret.mtime = statbuf.st_mtime;
+        ret.is_file = S_ISREG(statbuf.st_mode);
+        ret.is_dir = S_ISDIR(statbuf.st_mode);
+        ret.exists = true;
+    }
+    return ret;
 }
 
-// FIXME: rg_scandir_t should probably be {count, items[]} to avoid walking the array to get the count...
-rg_scandir_t *rg_storage_scandir(const char *path, bool (*validator)(const char *path), uint32_t flags)
+bool rg_storage_exists(const char *path)
 {
-    RG_ASSERT(path, "Bad param");
+    CHECK_PATH(path);
+    return access(path, F_OK) == 0;
+}
+
+bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
+{
+    CHECK_PATH(path);
+    uint32_t types = flags & (RG_SCANDIR_FILES|RG_SCANDIR_DIRS);
+    size_t path_len = strlen(path) + 1;
+    struct stat statbuf;
+    struct dirent *ent;
+
+    if (path_len > RG_PATH_MAX - 5)
+    {
+        RG_LOGE("Folder path too long '%s'", path);
+        return false;
+    }
 
     DIR *dir = opendir(path);
     if (!dir)
-        return NULL;
+        return false;
 
-    rg_scandir_t *results = calloc(1, sizeof(rg_scandir_t));
-    size_t capacity = 0;
-    size_t count = 0;
-    struct dirent *ent;
-    struct stat statbuf;
+    // We allocate on heap in case we go recursive through rg_storage_delete
+    rg_scandir_t *result = calloc(1, sizeof(rg_scandir_t));
+    if (!result)
+    {
+        closedir(dir);
+        return false;
+    }
 
-    size_t path_len = strlen(path) + 1;
-    size_t name_maxlen = sizeof(results[0].name) - 1;
-    char fullpath[path_len + name_maxlen + 1];
-
-    sprintf(fullpath, "%s/", path);
+    strcat(strcpy(result->path, path), "/");
+    result->basename = result->path + path_len;
+    result->dirname = path;
 
     while ((ent = readdir(dir)))
     {
-        if (ent->d_name[0] == '.') // Ignore all dot files
-            continue;
-
-        if (strlen(ent->d_name) > name_maxlen) // Filename is too long
-            continue;
-
-        strcpy(fullpath + path_len, ent->d_name);
-
-        if (validator && !validator(fullpath))
-            continue;
-
-        if (count + 1 >= capacity)
+        if (ent->d_name[0] == '.' && (!ent->d_name[1] || ent->d_name[1] == '.'))
         {
-            capacity += 100;
-            void *temp = realloc(results, (capacity + 1) * sizeof(rg_scandir_t));
-            if (!temp)
-            {
-                RG_LOGW("Not enough memory to finish scan!\n");
-                break;
-            }
-            results = temp;
+            // Skip self and parent
+            continue;
         }
 
-        rg_scandir_t *result = &results[count++];
+        if (path_len + strlen(ent->d_name) >= RG_PATH_MAX)
+        {
+            RG_LOGE("File path too long '%s/%s'", path, ent->d_name);
+            continue;
+        }
 
-        strcpy(result->name, ent->d_name);
-        result->is_valid = 1;
+        strcpy((char *)result->basename, ent->d_name);
     #if defined(DT_REG) && defined(DT_DIR)
         result->is_file = ent->d_type == DT_REG;
         result->is_dir = ent->d_type == DT_DIR;
     #else
+        result->is_file = 0;
+        result->is_dir = 0;
+        // We're forced to stat() if the OS doesn't provide type via dirent
         flags |= RG_SCANDIR_STAT;
     #endif
 
-        if ((flags & RG_SCANDIR_STAT) && stat(fullpath, &statbuf) == 0)
+        if ((flags & RG_SCANDIR_STAT) && stat(result->path, &statbuf) == 0)
         {
             result->is_file = S_ISREG(statbuf.st_mode);
             result->is_dir = S_ISDIR(statbuf.st_mode);
             result->size = statbuf.st_size;
             result->mtime = statbuf.st_mtime;
         }
-    }
-    memset(&results[count], 0, sizeof(rg_scandir_t));
 
-    if (flags & RG_SCANDIR_SORT)
-    {
-        qsort(results, count, sizeof(rg_scandir_t), scandir_natural_sort);
+        if ((result->is_dir && types != RG_SCANDIR_FILES) || (result->is_file && types != RG_SCANDIR_DIRS))
+        {
+            int ret = (callback)(result, arg);
+
+            if (ret == RG_SCANDIR_STOP)
+                break;
+
+            if (ret == RG_SCANDIR_SKIP)
+                continue;
+        }
+
+        if ((flags & RG_SCANDIR_RECURSIVE) && result->is_dir)
+        {
+            rg_storage_scandir(result->path, callback, arg, flags);
+        }
     }
 
-    return results;
+    closedir(dir);
+    free(result);
+
+    return true;
 }

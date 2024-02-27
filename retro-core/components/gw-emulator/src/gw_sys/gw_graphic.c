@@ -21,10 +21,10 @@ __license__ = "GPLv3"
 #include <string.h>
 
 #include "gw_type_defs.h"
-#include "sm510.h"
 #include "gw_graphic.h"
 #include "gw_system.h"
 #include "gw_romloader.h"
+#include "sm510.h"
 
 //  RGB565 16bits pixel format to 32bits pixel format
 /*

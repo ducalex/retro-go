@@ -138,7 +138,7 @@ static void map_write(uint32 address, uint8 value)
     }
 }
 
-static void map_hblank(int scanline)
+static void map_hblank(nes_t *nes)
 {
     if (!irq.enabled)
         return;
