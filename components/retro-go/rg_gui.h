@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "rg_image.h"
+#include "rg_surface.h"
 
 typedef enum
 {
@@ -66,12 +66,6 @@ typedef int rg_color_t;
 
 typedef struct
 {
-    uint16_t width;
-    uint16_t height;
-} rg_rect_t;
-
-typedef struct
-{
     intptr_t arg;
     size_t index;
     bool cancelled;
@@ -107,7 +101,7 @@ struct rg_gui_option_s
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
-void rg_gui_set_buffered(uint16_t *framebuffer);
+void rg_gui_set_surface(rg_surface_t *surface);
 bool rg_gui_set_font(int index);
 bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);

@@ -18,11 +18,11 @@
 #include "keymap.h"
 
 #define AUDIO_SAMPLE_RATE (32040)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 2)
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 static rg_app_t *app;
 
 static bool apu_enabled = true;
@@ -261,7 +261,8 @@ void app_main(void)
 
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
-    updates[0].buffer = malloc(SNES_WIDTH * SNES_HEIGHT_EXTENDED * 2);
+    updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
+    currentUpdate = updates[0];
 
     rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
 

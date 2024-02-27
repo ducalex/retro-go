@@ -185,7 +185,7 @@ rg_image_t *rg_gui_get_theme_image(const char *name)
     if (!name || !gui.theme_name[0])
         return NULL;
     snprintf(pathbuf, RG_PATH_MAX, "%s/%s/%s", RG_BASE_PATH_THEMES, gui.theme_name, name);
-    return rg_image_load_from_file(pathbuf, 0);
+    return rg_surface_load_image_file(pathbuf, 0);
 }
 
 const char *rg_gui_get_theme_name(void)
@@ -213,9 +213,9 @@ bool rg_gui_set_font(int index)
     return true;
 }
 
-void rg_gui_set_buffered(uint16_t *framebuffer)
+void rg_gui_set_surface(rg_surface_t *surface)
 {
-    gui.screen_buffer = framebuffer;
+    gui.screen_buffer = surface ? surface->buffer : NULL;
 }
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
@@ -242,7 +242,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer, 0);
+        rg_display_write(left, top, width, height, stride, buffer, RG_PIXEL_PAL565_LE);
     }
 }
 
@@ -464,9 +464,9 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
         RG_LOGD("Resampling image (%dx%d => %dx%d)\n", img->width, img->height, width, height);
-        rg_image_t *new_img = rg_image_copy_resampled(img, width, height, 0);
+        rg_image_t *new_img = rg_surface_resize(img, width, height);
         rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
-        rg_image_free(new_img);
+        rg_surface_free(new_img);
     }
     else if (img)
     {
@@ -554,7 +554,7 @@ void rg_gui_draw_hourglass(void)
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
-        (uint16_t*)image_hourglass.pixel_data, 0);
+        (uint16_t*)image_hourglass.pixel_data, RG_PIXEL_PAL565_LE);
 }
 
 void rg_gui_draw_status_bars(void)
@@ -1506,7 +1506,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         char buffer[100];
         if (slot->is_used)
         {
-            preview = rg_image_load_from_file(slot->preview, 0);
+            preview = rg_surface_load_image_file(slot->preview, 0);
             if (slot->is_lastused)
                 snprintf(buffer, sizeof(buffer), "Slot %d (last used)", slot->id);
             else
@@ -1521,7 +1521,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
         rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
         rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
-        rg_image_free(preview);
+        rg_surface_free(preview);
     }
     else if (event == RG_DIALOG_ENTER)
     {

@@ -21,8 +21,8 @@
 static QueueHandle_t display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
-static rg_display_osd_t osd;
-static rg_image_t *border;
+static rg_surface_t *osd;
+static rg_surface_t *border;
 static rg_display_t display;
 static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT + 1];
 static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
@@ -312,7 +312,7 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
     return (v << 8) | (v >> 8);
 }
 
-static inline void write_update(const rg_video_update_t *update)
+static inline void write_update(const rg_surface_t *update)
 {
     const int64_t time_start = rg_system_timer();
 
@@ -566,14 +566,14 @@ static bool load_border_file(const char *filename)
     free(border), border = NULL;
     display.changed = true;
 
-    if (filename && (border = rg_image_load_from_file(filename, 0)))
+    if (filename && (border = rg_surface_load_image_file(filename, 0)))
     {
         if (border->width != display.screen.width || border->height != display.screen.height)
         {
-            rg_image_t *resized = rg_image_copy_resampled(border, display.screen.width, display.screen.height, 0);
+            rg_surface_t *resized = rg_surface_resize(border, display.screen.width, display.screen.height);
             if (resized)
             {
-                rg_image_free(border);
+                rg_surface_free(border);
                 border = resized;
             }
         }
@@ -587,11 +587,11 @@ static bool load_border_file(const char *filename)
 IRAM_ATTR
 static void display_task(void *arg)
 {
-    display_task_queue = xQueueCreate(1, sizeof(rg_video_update_t *));
+    display_task_queue = xQueueCreate(1, sizeof(rg_surface_t *));
 
     while (1)
     {
-        const rg_video_update_t *update;
+        const rg_surface_t *update;
 
         xQueuePeek(display_task_queue, &update, portMAX_DELAY);
         // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
@@ -605,7 +605,7 @@ static void display_task(void *arg)
             if (config.scaling != RG_DISPLAY_SCALING_FULL)
             {
                 if (border)
-                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
+                    rg_display_write(0, 0, border->width, border->height, 0, border->data, border->format|RG_PIXEL_NOSYNC);
                 else
                     rg_display_clear(C_BLACK);
             }
@@ -618,7 +618,7 @@ static void display_task(void *arg)
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
 
         // We update OSD *after* receiving the update, because the update would block rg_display_write
-        if (osd.buffer)
+        if (osd != NULL)
         {
             // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, 0);
         }
@@ -743,47 +743,18 @@ char *rg_display_get_border(void)
     return rg_settings_get_string(NS_APP, SETTING_BORDER, NULL);
 }
 
-bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height)
+bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height)
 {
-    RG_ASSERT(filename && frame, "Bad param");
-
-    rg_image_t *original = rg_image_alloc(display.source.width, display.source.height);
-    if (!original)
-        return false;
-
-    uint16_t *dst_ptr = original->data;
-
-    for (int y = 0; y < original->height; y++)
-    {
-        const uint8_t *src_ptr8 = frame->buffer + display.source.offset + (y * display.source.stride);
-        const uint16_t *src_ptr16 = (const uint16_t *)src_ptr8;
-
-        for (int x = 0; x < original->width; x++)
-        {
-            uint16_t pixel;
-
-            if (display.source.format & RG_PIXEL_PAL)
-                pixel = frame->palette[src_ptr8[x]];
-            else
-                pixel = src_ptr16[x];
-
-            if (!(display.source.format & RG_PIXEL_LE))
-                pixel = (pixel << 8) | (pixel >> 8);
-
-            *(dst_ptr++) = pixel;
-        }
-    }
-
-    rg_image_t *img = rg_image_copy_resampled(original, width, height, 0);
-    rg_image_free(original);
-
-    bool success = img && rg_image_save_to_file(filename, img, 0);
-    rg_image_free(img);
-
-    return success;
+    // Ugly hack because the frame we receive doesn't have format info yet, I must update all emulators
+    rg_surface_t temp = *frame;
+    temp.width = display.source.width;
+    temp.height = display.source.height;
+    temp.stride = display.source.stride;
+    temp.format = display.source.format;
+    return rg_surface_save_image_file(&temp, filename, width, height);
 }
 
-void rg_display_submit(const rg_video_update_t *update, uint32_t flags)
+void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 {
     const int64_t time_start = rg_system_timer();
 
@@ -803,11 +774,6 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
 {
     rg_display_sync(true);
 
-    if (width % sizeof(int)) // frame diff doesn't handle non word multiple well right now...
-    {
-        RG_LOGW("Horizontal resolution (%d) isn't a word size multiple!\n", width);
-        width -= width % sizeof(int);
-    }
     display.source.crop_h = RG_MAX(RG_MAX(0, width - display.screen.width) / 2, crop_h);
     display.source.crop_v = RG_MAX(RG_MAX(0, height - display.screen.height) / 2, crop_v);
     display.source.width = width - display.source.crop_h * 2;
@@ -876,7 +842,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            if (flags & RG_PIXEL_LE)
+            if (!(flags & RG_PIXEL_LE))
             {
                 memcpy(dst, src, width * 2);
             }

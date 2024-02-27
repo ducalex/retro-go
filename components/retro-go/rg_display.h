@@ -36,29 +36,6 @@ typedef enum
     RG_DISPLAY_BACKLIGHT_MAX = 100,
 } display_backlight_t;
 
-typedef enum
-{
-    // These are legacy flags, don't use them. Still needed for now
-    RG_PIXEL_565 = 0b0000, // 16bit 565
-    RG_PIXEL_555 = 0b0010, // 16bit 555
-    RG_PIXEL_PAL = 0b0001, // Use palette
-    RG_PIXEL_BE = 0b0000,  // big endian
-    RG_PIXEL_LE = 0b0100,  // little endian
-
-    // These are the ones that should be used by applications:
-    RG_PIXEL_565_BE = RG_PIXEL_565 | RG_PIXEL_BE,
-    RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
-    RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
-    RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
-
-    // Additional misc flags
-    RG_PIXEL_NOSYNC = 0b100000000,
-
-    // Masks
-    RG_PIXEL_FORMAT = 0x00FF,
-    RG_PIXEL_FLAGS = 0xFF00,
-} rg_pixel_flags_t;
-
 typedef struct
 {
     display_rotation_t rotation;
@@ -77,13 +54,6 @@ typedef struct
     int32_t delayedFrames;
     int64_t busyTime;
 } rg_display_counters_t;
-
-typedef struct
-{
-    uint16_t *buffer;
-    size_t width;
-    size_t height;
-} rg_display_osd_t;
 
 typedef struct
 {
@@ -117,11 +87,9 @@ typedef struct
     bool changed;
 } rg_display_t;
 
-typedef struct
-{
-    void *buffer;          // Should be at least height*stride bytes. expects uint8_t * | uint16_t *
-    uint16_t palette[256]; // Used in RG_PIXEL_PAL is set
-} rg_video_update_t;
+#include "rg_surface.h"
+
+typedef rg_surface_t rg_video_update_t;
 
 void rg_display_init(void);
 void rg_display_deinit(void);
@@ -130,9 +98,9 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
-bool rg_display_save_frame(const char *filename, const rg_video_update_t *frame, int width, int height);
+bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height);
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format);
-void rg_display_submit(const rg_video_update_t *update, uint32_t flags);
+void rg_display_submit(const rg_surface_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);
 const rg_display_t *rg_display_get_info(void);
