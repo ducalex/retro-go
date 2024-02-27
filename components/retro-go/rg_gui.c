@@ -242,7 +242,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer, RG_PIXEL_PAL565_LE);
+        rg_display_write(left, top, width, height, stride, buffer, RG_PIXEL_565_LE);
     }
 }
 
@@ -554,7 +554,7 @@ void rg_gui_draw_hourglass(void)
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
-        (uint16_t*)image_hourglass.pixel_data, RG_PIXEL_PAL565_LE);
+        (uint16_t*)image_hourglass.pixel_data, RG_PIXEL_565_LE);
 }
 
 void rg_gui_draw_status_bars(void)

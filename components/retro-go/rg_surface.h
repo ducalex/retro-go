@@ -6,28 +6,24 @@
 
 typedef enum
 {
-    // These are legacy flags, don't use them. Still needed for now
-    RG_PIXEL_565 = 0b0000, // 16bit 565
-    RG_PIXEL_555 = 0b0010, // 16bit 555
-    RG_PIXEL_PAL = 0b0001, // Use palette
-    RG_PIXEL_BE = 0b0000,  // big endian
-    RG_PIXEL_LE = 0b0100,  // little endian
+    RG_PIXEL_565_BE = 0x01, // 16bit RGB
+    RG_PIXEL_565_LE = 0x02, // 16bit RGB
+    RG_PIXEL_888    = 0x03, // 24bit RGB
 
-    // These are the ones that should be used by applications:
-    RG_PIXEL_565_BE = RG_PIXEL_565 | RG_PIXEL_BE,
-    RG_PIXEL_565_LE = RG_PIXEL_565 | RG_PIXEL_LE,
-    RG_PIXEL_PAL565_BE = RG_PIXEL_565 | RG_PIXEL_BE | RG_PIXEL_PAL,
-    RG_PIXEL_PAL565_LE = RG_PIXEL_565 | RG_PIXEL_LE | RG_PIXEL_PAL,
+    RG_PIXEL_PALETTE = 0x80, // Use palette
+    RG_PIXEL_PAL565_BE = RG_PIXEL_565_BE | RG_PIXEL_PALETTE,
+    RG_PIXEL_PAL565_LE = RG_PIXEL_565_LE | RG_PIXEL_PALETTE,
+    RG_PIXEL_PAL888 = RG_PIXEL_888 | RG_PIXEL_PALETTE,
+
+    // Masks
+    RG_PIXEL_FORMAT = 0xFF,
 
     // Additional misc flags
     RG_PIXEL_NOSYNC = 0b100000000,
-
-    // Masks
-    RG_PIXEL_FORMAT = 0x00FF,
-    RG_PIXEL_FLAGS = 0xFF00,
-
-    RG_PIXEL_NO_CHANGE = -1,
 } rg_pixel_flags_t;
+
+// TO DO: Properly scale values instead of discarding extra bits
+#define RGB888_TO_RGB565(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
 
 typedef struct
 {
@@ -55,6 +51,6 @@ rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);
 void rg_surface_free(rg_surface_t *surface);
 bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, rg_surface_t *dest,
-                     const rg_rect_t *dest_rect, bool resample);
+                     const rg_rect_t *dest_rect, bool scale);
 rg_surface_t *rg_surface_resize(const rg_surface_t *source, int new_width, int new_height);
 bool rg_surface_save_image_file(const rg_surface_t *source, const char *filename, int width, int height);

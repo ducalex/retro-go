@@ -321,7 +321,7 @@ static inline void write_update(const rg_surface_t *update)
 
     const int width = display.source.width;
     const int height = display.source.height;
-    const int format = display.source.format;
+    const int format = display.source.format & RG_PIXEL_FORMAT;
     const int stride = display.source.stride;
 
     const int x_inc = display.viewport.x_inc;
@@ -388,9 +388,9 @@ static inline void write_update(const rg_surface_t *update)
                         x_acc -= screen_width; \
                     } \
                 }
-                if (format & RG_PIXEL_PAL)
+                if (format & RG_PIXEL_PALETTE)
                     RENDER_LINE(palette[buffer.u8[x]])
-                else if (format & RG_PIXEL_LE)
+                else if (format == RG_PIXEL_565_LE)
                     RENDER_LINE((buffer.u16[x] << 8) | (buffer.u16[x] >> 8))
                 else
                     RENDER_LINE(buffer.u16[x])
@@ -577,10 +577,8 @@ static bool load_border_file(const char *filename)
                 border = resized;
             }
         }
-        // rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_PIXEL_NOSYNC);
         return true;
     }
-    // rg_display_clear(C_BLACK);
     return false;
 }
 
@@ -620,7 +618,7 @@ static void display_task(void *arg)
         // We update OSD *after* receiving the update, because the update would block rg_display_write
         if (osd != NULL)
         {
-            // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, 0);
+            // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, RG_PIXEL_565_LE);
         }
 
         lcd_sync();
@@ -780,7 +778,7 @@ void rg_display_set_source_format(int width, int height, int crop_h, int crop_v,
     display.source.height = height - display.source.crop_v * 2;
     display.source.format = format;
     display.source.stride = stride;
-    display.source.pixlen = format & RG_PIXEL_PAL ? 1 : 2;
+    display.source.pixlen = (format & RG_PIXEL_PALETTE) ? 1 : 2;
     display.source.offset = (display.source.crop_v * stride) + (display.source.crop_h * display.source.pixlen);
     display.source.ready = true;
     display.changed = true;
@@ -842,7 +840,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            if (!(flags & RG_PIXEL_LE))
+            if ((flags & RG_PIXEL_FORMAT) == RG_PIXEL_565_BE)
             {
                 memcpy(dst, src, width * 2);
             }
