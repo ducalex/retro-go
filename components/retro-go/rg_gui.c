@@ -559,7 +559,7 @@ void rg_gui_draw_hourglass(void)
 
 void rg_gui_draw_status_bars(void)
 {
-    size_t max_len = RG_MIN(gui.screen_width / RG_MAX(gui.style.font_width, 7), 99) + 1;
+    size_t max_len = gui.screen_width / 8;
     char header[max_len];
     char footer[max_len];
 
