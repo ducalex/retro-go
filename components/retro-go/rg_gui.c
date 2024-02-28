@@ -1451,9 +1451,9 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(scaled_res, 20, "%dx%d", display->viewport.width, display->viewport.height);
     if (display_stats.totalFrames > 0)
     {
-        int ms = (float)display_stats.busyTime / display_stats.totalFrames / 1000.f;
-        int full = (float)display_stats.fullFrames / display_stats.totalFrames * 100.f;
-        snprintf(frame_time, 20, "%dms (FULL: %d%%)", ms, full);
+        int total = (float)display_stats.busyTime / display_stats.totalFrames / 1000.f;
+        int block = (float)display_stats.blockTime / display_stats.totalFrames / 1000.f;
+        snprintf(frame_time, 20, "%dms (block: %dms)", total, block);
     }
     else
         snprintf(frame_time, 20, "N/A");

@@ -762,10 +762,8 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
-    if (rg_system_timer() - time_start > 1000)
-        counters.delayedFrames++;
+    counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
-    counters.busyTime += rg_system_timer() - time_start;
 }
 
 void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format)

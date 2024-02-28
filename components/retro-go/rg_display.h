@@ -51,7 +51,7 @@ typedef struct
     int32_t totalFrames;
     int32_t fullFrames;
     int32_t partFrames;
-    int32_t delayedFrames;
+    int64_t blockTime;
     int64_t busyTime;
 } rg_display_counters_t;
 
