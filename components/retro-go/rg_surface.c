@@ -20,16 +20,17 @@
 
 rg_surface_t *rg_surface_create(int width, int height, uint32_t format, uint32_t alloc_flags)
 {
-    size_t stride = width * (format & RG_PIXEL_PALETTE ? 1 : (format == RG_PIXEL_888 ? 3 : 2));
-    size_t size = sizeof(rg_surface_t) + (height * stride); // + (format & RG_PIXEL_PALETTE ? 512 : 0);
-    rg_surface_t *surface = alloc_flags ? rg_alloc(size, alloc_flags) : malloc(size);
+    size_t palette = (format & RG_PIXEL_PALETTE) ? (256 * (format == RG_PIXEL_PAL888 ? 3 : 2)) : 0;
+    size_t stride = width * RG_PIXEL_GET_SIZE(format);
+    size_t size = sizeof(rg_surface_t) + (height * stride) + palette;
+    rg_surface_t *surface = alloc_flags ? rg_alloc(size, alloc_flags) : calloc(1, size);
+    RG_ASSERT(surface, "Surface allocation failed");
     surface->width = width;
     surface->height = height;
     surface->stride = stride;
-    surface->offset = 0;
     surface->format = format;
     surface->data = (void*)surface + sizeof(rg_surface_t);
-    // surface->palette = (void*)surface + size - 512;
+    surface->palette = palette ? ((void*)surface + size - palette) : NULL;
     return surface;
 }
 
@@ -65,24 +66,24 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
 
         // FIXME: Optimize this (float mult + 3 branches on each pixel is unacceptable)
         // but I don't want macro hell right now and this isn't used for game rendering
-        #define COPY_PIXELS(SRC_PIXEL)                                                         \
-            for (int y = 0; y < copy_height; ++y)                                              \
-            {                                                                                  \
-                int src_y = scale ? (y * step_y) : y;                                          \
-                const uint8_t *src = source->data + source->offset + (src_y * source->stride); \
-                uint16_t *dst = dest->data + dest->offset + (y * dest->stride);                \
-                for (int x = 0; x < copy_width; ++x)                                           \
-                {                                                                              \
-                    int src_x = scale ? (int)(x * step_x) : x;                                 \
-                    uint16_t pixel = SRC_PIXEL;                                                \
-                    if ((int)pixel == transparency)                                            \
-                        continue;                                                              \
-                    if (dest_format == RG_PIXEL_565_BE)                                        \
-                        dst[x] = (pixel << 8) | (pixel >> 8);                                  \
-                    else                                                                       \
-                        dst[x] = pixel;                                                        \
-                }                                                                              \
-            }
+        #define COPY_PIXELS(SRC_PIXEL)                                        \
+            for (int y = 0; y < copy_height; ++y)                             \
+            {                                                                 \
+                int src_y = scale ? (y * step_y) : y;                         \
+                const uint8_t *src = source->data + (src_y * source->stride); \
+                uint16_t *dst = dest->data + (y * dest->stride);              \
+                for (int x = 0; x < copy_width; ++x)                          \
+                {                                                             \
+                    int src_x = scale ? (int)(x * step_x) : x;                \
+                    uint16_t pixel = SRC_PIXEL;                               \
+                    if ((int)pixel == transparency)                           \
+                        continue;                                             \
+                    if (dest_format == RG_PIXEL_565_BE)                       \
+                        dst[x] = (pixel << 8) | (pixel >> 8);                 \
+                    else                                                      \
+                        dst[x] = pixel;                                       \
+                }                                                             \
+    }
 
         if (source_format == RG_PIXEL_565_LE)
         {

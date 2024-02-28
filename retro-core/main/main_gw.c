@@ -22,6 +22,9 @@ static bool softkey_A_pressed = 0;
 static bool softkey_only = 0;
 static int softkey_duration = 0;
 
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+
 static void gw_set_time()
 {
     // Get time. According to STM docs, both functions need to be called at once.
@@ -138,9 +141,8 @@ void gw_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
     app->tickRate = GW_REFRESH_RATE;
 
-    updates[0].buffer = malloc(GW_SCREEN_WIDTH * GW_SCREEN_HEIGHT * 2);
-
-    rg_display_set_source_format(GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, 0, 0, GW_SCREEN_WIDTH * 2, RG_PIXEL_565_LE);
+    updates[0] = rg_surface_create(GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, RG_PIXEL_565_LE, MEM_FAST);
+    currentUpdate = updates[0];
 
     FILE *fp = fopen(app->romPath, "rb");
     if (!fp)

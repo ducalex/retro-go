@@ -12,6 +12,9 @@ static uint32_t *remoteJoystick = &joystick2;
 static bool netplay = false;
 #endif
 
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+
 static const char *SETTING_PALETTE = "palette";
 // --- MAIN
 
@@ -113,7 +116,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t eve
             for (int i = 0; i < PALETTE_SIZE; i++)
                 palette_sync(i);
             if (render_copy_palette(currentUpdate->palette))
-                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+                memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
             rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         }
         return RG_DIALOG_REDRAW;
@@ -139,8 +142,9 @@ void sms_main(void)
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
-    updates[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
-    updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
 
     system_reset_config();
     option.sndrate = AUDIO_SAMPLE_RATE;
@@ -167,10 +171,10 @@ void sms_main(void)
 
     app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
 
-    updates[0].buffer += bitmap.viewport.x;
-    updates[1].buffer += bitmap.viewport.x;
+    updates[0]->data += bitmap.viewport.x;
+    updates[1]->data += bitmap.viewport.x;
 
-    rg_display_set_source_format(bitmap.viewport.w, bitmap.viewport.h, 0, 0, bitmap.pitch, RG_PIXEL_PAL565_BE);
+    rg_display_set_source_viewport(bitmap.viewport.w, bitmap.viewport.h, 0, 0);
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
@@ -307,11 +311,11 @@ void sms_main(void)
         if (drawFrame)
         {
             if (render_copy_palette(currentUpdate->palette))
-                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+                memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
-            currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
-            bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
+            currentUpdate = updates[currentUpdate == updates[0]]; // Swap
+            bitmap.data = currentUpdate->data - bitmap.viewport.x;
         }
 
         // The emulator's sound buffer isn't in a very convenient format, we must remix it.

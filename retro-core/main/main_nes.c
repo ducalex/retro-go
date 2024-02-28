@@ -10,6 +10,9 @@ static int crop_h, crop_v;
 static bool slowFrame = false;
 static nes_t *nes;
 
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+
 static const char *SETTING_AUTOCROP = "autocrop";
 static const char *SETTING_OVERSCAN = "overscan";
 static const char *SETTING_PALETTE = "palette";
@@ -56,12 +59,9 @@ static void set_display_mode(void)
 {
     crop_v = (overscan) ? nes->overscan : 0;
     crop_h = (autocrop) ? 8 : 0;
-    // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-
-    int width = NES_SCREEN_WIDTH - (crop_h * 2);
-    int height = NES_SCREEN_HEIGHT - (crop_v * 2);
-
-    rg_display_set_source_format(width, height, 0, 0, NES_SCREEN_PITCH, RG_PIXEL_PAL565_BE);
+    // crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
+    rg_display_set_source_viewport(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, crop_h, crop_v);
+    nes_setvidbuf(currentUpdate->data - 8);
 }
 
 static void build_palette(int n)
@@ -70,8 +70,8 @@ static void build_palette(int n)
     for (int i = 0; i < 256; i++)
     {
         uint16_t color = (pal[i] >> 8) | ((pal[i]) << 8);
-        updates[0].palette[i] = color;
-        updates[1].palette[i] = color;
+        updates[0]->palette[i] = color;
+        updates[1]->palette[i] = color;
     }
     free(pal);
 }
@@ -161,7 +161,6 @@ static void blit_screen(uint8 *bmp)
 {
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-    currentUpdate->buffer = NES_SCREEN_GETPTR(bmp, crop_h, crop_v);
     slowFrame = !rg_display_sync(false);
     rg_display_submit(currentUpdate, 0);
 }
@@ -205,6 +204,13 @@ void nes_main(void)
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
     palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
+
+    updates[0] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
+
+    updates[0]->data += 8;
+    updates[1]->data += 8;
 
     nes = nes_init(SYS_DETECT, app->sampleRate, true);
     if (!nes)
@@ -272,7 +278,8 @@ void nes_main(void)
 
         if (drawFrame)
         {
-            currentUpdate = &updates[currentUpdate == &updates[0]];
+            currentUpdate = updates[currentUpdate == updates[0]];
+            nes_setvidbuf(currentUpdate->data - 8);
         }
 
         input_update(0, buttons);

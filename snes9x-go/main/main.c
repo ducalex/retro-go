@@ -264,8 +264,6 @@ void app_main(void)
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
     currentUpdate = updates[0];
 
-    rg_display_set_source_format(SNES_WIDTH, SNES_HEIGHT, 0, 0, SNES_WIDTH * 2, RG_PIXEL_565_LE);
-
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     Settings.CyclesPercentage = 100;

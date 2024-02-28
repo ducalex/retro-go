@@ -14,6 +14,9 @@ static int autoSaveSRAM = 0;
 static int autoSaveSRAM_Timer = 0;
 static int useSystemTime = true;
 
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+
 static const char *SETTING_SAVESRAM = "SaveSRAM";
 static const char *SETTING_PALETTE  = "Palette";
 static const char *SETTING_SYSTIME = "SysTime";
@@ -227,10 +230,9 @@ void gbc_main(void)
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
-    updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-    updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-
-    rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
+    updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
+    updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
+    currentUpdate = updates[0];
 
     useSystemTime = (int)rg_settings_get_number(NS_APP, SETTING_SYSTIME, 1);
     autoSaveSRAM = (int)rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
@@ -243,7 +245,7 @@ void gbc_main(void)
     if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, GB_PIXEL_565_BE, &video_callback, &audio_callback) < 0)
         RG_PANIC("Emulator init failed!");
 
-    gnuboy_set_framebuffer(currentUpdate->buffer);
+    gnuboy_set_framebuffer(currentUpdate->data);
     gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
@@ -315,8 +317,8 @@ void gbc_main(void)
 
         if (drawFrame)
         {
-            currentUpdate = &updates[currentUpdate == &updates[0]];
-            gnuboy_set_framebuffer(currentUpdate->buffer);
+            currentUpdate = updates[currentUpdate == updates[0]];
+            gnuboy_set_framebuffer(currentUpdate->data);
         }
         gnuboy_run(drawFrame);
 

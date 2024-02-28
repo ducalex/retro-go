@@ -21,6 +21,9 @@ static bool drawFrame = true;
 static bool slowFrame = false;
 static uint8_t *framebuffers[2];
 
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+
 static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
 
@@ -48,10 +51,10 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
 
         // PCE-GO needs 16 columns of scratch space + horizontally center
         int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
-        updates[0].buffer = framebuffers[0] + offset_center;
-        updates[1].buffer = framebuffers[1] + offset_center;
+        updates[0]->data = framebuffers[0] + offset_center;
+        updates[1]->data = framebuffers[1] + offset_center;
 
-        rg_display_set_source_format(width, height, 0, 0, XBUF_WIDTH, RG_PIXEL_PAL565_BE);
+        rg_display_set_source_viewport(width, height, 0, 0);
 
         current_width = width;
         current_height = height;
@@ -67,7 +70,7 @@ void osd_vsync(void)
     {
         slowFrame = !rg_display_sync(false);
         rg_display_submit(currentUpdate, 0);
-        currentUpdate = &updates[currentUpdate == &updates[0]];
+        currentUpdate = updates[currentUpdate == updates[0]];
     }
 
     // See if we need to skip a frame to keep up
@@ -158,16 +161,14 @@ static void event_handler(int event, void *arg)
     if (event == RG_EVENT_REDRAW)
     {
         // We must use previous update because at this point current has been wiped.
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_submit(previousUpdate, 0);
+        rg_display_submit(updates[currentUpdate == updates[0]], 0);
     }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-    return rg_display_save_frame(filename, previousUpdate, width, height);
+    return rg_display_save_frame(filename, updates[currentUpdate == updates[0]], width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -206,23 +207,26 @@ void pce_main(void)
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
-
-    emulationPaused = true;
-    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
-
-    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
-    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
-
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
+
+    updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
+
+    framebuffers[0] = updates[0]->data;
+    framebuffers[1] = updates[1]->data;
 
     uint16_t *palette = PalettePCE(16);
     for (int i = 0; i < 256; i++)
     {
         uint16_t color = (palette[i] << 8) | (palette[i] >> 8);
-        updates[0].palette[i] = color;
-        updates[1].palette[i] = color;
+        updates[0]->palette[i] = color;
+        updates[1]->palette[i] = color;
     }
     free(palette);
+
+    emulationPaused = true;
+    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
     InitPCE(app->sampleRate, true, app->romPath);
 

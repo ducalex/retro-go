@@ -22,6 +22,8 @@ typedef enum
     RG_PIXEL_NOSYNC = 0b100000000,
 } rg_pixel_flags_t;
 
+#define RG_PIXEL_GET_SIZE(format) ((format & RG_PIXEL_PALETTE) ? 1 : (((format) & RG_PIXEL_FORMAT) == RG_PIXEL_888 ? 3 : 2))
+
 // TO DO: Properly scale values instead of discarding extra bits
 #define RGB888_TO_RGB565(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
 
@@ -34,9 +36,9 @@ typedef struct
 typedef struct
 {
     int width, height;
-    int stride, offset;
+    int stride; // offset, pixlen
     uint32_t format;
-    uint16_t palette[256];
+    uint16_t *palette;
     union {
         void *buffer;
         void *data;

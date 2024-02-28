@@ -1,10 +1,6 @@
 #include "shared.h"
 
 rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
-
-rg_video_update_t updates[2];
-rg_video_update_t *currentUpdate = &updates[0];
-
 rg_app_t *app;
 
 

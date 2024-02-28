@@ -59,37 +59,25 @@ typedef struct
 {
     struct
     {
-        int width;
-        int height;
+        int width, height;
         int format;
     } screen;
     struct
     {
-        int width;
-        int height;
-        int x_pos;
-        int y_pos;
-        int x_inc;
-        int y_inc;
+        int top, left;
+        int width, height;
+        int x_inc, y_inc;
     } viewport;
     struct
     {
-        int width;
-        int height;
-        int stride;
-        int offset;
-        int pixlen;
-        int crop_h;
-        int crop_v;
-        int format;
-        bool ready;
+        int crop_h, crop_v;
+        int width, height;
+        bool defined;
     } source;
     bool changed;
 } rg_display_t;
 
 #include "rg_surface.h"
-
-typedef rg_surface_t rg_video_update_t;
 
 void rg_display_init(void);
 void rg_display_deinit(void);
@@ -99,7 +87,7 @@ void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
 bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height);
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format);
+void rg_display_set_source_viewport(int width, int height, int crop_h, int crop_v);
 void rg_display_submit(const rg_surface_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);

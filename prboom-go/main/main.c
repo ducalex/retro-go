@@ -532,8 +532,7 @@ void app_main()
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
     app->tickRate = TICRATE;
 
-    update = rg_surface_create(SCREENHEIGHT, SCREENWIDTH, RG_PIXEL_PAL565_BE, MEM_FAST);
-    rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENWIDTH, RG_PIXEL_PAL565_BE);
+    update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
 
     const char *save = RG_BASE_PATH_SAVES "/doom";
     const char *iwad = NULL;

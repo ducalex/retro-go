@@ -51,7 +51,6 @@ void gui_init(void)
     gui_update_theme();
 
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
-    rg_display_set_source_format(gui.width, gui.height, 0, 0, gui.width * 2, RG_PIXEL_565_LE);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)

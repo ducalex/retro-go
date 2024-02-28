@@ -13,6 +13,9 @@ static int dpad_mapped_up;
 static int dpad_mapped_down;
 static int dpad_mapped_left;
 static int dpad_mapped_right;
+
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 // static bool netplay = false;
 // --- MAIN
 
@@ -77,7 +80,7 @@ static void set_display_mode(void)
             break;
     }
 
-    rg_display_set_source_format(width, height, 0, 0, HANDY_SCREEN_WIDTH * 2, RG_PIXEL_565_BE);
+    rg_display_set_source_viewport(width, height, 0, 0);
 }
 
 
@@ -174,8 +177,9 @@ extern "C" void lynx_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
-    updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
-    updates[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
+    updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
+    currentUpdate = updates[0];
 
     // The Lynx has a variable framerate but 60 is typical
     app->tickRate = 60;
@@ -188,7 +192,7 @@ extern "C" void lynx_main(void)
         RG_PANIC("ROM loading failed!");
     }
 
-    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
+    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
@@ -237,8 +241,8 @@ extern "C" void lynx_main(void)
         {
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
-            currentUpdate = &updates[currentUpdate == &updates[0]];
-            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
+            currentUpdate = updates[currentUpdate == updates[0]];
+            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
         }
 
         app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);

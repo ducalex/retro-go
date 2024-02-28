@@ -33,6 +33,8 @@ nes_t *nes_getptr(void)
 /* run emulation for one frame */
 void nes_emulate(bool draw)
 {
+    draw = draw && nes.vidbuf != NULL;
+
     while (nes.scanline < nes.scanlines_per_frame)
     {
         // Running a little bit ahead seems to fix both Battletoads games...
@@ -71,12 +73,16 @@ void nes_emulate(bool draw)
     nes.scanline = 0;
 
     if (draw && nes.blit_func)
-    {
         nes.blit_func(nes.vidbuf);
-        nes.vidbuf = nes.framebuffers[nes.vidbuf == nes.framebuffers[0]];
-    }
 
     apu_emulate();
+}
+
+uint8 *nes_setvidbuf(uint8 *vidbuf)
+{
+    uint8 *prevbuf = nes.vidbuf;
+    nes.vidbuf = vidbuf;
+    return prevbuf;
 }
 
 /* This sets a timer to be fired every `period` cpu cycles. It is NOT accurate. */
@@ -194,7 +200,7 @@ void nes_reset(bool hard_reset)
     input_reset();
     nes6502_reset();
 
-    nes.vidbuf = nes.framebuffers[0];
+    nes.vidbuf = NULL;
     nes.scanline = 241;
     nes.cycles = 0;
 
@@ -213,8 +219,6 @@ void nes_shutdown(void)
     apu_shutdown();
     nes6502_shutdown();
     rom_free();
-    free(nes.framebuffers[0]);
-    free(nes.framebuffers[1]);
 }
 
 /* Initialize NES CPU, hardware, etc. */
@@ -224,12 +228,6 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
 
     nes.system = system;
     nes.refresh_rate = 60;
-
-    /* Framebuffers */
-    nes.framebuffers[0] = rg_alloc(NES_SCREEN_PITCH * NES_SCREEN_HEIGHT, MEM_FAST);
-    nes.framebuffers[1] = rg_alloc(NES_SCREEN_PITCH * NES_SCREEN_HEIGHT, MEM_FAST);
-    if (NULL == nes.framebuffers[0] || NULL == nes.framebuffers[1])
-        goto _fail;
 
     /* memory */
     nes.mem = mem_init_();

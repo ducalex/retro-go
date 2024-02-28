@@ -321,13 +321,13 @@ static inline void write_update(const rg_surface_t *update)
 
     const int width = display.source.width;
     const int height = display.source.height;
-    const int format = display.source.format & RG_PIXEL_FORMAT;
-    const int stride = display.source.stride;
+    const int format = update->format & RG_PIXEL_FORMAT;
+    const int stride = update->stride;
 
     const int x_inc = display.viewport.x_inc;
     const int y_inc = display.viewport.y_inc;
-    const int draw_left = display.viewport.x_pos;
-    const int draw_top = display.viewport.y_pos;
+    const int draw_left = display.viewport.left;
+    const int draw_top = display.viewport.top;
     const int draw_width = ((screen_width * width) + (x_inc - 1)) / x_inc;
     const int draw_height = ((screen_height * height) + (y_inc - 1)) / y_inc;
 
@@ -336,7 +336,8 @@ static inline void write_update(const rg_surface_t *update)
     const bool filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
                           (config.scaling && (display.viewport.width % display.source.width) != 0);
 
-    union {const uint8_t *u8; const uint16_t *u16; } buffer = {update->buffer + display.source.offset};
+    const size_t data_offset = (display.source.crop_v * stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(format));
+    union {const uint8_t *u8; const uint16_t *u16; } buffer = {update->data + data_offset};
     const uint16_t *palette = update->palette;
 
     bool partial = true; // config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
@@ -527,8 +528,8 @@ static void update_viewport_scaling(void)
         new_height = display.screen.height;
     }
 
-    display.viewport.x_pos = (display.screen.width - new_width) / 2;
-    display.viewport.y_pos = (display.screen.height - new_height) / 2;
+    display.viewport.left = (display.screen.width - new_width) / 2;
+    display.viewport.top = (display.screen.height - new_height) / 2;
     display.viewport.x_inc = display.screen.width / (new_width / (double)src_width);
     display.viewport.y_inc = display.screen.height / (new_height / (double)src_height);
     display.viewport.width = new_width;
@@ -537,11 +538,11 @@ static void update_viewport_scaling(void)
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
     memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
-    int y_acc = (display.viewport.y_inc * display.viewport.y_pos) % display.screen.height;
+    int y_acc = (display.viewport.y_inc * display.viewport.top) % display.screen.height;
     int prev = -1;
 
     // Build boundary tables used by filtering
-    for (int y = 0, screen_y = display.viewport.y_pos; y < src_height && screen_y < display.screen.height; ++screen_y)
+    for (int y = 0, screen_y = display.viewport.top; y < src_height && screen_y < display.screen.height; ++screen_y)
     {
         screen_line_is_empty[screen_y] |= (prev == y);
         prev = y;
@@ -555,8 +556,8 @@ static void update_viewport_scaling(void)
     }
 
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n", src_width, src_height,
-            src_width / (double)src_height, new_width, new_height, new_ratio, display.viewport.x_pos,
-            display.viewport.y_pos, display.viewport.x_inc, display.viewport.y_inc);
+            src_width / (double)src_height, new_width, new_height, new_ratio, display.viewport.left,
+            display.viewport.top, display.viewport.x_inc, display.viewport.y_inc);
 }
 
 static bool load_border_file(const char *filename)
@@ -743,12 +744,11 @@ char *rg_display_get_border(void)
 
 bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height)
 {
-    // Ugly hack because the frame we receive doesn't have format info yet, I must update all emulators
+    // Ugly hack because the frame we receive doesn't have crop info yet
     rg_surface_t temp = *frame;
     temp.width = display.source.width;
     temp.height = display.source.height;
-    temp.stride = display.source.stride;
-    temp.format = display.source.format;
+    temp.data += (display.source.crop_v * temp.stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(frame->format));
     return rg_surface_save_image_file(&temp, filename, width, height);
 }
 
@@ -757,8 +757,11 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
     const int64_t time_start = rg_system_timer();
 
     // Those things should probably be asserted, but this is a new system let's be forgiving...
-    if (!update || !update->buffer || !display.source.ready)
+    if (!update || !update->buffer)
         return;
+
+    if (!display.source.defined)
+        rg_display_set_source_viewport(update->width, update->height, 0, 0);
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
@@ -766,19 +769,14 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
     counters.totalFrames++;
 }
 
-void rg_display_set_source_format(int width, int height, int crop_h, int crop_v, int stride, rg_pixel_flags_t format)
+void rg_display_set_source_viewport(int width, int height, int crop_h, int crop_v)
 {
     rg_display_sync(true);
-
     display.source.crop_h = RG_MAX(RG_MAX(0, width - display.screen.width) / 2, crop_h);
     display.source.crop_v = RG_MAX(RG_MAX(0, height - display.screen.height) / 2, crop_v);
     display.source.width = width - display.source.crop_h * 2;
     display.source.height = height - display.source.crop_v * 2;
-    display.source.format = format;
-    display.source.stride = stride;
-    display.source.pixlen = (format & RG_PIXEL_PALETTE) ? 1 : 2;
-    display.source.offset = (display.source.crop_v * stride) + (display.source.crop_h * display.source.pixlen);
-    display.source.ready = true;
+    display.source.defined = true;
     display.changed = true;
 }
 
