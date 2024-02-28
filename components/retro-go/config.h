@@ -83,6 +83,14 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 #endif
 
+#ifndef RG_BATTERY_UPDATE_THRESHOLD
+#define RG_BATTERY_UPDATE_THRESHOLD 1.0f
+#endif
+
+#ifndef RG_BATTERY_UPDATE_THRESHOLD_VOLT
+#define RG_BATTERY_UPDATE_THRESHOLD_VOLT 0.010f
+#endif
+
 #ifndef RG_GPIO_LED
 #define RG_GPIO_LED (-1)
 #endif

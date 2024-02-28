@@ -194,9 +194,9 @@ static void input_task(void *arg)
             rg_battery_t temp = {0};
             if (rg_input_read_battery_raw(&temp))
             {
-                if (fabsf(battery_state.level - temp.level) < 1.0f)
+                if (fabsf(battery_state.level - temp.level) < RG_BATTERY_UPDATE_THRESHOLD)
                     temp.level = battery_state.level;
-                if (fabsf(battery_state.volts - temp.volts) < 0.010f)
+                if (fabsf(battery_state.volts - temp.volts) < RG_BATTERY_UPDATE_THRESHOLD_VOLT)
                     temp.volts = battery_state.volts;
             }
             battery_state = temp;
