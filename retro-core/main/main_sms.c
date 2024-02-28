@@ -97,12 +97,6 @@ static bool reset_handler(bool hard)
 
 static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t event)
 {
-    if (sms.console >= CONSOLE_SMS)
-    {
-        opt->flags = RG_DIALOG_FLAG_HIDDEN;
-        return RG_DIALOG_VOID;
-    }
-
     int pal = option.tms_pal;
     int max = 2;
 
