@@ -238,6 +238,8 @@ void *rg_alloc(size_t size, uint32_t caps)
     if (!ptr)
     {
         RG_LOGE("SIZE=%d, CAPS=%s << FAILED! (available: %d)\n", (int)size, caps_list, (int)available);
+        if (caps & MEM_NOPANIC)
+            return NULL;
         RG_PANIC("Memory allocation failed!");
     }
 

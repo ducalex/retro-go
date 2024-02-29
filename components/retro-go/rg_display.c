@@ -379,11 +379,11 @@ static inline void write_update(const rg_surface_t *update)
             }
             else
             {
-                #define RENDER_LINE(pixel) { \
+                #define RENDER_LINE(PIXEL) { \
                     for (size_t x = 0, x_acc = 0; x < width; ++x) { \
-                        uint16_t _pixel = (pixel);\
+                        uint16_t pixel = (PIXEL);\
                         while (x_acc < screen_width) { \
-                            *line_buffer_ptr++ = _pixel; \
+                            *line_buffer_ptr++ = pixel; \
                             x_acc += x_inc; \
                         } \
                         x_acc -= screen_width; \
@@ -757,7 +757,7 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
     const int64_t time_start = rg_system_timer();
 
     // Those things should probably be asserted, but this is a new system let's be forgiving...
-    if (!update || !update->buffer)
+    if (!update || !update->data)
         return;
 
     if (!display.source.defined)

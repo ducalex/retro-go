@@ -16,6 +16,11 @@
     {                                                                                                      \
         RG_LOGE("Invalid surface dimensions %d %d", surface->width, surface->height);                      \
         return retval;                                                                                     \
+    }                                                                                                      \
+    else if ((surface->format & RG_PIXEL_FORMAT) == 0)                                                     \
+    {                                                                                                      \
+        RG_LOGE("Invalid surface format %d", surface->format);                                             \
+        return retval;                                                                                     \
     }
 
 rg_surface_t *rg_surface_create(int width, int height, uint32_t format, uint32_t alloc_flags)
@@ -23,8 +28,12 @@ rg_surface_t *rg_surface_create(int width, int height, uint32_t format, uint32_t
     size_t palette = (format & RG_PIXEL_PALETTE) ? (256 * (format == RG_PIXEL_PAL888 ? 3 : 2)) : 0;
     size_t stride = width * RG_PIXEL_GET_SIZE(format);
     size_t size = sizeof(rg_surface_t) + (height * stride) + palette;
-    rg_surface_t *surface = alloc_flags ? rg_alloc(size, alloc_flags) : calloc(1, size);
-    RG_ASSERT(surface, "Surface allocation failed");
+    rg_surface_t *surface = alloc_flags ? rg_alloc(size, alloc_flags) : malloc(size);
+    if (!surface)
+    {
+        RG_LOGE("Surface allocation failed!");
+        return NULL;
+    }
     surface->width = width;
     surface->height = height;
     surface->stride = stride;
@@ -83,7 +92,7 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
                     else                                                      \
                         dst[x] = pixel;                                       \
                 }                                                             \
-    }
+            }
 
         if (source_format == RG_PIXEL_565_LE)
         {
@@ -160,45 +169,42 @@ rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32
         }
 
         rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
-        if (img)
+        if (!img)
         {
-            size_t pixel_count = width * height;
-            const uint8_t *src = image;
-            uint16_t *dest = img->data;
+            RG_LOGE("Out of memory");
+            free(image);
+            return NULL;
+        }
 
-            // RGB888 or RGBA8888 to RGB565
-            for (size_t i = 0; i < pixel_count; ++i)
-            {
-                // TO DO: Properly scale values instead of discarding extra bits
-                *dest++ = (((src[0] >> 3) & 0x1F) << 11)  // Red
-                          | (((src[1] >> 2) & 0x3F) << 5) // Green
-                          | (((src[2] >> 3) & 0x1F));     // Blue
-                src += 3;
-            }
+        const uint8_t *src = image;
+        uint16_t *dest = img->data;
+        size_t pixel_count = width * height;
+        while (pixel_count--)
+        {
+            *dest++ = RGB888_TO_RGB565(src[0], src[1], src[2]);
+            src += 3;
         }
         free(image);
         return img;
     }
-    else // RAW565 (uint16 width, uint16 height, uint16 data[])
-    {
-        int width = ((uint16_t *)data)[0];
-        int height = ((uint16_t *)data)[1];
-        int size_diff = (width * height * 2 + 4) - data_len;
 
-        if (size_diff >= 0 && size_diff <= 100)
+    // RAW565 (uint16 width, uint16 height, uint16 data[])
+    int width = ((uint16_t *)data)[0];
+    int height = ((uint16_t *)data)[1];
+
+    if (data_len == width * height * 2 + 4)
+    {
+        rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
+        if (!img)
         {
-            rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
-            if (img)
-            {
-                // Image is already RGB565 little endian, just copy it
-                memcpy(img->data, data + 4, data_len - 4);
-            }
-            // else Maybe we could just return (rg_image_t *)buffer; ?
-            return img;
+            RG_LOGE("Out of memory");
+            return NULL;
         }
+        memcpy(img->data, data + 4, width * height * 2);
+        return img;
     }
 
-    RG_LOGE("Image format not recognized!\n");
+    RG_LOGE("Image format not recognized!");
     return NULL;
 }
 

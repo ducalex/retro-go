@@ -25,7 +25,8 @@ typedef enum
 #define RG_PIXEL_GET_SIZE(format) ((format & RG_PIXEL_PALETTE) ? 1 : (((format) & RG_PIXEL_FORMAT) == RG_PIXEL_888 ? 3 : 2))
 
 // TO DO: Properly scale values instead of discarding extra bits
-#define RGB888_TO_RGB565(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
+#define RGB888_TO_RGB565(r, g, b) (((((r) >> 3) & 0x1F) << 11) | ((((g) >> 2) & 0x3F) << 5) | ((((b) >> 3) & 0x1F)))
+#define RGB565_TO_RGB888(r, g, b) (0)
 
 typedef struct
 {

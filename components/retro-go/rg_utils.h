@@ -75,5 +75,6 @@ void rg_usleep(uint32_t us);
 #define MEM_8BIT  (8)
 #define MEM_32BIT (16)
 #define MEM_EXEC  (32)
+#define MEM_NOPANIC (64)
 
 #define PTR_IN_SPIRAM(ptr) ((void *)(ptr) >= (void *)0x3F800000 && (void *)(ptr) < (void *)0x3FC00000)

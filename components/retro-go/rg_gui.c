@@ -215,7 +215,7 @@ bool rg_gui_set_font(int index)
 
 void rg_gui_set_surface(rg_surface_t *surface)
 {
-    gui.screen_buffer = surface ? surface->buffer : NULL;
+    gui.screen_buffer = surface ? surface->data : NULL;
 }
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
