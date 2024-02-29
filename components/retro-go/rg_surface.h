@@ -40,10 +40,7 @@ typedef struct
     int stride; // offset, pixlen
     uint32_t format;
     uint16_t *palette;
-    union {
-        void *buffer;
-        void *data;
-    };
+    void *data;
 } rg_surface_t;
 
 // rg_image_t always contains a RG_PIXEL_565_LE surface

@@ -59,7 +59,7 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
         current_width = width;
         current_height = height;
     }
-    return drawFrame ? currentUpdate->buffer : NULL;
+    return drawFrame ? currentUpdate->data : NULL;
 }
 
 void osd_vsync(void)

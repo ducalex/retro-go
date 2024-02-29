@@ -165,7 +165,7 @@ void sms_main(void)
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
-    bitmap.data = currentUpdate->buffer;
+    bitmap.data = currentUpdate->data;
 
     system_poweron();
 

@@ -266,7 +266,7 @@ void gw_main(void)
         // so make sure the previous frame is done sending before queuing a new one
         if (rg_display_sync(false) && drawFrame)
         {
-            gw_system_blit(currentUpdate->buffer);
+            gw_system_blit(currentUpdate->data);
             rg_display_submit(currentUpdate, 0);
         }
         /****************************************************************************/

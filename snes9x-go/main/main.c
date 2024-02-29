@@ -180,7 +180,7 @@ bool S9xInitDisplay(void)
 {
     GFX.Pitch = SNES_WIDTH * 2;
     GFX.ZPitch = SNES_WIDTH;
-    GFX.Screen = currentUpdate->buffer;
+    GFX.Screen = currentUpdate->data;
     GFX.SubScreen = malloc(GFX.Pitch * SNES_HEIGHT_EXTENDED);
     GFX.ZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
     GFX.SubZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
@@ -346,7 +346,7 @@ void app_main(void)
         bool slowFrame = false;
 
         IPPU.RenderThisFrame = drawFrame;
-        GFX.Screen = currentUpdate->buffer;
+        GFX.Screen = currentUpdate->data;
 
         S9xMainLoop();
 
