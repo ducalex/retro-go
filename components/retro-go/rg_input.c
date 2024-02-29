@@ -34,6 +34,8 @@ static rg_battery_t battery_state = {0};
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
+    bool present = true;
+    bool charging = false;
 
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
     for (int i = 0; i < 4; ++i)
@@ -44,6 +46,7 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     if (!rg_i2c_read(0x20, -1, &data, 5))
         return false;
     raw_value = data[4];
+    charging = data[4] == 255;
 #else
     return false;
 #endif
@@ -53,7 +56,8 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     *out = (rg_battery_t){
         .level = RG_MAX(0.f, RG_MIN(100.f, RG_BATTERY_CALC_PERCENT(raw_value))),
         .volts = RG_BATTERY_CALC_VOLTAGE(raw_value),
-        .present = true,
+        .present = present,
+        .charging = charging,
     };
     return true;
 }

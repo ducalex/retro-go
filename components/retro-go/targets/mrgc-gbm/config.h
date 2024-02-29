@@ -61,7 +61,7 @@
 // Battery
 #define RG_BATTERY_DRIVER           2
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
-#define RG_BATTERY_CALC_VOLTAGE(raw) (0)
+#define RG_BATTERY_CALC_VOLTAGE(raw) (128 * 3.3f / (raw))
 
 // Status LED
 // #define RG_GPIO_LED                 GPIO_NUM_NC
