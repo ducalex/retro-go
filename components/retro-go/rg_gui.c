@@ -993,12 +993,12 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
-void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_t cursor)
+void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
 {
     RG_ASSERT(map, "Bad param");
 
     int width = map->columns * 16 + 16;
-    int height = map->rows * 16 + 32;
+    int height = map->rows * 16 + 16;
 
     int x_pos = (gui.screen_width - width) / 2;
     int y_pos = (gui.screen_height - height);
@@ -1006,8 +1006,6 @@ void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_
     char buf[2] = {0};
 
     rg_gui_draw_rect(x_pos, y_pos, width, height, 2, gui.style.box_border, gui.style.box_background);
-    rg_gui_draw_text(x_pos + 4, y_pos + 4, width - 8, title, gui.style.item_message, gui.style.box_background, 0);
-    y_pos += 16;
 
     for (size_t i = 0; i < map->columns * map->rows; ++i)
     {

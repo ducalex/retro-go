@@ -15,6 +15,17 @@ static bool netplay = false;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
+const rg_keyboard_map_t coleco_keyboard = {
+    .columns = 3,
+    .rows = 4,
+    .data = {
+        '1', '2', '3',
+        '4', '5', '6',
+        '7', '8', '9',
+        '*', '0', '#',
+    },
+};
+
 static const char *SETTING_PALETTE = "palette";
 // --- MAIN
 
@@ -182,6 +193,8 @@ void sms_main(void)
     }
 
     int skipFrames = 0;
+    int colecoKey = 0;
+    int colecoKeyDecay = 0;
 
     while (true)
     {
@@ -253,56 +266,33 @@ void sms_main(void)
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
 
-            if (joystick & RG_KEY_SELECT)
+            if (colecoKeyDecay > 0)
+            {
+                coleco.keypad[0] = colecoKey;
+                colecoKeyDecay--;
+            }
+
+            if (joystick & RG_KEY_START)
+            {
+                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, "To start, try: 1 or * or #", C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
+                rg_audio_set_mute(true);
+                int key = rg_input_read_keyboard(&coleco_keyboard);
+                rg_audio_set_mute(false);
+
+                if (key >= '0' && key <= '9')
+                    colecoKey = key - '0';
+                else if (key == '*')
+                    colecoKey = 10;
+                else if (key == '#')
+                    colecoKey = 11;
+                else
+                    colecoKey = 255;
+                colecoKeyDecay = 3;
+            }
+            else if (joystick & RG_KEY_SELECT)
             {
                 rg_task_delay(100);
                 system_reset();
-            }
-
-            // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, *, #
-            switch (cart.crc)
-            {
-                case 0x798002a2:    // Frogger
-                case 0x32b95be0:    // Frogger
-                case 0x9cc3fabc:    // Alcazar
-                case 0x964db3bc:    // Fraction Fever
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 10; // *
-                    }
-                    break;
-
-                case 0x1796de5e:    // Boulder Dash
-                case 0x5933ac18:    // Boulder Dash
-                case 0x6e5c4b11:    // Boulder Dash
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 11; // #
-                    }
-
-                    if ((joystick & RG_KEY_START) && (joystick & RG_KEY_LEFT))
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    break;
-                case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
-                case 0x614bb621:    // Decathlon
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    if ((joystick & RG_KEY_START) && (joystick & RG_KEY_LEFT))
-                    {
-                        coleco.keypad[0] = 10; // *
-                    }
-                    break;
-
-                default:
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    break;
             }
         }
 
