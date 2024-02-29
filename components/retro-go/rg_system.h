@@ -176,9 +176,11 @@ typedef struct
     int tickRate;
     int frameskip;
     int overclock;
-    int watchdog;
-    int logLevel;
     int isLauncher;
+    int watchdog;
+    int tickTimeout;
+    int lowMemoryMode;
+    int logLevel;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;

@@ -176,6 +176,8 @@ static void system_monitor_task(void *arg)
     bool batteryLedState = false;
     int64_t nextLoopTime = 0;
 
+    rg_task_delay(2000);
+
     while (!exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
@@ -224,7 +226,7 @@ static void system_monitor_task(void *arg)
             }
         }
 
-        if (statistics.lastTick < rg_system_timer() - 4000000)
+        if (statistics.lastTick < rg_system_timer() - app.tickTimeout)
         {
             // App hasn't ticked in a while, listen for MENU presses to give feedback to the user
             if (rg_input_wait_for_key(RG_KEY_MENU, true, 1000))
@@ -326,12 +328,15 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .frameskip = 0,
         .overclock = 0,
         .watchdog = 1,
+        .tickTimeout = 3000000,
+        .lowMemoryMode = 0,
         .logLevel = RG_LOG_INFO,
         .options = options, // TO DO: We should make a copy of it?
     };
 
     // Do this very early, may be needed to enable serial console
     platform_init();
+    rg_system_set_led(0);
 
 #ifdef ESP_PLATFORM
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
@@ -353,16 +358,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
 #endif
 
-    rg_system_set_led(0);
-
     printf("\n========================================================\n");
     printf("%s %s (%s)\n", app.name, app.version, app.buildDate);
     printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
     printf("========================================================\n\n");
-
-    update_memory_statistics();
-    RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
-    RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
     rg_storage_init();
     rg_input_init();
@@ -415,12 +414,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
 
-#ifdef ESP_PLATFORM
-    if (app.bootFlags & RG_BOOT_ONCE)
-        esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
-#endif
-
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
 
@@ -434,8 +427,19 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = xSemaphoreCreateMutex();
 #endif
 
-    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
+#ifdef ESP_PLATFORM
+    update_memory_statistics();
+    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
+    if ((app.lowMemoryMode = (statistics.totalMemoryExt == 0)))
+        rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
+    if (app.bootFlags & RG_BOOT_ONCE)
+        esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
+#endif
+
+    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
