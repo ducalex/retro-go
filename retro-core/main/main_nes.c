@@ -8,6 +8,7 @@ static int autocrop = 0;
 static int palette = 0;
 static int crop_h, crop_v;
 static bool slowFrame = false;
+static bool nsfPlayer = false;
 static nes_t *nes;
 
 static rg_surface_t *updates[2];
@@ -24,7 +25,10 @@ static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, 0);
+        if (nsfPlayer)
+            rg_display_clear(C_BLACK);
+        else
+            rg_display_submit(currentUpdate, 0);
     }
 }
 
@@ -231,6 +235,8 @@ void nes_main(void)
     app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
+    nsfPlayer = nes->cart->mapper_number == 31;
+
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 
     build_palette(palette);
@@ -247,7 +253,6 @@ void nes_main(void)
     }
 
     int skipFrames = 0;
-    int nsfPlayer = nes->cart->mapper_number == 31;
 
     while (true)
     {
@@ -259,8 +264,6 @@ void nes_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            if (nsfPlayer)
-                rg_display_clear(C_BLACK);
         }
 
         int64_t startTime = rg_system_timer();
