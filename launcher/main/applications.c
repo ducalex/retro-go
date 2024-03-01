@@ -353,6 +353,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
     if (event == TAB_INIT)
     {
         retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
+        if (selected && !rg_storage_exists(get_file_path(selected)))
+        {
+            RG_LOGE("Selected file no longer exists!");
+            selected = NULL;
+        }
         tab->navpath = selected ? selected->folder : NULL;
 
         application_init(app);
@@ -363,7 +368,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             for (int i = 0; i < tab->listbox.length; i++)
             {
                 retro_file_t *file = tab->listbox.items[i].arg;
-                if (strcmp(file->name, selected->name) == 0)
+                if (file && strcmp(file->name, selected->name) == 0)
                 {
                     gui_scroll_list(tab, SCROLL_SET, i);
                     break;
