@@ -596,9 +596,13 @@ void rg_system_tick(int busyTime)
     // WDT_RELOAD(WDT_TIMEOUT);
 }
 
+float overclock_ratio = 1;
+
 IRAM_ATTR int64_t rg_system_timer(void)
 {
 #ifdef ESP_PLATFORM
+    if (app.overclock > 0)
+        return esp_timer_get_time() * overclock_ratio;
     return esp_timer_get_time();
 #else
     return (SDL_GetPerformanceCounter() * 1000000.f) / SDL_GetPerformanceFrequency();
@@ -1061,25 +1065,83 @@ int rg_system_get_led(void)
 
 void rg_system_set_overclock(int level)
 {
-    //
-}
+#ifdef ESP_PLATFORM
+    #define I2C_BBPLL                   0x66
+    #define I2C_BBPLL_ENDIV5              11
+    #define I2C_BBPLL_BBADC_DSMP           9
+    #define I2C_BBPLL_HOSTID               4
+    #define I2C_BBPLL_OC_LREF              2
+    #define I2C_BBPLL_OC_DIV_7_0           3
+    #define I2C_BBPLL_OC_DCUR              5
+    #define BBPLL_ENDIV5_VAL_320M       0x43
+    #define BBPLL_BBADC_DSMP_VAL_320M   0x84
+    #define BBPLL_ENDIV5_VAL_480M       0xc3
+    #define BBPLL_BBADC_DSMP_VAL_480M   0x74
+    extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
+    extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
 
-int rg_system_get_overclock(void)
-{
-    return app.overclock;
-}
+    uint8_t div_ref = 0;
+    uint8_t div7_0 = 32 + level * 8;
+    uint8_t div10_8 = 0;
+    uint8_t lref = 0;
+    uint8_t dcur = 6;
+    uint8_t bw = 3;
+    uint8_t ENDIV5 = BBPLL_ENDIV5_VAL_480M;
+    uint8_t BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
+    uint8_t BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
+    uint8_t BBADC_OC_DIV_7_0 = div7_0;
+    uint8_t BBADC_OC_DCUR = (bw << 6) | dcur;
 
-float rg_system_get_overclock_ratio(void)
-{
+    static uint8_t BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR, BASE_SAVED;
+    if (!BASE_SAVED)
+    {
+        BASE_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
+        BASE_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
+        BASE_BBADC_OC_LREF = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF);
+        BASE_BBADC_OC_DIV_7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
+        BASE_BBADC_OC_DCUR = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR);
+        BASE_SAVED = true;
+    }
+
+    if (level == 0)
+    {
+        ENDIV5 = BASE_ENDIV5;
+        BBADC_DSMP = BASE_BBADC_DSMP;
+        BBADC_OC_LREF = BASE_BBADC_OC_LREF;
+        BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
+        BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
+    }
+
+    app.overclock = level;
+
+    RG_LOGX("\n\n");
+    RG_LOGI("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
+    RG_LOGI("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
+    RG_LOGX("\n\n");
+
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
+
 #if 0
     extern uint64_t esp_rtc_get_time_us(void);
     uint64_t start = esp_rtc_get_time_us();
     int64_t end = rg_system_timer() + 1000000;
     while (rg_system_timer() < end)
         continue;
-    return 1000000.f / (esp_rtc_get_time_us() - start);
+    overclock_ratio = 1000000.f / (esp_rtc_get_time_us() - start);
 #endif
-    return (240 + (app.overclock * 40)) / 240.f;
+    overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
+
+    // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
+#endif
+}
+
+int rg_system_get_overclock(void)
+{
+    return app.overclock;
 }
 
 #ifdef RG_ENABLE_PROFILING

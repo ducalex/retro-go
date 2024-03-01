@@ -221,7 +221,6 @@ void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_set_overclock(int level);
 int rg_system_get_overclock(void);
-float rg_system_get_overclock_ratio(void);
 void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
