@@ -2,16 +2,6 @@
 
 #include "smsplus.h"
 
-static uint32_t joystick1;
-static uint32_t *localJoystick = &joystick1;
-
-#ifdef RG_ENABLE_NETPLAY
-static uint32_t joystick2;
-static uint32_t *remoteJoystick = &joystick2;
-
-static bool netplay = false;
-#endif
-
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
@@ -32,41 +22,6 @@ static const char *SETTING_PALETTE = "palette";
 
 static void event_handler(int event, void *arg)
 {
-#ifdef RG_ENABLE_NETPLAY
-   bool new_netplay;
-
-   switch (event)
-   {
-      case NETPLAY_EVENT_STATUS_CHANGED:
-         new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
-
-         if (netplay && !new_netplay)
-         {
-            rg_gui_alert("Netplay", "Connection lost!");
-         }
-         else if (!netplay && new_netplay)
-         {
-            system_reset();
-         }
-
-         netplay = new_netplay;
-         break;
-
-      default:
-         break;
-   }
-
-   if (netplay && rg_netplay_mode() == NETPLAY_MODE_GUEST)
-   {
-      localJoystick = &joystick2;
-      remoteJoystick = &joystick1;
-   }
-   else
-   {
-      localJoystick = &joystick1;
-      remoteJoystick = &joystick2;
-   }
-#endif
     if (event == RG_EVENT_REDRAW)
     {
         rg_display_submit(currentUpdate, 0);
@@ -198,11 +153,11 @@ void sms_main(void)
 
     while (true)
     {
-        *localJoystick = rg_input_read_gamepad();
+        uint32_t joystick = rg_input_read_gamepad();
 
-        if (*localJoystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-            if (*localJoystick & RG_KEY_MENU)
+            if (joystick & RG_KEY_MENU)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
@@ -215,34 +170,6 @@ void sms_main(void)
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
         input.system = 0x00;
-
-        #ifdef RG_ENABLE_NETPLAY
-        if (netplay)
-        {
-            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));
-
-            uint32_t joystick = *remoteJoystick;
-
-            if (joystick & RG_KEY_UP)    input.pad[1] |= INPUT_UP;
-            if (joystick & RG_KEY_DOWN)  input.pad[1] |= INPUT_DOWN;
-            if (joystick & RG_KEY_LEFT)  input.pad[1] |= INPUT_LEFT;
-            if (joystick & RG_KEY_RIGHT) input.pad[1] |= INPUT_RIGHT;
-            if (joystick & RG_KEY_A)     input.pad[1] |= INPUT_BUTTON2;
-            if (joystick & RG_KEY_B)     input.pad[1] |= INPUT_BUTTON1;
-            if (IS_SMS)
-            {
-                if (joystick & RG_KEY_START)  input.system |= INPUT_PAUSE;
-                if (joystick & RG_KEY_SELECT) input.system |= INPUT_START;
-            }
-            else if (IS_GG)
-            {
-                if (joystick & RG_KEY_START)  input.system |= INPUT_START;
-                if (joystick & RG_KEY_SELECT) input.system |= INPUT_PAUSE;
-            }
-        }
-        #endif
-
-        uint32_t joystick = *localJoystick;
 
         if (joystick & RG_KEY_UP)    input.pad[0] |= INPUT_UP;
         if (joystick & RG_KEY_DOWN)  input.pad[0] |= INPUT_DOWN;
