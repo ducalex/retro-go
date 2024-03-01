@@ -51,7 +51,7 @@ typedef struct
     uint8_t type;   // 0=bitmap, 1=prop
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
-    uint8_t chars;  // glyph count
+    size_t chars;   // glyph count
     char name[16];
     uint8_t data[];
 } rg_font_t;
@@ -102,9 +102,11 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
+rg_image_t *rg_gui_load_image_file(const char *path);
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
+
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_icons(void);

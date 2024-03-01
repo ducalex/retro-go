@@ -482,6 +482,12 @@ static inline void write_update(const rg_surface_t *update)
         lines_remaining -= lines_to_copy;
     }
 
+    if (osd != NULL)
+    {
+        // TODO: Draw on screen display. By default it should be bottom left which is fine
+        // for both virtual keyboard and info labels. Maybe make it configurable later...
+    }
+
     if (lines_updated > display.screen.height * 0.80)
         counters.fullFrames++;
     else
@@ -615,12 +621,6 @@ static void display_task(void *arg)
         write_update(update);
 
         xQueueReceive(display_task_queue, &update, portMAX_DELAY);
-
-        // We update OSD *after* receiving the update, because the update would block rg_display_write
-        if (osd != NULL)
-        {
-            // rg_display_write(-osd.width, 0, osd.width, osd.height, osd.width * 2, osd.buffer, RG_PIXEL_565_LE);
-        }
 
         lcd_sync();
     }

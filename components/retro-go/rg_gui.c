@@ -246,27 +246,43 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
 }
 
-static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, int c)
+static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int c)
 {
-    size_t glyph_width = 8;
-
     // Some glyphs are always zero width
-    if (c == '\r' || c == '\n' || c < 8 || c > 254)
+    if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    if (font->type == 0) // Bitmap
+    size_t glyph_width = font->width;
+
+    if (font->type == 0) // Monospace Bitmap
     {
-        if (output && c < font->chars)
-            for (int y = 0; y < font->height; y++)
-                output[y] = font->data[(c * font->height) + y];
-        glyph_width = font->width;
+        if (output)
+        {
+            if (c >= font->chars)
+            {
+                for (int y = 0; y < font->height; y++)
+                    output[y] = 0;
+            }
+            else if (font->width > 8)
+            {
+                uint16_t *pattern = (uint16_t *)font->data + (c * font->height);
+                for (int y = 0; y < font->height; y++)
+                    output[y] = pattern[y];
+            }
+            else
+            {
+                uint8_t *pattern = (uint8_t *)font->data + (c * font->height);
+                for (int y = 0; y < font->height; y++)
+                    output[y] = pattern[y];
+            }
+        }
     }
     else // Proportional
     {
         // Based on code by Boris Lovosevic (https://github.com/loboris)
         int charCode, adjYOffset, width, height, xOffset, xDelta;
         const uint8_t *data = font->data;
-        do {
+        while (1) {
             charCode = *data++;
             adjYOffset = *data++;
             width = *data++;
@@ -275,14 +291,16 @@ static size_t get_glyph(uint16_t *output, const rg_font_t *font, int points, int
             xOffset = xOffset < 0x80 ? xOffset : -(0xFF - xOffset);
             xDelta = *data++;
 
-            if (c != charCode && charCode != 0xFF && width != 0) {
+            if (charCode == c || charCode == 0xFF)
+                break;
+
+            if (width != 0)
                 data += (((width * height) - 1) / 8) + 1;
-            }
-        } while ((c != charCode) && (charCode != 0xFF));
+        }
 
         if (c == charCode)
         {
-            glyph_width = ((width > xDelta) ? width : xDelta);
+            glyph_width = RG_MAX(width, xDelta);
             if (output)
             {
                 int ch = 0, mask = 0x80;
@@ -388,7 +406,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 
         while (x_offset < draw_width)
         {
-            uint16_t bitmap[32] = {0};
+            uint32_t bitmap[32] = {0};
             int glyph_width = get_glyph(bitmap, font, font_height, *ptr++);
             int width = monospace ?: glyph_width;
 
