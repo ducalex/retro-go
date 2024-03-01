@@ -183,5 +183,5 @@ Instructions moved to [BUILDING.md](BUILDING.md).
 
 # License
 Everything in this project is licensed under the [GPLv2 license](COPYING) with the exception of the following components:
-- components/retro-go (Retro-Go's framework, zlib)
+- fmsx/components/fmsx (MSX Emulator, custom non-commercial license)
 - handy-go/components/handy (Lynx emulator, zlib)
