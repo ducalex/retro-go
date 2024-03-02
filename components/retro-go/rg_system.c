@@ -596,13 +596,9 @@ void rg_system_tick(int busyTime)
     // WDT_RELOAD(WDT_TIMEOUT);
 }
 
-float overclock_ratio = 1;
-
 IRAM_ATTR int64_t rg_system_timer(void)
 {
 #ifdef ESP_PLATFORM
-    if (app.overclock > 0)
-        return esp_timer_get_time() * overclock_ratio;
     return esp_timer_get_time();
 #else
     return (SDL_GetPerformanceCounter() * 1000000.f) / SDL_GetPerformanceFrequency();
@@ -1063,9 +1059,23 @@ int rg_system_get_led(void)
     return ledValue;
 }
 
+void rg_system_set_log_level(rg_log_level_t level)
+{
+    if (level >= 0 && level < RG_LOG_MAX)
+        app.logLevel = level;
+    else
+        RG_LOGE("Invalid log level %d", level);
+}
+
+int rg_system_get_log_level(void)
+{
+    return app.logLevel;
+}
+
 void rg_system_set_overclock(int level)
 {
 #ifdef ESP_PLATFORM
+    // None of this is documented by espressif but can be found in the file rtc_clk.c
     #define I2C_BBPLL                   0x66
     #define I2C_BBPLL_ENDIV5              11
     #define I2C_BBPLL_BBADC_DSMP           9
@@ -1133,7 +1143,7 @@ void rg_system_set_overclock(int level)
         continue;
     overclock_ratio = 1000000.f / (esp_rtc_get_time_us() - start);
 #endif
-    overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
+    // overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
 
     // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
 #endif

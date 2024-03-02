@@ -79,7 +79,7 @@ typedef enum
     RG_TASK_PRIORITY_8,
 } rg_task_priority_t;
 
-enum
+typedef enum
 {
     RG_LOG_PRINT = 0,
     RG_LOG_USER,
@@ -87,15 +87,9 @@ enum
     RG_LOG_WARN,
     RG_LOG_INFO,
     RG_LOG_DEBUG,
+    RG_LOG_TRACE,
     RG_LOG_MAX,
-};
-
-typedef enum
-{
-    RG_OK = 0,
-    RG_FAIL,
-    RG_NOMEM,
-} rg_err_t;
+} rg_log_level_t;
 
 typedef enum
 {
@@ -220,7 +214,9 @@ bool rg_system_have_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_set_overclock(int level);
-int rg_system_get_overclock(void);
+int  rg_system_get_overclock(void);
+void rg_system_set_log_level(rg_log_level_t level);
+int  rg_system_get_log_level(void);
 void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
@@ -271,9 +267,13 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
 #define RG_LOGU(x, ...) rg_system_log(RG_LOG_USER, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
 
+#ifdef RG_ENABLE_PROFILING
 void __cyg_profile_func_enter(void *this_fn, void *call_site);
 void __cyg_profile_func_exit(void *this_fn, void *call_site);
 #define NO_PROFILE __attribute((no_instrument_function))
+#else
+#define NO_PROFILE
+#endif
 
 #ifdef __cplusplus
 }

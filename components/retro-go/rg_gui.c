@@ -481,7 +481,6 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 {
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
-        RG_LOGD("Resampling image (%dx%d => %dx%d)\n", img->width, img->height, width, height);
         rg_image_t *new_img = rg_surface_resize(img, width, height);
         rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
         rg_surface_free(new_img);
@@ -495,6 +494,7 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     else // We fill a rect to show something is missing instead of abort...
     {
         rg_gui_draw_rect(x_pos, y_pos, width, height, 2, C_RED, C_BLACK);
+        // rg_gui_draw_text(x_pos + 2, y_pos + 2, width - 4, "No image", C_DIM_GRAY, C_BLACK, 0);
     }
 }
 
@@ -1452,6 +1452,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {4, "Save trace", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {5, "Cheats    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {6, "Crash     ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {7, "Log=debug ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
 
@@ -1506,6 +1507,9 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         break;
     case 6:
         RG_PANIC("Crash test!");
+        break;
+    case 7:
+        rg_system_set_log_level(RG_LOG_DEBUG);
         break;
     }
 }
