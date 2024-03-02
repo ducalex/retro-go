@@ -74,6 +74,7 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 - GB: `/retro-go/bios/gb_bios.bin`
 - GBC: `/retro-go/bios/gbc_bios.bin`
 - FDS: `/retro-go/bios/fds_bios.bin`
+- MSX: `/retro-go/bios/MSX.ROM` `/retro-go/bios/MSX2.ROM` `/retro-go/bios/MSX2EXT.ROM`
 
 ## Game & Watch
 The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Game-Shrinker) and a tutorial can be [found here](https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef).
@@ -174,6 +175,7 @@ Instructions moved to [BUILDING.md](BUILDING.md).
 - The DOOM engine is a port of [PrBoom 2.5.0](http://prboom.sourceforge.net/).
 - The Genesis emulator is a port of [Gwenesis](https://github.com/bzhxx/gwenesis/) by bzhxx.
 - The Game & Watch emulator is a port of [lcd-game-emulator](https://github.com/bzhxx/lcd-game-emulator) by bzhxx.
+- The MSX emulator is a port of [fMSX](https://fms.komkon.org/fMSX/) by Marat Fayzullin.
 - PNG support is provided by [lodepng](https://github.com/lvandeve/lodepng/).
 - PCE cover art is from [Christian_Haitian](https://github.com/christianhaitian).
 - Some icons from [Rokey](https://iconarchive.com/show/seed-icons-by-rokey.html).

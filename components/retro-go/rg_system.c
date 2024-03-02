@@ -209,7 +209,7 @@ static void system_monitor_task(void *arg)
             (int)roundf((battery.volts * 1000) ?: battery.level));
 
         // Auto frameskip
-        if (statistics.ticks > app.tickRate)
+        if (statistics.ticks > app.tickRate * 2)
         {
             float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;
             // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
