@@ -442,7 +442,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             break;
     }
 
-    return (rg_rect_t){0, 0, draw_width, y_offset};
+    return (rg_rect_t){x_pos, y_pos, draw_width, y_offset};
 }
 
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
