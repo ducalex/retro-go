@@ -48,7 +48,7 @@ typedef enum
     RG_PATH_GAME_CONFIG= 0x600,
 } rg_path_type_t;
 
-enum
+typedef enum
 {   // bits 0-3: Mode
     RG_BOOT_NORMAL    = 0x00,
     RG_BOOT_RESUME    = 0x01,
@@ -63,7 +63,7 @@ enum
     RG_BOOT_SLOT3     = 0x30,
     RG_BOOT_SLOT_MASK = 0xF0,
     // bits 8-31: unused...
-};
+} rg_boot_flags_t;
 
 // RG_TASK_PRIORITY_1 is the same as the main task's. Anything
 // higher will run even if main task never yields
@@ -228,6 +228,7 @@ rg_stats_t rg_system_get_counters(void);
 
 // RTC and time-related functions
 void rg_system_set_timezone(const char *TZ);
+char *rg_system_get_timezone(void);
 void rg_system_load_time(void);
 void rg_system_save_time(void);
 

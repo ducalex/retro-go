@@ -1243,6 +1243,48 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char utc_offsets[][10] = {"UTC-12:00", "UTC-11:00", "UTC-10:00", "UTC-09:00", "UTC-09:30", "UTC-08:00",
+                                    "UTC-07:00", "UTC-06:00", "UTC-05:00", "UTC-04:00", "UTC-03:30", "UTC-03:00",
+                                    "UTC-02:00", "UTC-01:00", "UTC+00:00", "UTC+01:00", "UTC+02:00", "UTC+03:00",
+                                    "UTC+03:30", "UTC+04:00", "UTC+04:30", "UTC+05:00", "UTC+05:30", "UTC+06:00",
+                                    "UTC+06:30", "UTC+07:00", "UTC+08:00", "UTC+09:00", "UTC+09:30", "UTC+10:00",
+                                    "UTC+10:30", "UTC+11:00", "UTC+12:00", "UTC+13:00", "UTC+14:00"};
+    int index = 14, old_index = index;
+    char *TZ = rg_system_get_timezone();
+    if (TZ && strncmp(TZ, "UTC", 3) == 0)
+    {
+        // TZ has inverted offset for whatever reason
+        TZ[3] = TZ[3] == '-' ? '+' : '-';
+        printf("%s\n", TZ);
+        for (size_t i = 0; i < RG_COUNT(utc_offsets); ++i)
+        {
+            if (strcmp(TZ, utc_offsets[i]) == 0)
+            {
+                index = old_index = i;
+                break;
+            }
+        }
+    }
+    free(TZ);
+    if (event == RG_DIALOG_NEXT && index < RG_COUNT(utc_offsets) - 1)
+        index++;
+    else if (event == RG_DIALOG_PREV && index > 0)
+        index--;
+    if (index != old_index)
+    {
+        char *TZ = strdup(utc_offsets[index]);
+        TZ[3] = TZ[3] == '-' ? '+' : '-';
+        rg_system_set_timezone(TZ);
+        free(TZ);
+        if (gui.show_clock)
+            return RG_DIALOG_REDRAW;
+    }
+    strcpy(option->value, utc_offsets[index]);
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV && rg_gui_set_font(gui.font_index - 1))
@@ -1306,6 +1348,7 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
         *opt++ = (rg_gui_option_t){0, "Theme     ", "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
         *opt++ = (rg_gui_option_t){0, "Show clock", "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
+        *opt++ = (rg_gui_option_t){0, "Timezone  ", "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
     }
     // App settings that are shown only inside a game
     else

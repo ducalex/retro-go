@@ -578,6 +578,12 @@ void rg_system_set_timezone(const char *TZ)
 #endif
 }
 
+char *rg_system_get_timezone(void)
+{
+    return rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, NULL);
+    // return strdup(getenv("TZ"));
+}
+
 rg_app_t *rg_system_get_app(void)
 {
     return &app;
@@ -610,249 +616,6 @@ void rg_system_event(int event, void *arg)
     RG_LOGD("Dispatching event:%d arg:%p\n", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
-}
-
-char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
-{
-    char *buffer = malloc(RG_PATH_MAX + 1);
-    int type = pathType & ~0xFF;
-    int slot = pathType & 0xFF;
-
-    if (!buffer)
-        RG_PANIC("Out of memory!");
-
-    if (type == RG_PATH_SAVE_STATE || type == RG_PATH_SAVE_SRAM)
-        strcpy(buffer, RG_BASE_PATH_SAVES);
-    else if (type == RG_PATH_SCREENSHOT)
-        strcpy(buffer, RG_BASE_PATH_SAVES);
-    else if (type == RG_PATH_ROM_FILE)
-        strcpy(buffer, RG_BASE_PATH_ROMS);
-    else if (type == RG_PATH_CACHE_FILE)
-        strcpy(buffer, RG_BASE_PATH_CACHE);
-    else
-        strcpy(buffer, RG_STORAGE_ROOT);
-
-    if (filename != NULL)
-    {
-        // Often filename will be an absolute ROM, let's remove that part!
-        if (strstr(filename, RG_BASE_PATH_ROMS) == filename)
-            filename += strlen(RG_BASE_PATH_ROMS) + 1;
-
-        // TO DO: We probably should append app->name when needed...
-
-        strcat(buffer, "/");
-        strcat(buffer, filename);
-
-        if (slot > 0)
-            sprintf(buffer + strlen(buffer), "-%d", slot);
-
-        if (type == RG_PATH_SAVE_STATE)
-            strcat(buffer, ".sav");
-        else if (type == RG_PATH_SAVE_SRAM)
-            strcat(buffer, ".sram");
-        else if (type == RG_PATH_SCREENSHOT)
-            strcat(buffer, ".png");
-    }
-
-    // Don't shrink the buffer, we could use the extra space (append extension, etc).
-    return buffer;
-}
-
-static void emu_update_save_slot(uint8_t slot)
-{
-    static uint8_t last_written = 0xFF;
-    if (slot != last_written)
-    {
-        char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
-        FILE *fp = fopen(filename, "wb");
-        if (fp)
-        {
-            fwrite(&slot, 1, 1, fp);
-            fclose(fp);
-            last_written = slot;
-        }
-        free(filename);
-    }
-    app.saveSlot = slot;
-
-    // Set bootflags to resume from this state on next boot
-    if ((app.bootFlags & RG_BOOT_ONCE) == 0)
-    {
-        app.bootFlags &= ~RG_BOOT_SLOT_MASK;
-        app.bootFlags |= app.saveSlot << 4;
-        app.bootFlags |= RG_BOOT_RESUME;
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
-        rg_settings_commit();
-    }
-
-    rg_storage_commit();
-}
-
-bool rg_emu_load_state(uint8_t slot)
-{
-    bool success = false;
-
-    if (!app.romPath || !app.handlers.loadState)
-    {
-        RG_LOGE("No rom or handler defined...\n");
-        return false;
-    }
-
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
-    RG_LOGI("Loading state from '%s'.\n", filename);
-
-    rg_gui_draw_hourglass();
-
-    if (!(success = (*app.handlers.loadState)(filename)))
-    {
-        RG_LOGE("Load failed!\n");
-    }
-    else
-    {
-        emu_update_save_slot(slot);
-    }
-
-    free(filename);
-
-    return success;
-}
-
-bool rg_emu_save_state(uint8_t slot)
-{
-    if (!app.romPath || !app.handlers.saveState)
-    {
-        RG_LOGE("No rom or handler defined...\n");
-        return false;
-    }
-
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
-    char tempname[RG_PATH_MAX + 8];
-    bool success = false;
-
-    RG_LOGI("Saving state to '%s'.\n", filename);
-
-    rg_system_set_led(1);
-    rg_gui_draw_hourglass();
-
-    if (!rg_storage_mkdir(rg_dirname(filename)))
-    {
-        RG_LOGE("Unable to create dir, save might fail...\n");
-    }
-
-    #define tempname(ext) strcat(strcpy(tempname, filename), ext)
-
-    if ((*app.handlers.saveState)(tempname(".new")))
-    {
-        rename(filename, tempname(".bak"));
-
-        if (rename(tempname(".new"), filename) == 0)
-        {
-            remove(tempname(".bak"));
-            success = true;
-        }
-    }
-
-    if (!success)
-    {
-        RG_LOGE("Save failed!\n");
-        rename(filename, tempname(".bak"));
-        remove(tempname(".new"));
-        rg_gui_alert("Save failed", NULL);
-    }
-    else
-    {
-        // Save succeeded, let's take a pretty screenshot for the launcher!
-        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
-        rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
-        free(filename);
-
-        emu_update_save_slot(slot);
-    }
-
-    #undef tempname
-    free(filename);
-
-    rg_storage_commit();
-    rg_system_set_led(0);
-
-    return success;
-}
-
-bool rg_emu_screenshot(const char *filename, int width, int height)
-{
-    if (!app.handlers.screenshot)
-    {
-        RG_LOGE("No handler defined...\n");
-        return false;
-    }
-
-    RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
-
-    if (!rg_storage_mkdir(rg_dirname(filename)))
-    {
-        RG_LOGE("Unable to create dir, save might fail...\n");
-    }
-
-    // FIXME: We should allocate a framebuffer to pass to the handler and ask it
-    // to fill it, then we'd resize and save to png from here...
-    bool success = (*app.handlers.screenshot)(filename, width, height);
-
-    rg_storage_commit();
-
-    return success;
-}
-
-rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
-{
-    rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
-    uint8_t last_used_slot = 0xFF;
-
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
-    FILE *fp = fopen(filename, "rb");
-    if (fp)
-    {
-        fread(&last_used_slot, 1, 1, fp);
-        fclose(fp);
-    }
-    free(filename);
-
-    for (size_t i = 0; i < slots; i++)
-    {
-        rg_emu_slot_t *slot = &result->slots[i];
-        char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
-        char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
-        rg_stat_t info = rg_storage_stat(file);
-        strcpy(slot->preview, preview);
-        strcpy(slot->file, file);
-        slot->id = i;
-        slot->is_used = info.exists;
-        slot->is_lastused = false;
-        slot->mtime = info.mtime;
-        if (slot->is_used)
-        {
-            if (!result->latest || slot->mtime > result->latest->mtime)
-                result->latest = slot;
-            if (slot->id == last_used_slot)
-                result->lastused = slot;
-            result->used++;
-        }
-        free(preview);
-        free(file);
-    }
-    if (!result->lastused && result->latest)
-        result->lastused = result->latest;
-    if (result->lastused)
-        result->lastused->is_lastused = true;
-    result->total = slots;
-
-    return result;
-}
-
-bool rg_emu_reset(bool hard)
-{
-    if (app.handlers.reset)
-        return app.handlers.reset(hard);
-    return false;
 }
 
 static void shutdown_cleanup(void)
@@ -1152,6 +915,249 @@ void rg_system_set_overclock(int level)
 int rg_system_get_overclock(void)
 {
     return app.overclock;
+}
+
+char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
+{
+    char *buffer = malloc(RG_PATH_MAX + 1);
+    int type = pathType & ~0xFF;
+    int slot = pathType & 0xFF;
+
+    if (!buffer)
+        RG_PANIC("Out of memory!");
+
+    if (type == RG_PATH_SAVE_STATE || type == RG_PATH_SAVE_SRAM)
+        strcpy(buffer, RG_BASE_PATH_SAVES);
+    else if (type == RG_PATH_SCREENSHOT)
+        strcpy(buffer, RG_BASE_PATH_SAVES);
+    else if (type == RG_PATH_ROM_FILE)
+        strcpy(buffer, RG_BASE_PATH_ROMS);
+    else if (type == RG_PATH_CACHE_FILE)
+        strcpy(buffer, RG_BASE_PATH_CACHE);
+    else
+        strcpy(buffer, RG_STORAGE_ROOT);
+
+    if (filename != NULL)
+    {
+        // Often filename will be an absolute ROM, let's remove that part!
+        if (strstr(filename, RG_BASE_PATH_ROMS) == filename)
+            filename += strlen(RG_BASE_PATH_ROMS) + 1;
+
+        // TO DO: We probably should append app->name when needed...
+
+        strcat(buffer, "/");
+        strcat(buffer, filename);
+
+        if (slot > 0)
+            sprintf(buffer + strlen(buffer), "-%d", slot);
+
+        if (type == RG_PATH_SAVE_STATE)
+            strcat(buffer, ".sav");
+        else if (type == RG_PATH_SAVE_SRAM)
+            strcat(buffer, ".sram");
+        else if (type == RG_PATH_SCREENSHOT)
+            strcat(buffer, ".png");
+    }
+
+    // Don't shrink the buffer, we could use the extra space (append extension, etc).
+    return buffer;
+}
+
+static void emu_update_save_slot(uint8_t slot)
+{
+    static uint8_t last_written = 0xFF;
+    if (slot != last_written)
+    {
+        char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
+        FILE *fp = fopen(filename, "wb");
+        if (fp)
+        {
+            fwrite(&slot, 1, 1, fp);
+            fclose(fp);
+            last_written = slot;
+        }
+        free(filename);
+    }
+    app.saveSlot = slot;
+
+    // Set bootflags to resume from this state on next boot
+    if ((app.bootFlags & RG_BOOT_ONCE) == 0)
+    {
+        app.bootFlags &= ~RG_BOOT_SLOT_MASK;
+        app.bootFlags |= app.saveSlot << 4;
+        app.bootFlags |= RG_BOOT_RESUME;
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
+        rg_settings_commit();
+    }
+
+    rg_storage_commit();
+}
+
+bool rg_emu_load_state(uint8_t slot)
+{
+    bool success = false;
+
+    if (!app.romPath || !app.handlers.loadState)
+    {
+        RG_LOGE("No rom or handler defined...\n");
+        return false;
+    }
+
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
+    RG_LOGI("Loading state from '%s'.\n", filename);
+
+    rg_gui_draw_hourglass();
+
+    if (!(success = (*app.handlers.loadState)(filename)))
+    {
+        RG_LOGE("Load failed!\n");
+    }
+    else
+    {
+        emu_update_save_slot(slot);
+    }
+
+    free(filename);
+
+    return success;
+}
+
+bool rg_emu_save_state(uint8_t slot)
+{
+    if (!app.romPath || !app.handlers.saveState)
+    {
+        RG_LOGE("No rom or handler defined...\n");
+        return false;
+    }
+
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
+    char tempname[RG_PATH_MAX + 8];
+    bool success = false;
+
+    RG_LOGI("Saving state to '%s'.\n", filename);
+
+    rg_system_set_led(1);
+    rg_gui_draw_hourglass();
+
+    if (!rg_storage_mkdir(rg_dirname(filename)))
+    {
+        RG_LOGE("Unable to create dir, save might fail...\n");
+    }
+
+    #define tempname(ext) strcat(strcpy(tempname, filename), ext)
+
+    if ((*app.handlers.saveState)(tempname(".new")))
+    {
+        rename(filename, tempname(".bak"));
+
+        if (rename(tempname(".new"), filename) == 0)
+        {
+            remove(tempname(".bak"));
+            success = true;
+        }
+    }
+
+    if (!success)
+    {
+        RG_LOGE("Save failed!\n");
+        rename(filename, tempname(".bak"));
+        remove(tempname(".new"));
+        rg_gui_alert("Save failed", NULL);
+    }
+    else
+    {
+        // Save succeeded, let's take a pretty screenshot for the launcher!
+        char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
+        rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
+        free(filename);
+
+        emu_update_save_slot(slot);
+    }
+
+    #undef tempname
+    free(filename);
+
+    rg_storage_commit();
+    rg_system_set_led(0);
+
+    return success;
+}
+
+bool rg_emu_screenshot(const char *filename, int width, int height)
+{
+    if (!app.handlers.screenshot)
+    {
+        RG_LOGE("No handler defined...\n");
+        return false;
+    }
+
+    RG_LOGI("Saving screenshot %dx%d to '%s'.\n", width, height, filename);
+
+    if (!rg_storage_mkdir(rg_dirname(filename)))
+    {
+        RG_LOGE("Unable to create dir, save might fail...\n");
+    }
+
+    // FIXME: We should allocate a framebuffer to pass to the handler and ask it
+    // to fill it, then we'd resize and save to png from here...
+    bool success = (*app.handlers.screenshot)(filename, width, height);
+
+    rg_storage_commit();
+
+    return success;
+}
+
+rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
+{
+    rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
+    uint8_t last_used_slot = 0xFF;
+
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
+    FILE *fp = fopen(filename, "rb");
+    if (fp)
+    {
+        fread(&last_used_slot, 1, 1, fp);
+        fclose(fp);
+    }
+    free(filename);
+
+    for (size_t i = 0; i < slots; i++)
+    {
+        rg_emu_slot_t *slot = &result->slots[i];
+        char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + i, romPath);
+        char *file = rg_emu_get_path(RG_PATH_SAVE_STATE + i, romPath);
+        rg_stat_t info = rg_storage_stat(file);
+        strcpy(slot->preview, preview);
+        strcpy(slot->file, file);
+        slot->id = i;
+        slot->is_used = info.exists;
+        slot->is_lastused = false;
+        slot->mtime = info.mtime;
+        if (slot->is_used)
+        {
+            if (!result->latest || slot->mtime > result->latest->mtime)
+                result->latest = slot;
+            if (slot->id == last_used_slot)
+                result->lastused = slot;
+            result->used++;
+        }
+        free(preview);
+        free(file);
+    }
+    if (!result->lastused && result->latest)
+        result->lastused = result->latest;
+    if (result->lastused)
+        result->lastused->is_lastused = true;
+    result->total = slots;
+
+    return result;
+}
+
+bool rg_emu_reset(bool hard)
+{
+    if (app.handlers.reset)
+        return app.handlers.reset(hard);
+    return false;
 }
 
 #ifdef RG_ENABLE_PROFILING
