@@ -244,6 +244,13 @@ bool rg_surface_save_image_file(const rg_surface_t *source, const char *filename
 {
     CHECK_SURFACE(source, false);
 
+    if (width <= 0 && height <= 0)
+        width = source->width, height = source->height;
+    else if (width <= 0)
+        width = source->width * ((float)height / source->height);
+    else if (height <= 0)
+        height = source->height * ((float)width / source->width);
+
     rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
     if (!img)
         return false;
