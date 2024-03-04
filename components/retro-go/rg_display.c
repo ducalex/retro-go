@@ -321,7 +321,7 @@ static inline void write_update(const rg_surface_t *update)
 
     const int width = display.source.width;
     const int height = display.source.height;
-    const int format = update->format & RG_PIXEL_FORMAT;
+    const int format = update->format;
     const int stride = update->stride;
 
     const int x_inc = display.viewport.x_inc;
@@ -610,7 +610,7 @@ static void display_task(void *arg)
             if (config.scaling != RG_DISPLAY_SCALING_FULL)
             {
                 if (border)
-                    rg_display_write(0, 0, border->width, border->height, 0, border->data, border->format|RG_PIXEL_NOSYNC);
+                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
                     rg_display_clear(C_BLACK);
             }
@@ -791,8 +791,7 @@ bool rg_display_sync(bool block)
 #endif
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
-                      rg_pixel_flags_t flags)
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
     RG_ASSERT(buffer, "Bad param");
 
@@ -816,7 +815,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_data.
-    if (!(flags & RG_PIXEL_NOSYNC))
+    if (!(flags & RG_DISPLAY_WRITE_NOSYNC))
         rg_display_sync(true);
 
     // This isn't really necessary but it makes sense to invalidate
@@ -836,7 +835,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         {
             uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            if ((flags & RG_PIXEL_FORMAT) == RG_PIXEL_565_BE)
+            if (flags & RG_DISPLAY_WRITE_NOSWAP)
             {
                 memcpy(dst, src, width * 2);
             }

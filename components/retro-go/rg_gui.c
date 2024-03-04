@@ -242,7 +242,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer, RG_PIXEL_565_LE);
+        rg_display_write(left, top, width, height, stride, buffer, 0);
     }
 }
 
@@ -572,7 +572,7 @@ void rg_gui_draw_hourglass(void)
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
-        (uint16_t*)image_hourglass.pixel_data, RG_PIXEL_565_LE);
+        (uint16_t*)image_hourglass.pixel_data, 0);
 }
 
 void rg_gui_draw_status_bars(void)
@@ -854,10 +854,6 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 event = callback(&options[sel], RG_DIALOG_NEXT);
                 redraw = true;
             }
-            else if (joystick & RG_KEY_START && callback) {
-                event = callback(&options[sel], RG_DIALOG_ALT);
-                redraw = true;
-            }
             else if (joystick & RG_KEY_A && callback) {
                 event = callback(&options[sel], RG_DIALOG_ENTER);
                 redraw = true;
@@ -888,10 +884,10 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 if (sel >= options_count)
                     sel = 0;
             }
-            if (sel_old != -1 && options[sel_old].update_cb)
-                options[sel_old].update_cb(&options[sel_old], RG_DIALOG_LEAVE);
-            if (options[sel].update_cb)
-                options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS);
+            // if (sel_old != -1 && options[sel_old].update_cb)
+            //     options[sel_old].update_cb(&options[sel_old], RG_DIALOG_FOCUS_LOST);
+            // if (options[sel].update_cb)
+            //     options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS_GAINED);
             redraw = true;
             sel_old = sel;
         }

@@ -36,6 +36,12 @@ typedef enum
     RG_DISPLAY_BACKLIGHT_MAX = 100,
 } display_backlight_t;
 
+enum
+{
+    RG_DISPLAY_WRITE_NOSYNC = (1 << 0),
+    RG_DISPLAY_WRITE_NOSWAP = (1 << 1),
+};
+
 typedef struct
 {
     display_rotation_t rotation;
@@ -81,8 +87,7 @@ typedef struct
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer,
-                      rg_pixel_flags_t flags);
+void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags);
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);

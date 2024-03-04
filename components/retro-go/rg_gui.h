@@ -9,20 +9,19 @@
 
 typedef enum
 {
-    RG_DIALOG_VOID,
     RG_DIALOG_INIT,
+    RG_DIALOG_REDRAW,
+
     RG_DIALOG_FOCUS,
     RG_DIALOG_LEAVE,
 
-    RG_DIALOG_REDRAW,
     RG_DIALOG_CANCEL,
     RG_DIALOG_CLOSE,
+    RG_DIALOG_VOID,
 
     RG_DIALOG_PREV,
     RG_DIALOG_NEXT,
     RG_DIALOG_ENTER,
-    RG_DIALOG_BACK,
-    RG_DIALOG_ALT,
 } rg_gui_event_t;
 
 enum
@@ -64,7 +63,7 @@ typedef struct
     intptr_t arg;
     size_t index;
     bool cancelled;
-} rg_dialog_t;
+} rg_dialog_ret_t;
 
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
