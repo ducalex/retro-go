@@ -14,6 +14,7 @@ static int64_t KeyboardDebounce = 0;
 static int FrameStartTime;
 static int KeyboardEmulation, CropPicture;
 static int PrevScanLines212 = -1;
+static char *PendingLoadSTA = NULL;
 
 #define BPS16
 #define BPP16
@@ -249,6 +250,13 @@ void Keyboard(void)
     // Keyboard() is a convenient place to do our vsync stuff :)
     rg_system_tick(rg_system_timer() - FrameStartTime);
     FrameStartTime = rg_system_timer();
+
+    if (PendingLoadSTA)
+    {
+        LoadSTA(PendingLoadSTA);
+        free(PendingLoadSTA);
+        PendingLoadSTA = NULL;
+    }
 }
 
 unsigned int Mouse(byte N)
@@ -326,17 +334,34 @@ unsigned int WriteAudio(sample *Data, unsigned int Length)
     return Length;
 }
 
+static bool save_state_handler(const char *filename)
+{
+    return SaveSTA(filename);
+}
+
+static bool load_state_handler(const char *filename)
+{
+    PendingLoadSTA = strdup(filename);
+    return true;
+}
+
+static bool reset_handler(bool hard)
+{
+    ResetMSX(Mode,RAMPages,VRAMPages);
+    return true;
+}
+
+static bool screenshot_handler(const char *filename, int width, int height)
+{
+    return rg_display_save_frame(filename, currentUpdate, width, height);
+}
+
 static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
         rg_display_submit(currentUpdate, 0);
     }
-}
-
-static bool screenshot_handler(const char *filename, int width, int height)
-{
-    return rg_display_save_frame(filename, currentUpdate, width, height);
 }
 
 static rg_gui_event_t crop_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
@@ -366,6 +391,9 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
 void app_main(void)
 {
     const rg_handlers_t handlers = {
+        .loadState = &load_state_handler,
+        .saveState = &save_state_handler,
+        .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
     };
@@ -386,7 +414,15 @@ void app_main(void)
     KeyboardEmulation = rg_settings_get_number(NS_APP, "Input", 1);
     CropPicture = rg_settings_get_number(NS_APP, "Crop", 0);
 
-    char *argv[] = {"fmsx", "-skip", "50", "-home", RG_BASE_PATH_BIOS, "-joy", "1", app->romPath, NULL};
+    const char *filePath = app->romPath;
+    const char *fileType = strcasecmp(rg_extension(filePath), "dsk") == 0 ? "-diska" : "-rom";
+
+    if (app->bootFlags & RG_BOOT_RESUME)
+    {
+        PendingLoadSTA = rg_emu_get_path(RG_PATH_SAVE_STATE + app->saveSlot, app->romPath);
+    }
+
+    char *argv[] = {"fmsx", "-skip", "50", "-home", RG_BASE_PATH_BIOS, "-joy", "1", fileType, filePath, NULL,};
     int argc = RG_COUNT(argv) - 1;
 
     RG_LOGI("fMSX start");
