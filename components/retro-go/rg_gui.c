@@ -884,28 +884,31 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 if (sel >= options_count)
                     sel = 0;
             }
-            // if (sel_old != -1 && options[sel_old].update_cb)
-            //     options[sel_old].update_cb(&options[sel_old], RG_DIALOG_FOCUS_LOST);
-            // if (options[sel].update_cb)
-            //     options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS_GAINED);
+            if (sel_old != -1 && options[sel_old].update_cb)
+                options[sel_old].update_cb(&options[sel_old], RG_DIALOG_FOCUS_LOST);
+            if (options[sel].update_cb)
+                options[sel].update_cb(&options[sel], RG_DIALOG_FOCUS_GAINED);
             redraw = true;
             sel_old = sel;
         }
 
-        if (event == RG_DIALOG_REDRAW)
+        if (event == RG_DIALOG_REDRAW || event == RG_DIALOG_UPDATE)
         {
-            rg_display_force_redraw();
-            rg_gui_draw_status_bars();
+            for (size_t i = 0; i < options_count; i++)
+            {
+                if (options[i].update_cb)
+                    options[i].update_cb(&options[i], RG_DIALOG_UPDATE);
+            }
+            if (event == RG_DIALOG_REDRAW)
+            {
+                rg_display_force_redraw();
+                rg_gui_draw_status_bars();
+            }
             redraw = true;
         }
 
         if (redraw)
         {
-            for (size_t i = 0; i < options_count; i++)
-            {
-                if (options[i].update_cb)
-                    options[i].update_cb(&options[i], RG_DIALOG_REDRAW);
-            }
             rg_gui_draw_dialog(title, options, sel);
             redraw = false;
         }
@@ -1555,7 +1558,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_FOCUS)
+    if (event == RG_DIALOG_FOCUS_GAINED)
     {
         rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
         rg_image_t *preview = NULL;
