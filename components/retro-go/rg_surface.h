@@ -39,10 +39,6 @@ typedef struct
 // rg_image_t always contains a RG_PIXEL_565_LE surface
 typedef rg_surface_t rg_image_t;
 
-// TO DO: Properly scale values instead of discarding extra bits
-#define RGB888_TO_RGB565(r, g, b) (((((r) >> 3) & 0x1F) << 11) | ((((g) >> 2) & 0x3F) << 5) | ((((b) >> 3) & 0x1F)))
-#define RGB565_TO_RGB888(r, g, b) (0)
-
 rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags);
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags);
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);

@@ -25,10 +25,11 @@
 
 rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags)
 {
-    size_t palette = (format & RG_PIXEL_PALETTE) ? (256 * (format == RG_PIXEL_PAL888 ? 3 : 2)) : 0;
-    size_t stride = width * RG_PIXEL_GET_SIZE(format);
-    size_t size = sizeof(rg_surface_t) + (height * stride) + palette;
-    rg_surface_t *surface = alloc_flags ? rg_alloc(size, alloc_flags) : malloc(size);
+    size_t pixel_size = RG_PIXEL_GET_SIZE(format);
+    size_t data_size = height * width * pixel_size;
+    size_t palette_size = (format & RG_PIXEL_PALETTE) ? (256 * (format == RG_PIXEL_PAL888 ? 3 : 2)) : 0;
+    size_t total_size = sizeof(rg_surface_t) + data_size + palette_size;
+    rg_surface_t *surface = alloc_flags ? rg_alloc(total_size, alloc_flags) : malloc(total_size);
     if (!surface)
     {
         RG_LOGE("Surface allocation failed!");
@@ -36,10 +37,10 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
     }
     surface->width = width;
     surface->height = height;
-    surface->stride = stride;
+    surface->stride = width * pixel_size;
     surface->format = format;
-    surface->data = (void *)surface + sizeof(rg_surface_t);
-    surface->palette = palette ? ((void *)surface + size - palette) : NULL;
+    surface->data = data_size ? ((void *)surface + sizeof(rg_surface_t)) : NULL;
+    surface->palette = palette_size ? ((void *)surface + data_size) : NULL;
     return surface;
 }
 
@@ -146,7 +147,7 @@ rg_surface_t *rg_surface_convert(const rg_surface_t *source, int new_width, int 
 {
     CHECK_SURFACE(source, NULL);
 
-    // TODO: Negative dimensions should flip the image
+    // TODO: Maybe negative dimensions should flip the image?
     if (new_width <= 0 && new_height <= 0)
         new_width = source->width, new_height = source->height;
     else if (new_width <= 0)
@@ -170,6 +171,7 @@ rg_surface_t *rg_surface_convert(const rg_surface_t *source, int new_width, int 
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags)
 {
     RG_ASSERT(data && data_len >= 16, "bad param");
+    const uint16_t *data16 = (const uint16_t *)data;
 
     if (memcmp(data, "\x89PNG", 4) == 0)
     {
@@ -183,40 +185,18 @@ rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32
             return NULL;
         }
 
-        rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
-        if (!img)
-        {
-            RG_LOGE("Out of memory");
-            free(image);
-            return NULL;
-        }
+        rg_surface_t png = {width, height, .stride = width * 3, .format = RG_PIXEL_888, .data = image};
+        rg_surface_t *img = rg_surface_convert(&png, 0, 0, RG_PIXEL_565_LE);
 
-        const uint8_t *src = image;
-        uint16_t *dest = img->data;
-        size_t pixel_count = width * height;
-        while (pixel_count--)
-        {
-            *dest++ = (((src[0] << 8) & 0xF800) | ((src[1] << 3) & 0x7E0) | (((src[2] >> 3) & 0x1F)));
-            src += 3;
-        }
         free(image);
         return img;
     }
-
     // RAW565 (uint16 width, uint16 height, uint16 data[])
-    int width = ((uint16_t *)data)[0];
-    int height = ((uint16_t *)data)[1];
-
-    if (data_len == width * height * 2 + 4)
+    else if (data_len == (data16[0] * data16[1] * 2 + 4))
     {
-        rg_surface_t *img = rg_surface_create(width, height, RG_PIXEL_565_LE, 0);
-        if (!img)
-        {
-            RG_LOGE("Out of memory");
-            return NULL;
-        }
-        memcpy(img->data, data + 4, width * height * 2);
-        return img;
+        rg_surface_t raw = {data16[0], data16[1], .stride = data16[0] * 2, .format = RG_PIXEL_565_LE,
+                            .data = (void *)(data16 + 2)};
+        return rg_surface_convert(&raw, 0, 0, RG_PIXEL_565_LE);
     }
 
     RG_LOGE("Image format not recognized!");
