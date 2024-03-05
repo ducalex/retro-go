@@ -52,6 +52,7 @@ void rg_surface_free(rg_surface_t *surface)
 bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, rg_surface_t *dest,
                      const rg_rect_t *dest_rect, bool scale)
 {
+    // This function will eventually replace rg_gui_copy_buffer and rg_gui_draw_image but not today!
     CHECK_SURFACE(source, false);
     CHECK_SURFACE(dest, false);
 
@@ -59,85 +60,100 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
     int copy_height = dest->height;
     int transparency = -1;
 
-    // This function will eventually replace rg_gui_copy_buffer and rg_gui_draw_image but not today!
+    if (dest->palette && (!source->palette || memcmp(source->palette, dest->palette, 512) != 0))
+    {
+        RG_LOGE("Copying to a paletted surface can only be done from a source surface with an identical palette!");
+        return false;
+    }
 
     if (source->width == copy_width && source->height == copy_height)
-        scale = false;
-
-    if (!scale && transparency == -1 && dest->stride == source->stride && dest->format == source->format)
     {
-        memcpy(dest->data, source->data, dest->height * dest->stride);
+        scale = false;
+    }
+    else if (!scale)
+    {
+        if (copy_width > source->width)
+            copy_width = source->width;
+        if (copy_height > source->height)
+            copy_height = source->height;
+    }
+
+    float step_x = (float)source->width / copy_width;
+    float step_y = (float)source->height / copy_height;
+
+    // This may look weird but it avoids up to 75k branches and float multiplications...
+    // Maybe there's a better way, without making it even more macro-heavy...
+    short src_x_map[copy_width];
+    for (int x = 0; x < copy_width; ++x)
+        src_x_map[x] = scale ? (int)(x * step_x) : x;
+
+    #define COPY_PIXELS_1(SRC_PIXEL, DST_PIXEL)                           \
+        for (int y = 0; y < copy_height; ++y)                             \
+        {                                                                 \
+            int src_y = scale ? (y * step_y) : y;                         \
+            const uint8_t *src = source->data + (src_y * source->stride); \
+            uint8_t *dst = dest->data + (y * dest->stride);               \
+            for (int x = 0; x < copy_width; ++x)                          \
+            {                                                             \
+                int src_x = (int)src_x_map[x];                            \
+                uint16_t pixel = SRC_PIXEL;                               \
+                if ((int)pixel == transparency)                           \
+                    continue;                                             \
+                DST_PIXEL;                                                \
+            }                                                             \
+        }
+
+    #define COPY_PIXELS(SRC_PIXEL)                                                                   \
+        if (dest->format == RG_PIXEL_565_LE)                                                         \
+        {                                                                                            \
+            COPY_PIXELS_1(SRC_PIXEL, ((uint16_t *)dst)[x] = pixel);                                  \
+        }                                                                                            \
+        else if (dest->format == RG_PIXEL_565_BE)                                                    \
+        {                                                                                            \
+            COPY_PIXELS_1(SRC_PIXEL, ((uint16_t *)dst)[x] = (pixel << 8) | (pixel >> 8));            \
+        }                                                                                            \
+        else if (dest->format == RG_PIXEL_888)                                                       \
+        {                                                                                            \
+            COPY_PIXELS_1(SRC_PIXEL, *dst++ = ((pixel >> 8) & 0xF8); *dst++ = ((pixel >> 3) & 0xFC); \
+                        *dst++ = ((pixel & 0x1F) << 3););                                            \
+        }
+
+    if (source->format == dest->format && !scale && transparency == -1)
+    {
+        for (int y = 0; y < copy_height; ++y)
+        {
+            const uint8_t *src = source->data + (y * source->stride); // + source_rect left
+            uint8_t *dst = dest->data + (y * dest->stride); // + dest_rect left
+            memcpy(dst, src, copy_width * RG_PIXEL_GET_SIZE(dest->format));
+        }
+    }
+    else if (source->format == RG_PIXEL_565_LE)
+    {
+        COPY_PIXELS(((uint16_t *)src)[src_x]);
+    }
+    else if (source->format == RG_PIXEL_565_BE)
+    {
+        COPY_PIXELS(((uint16_t *)src)[src_x]; pixel = (pixel << 8) | (pixel >> 8));
+    }
+    else if (source->format == RG_PIXEL_PAL565_LE)
+    {
+        COPY_PIXELS(source->palette[src[src_x]]);
+    }
+    else if (source->format == RG_PIXEL_PAL565_BE)
+    {
+        COPY_PIXELS(source->palette[src[src_x]]; pixel = (pixel << 8) | (pixel >> 8));
+    }
+    else if (source->format == RG_PIXEL_888)
+    {
+        COPY_PIXELS(({
+            const uint8_t *pix = &src[src_x * 3];
+            (((pix[0] << 8) & 0xF800) | ((pix[1] << 3) & 0x7E0) | (((pix[2] >> 3) & 0x1F)));
+        }));
     }
     else
     {
-        float step_x = (float)source->width / copy_width;
-        float step_y = (float)source->height / copy_height;
-
-        // This may look weird but it avoids up to 75k branches and float multiplications...
-        // Maybe there's a better way, without making it even more macro-heavy...
-        short src_x_map[copy_width];
-        for (int x = 0; x < copy_width; ++x)
-            src_x_map[x] = scale ? (int)(x * step_x) : x;
-
-        #define COPY_PIXELS_1(SRC_PIXEL, DST_PIXEL)                           \
-            for (int y = 0; y < copy_height; ++y)                             \
-            {                                                                 \
-                int src_y = scale ? (y * step_y) : y;                         \
-                const uint8_t *src = source->data + (src_y * source->stride); \
-                uint8_t *dst = dest->data + (y * dest->stride);               \
-                for (int x = 0; x < copy_width; ++x)                          \
-                {                                                             \
-                    int src_x = (int)src_x_map[x];                            \
-                    uint16_t pixel = SRC_PIXEL;                               \
-                    if ((int)pixel == transparency)                           \
-                        continue;                                             \
-                    DST_PIXEL;                                                \
-                }                                                             \
-            }
-
-        #define COPY_PIXELS(SRC_PIXEL)                                                                   \
-            if (dest->format == RG_PIXEL_565_LE)                                                         \
-            {                                                                                            \
-                COPY_PIXELS_1(SRC_PIXEL, ((uint16_t *)dst)[x] = pixel);                                  \
-            }                                                                                            \
-            else if (dest->format == RG_PIXEL_565_BE)                                                    \
-            {                                                                                            \
-                COPY_PIXELS_1(SRC_PIXEL, ((uint16_t *)dst)[x] = (pixel << 8) | (pixel >> 8));            \
-            }                                                                                            \
-            else if (dest->format == RG_PIXEL_888)                                                       \
-            {                                                                                            \
-                COPY_PIXELS_1(SRC_PIXEL, *dst++ = ((pixel >> 8) & 0xF8); *dst++ = ((pixel >> 3) & 0xFC); \
-                            *dst++ = ((pixel & 0x1F) << 3););                                            \
-            }
-
-        if (source->format == RG_PIXEL_565_LE)
-        {
-            COPY_PIXELS(((uint16_t *)src)[src_x]);
-        }
-        else if (source->format == RG_PIXEL_565_BE)
-        {
-            COPY_PIXELS(((uint16_t *)src)[src_x]; pixel = (pixel << 8) | (pixel >> 8));
-        }
-        else if (source->format == RG_PIXEL_PAL565_LE)
-        {
-            COPY_PIXELS(source->palette[src[src_x]]);
-        }
-        else if (source->format == RG_PIXEL_PAL565_BE)
-        {
-            COPY_PIXELS(source->palette[src[src_x]]; pixel = (pixel << 8) | (pixel >> 8));
-        }
-        else if (source->format == RG_PIXEL_888)
-        {
-            COPY_PIXELS(({
-                const uint8_t *pix = &src[src_x * 3];
-                (((pix[0] << 8) & 0xF800) | ((pix[1] << 3) & 0x7E0) | (((pix[2] >> 3) & 0x1F)));
-            }));
-        }
-        else
-        {
-            RG_LOGE("Invalid source format?");
-            return false;
-        }
+        RG_LOGE("Invalid source format?");
+        return false;
     }
 
     return true;
