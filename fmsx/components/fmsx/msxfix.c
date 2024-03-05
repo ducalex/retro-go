@@ -15,6 +15,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+#include "carts_sha.h"
+
 static char path_buffer[RG_PATH_MAX];
 static char path_cwd[RG_PATH_MAX] = RG_STORAGE_ROOT;
 static struct dirent dirent_cache;
@@ -70,6 +72,16 @@ FILE *msx_fopen(const char *path, const char *mode)
     RG_LOGD("called ('%s', '%s')", path, mode);
     if (strstr(msx_ignore_files, path))
         return NULL;
+    if (strcmp(path, "CARTS.SHA") == 0)
+    {
+        path = RG_BASE_PATH_CACHE "/MSX_CARTS.SHA";
+        if (!rg_storage_exists(path))
+        {
+            FILE *fp = fopen(path, "wb");
+            fwrite(carts_sha, sizeof(carts_sha), 1, fp);
+            fclose(fp);
+        }
+    }
     return fopen(get_path(path), mode);
 }
 

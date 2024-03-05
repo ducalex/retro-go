@@ -30,7 +30,7 @@ struct dirent *msx_readdir(DIR *);
 FILE *msx_fopen(const char *, const char *);
 int msx_stat(const char *, struct stat *);
 int msx_unlink(const char *);
-int msx_rename(const char *);
+int msx_rename(const char *, const char *);
 int msx_chdir(const char *);
 char *msx_getcwd(char *buf, size_t size);
 
