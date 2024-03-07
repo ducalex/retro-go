@@ -1204,19 +1204,12 @@ static rg_gui_event_t custom_height_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    rg_app_t *app = rg_system_get_app();
-
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        // Probably should be broken into a function in rg_system or rg_emu...
         float change = (event == RG_DIALOG_NEXT) ? 0.5f : -0.5f;
-        app->speed = RG_MIN(2.5f, RG_MAX(0.5f, app->speed + change));
-        app->frameskip = (app->speed > 1.0f) ? 2 : 0; // Reset auto frameskip
-        rg_audio_set_sample_rate(app->sampleRate * app->speed);
-        rg_system_event(RG_EVENT_SPEEDUP, NULL);
+        rg_emu_set_speed(rg_emu_get_speed() + change);
     }
-
-    sprintf(option->value, "%.1fx", app->speed);
+    sprintf(option->value, "%.1fx", rg_emu_get_speed());
     return RG_DIALOG_VOID;
 }
 
@@ -1332,9 +1325,9 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
 
 void rg_gui_options_menu(void)
 {
+    const rg_app_t *app = rg_system_get_app();
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
-    rg_app_t *app = rg_system_get_app();
 
     *opt++ = (rg_gui_option_t){0, "Brightness", "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
     *opt++ = (rg_gui_option_t){0, "Volume    ", "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
@@ -1595,7 +1588,8 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
 {
-    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: rg_system_get_app()->romPath, 4);
+    const rg_app_t *app = rg_system_get_app();
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: app->romPath, 4);
     const rg_gui_option_t choices[] = {
         {(intptr_t)&savestates->slots[0], "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {(intptr_t)&savestates->slots[1], "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
@@ -1606,7 +1600,7 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
     int sel = 0;
 
     if (!rom_path)
-        sel = rg_system_get_app()->saveSlot;
+        sel = app->saveSlot;
     else if (savestates->lastused)
         sel = savestates->lastused->id;
 

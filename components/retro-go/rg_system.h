@@ -247,6 +247,8 @@ bool rg_emu_load_state(uint8_t slot);
 bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
+void rg_emu_set_speed(float speed);
+float rg_emu_get_speed(void);
 
 /* Utilities */
 

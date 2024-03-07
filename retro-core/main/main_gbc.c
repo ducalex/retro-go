@@ -85,6 +85,12 @@ static bool reset_handler(bool hard)
 
 static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    if (gnuboy_get_hwtype() == GB_HW_CGB)
+    {
+        strcpy(option->value, "GBC");
+        return RG_DIALOG_VOID;
+    }
+
     int pal = gnuboy_get_palette();
     int max = GB_PALETTE_COUNT - 1;
 
@@ -270,10 +276,6 @@ void gbc_main(void)
         gnuboy_load_sram(sramFile);
 
     update_rtc_time();
-
-    // Don't show palette option for GBC
-    if (gnuboy_get_hwtype() == GB_HW_CGB)
-        app->options++;
 
     // Ready!
 

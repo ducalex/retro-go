@@ -1014,7 +1014,8 @@ static void emu_update_save_slot(uint8_t slot)
 
 bool rg_emu_load_state(uint8_t slot)
 {
-    bool success = false;
+    if (slot == 0xFF)
+        slot = app.saveSlot;
 
     if (!app.romPath || !app.handlers.loadState)
     {
@@ -1023,6 +1024,8 @@ bool rg_emu_load_state(uint8_t slot)
     }
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
+    bool success = false;
+
     RG_LOGI("Loading state from '%s'.\n", filename);
 
     rg_gui_draw_hourglass();
@@ -1043,6 +1046,9 @@ bool rg_emu_load_state(uint8_t slot)
 
 bool rg_emu_save_state(uint8_t slot)
 {
+    if (slot == 0xFF)
+        slot = app.saveSlot;
+
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -1174,9 +1180,24 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
+    app.frameskip = 0;
+    app.speed = 1.f;
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
+}
+
+void rg_emu_set_speed(float speed)
+{
+    app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
+    app.frameskip = RG_MAX(app.frameskip, (app.speed > 1.0f) ? 2 : 0);
+    rg_audio_set_sample_rate(app.sampleRate * app.speed);
+    rg_system_event(RG_EVENT_SPEEDUP, NULL);
+}
+
+float rg_emu_get_speed(void)
+{
+    return app.speed;
 }
 
 #ifdef RG_ENABLE_PROFILING
