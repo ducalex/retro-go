@@ -2,7 +2,7 @@
 
 #ifdef RETRO_GO
 #include <rg_system.h>
-#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_PRINTF, NULL, x)
 #define CRC32(a, b, c) rg_crc32(a, b, c)
 #else
 #include <stdio.h>

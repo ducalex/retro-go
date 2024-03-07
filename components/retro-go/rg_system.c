@@ -195,7 +195,7 @@ static void system_monitor_task(void *arg)
         }
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
+        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
@@ -327,10 +327,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .tickRate = 60,
         .frameskip = 0,
         .overclock = 0,
-        .watchdog = 1,
         .tickTimeout = 3000000,
-        .lowMemoryMode = 0,
+        .watchdog = true,
+        .lowMemoryMode = false,
+    #ifdef RG_RELEASE
+        .isRelease = true,
         .logLevel = RG_LOG_INFO,
+    #else
+        .isRelease = false,
+        .logLevel = RG_LOG_DEBUG,
+    #endif
         .options = options, // TO DO: We should make a copy of it?
     };
 
@@ -360,7 +366,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     printf("\n========================================================\n");
     printf("%s %s (%s)\n", app.name, app.version, app.buildDate);
-    printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
+    printf(" built for: %s. type: %s\n", RG_TARGET_NAME, app.isRelease ? "release" : "dev");
     printf("========================================================\n\n");
 
     rg_storage_init();
@@ -406,6 +412,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
+    app.isLauncher = strcmp(app.name, "launcher") == 0; // Might be overriden after init
 
     rg_display_init();
     rg_gui_init();
@@ -613,7 +620,7 @@ IRAM_ATTR int64_t rg_system_timer(void)
 
 void rg_system_event(int event, void *arg)
 {
-    RG_LOGD("Dispatching event:%d arg:%p\n", event, arg);
+    RG_LOGV("Dispatching event:%d arg:%p\n", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
 }
@@ -725,19 +732,17 @@ void rg_system_panic(const char *context, const char *message)
 
 void rg_system_vlog(int level, const char *context, const char *format, va_list va)
 {
-    const char *levels[RG_LOG_MAX] = {NULL, "=", "error", "warn", "info", "debug"};
+    const char *levels[RG_LOG_MAX] = {"=", "error", "warn", "info", "debug", "trace"};
+    const char *colors[RG_LOG_MAX] = {"", "\e[31m", "\e[33m", "", "\e[34m", "\e[36m"};
     char buffer[300];
     size_t len = 0;
 
-    if (app.logLevel && level > app.logLevel)
-        return;
-
-    if (level > RG_LOG_PRINT && level < RG_LOG_MAX)
+    if (level >= 0 && level < RG_LOG_MAX)
     {
-        if (levels[level])
-            len += sprintf(buffer + len, "[%s] ", levels[level]);
         if (context)
-            len += sprintf(buffer + len, "%s: ", context);
+            len = snprintf(buffer, sizeof(buffer), "[%s] %s: ", levels[level], context);
+        else
+            len = snprintf(buffer, sizeof(buffer), "[%s] ", levels[level]);
     }
 
     len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
@@ -750,12 +755,26 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
     }
 
     if (panicTraceCleared)
+    {
         logbuf_puts(&panicTrace, buffer);
-    fputs(buffer, stdout);
+    }
 
-    #ifdef RG_TARGET_SDL2
-    fflush(stdout);
-    #endif
+    if (level <= app.logLevel)
+    {
+        if (level >= 0 && level < RG_LOG_MAX)
+        {
+            fputs(colors[level], stdout);
+            fputs(buffer, stdout);
+            fputs("\e[0m", stdout);
+        }
+        else
+        {
+            fputs(buffer, stdout);
+        }
+        #ifdef RG_TARGET_SDL2
+        fflush(stdout);
+        #endif
+    }
 }
 
 void rg_system_log(int level, const char *context, const char *format, ...)
@@ -887,10 +906,10 @@ void rg_system_set_overclock(int level)
 
     app.overclock = level;
 
-    RG_LOGX("\n\n");
-    RG_LOGI("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
-    RG_LOGI("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
-    RG_LOGX("\n\n");
+    RG_LOGW(" ");
+    RG_LOGW("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
+    RG_LOGW("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
+    RG_LOGW(" ");
 
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);

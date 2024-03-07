@@ -88,7 +88,7 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         }
     }
 
-    RG_LOGD("Event: %d %d\n", (int)event_base, (int)event_id);
+    RG_LOGV("Event: %d %d\n", (int)event_base, (int)event_id);
 }
 #endif
 

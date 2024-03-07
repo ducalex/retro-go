@@ -36,14 +36,14 @@ static const char *get_path(const char *path)
 
 int msx_chdir(const char *path)
 {
-    RG_LOGD("called ('%s')", path);
+    RG_LOGV("called ('%s')", path);
     strcpy(path_cwd, get_path(path));
     return 0;
 }
 
 char *msx_getcwd(char *buf, size_t size)
 {
-    RG_LOGD("called");
+    RG_LOGV("called");
     if (!buf)
         return strdup(path_cwd);
     if (strlen(path_cwd) < size)
@@ -53,7 +53,7 @@ char *msx_getcwd(char *buf, size_t size)
 
 DIR *msx_opendir(const char *path)
 {
-    RG_LOGD("called ('%s')", path);
+    RG_LOGV("called ('%s')", path);
     return opendir(get_path(path));
 }
 
@@ -69,7 +69,7 @@ struct dirent *msx_readdir(DIR *dir)
 
 FILE *msx_fopen(const char *path, const char *mode)
 {
-    RG_LOGD("called ('%s', '%s')", path, mode);
+    RG_LOGV("called ('%s', '%s')", path, mode);
     if (strstr(msx_ignore_files, path))
         return NULL;
     if (strcmp(path, "CARTS.SHA") == 0)
@@ -87,7 +87,7 @@ FILE *msx_fopen(const char *path, const char *mode)
 
 int msx_stat(const char *path, struct stat *sbuf)
 {
-    RG_LOGD("called ('%s')", path);
+    RG_LOGV("called ('%s')", path);
     if (strstr(msx_ignore_files, path))
         return -1;
 #if defined(DT_REG) && defined(DT_DIR)
@@ -109,7 +109,7 @@ int msx_stat(const char *path, struct stat *sbuf)
 
 int msx_unlink(const char *path)
 {
-    RG_LOGD("called ('%s')", path);
+    RG_LOGV("called ('%s')", path);
     return unlink(get_path(path));
 }
 #endif

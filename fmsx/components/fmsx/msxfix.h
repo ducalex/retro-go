@@ -4,6 +4,8 @@
 #include <math.h>
 #include <stdio.h>
 
+// #define printf(x...) rg_system_log(RG_LOG_PRINT, NULL, x)
+
 // Misc fixes
 #define main(x, y) fmsx_main(x, y)
 #define abs(x) __abs(x)

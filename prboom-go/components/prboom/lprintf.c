@@ -56,7 +56,7 @@ void lprintf(OutputLevels lvl, const char *s, ...)
     va_list arg;
     va_start(arg, s);
 #ifdef RETRO_GO
-    rg_system_vlog(RG_LOG_USER, NULL, s, arg);
+    rg_system_vlog(RG_LOG_PRINTF, NULL, s, arg);
 #else
     vprintf(s, arg);
 #endif

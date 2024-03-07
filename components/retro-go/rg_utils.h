@@ -6,7 +6,7 @@
 
 #define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
 #define RG_TIMER_LAP(name)                                                                \
-    RG_LOGX("Lap %s: %dms   Total: %dms\n", #name, (int((rg_system_timer() - _rgtl_) / 1000), \
+    RG_LOGW("Lap %s: %dms   Total: %dms\n", #name, (int((rg_system_timer() - _rgtl_) / 1000), \
             (int)((rg_system_timer() - _rgts_) / 1000));                                  \
     _rgtl_ = rg_system_timer();
 
