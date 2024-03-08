@@ -30,7 +30,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-	return rg_display_save_frame(filename, currentUpdate, width, height);
+	return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -137,10 +137,12 @@ void sms_main(void)
 
     app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
 
-    updates[0]->data += bitmap.viewport.x;
-    updates[1]->data += bitmap.viewport.x;
-
-    rg_display_set_source_viewport(bitmap.viewport.w, bitmap.viewport.h, 0, 0);
+    updates[0]->offset = bitmap.viewport.x;
+    updates[0]->width = bitmap.viewport.w;
+    updates[0]->height = bitmap.viewport.h;
+    updates[1]->offset = bitmap.viewport.x;
+    updates[1]->width = bitmap.viewport.w;
+    updates[1]->height = bitmap.viewport.h;
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
@@ -232,7 +234,7 @@ void sms_main(void)
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
             currentUpdate = updates[currentUpdate == updates[0]]; // Swap
-            bitmap.data = currentUpdate->data - bitmap.viewport.x;
+            bitmap.data = currentUpdate->data;
         }
 
         // The emulator's sound buffer isn't in a very convenient format, we must remix it.

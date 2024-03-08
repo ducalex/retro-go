@@ -8,7 +8,7 @@ typedef enum
     RG_DISPLAY_SCALING_OFF = 0, // No scaling, center image on screen
     RG_DISPLAY_SCALING_FIT,     // Scale and preserve aspect ratio
     RG_DISPLAY_SCALING_FULL,    // Scale and stretch to fill screen
-    RG_DISPLAY_SCALING_CUSTOM,  // Custom width and height
+    RG_DISPLAY_SCALING_ZOOM,  // Custom zoom and preserve aspect ratio
     RG_DISPLAY_SCALING_COUNT
 } display_scaling_t;
 
@@ -49,7 +49,7 @@ typedef struct
     display_filter_t filter;
     display_backlight_t backlight;
     char *border_file;
-    int custom_width, custom_height;
+    double custom_zoom;
 } rg_display_config_t;
 
 typedef struct
@@ -72,12 +72,12 @@ typedef struct
     {
         int top, left;
         int width, height;
+        float step_x, step_y;
+        bool filter_x, filter_y;
     } viewport;
     struct
     {
-        int crop_h, crop_v;
         int width, height;
-        bool defined;
     } source;
     bool changed;
 } rg_display_t;
@@ -90,8 +90,6 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
-bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height);
-void rg_display_set_source_viewport(int width, int height, int crop_h, int crop_v);
 void rg_display_submit(const rg_surface_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);
@@ -107,7 +105,5 @@ void rg_display_set_backlight(display_backlight_t percent);
 display_backlight_t rg_display_get_backlight(void);
 void rg_display_set_border(const char *filename);
 char *rg_display_get_border(void);
-void rg_display_set_custom_width(int width);
-int rg_display_get_custom_width(void);
-void rg_display_set_custom_height(int height);
-int rg_display_get_custom_height(void);
+void rg_display_set_custom_zoom(double factor);
+double rg_display_get_custom_zoom(void);

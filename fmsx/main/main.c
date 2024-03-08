@@ -13,7 +13,6 @@ static int KeyboardCol, KeyboardRow, KeyboardKey;
 static int64_t KeyboardDebounce = 0;
 static int FrameStartTime;
 static int KeyboardEmulation, CropPicture;
-static int PrevScanLines212 = -1;
 static char *PendingLoadSTA = NULL;
 
 #define BPS16
@@ -54,6 +53,14 @@ static const unsigned char KBDKeys[YKEYS][XKEYS] = {
     {'^', 'A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', CON_ENTER},
     {'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 0, 0},
     {'[', ']', ' ', ' ', ' ', ' ', ' ', '\\', '\'', 0, 0, 0}};
+
+static inline void SubmitFrame(void)
+{
+    int crop_v = CropPicture ? (ScanLines212 ? 8 : 18) : 0;
+    currentUpdate->offset = crop_v * currentUpdate->stride;
+    currentUpdate->height = HEIGHT - crop_v * 2;
+    rg_display_submit(currentUpdate, 0);
+}
 
 int ProcessEvents(int Wait)
 {
@@ -217,26 +224,15 @@ void SetColor(byte N, byte R, byte G, byte B)
         XPal0 = color;
 }
 
-void UpdateViewport(void)
-{
-    int crop_v = CropPicture ? (ScanLines212 ? 8 : 18) : 0;
-    rg_display_set_source_viewport(WIDTH, HEIGHT, 0, crop_v);
-}
-
 void PutImage(void)
 {
-    if (CropPicture && ScanLines212 != PrevScanLines212)
-    {
-        UpdateViewport();
-        PrevScanLines212 = ScanLines212;
-    }
-
     if (InKeyboard)
         DrawKeyboard(&NormScreen, KBDKeys[KeyboardRow][KeyboardCol]);
-    rg_display_submit(currentUpdate, 0);
+
+    SubmitFrame();
     currentUpdate = updates[currentUpdate == updates[0]];
     NormScreen.Data = currentUpdate->data;
-    XBuf = currentUpdate->data;
+    XBuf = NormScreen.Data;
 }
 
 unsigned int Joystick(void)
@@ -266,7 +262,7 @@ unsigned int Mouse(byte N)
 
 int ShowVideo(void)
 {
-    rg_display_submit(currentUpdate, 0);
+    SubmitFrame();
     rg_system_tick(0);
     return 1;
 }
@@ -353,14 +349,14 @@ static bool reset_handler(bool hard)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(currentUpdate, 0);
+        SubmitFrame();
     }
 }
 
@@ -369,7 +365,6 @@ static rg_gui_event_t crop_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         CropPicture = !CropPicture;
-        UpdateViewport();
         rg_settings_set_number(NS_APP, "Crop", CropPicture);
         return RG_DIALOG_REDRAW;
     }

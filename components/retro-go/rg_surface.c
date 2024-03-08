@@ -38,6 +38,7 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
     surface->width = width;
     surface->height = height;
     surface->stride = width * pixel_size;
+    surface->offset = 0;
     surface->format = format;
     surface->data = data_size ? ((void *)surface + sizeof(rg_surface_t)) : NULL;
     surface->palette = palette_size ? ((void *)surface + sizeof(rg_surface_t) + data_size) : NULL;
@@ -87,20 +88,20 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
     for (int x = 0; x < copy_width; ++x)
         src_x_map[x] = scale ? (int)(x * step_x) : x;
 
-    #define COPY_PIXELS_1(SRC_PIXEL, DST_PIXEL)                           \
-        for (int y = 0; y < copy_height; ++y)                             \
-        {                                                                 \
-            int src_y = scale ? (y * step_y) : y;                         \
-            const uint8_t *src = source->data + (src_y * source->stride); \
-            uint8_t *dst = dest->data + (y * dest->stride);               \
-            for (int x = 0; x < copy_width; ++x)                          \
-            {                                                             \
-                int src_x = (int)src_x_map[x];                            \
-                uint16_t pixel = SRC_PIXEL;                               \
-                if ((int)pixel == transparency)                           \
-                    continue;                                             \
-                DST_PIXEL;                                                \
-            }                                                             \
+    #define COPY_PIXELS_1(SRC_PIXEL, DST_PIXEL)                                            \
+        for (int y = 0; y < copy_height; ++y)                                              \
+        {                                                                                  \
+            int src_y = scale ? (y * step_y) : y;                                          \
+            const uint8_t *src = source->data + source->offset + (src_y * source->stride); \
+            uint8_t *dst = dest->data + dest->offset + (y * dest->stride);                 \
+            for (int x = 0; x < copy_width; ++x)                                           \
+            {                                                                              \
+                int src_x = (int)src_x_map[x];                                             \
+                uint16_t pixel = SRC_PIXEL;                                                \
+                if ((int)pixel == transparency)                                            \
+                    continue;                                                              \
+                DST_PIXEL;                                                                 \
+            }                                                                              \
         }
 
     #define COPY_PIXELS(SRC_PIXEL)                                                                   \
@@ -122,8 +123,8 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
     {
         for (int y = 0; y < copy_height; ++y)
         {
-            const uint8_t *src = source->data + (y * source->stride); // + source_rect left
-            uint8_t *dst = dest->data + (y * dest->stride); // + dest_rect left
+            const uint8_t *src = source->data + source->offset + (y * source->stride); // + source_rect left
+            uint8_t *dst = dest->data + dest->offset + (y * dest->stride); // + dest_rect left
             memcpy(dst, src, copy_width * RG_PIXEL_GET_SIZE(dest->format));
         }
     }
@@ -273,7 +274,7 @@ bool rg_surface_save_image_file(const rg_surface_t *source, const char *filename
         source = temp;
     }
 
-    error = lodepng_encode24_file(filename, source->data, width, height);
+    error = lodepng_encode24_file(filename, source->data + source->offset, width, height);
     rg_surface_free(temp);
 
     if (error == 0)

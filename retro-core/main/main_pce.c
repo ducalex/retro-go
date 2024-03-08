@@ -13,13 +13,10 @@
 #define AUDIO_SAMPLE_RATE 22050
 
 static bool emulationPaused = false; // This should probably be a mutex
-static int current_height = 0;
-static int current_width = 0;
 static int overscan = false;
 static int skipFrames = 0;
 static bool drawFrame = true;
 static bool slowFrame = false;
-static uint8_t *framebuffers[2];
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
@@ -34,7 +31,6 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
     {
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
-        current_width = current_height = 0;
         return RG_DIALOG_REDRAW;
     }
 
@@ -45,19 +41,10 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
 
 uint8_t *osd_gfx_framebuffer(int width, int height)
 {
-    if (width != current_width || height != current_height)
+    if (width > 0 && height > 0)
     {
-        RG_LOGI("Resolution changed to: %dx%d", width, height);
-
-        // PCE-GO needs 16 columns of scratch space + horizontally center
-        int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
-        updates[0]->data = framebuffers[0] + offset_center;
-        updates[1]->data = framebuffers[1] + offset_center;
-
-        rg_display_set_source_viewport(width, height, 0, 0);
-
-        current_width = width;
-        current_height = height;
+        currentUpdate->width = width;
+        currentUpdate->height = height;
     }
     return drawFrame ? currentUpdate->data : NULL;
 }
@@ -168,7 +155,7 @@ static void event_handler(int event, void *arg)
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    return rg_display_save_frame(filename, updates[currentUpdate == updates[0]], width, height);
+    return rg_surface_save_image_file(updates[currentUpdate == updates[0]], filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -213,8 +200,10 @@ void pce_main(void)
     updates[1] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     currentUpdate = updates[0];
 
-    framebuffers[0] = updates[0]->data;
-    framebuffers[1] = updates[1]->data;
+    updates[0]->data += 16;
+    updates[0]->width -= 16;
+    updates[1]->data += 16;
+    updates[1]->width -= 16;
 
     uint16_t *palette = PalettePCE(16);
     for (int i = 0; i < 256; i++)

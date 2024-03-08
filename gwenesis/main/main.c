@@ -154,7 +154,7 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -267,8 +267,6 @@ void app_main(void)
     extern unsigned int screen_width, screen_height;
     extern int hint_pending;
 
-    unsigned int prev_screen_height = 0, prev_screen_width = 0;
-
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t joystick = 0, joystick_old;
 
@@ -307,13 +305,6 @@ void app_main(void)
 
         screen_width = REG12_MODE_H40 ? 320 : 256;
         screen_height = REG1_PAL ? 240 : 224;
-
-        if (screen_width != prev_screen_width || prev_screen_height != screen_height)
-        {
-            rg_display_set_source_viewport(screen_width, screen_height, 0, 0);
-            prev_screen_width = screen_width;
-            prev_screen_height = screen_height;
-        }
 
         gwenesis_vdp_set_buffer(currentUpdate->data);
         gwenesis_vdp_render_config();
@@ -402,6 +393,8 @@ void app_main(void)
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
             slowFrame = !rg_display_sync(false);
+            currentUpdate->width = screen_width;
+            currentUpdate->height = screen_height;
             rg_display_submit(currentUpdate, 0);
         }
 

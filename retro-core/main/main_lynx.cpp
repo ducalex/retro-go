@@ -80,7 +80,10 @@ static void set_display_mode(void)
             break;
     }
 
-    rg_display_set_source_viewport(width, height, 0, 0);
+    updates[0]->width = width;
+    updates[0]->height = height;
+    updates[1]->width = width;
+    updates[1]->height = height;
 }
 
 
@@ -92,11 +95,13 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
         rg_display_set_rotation((display_rotation_t)rotation);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
         rg_display_set_rotation((display_rotation_t)rotation);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, "Off  ");
@@ -117,7 +122,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)

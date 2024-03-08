@@ -6,7 +6,6 @@
 static int overscan = true;
 static int autocrop = 0;
 static int palette = 0;
-static int crop_h, crop_v;
 static bool slowFrame = false;
 static bool nsfPlayer = false;
 static nes_t *nes;
@@ -27,14 +26,14 @@ static void event_handler(int event, void *arg)
     {
         if (nsfPlayer)
             rg_display_clear(C_BLACK);
-        else
-            rg_display_submit(currentUpdate, 0);
+        else if (nes)
+            (nes->blit_func)(NULL);
     }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-	return rg_display_save_frame(filename, currentUpdate, width, height);
+	return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -56,16 +55,6 @@ static bool reset_handler(bool hard)
 {
     nes_reset(hard);
     return true;
-}
-
-
-static void set_display_mode(void)
-{
-    crop_v = (overscan) ? nes->overscan : 0;
-    crop_h = (autocrop) ? 8 : 0;
-    // crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-    rg_display_set_source_viewport(NES_SCREEN_WIDTH, NES_SCREEN_HEIGHT, crop_h, crop_v);
-    nes_setvidbuf(currentUpdate->data - 8);
 }
 
 static void build_palette(int n)
@@ -102,7 +91,6 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
     {
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
-        set_display_mode();
         return RG_DIALOG_REDRAW;
     }
 
@@ -123,7 +111,6 @@ static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t
     {
         autocrop = val;
         rg_settings_set_number(NS_APP, SETTING_AUTOCROP, val);
-        set_display_mode();
         return RG_DIALOG_REDRAW;
     }
 
@@ -163,9 +150,15 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
 
 static void blit_screen(uint8 *bmp)
 {
+    slowFrame = bmp && !rg_display_sync(false);
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
-    slowFrame = !rg_display_sync(false);
+    int crop_v = (overscan) ? nes->overscan : 0;
+    int crop_h = (autocrop) ? 16 : 8;
+    // crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
+    currentUpdate->width = NES_SCREEN_WIDTH - crop_h * 2;
+    currentUpdate->height = NES_SCREEN_HEIGHT - crop_v * 2;
+    currentUpdate->offset = crop_v * currentUpdate->stride + crop_h;
     rg_display_submit(currentUpdate, 0);
 }
 
@@ -213,9 +206,6 @@ void nes_main(void)
     updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     currentUpdate = updates[0];
 
-    updates[0]->data += 8;
-    updates[1]->data += 8;
-
     nes = nes_init(SYS_DETECT, app->sampleRate, true);
     if (!nes)
     {
@@ -240,7 +230,6 @@ void nes_main(void)
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 
     build_palette(palette);
-    set_display_mode();
 
     // This is necessary for successful state restoration
     // I have not yet investigated why that is...
@@ -282,7 +271,7 @@ void nes_main(void)
         if (drawFrame)
         {
             currentUpdate = updates[currentUpdate == updates[0]];
-            nes_setvidbuf(currentUpdate->data - 8);
+            nes_setvidbuf(currentUpdate->data);
         }
 
         input_update(0, buttons);

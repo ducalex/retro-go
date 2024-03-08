@@ -42,7 +42,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)

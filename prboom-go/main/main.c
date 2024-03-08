@@ -472,7 +472,7 @@ void I_Init(void)
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
-	return rg_display_save_frame(filename, update, width, height);
+	return rg_surface_save_image_file(update, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)

@@ -24,15 +24,18 @@ static rg_display_config_t config;
 static rg_surface_t *osd;
 static rg_surface_t *border;
 static rg_display_t display;
+static int16_t map_viewport_to_source_x[RG_SCREEN_WIDTH + 1];
+static int16_t map_viewport_to_source_y[RG_SCREEN_HEIGHT + 1];
 static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
+
+#define LINE_IS_REPEATED(Y) (map_viewport_to_source_y[(Y)] == map_viewport_to_source_y[(Y) - 1])
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING = "DispScaling";
 static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_BORDER = "DispBorder";
-static const char *SETTING_CUSTOM_WIDTH = "DispCustomWidth";
-static const char *SETTING_CUSTOM_HEIGHT = "DispCustomHeight";
+static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 
 #ifdef ESP_PLATFORM
 static spi_device_handle_t spi_dev;
@@ -284,77 +287,67 @@ static void lcd_deinit(void)
 
 static inline unsigned blend_pixels(unsigned a, unsigned b)
 {
-    // Fast path
+    // Fast path (taken 80-90% of the time)
     if (a == b)
         return a;
 
-    // Input in Big-Endian, swap to Little Endian
+    // Not the original author, but a good explanation is found at:
+    // https://medium.com/@luc.trudeau/fast-averaging-of-high-color-16-bit-pixels-cb4ac7fd1488
     a = (a << 8) | (a >> 8);
     b = (b << 8) | (b >> 8);
-
-    // Signed arithmetic is deliberate here
-    int r0 = (a >> 11) & 0x1F;
-    int g0 = (a >> 5) & 0x3F;
-    int b0 = (a) & 0x1F;
-
-    int r1 = (b >> 11) & 0x1F;
-    int g1 = (b >> 5) & 0x3F;
-    int b1 = (b) & 0x1F;
-
-    int rv = (((r1 - r0) >> 1) + r0);
-    int gv = (((g1 - g0) >> 1) + g0);
-    int bv = (((b1 - b0) >> 1) + b0);
-
-    unsigned v = (rv << 11) | (gv << 5) | (bv);
-
-    // Back to Big-Endian
+    unsigned s = a ^ b;
+    unsigned v = ((s & 0xF7DEU) >> 1) + (a & b) + (s & 0x0821U);
     return (v << 8) | (v >> 8);
+
+    // This is my attempt at averaging two 565BE values without swapping bytes (3x the speed of the code above)
+    // return (((a ^ b) & 0b1101111011110110U) >> 1) + (a & b);
 }
 
 static inline void write_update(const rg_surface_t *update)
 {
     const int64_t time_start = rg_system_timer();
 
-    const int draw_left = display.viewport.left;
-    const int draw_top = display.viewport.top;
-    const int draw_width = display.viewport.width;
-    const int draw_height = display.viewport.height;
+    bool filter_x = display.viewport.filter_x;
+    bool filter_y = display.viewport.filter_y;
+    int draw_left = display.viewport.left;
+    int draw_top = display.viewport.top;
+    int draw_width = display.viewport.width;
+    int draw_height = display.viewport.height;
 
-    const bool filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
-                          (config.scaling && (display.viewport.height % display.source.height) != 0);
-    const bool filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
-                          (config.scaling && (display.viewport.width % display.source.width) != 0);
+    int crop_left = 0;
+    int crop_top = 0;
+
+    if (draw_left < 0)
+    {
+        crop_left += -draw_left * display.viewport.step_x;
+        draw_width += draw_left * 2;
+        draw_left = 0;
+    }
+
+    if (draw_top < 0)
+    {
+        crop_top += -draw_top * display.viewport.step_y;
+        draw_height += draw_top * 2;
+        draw_top = 0;
+    }
 
     const int format = update->format;
     const int stride = update->stride;
-    const void *data = update->data + (display.source.crop_v * stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(format));
+    const void *data = update->data + update->offset + (crop_top * stride) + (crop_left * RG_PIXEL_GET_SIZE(format));
     const uint16_t *palette = update->palette;
-
-    bool partial = true; // config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;
     int lines_updated = 0;
     int window_top = -1;
-
-    float step_x = (float)display.source.width / draw_width;
-    float step_y = (float)display.source.height / draw_height;
-
-    // Maybe it's worth using regular ints here? It's just 1KB more on the stack...
-    int16_t map_viewport_to_source_x[draw_width];
-    int16_t map_viewport_to_source_y[draw_height];
-
-    for (int x = 0; x < draw_width; ++x)
-        map_viewport_to_source_x[x] = x * step_x + 0.1f;
-
-    for (int y = 0; y < draw_height; ++y)
-        map_viewport_to_source_y[y] = y * step_y + 0.1f;
-
-    #define LINE_IS_REPEATED(Y) (map_viewport_to_source_y[(Y)] == map_viewport_to_source_y[(Y) - 1])
+    bool partial = true;
 
     for (int y = 0; y < draw_height;)
     {
         int lines_to_copy = RG_MIN(lines_per_buffer, lines_remaining);
+
+        if (lines_to_copy < 1)
+            break;
 
         // The vertical filter requires a block to start and end with unscaled lines
         if (filter_y)
@@ -362,11 +355,6 @@ static inline void write_update(const rg_surface_t *update)
             while (lines_to_copy > 1 && (LINE_IS_REPEATED(y + lines_to_copy - 1) ||
                                          LINE_IS_REPEATED(y + lines_to_copy)))
                 --lines_to_copy;
-        }
-
-        if (lines_to_copy < 1)
-        {
-            break;
         }
 
         uint16_t *line_buffer = lcd_get_buffer();
@@ -484,52 +472,55 @@ static void update_viewport_scaling(void)
     int src_height = display.source.height;
     int new_width = src_width;
     int new_height = src_height;
-    double new_ratio = 0.0;
 
     if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
-        new_ratio = display.screen.width / (double)display.screen.height;
-        new_width = display.screen.height * new_ratio;
+        new_width = display.screen.width;
         new_height = display.screen.height;
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
-        new_ratio = src_width / (double)src_height;
-        new_width = display.screen.height * new_ratio;
+        new_width = display.screen.height * ((double)src_width / src_height);
         new_height = display.screen.height;
+        if (new_width > display.screen.width) {
+            new_width = display.screen.width;
+            new_height = display.screen.width * ((double)src_height / src_width);
+        }
     }
-    else if (config.scaling == RG_DISPLAY_SCALING_CUSTOM)
+    else if (config.scaling == RG_DISPLAY_SCALING_ZOOM)
     {
-        new_ratio = config.custom_width / (double)config.custom_height;
-        new_width = config.custom_width;
-        new_height = config.custom_height;
+        new_width = src_width * config.custom_zoom;
+        new_height = src_height * config.custom_zoom;
     }
 
     // Everything works better when we use even dimensions!
     new_width &= ~1;
     new_height &= ~1;
 
-    if (new_width > display.screen.width)
-    {
-        RG_LOGW("new_width too large: %d, cropping to %d", new_width, display.screen.width);
-        new_width = display.screen.width;
-    }
-
-    if (new_height > display.screen.height)
-    {
-        RG_LOGW("new_height too large: %d, cropping to %d", new_height, display.screen.height);
-        new_height = display.screen.height;
-    }
-
     display.viewport.left = (display.screen.width - new_width) / 2;
     display.viewport.top = (display.screen.height - new_height) / 2;
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
+    display.viewport.step_x = (float)src_width / display.viewport.width;
+    display.viewport.step_y = (float)src_height / display.viewport.height;
+
+    display.viewport.filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                                (config.scaling && (display.viewport.width % src_width) != 0);
+    display.viewport.filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
+                                (config.scaling && (display.viewport.height % src_height) != 0);
+
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
 
-    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d\n", src_width, src_height, src_width / (double)src_height,
-            new_width, new_height, new_ratio, display.viewport.left, display.viewport.top);
+    // The 0.1f addition is to ceil the number in case we hit a .999999 approximation
+    for (int x = 0; x < display.screen.width; ++x)
+        map_viewport_to_source_x[x] = x * display.viewport.step_x + 0.1f;
+    for (int y = 0; y < display.screen.height; ++y)
+        map_viewport_to_source_y[y] = y * display.viewport.step_y + 0.1f;
+
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f left:%d top:%d step_x:%.2f step_y:%.2f", src_width, src_height,
+            (double)src_width / src_height, new_width, new_height, (double)new_width / new_height,
+            display.viewport.left, display.viewport.top, display.viewport.step_x, display.viewport.step_y);
 }
 
 static bool load_border_file(const char *filename)
@@ -625,28 +616,16 @@ display_scaling_t rg_display_get_scaling(void)
     return config.scaling;
 }
 
-void rg_display_set_custom_width(int width)
+void rg_display_set_custom_zoom(double factor)
 {
-    config.custom_width = RG_MIN(RG_MAX(64, width), display.screen.width);
-    rg_settings_set_number(NS_APP, SETTING_CUSTOM_WIDTH, config.custom_width);
+    config.custom_zoom = RG_MIN(RG_MAX(0.1, factor), 2.0);
+    rg_settings_set_number(NS_APP, SETTING_CUSTOM_ZOOM, config.custom_zoom);
     display.changed = true;
 }
 
-int rg_display_get_custom_width(void)
+double rg_display_get_custom_zoom(void)
 {
-    return config.custom_width;
-}
-
-void rg_display_set_custom_height(int height)
-{
-    config.custom_height = RG_MIN(RG_MAX(64, height), display.screen.height);
-    rg_settings_set_number(NS_APP, SETTING_CUSTOM_HEIGHT, config.custom_height);
-    display.changed = true;
-}
-
-int rg_display_get_custom_height(void)
-{
-    return config.custom_height;
+    return config.custom_zoom;
 }
 
 void rg_display_set_filter(display_filter_t filter)
@@ -708,16 +687,6 @@ char *rg_display_get_border(void)
     return rg_settings_get_string(NS_APP, SETTING_BORDER, NULL);
 }
 
-bool rg_display_save_frame(const char *filename, const rg_surface_t *frame, int width, int height)
-{
-    // Ugly hack because the frame we receive doesn't have crop info yet
-    rg_surface_t temp = *frame;
-    temp.width = display.source.width;
-    temp.height = display.source.height;
-    temp.data += (display.source.crop_v * temp.stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(frame->format));
-    return rg_surface_save_image_file(&temp, filename, width, height);
-}
-
 void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 {
     const int64_t time_start = rg_system_timer();
@@ -726,24 +695,18 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
     if (!update || !update->data)
         return;
 
-    if (!display.source.defined)
-        rg_display_set_source_viewport(update->width, update->height, 0, 0);
+    if (display.source.width != update->width || display.source.height != update->height)
+    {
+        rg_display_sync(true);
+        display.source.width = update->width;
+        display.source.height = update->height;
+        display.changed = true;
+    }
 
     xQueueSend(display_task_queue, &update, portMAX_DELAY);
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
-}
-
-void rg_display_set_source_viewport(int width, int height, int crop_h, int crop_v)
-{
-    rg_display_sync(true);
-    display.source.crop_h = RG_MAX(RG_MAX(0, width - display.screen.width) / 2, crop_h);
-    display.source.crop_v = RG_MAX(RG_MAX(0, height - display.screen.height) / 2, crop_v);
-    display.source.width = width - display.source.crop_h * 2;
-    display.source.height = height - display.source.crop_v * 2;
-    display.source.defined = true;
-    display.changed = true;
 }
 
 bool rg_display_sync(bool block)
@@ -854,12 +817,11 @@ void rg_display_init(void)
     // TO DO: We probably should call the setters to ensure valid values...
     config = (rg_display_config_t){
         .backlight = rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
-        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FULL),
+        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_OFF),
         .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
-        .custom_width = rg_settings_get_number(NS_APP, SETTING_CUSTOM_WIDTH, 240),
-        .custom_height = rg_settings_get_number(NS_APP, SETTING_CUSTOM_HEIGHT, 240),
+        .custom_zoom = rg_settings_get_number(NS_APP, SETTING_CUSTOM_ZOOM, 1.0),
     };
     display = (rg_display_t){
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,

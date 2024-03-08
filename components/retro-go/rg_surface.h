@@ -30,7 +30,7 @@ typedef struct
 typedef struct
 {
     int width, height;
-    int stride; // offset, pixlen
+    int stride, offset; // , pixlen
     int format;
     uint16_t *palette;
     void *data;
