@@ -414,16 +414,19 @@ void app_main(void)
     KeyboardEmulation = rg_settings_get_number(NS_APP, "Input", 1);
     CropPicture = rg_settings_get_number(NS_APP, "Crop", 0);
 
-    const char *filePath = app->romPath;
-    const char *fileType = strcasecmp(rg_extension(filePath), "dsk") == 0 ? "-diska" : "-rom";
-
     if (app->bootFlags & RG_BOOT_RESUME)
     {
         PendingLoadSTA = rg_emu_get_path(RG_PATH_SAVE_STATE + app->saveSlot, app->romPath);
     }
 
-    char *argv[] = {"fmsx", "-skip", "50", "-home", RG_BASE_PATH_BIOS, "-joy", "1", fileType, filePath, NULL,};
-    int argc = RG_COUNT(argv) - 1;
+    char *argv[] = {"fmsx", "-skip", "50", "-home", RG_BASE_PATH_BIOS, "-joy", "1", NULL, NULL, NULL,};
+    int argc = RG_COUNT(argv) - 3;
+
+    if (strcasecmp(rg_extension(app->romPath), "dsk") == 0)
+    {
+        argv[argc++] = "-diska";
+    }
+    argv[argc++] = app->romPath;
 
     RG_LOGI("fMSX start");
     fmsx_main(argc, argv);
