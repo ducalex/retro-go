@@ -325,7 +325,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
-        .frameskip = 0,
+        .frameskip = 1,
         .overclock = 0,
         .tickTimeout = 3000000,
         .watchdog = true,
