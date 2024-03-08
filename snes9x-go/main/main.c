@@ -262,6 +262,7 @@ void app_main(void)
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
+    updates[0]->height = SNES_HEIGHT;
     currentUpdate = updates[0];
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
