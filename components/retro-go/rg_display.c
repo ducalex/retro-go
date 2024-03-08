@@ -29,6 +29,8 @@ static int16_t map_viewport_to_source_y[RG_SCREEN_HEIGHT + 1];
 static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
 
 #define LINE_IS_REPEATED(Y) (map_viewport_to_source_y[(Y)] == map_viewport_to_source_y[(Y) - 1])
+// This is to avoid flooring a number that is approximated to .9999999 and be explicit about it
+#define FLOAT_TO_INT(x) ((int)((x) + 0.1f))
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
 static const char *SETTING_SCALING = "DispScaling";
@@ -168,9 +170,9 @@ static void spi_deinit(void)
             spi_queue_transaction(&x, sizeof(x), 1); \
     }
 
-static void lcd_set_backlight(double percent)
+static void lcd_set_backlight(float percent)
 {
-    double level = RG_MIN(RG_MAX(percent / 100.0, 0), 1.0);
+    float level = RG_MIN(RG_MAX(percent / 100.f, 0), 1.f);
     int error_code = 0;
 
 #if defined(RG_GPIO_LCD_BCKL)
@@ -459,7 +461,7 @@ static inline void write_update(const rg_surface_t *update)
         // for both virtual keyboard and info labels. Maybe make it configurable later...
     }
 
-    if (lines_updated > display.screen.height * 0.80)
+    if (lines_updated > display.screen.height * 0.80f)
         counters.fullFrames++;
     else
         counters.partFrames++;
@@ -480,17 +482,17 @@ static void update_viewport_scaling(void)
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
-        new_width = display.screen.height * ((double)src_width / src_height);
+        new_width = FLOAT_TO_INT(display.screen.height * ((float)src_width / src_height));
         new_height = display.screen.height;
         if (new_width > display.screen.width) {
             new_width = display.screen.width;
-            new_height = display.screen.width * ((double)src_height / src_width);
+            new_height = FLOAT_TO_INT(display.screen.width * ((float)src_height / src_width));
         }
     }
     else if (config.scaling == RG_DISPLAY_SCALING_ZOOM)
     {
-        new_width = src_width * config.custom_zoom;
-        new_height = src_height * config.custom_zoom;
+        new_width = FLOAT_TO_INT(src_width * config.custom_zoom);
+        new_height = FLOAT_TO_INT(src_height * config.custom_zoom);
     }
 
     // Everything works better when we use even dimensions!
@@ -512,14 +514,13 @@ static void update_viewport_scaling(void)
 
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
 
-    // The 0.1f addition is to ceil the number in case we hit a .999999 approximation
     for (int x = 0; x < display.screen.width; ++x)
-        map_viewport_to_source_x[x] = x * display.viewport.step_x + 0.1f;
+        map_viewport_to_source_x[x] = FLOAT_TO_INT(x * display.viewport.step_x);
     for (int y = 0; y < display.screen.height; ++y)
-        map_viewport_to_source_y[y] = y * display.viewport.step_y + 0.1f;
+        map_viewport_to_source_y[y] = FLOAT_TO_INT(y * display.viewport.step_y);
 
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f left:%d top:%d step_x:%.2f step_y:%.2f", src_width, src_height,
-            (double)src_width / src_height, new_width, new_height, (double)new_width / new_height,
+            (float)src_width / src_height, new_width, new_height, (float)new_width / new_height,
             display.viewport.left, display.viewport.top, display.viewport.step_x, display.viewport.step_y);
 }
 
