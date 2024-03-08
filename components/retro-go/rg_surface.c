@@ -40,7 +40,7 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
     surface->stride = width * pixel_size;
     surface->format = format;
     surface->data = data_size ? ((void *)surface + sizeof(rg_surface_t)) : NULL;
-    surface->palette = palette_size ? ((void *)surface + data_size) : NULL;
+    surface->palette = palette_size ? ((void *)surface + sizeof(rg_surface_t) + data_size) : NULL;
     return surface;
 }
 
