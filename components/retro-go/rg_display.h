@@ -72,7 +72,6 @@ typedef struct
     {
         int top, left;
         int width, height;
-        int x_inc, y_inc;
     } viewport;
     struct
     {

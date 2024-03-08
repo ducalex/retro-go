@@ -24,7 +24,6 @@ static rg_display_config_t config;
 static rg_surface_t *osd;
 static rg_surface_t *border;
 static rg_display_t display;
-static uint8_t screen_line_is_empty[RG_SCREEN_HEIGHT + 1];
 static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
 
 static const char *SETTING_BACKLIGHT = "DispBacklight";
@@ -316,28 +315,19 @@ static inline void write_update(const rg_surface_t *update)
 {
     const int64_t time_start = rg_system_timer();
 
-    const int screen_width = display.screen.width;
-    const int screen_height = display.screen.height;
-
-    const int width = display.source.width;
-    const int height = display.source.height;
-    const int format = update->format;
-    const int stride = update->stride;
-
-    const int x_inc = display.viewport.x_inc;
-    const int y_inc = display.viewport.y_inc;
     const int draw_left = display.viewport.left;
     const int draw_top = display.viewport.top;
-    const int draw_width = ((screen_width * width) + (x_inc - 1)) / x_inc;
-    const int draw_height = ((screen_height * height) + (y_inc - 1)) / y_inc;
+    const int draw_width = display.viewport.width;
+    const int draw_height = display.viewport.height;
 
     const bool filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
                           (config.scaling && (display.viewport.height % display.source.height) != 0);
     const bool filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
                           (config.scaling && (display.viewport.width % display.source.width) != 0);
 
-    const size_t data_offset = (display.source.crop_v * stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(format));
-    union {const uint8_t *u8; const uint16_t *u16; } buffer = {update->data + data_offset};
+    const int format = update->format;
+    const int stride = update->stride;
+    const void *data = update->data + (display.source.crop_v * stride) + (display.source.crop_h * RG_PIXEL_GET_SIZE(format));
     const uint16_t *palette = update->palette;
 
     bool partial = true; // config.update_mode == RG_DISPLAY_UPDATE_PARTIAL;
@@ -347,15 +337,30 @@ static inline void write_update(const rg_surface_t *update)
     int lines_updated = 0;
     int window_top = -1;
 
-    for (int y = 0, screen_y = draw_top; y < height;)
+    float step_x = (float)display.source.width / draw_width;
+    float step_y = (float)display.source.height / draw_height;
+
+    // Maybe it's worth using regular ints here? It's just 1KB more on the stack...
+    int16_t map_viewport_to_source_x[draw_width];
+    int16_t map_viewport_to_source_y[draw_height];
+
+    for (int x = 0; x < draw_width; ++x)
+        map_viewport_to_source_x[x] = x * step_x + 0.1f;
+
+    for (int y = 0; y < draw_height; ++y)
+        map_viewport_to_source_y[y] = y * step_y + 0.1f;
+
+    #define LINE_IS_REPEATED(Y) (map_viewport_to_source_y[(Y)] == map_viewport_to_source_y[(Y) - 1])
+
+    for (int y = 0; y < draw_height;)
     {
         int lines_to_copy = RG_MIN(lines_per_buffer, lines_remaining);
 
         // The vertical filter requires a block to start and end with unscaled lines
         if (filter_y)
         {
-            while (lines_to_copy > 1 && (screen_line_is_empty[screen_y + lines_to_copy - 1] ||
-                                         screen_line_is_empty[screen_y + lines_to_copy]))
+            while (lines_to_copy > 1 && (LINE_IS_REPEATED(y + lines_to_copy - 1) ||
+                                         LINE_IS_REPEATED(y + lines_to_copy)))
                 --lines_to_copy;
         }
 
@@ -372,29 +377,26 @@ static inline void write_update(const rg_surface_t *update)
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
-            if (i > 0 && screen_line_is_empty[screen_y])
+            if (i > 0 && LINE_IS_REPEATED(y))
             {
                 memcpy(line_buffer_ptr, line_buffer_ptr - draw_width, draw_width * 2);
                 line_buffer_ptr += draw_width;
             }
             else
             {
-                #define RENDER_LINE(PIXEL) { \
-                    for (size_t x = 0, x_acc = 0; x < width; ++x) { \
-                        uint16_t pixel = (PIXEL);\
-                        while (x_acc < screen_width) { \
-                            *line_buffer_ptr++ = pixel; \
-                            x_acc += x_inc; \
-                        } \
-                        x_acc -= screen_width; \
+                #define RENDER_LINE(PTR_TYPE, PIXEL) { \
+                    PTR_TYPE *buffer = (PTR_TYPE *)(data + map_viewport_to_source_y[y] * stride);\
+                    for (int xx = 0; xx < draw_width; ++xx) { \
+                        int x = map_viewport_to_source_x[xx]; \
+                        *line_buffer_ptr++ = (PIXEL); \
                     } \
                 }
                 if (format & RG_PIXEL_PALETTE)
-                    RENDER_LINE(palette[buffer.u8[x]])
+                    RENDER_LINE(uint8_t, palette[buffer[x]])
                 else if (format == RG_PIXEL_565_LE)
-                    RENDER_LINE((buffer.u16[x] << 8) | (buffer.u16[x] >> 8))
+                    RENDER_LINE(uint16_t, (buffer[x] << 8) | (buffer[x] >> 8))
                 else
-                    RENDER_LINE(buffer.u16[x])
+                    RENDER_LINE(uint16_t, buffer[x])
 
                 if (partial)
                 {
@@ -402,71 +404,52 @@ static inline void write_update(const rg_surface_t *update)
                 }
             }
 
-            if (screen_line_checksum[screen_y] != checksum)
+            if (screen_line_checksum[draw_top + y] != checksum)
             {
-                screen_line_checksum[screen_y] = checksum;
+                screen_line_checksum[draw_top + y] = checksum;
                 need_update = true;
             }
 
-            if (!screen_line_is_empty[++screen_y])
+            ++y;
+        }
+
+        if (filter_x && need_update)
+        {
+            for (int i = 0; i < lines_to_copy; ++i)
             {
-                buffer.u8 += stride;
-                ++y;
+                uint16_t *buffer = line_buffer + i * draw_width;
+                for (int x = 1; x < draw_width - 1; ++x)
+                {
+                    if (map_viewport_to_source_x[x] == map_viewport_to_source_x[x - 1])
+                    {
+                        buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
+                    }
+                }
+            }
+        }
+
+        if (filter_y && need_update)
+        {
+            int top = y - lines_to_copy;
+            for (int i = 1; i < lines_to_copy - 1; ++i)
+            {
+                if (LINE_IS_REPEATED(top + i))
+                {
+                    uint16_t *lineA = line_buffer + (i - 1) * draw_width;
+                    uint16_t *lineB = line_buffer + (i + 0) * draw_width;
+                    uint16_t *lineC = line_buffer + (i + 1) * draw_width;
+                    for (size_t x = 0; x < draw_width; ++x)
+                    {
+                        lineB[x] = blend_pixels(lineA[x], lineC[x]);
+                    }
+                }
             }
         }
 
         if (need_update)
         {
-            if (filter_y || filter_x)
-            {
-                const int top = screen_y - lines_to_copy;
-
-                for (int y = 0, fill_line = -1; y < lines_to_copy; y++)
-                {
-                    if (filter_y && y && screen_line_is_empty[top + y])
-                    {
-                        fill_line = y;
-                        continue;
-                    }
-
-                    // Filter X
-                    if (filter_x)
-                    {
-                        uint16_t *buffer = line_buffer + y * draw_width;
-                        for (int x = 0, frame_x = 0, prev_frame_x = -1, x_acc = 0; x < draw_width; ++x)
-                        {
-                            if (frame_x == prev_frame_x && x > 0 && x + 1 < draw_width)
-                            {
-                                buffer[x] = blend_pixels(buffer[x - 1], buffer[x + 1]);
-                            }
-                            prev_frame_x = frame_x;
-
-                            x_acc += x_inc;
-                            while (x_acc >= screen_width)
-                            {
-                                x_acc -= screen_width;
-                                ++frame_x;
-                            }
-                        }
-                    }
-
-                    // Filter Y
-                    if (filter_y && fill_line > 0)
-                    {
-                        uint16_t *lineA = line_buffer + (fill_line - 1) * draw_width;
-                        uint16_t *lineB = line_buffer + (fill_line + 0) * draw_width;
-                        uint16_t *lineC = line_buffer + (fill_line + 1) * draw_width;
-                        for (size_t x = 0; x < draw_width; ++x)
-                        {
-                            lineB[x] = blend_pixels(lineA[x], lineC[x]);
-                        }
-                        fill_line = -1;
-                    }
-                }
-            }
-
             int left = RG_SCREEN_MARGIN_LEFT + draw_left;
-            int top = RG_SCREEN_MARGIN_TOP + screen_y - lines_to_copy;
+            int top = RG_SCREEN_MARGIN_TOP + draw_top + y - lines_to_copy;
             if (top != window_top)
                 lcd_set_window(left, top, draw_width, lines_remaining);
             lcd_send_data(line_buffer, draw_width * lines_to_copy);
@@ -522,6 +505,10 @@ static void update_viewport_scaling(void)
         new_height = config.custom_height;
     }
 
+    // Everything works better when we use even dimensions!
+    new_width &= ~1;
+    new_height &= ~1;
+
     if (new_width > display.screen.width)
     {
         RG_LOGW("new_width too large: %d, cropping to %d", new_width, display.screen.width);
@@ -536,34 +523,13 @@ static void update_viewport_scaling(void)
 
     display.viewport.left = (display.screen.width - new_width) / 2;
     display.viewport.top = (display.screen.height - new_height) / 2;
-    display.viewport.x_inc = display.screen.width / (new_width / (double)src_width);
-    display.viewport.y_inc = display.screen.height / (new_height / (double)src_height);
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
-    memset(screen_line_is_empty, 0, sizeof(screen_line_is_empty));
 
-    int y_acc = (display.viewport.y_inc * display.viewport.top) % display.screen.height;
-    int prev = -1;
-
-    // Build boundary tables used by filtering
-    for (int y = 0, screen_y = display.viewport.top; y < src_height && screen_y < display.screen.height; ++screen_y)
-    {
-        screen_line_is_empty[screen_y] |= (prev == y);
-        prev = y;
-
-        y_acc += display.viewport.y_inc;
-        while (y_acc >= display.screen.height)
-        {
-            y_acc -= display.screen.height;
-            ++y;
-        }
-    }
-
-    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d x_inc:%d y_inc:%d\n", src_width, src_height,
-            src_width / (double)src_height, new_width, new_height, new_ratio, display.viewport.left,
-            display.viewport.top, display.viewport.x_inc, display.viewport.y_inc);
+    RG_LOGI("%dx%d@%.3f => %dx%d@%.3f x_pos:%d y_pos:%d\n", src_width, src_height, src_width / (double)src_height,
+            new_width, new_height, new_ratio, display.viewport.left, display.viewport.top);
 }
 
 static bool load_border_file(const char *filename)
@@ -901,7 +867,7 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    rg_task_create("rg_display", &display_task, NULL, 3 * 1024, RG_TASK_PRIORITY_6, 1);
+    rg_task_create("rg_display", &display_task, NULL, 4 * 1024, RG_TASK_PRIORITY_6, 1);
     if (config.border_file)
         load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");
