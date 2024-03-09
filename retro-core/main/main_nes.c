@@ -154,11 +154,11 @@ static void blit_screen(uint8 *bmp)
     // A rolling average should be used for autocrop == 1, it causes jitter in some games...
     // int crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     int crop_v = (overscan) ? nes->overscan : 0;
-    int crop_h = (autocrop) ? 16 : 8;
+    int crop_h = (autocrop) ? 8 : 0;
     // crop_h = (autocrop == 2) || (autocrop == 1 && nes->ppu->left_bg_counter > 210) ? 8 : 0;
     currentUpdate->width = NES_SCREEN_WIDTH - crop_h * 2;
     currentUpdate->height = NES_SCREEN_HEIGHT - crop_v * 2;
-    currentUpdate->offset = crop_v * currentUpdate->stride + crop_h;
+    currentUpdate->offset = crop_v * currentUpdate->stride + crop_h + 8;
     rg_display_submit(currentUpdate, 0);
 }
 
