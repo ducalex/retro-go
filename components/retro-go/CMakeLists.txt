@@ -21,9 +21,9 @@ component_compile_options(
     -Wno-unused-function
 )
 set_source_files_properties(
-    rg_audio.c rg_display.c
+    rg_audio.c rg_display.c rg_utils.c rg_surface.c
     PROPERTIES COMPILE_FLAGS
-    -O3
+    -O2
 )
 
 if (IDF_VERSION_MAJOR EQUAL 5)

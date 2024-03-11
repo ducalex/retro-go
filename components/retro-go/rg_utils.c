@@ -109,7 +109,7 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len)
  * This function is the SuperFastHash from:
  *  http://www.azillionmonkeys.com/qed/hash.html
 */
-uint32_t rg_hash(const char *data, size_t len)
+IRAM_ATTR uint32_t rg_hash(const char *data, size_t len)
 {
     #define get16bits(d) (*((const uint16_t *)(d)))
 
