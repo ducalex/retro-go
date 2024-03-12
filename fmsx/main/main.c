@@ -54,6 +54,21 @@ static const unsigned char KBDKeys[YKEYS][XKEYS] = {
     {'Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/', 0, 0},
     {'[', ']', ' ', ' ', ' ', ' ', ' ', '\\', '\'', 0, 0, 0}};
 
+static const char *BiosFolder = RG_BASE_PATH_BIOS "/msx";
+// We only check for absolutely essential files to avoid slowing down boot too much!
+static const char *BiosFiles[] = {
+    "MSX.ROM",
+    "MSX2.ROM",
+    "MSX2EXT.ROM",
+    // "MSX2P.ROM",
+    // "MSX2PEXT.ROM",
+    // "FMPAC.ROM",
+    "DISK.ROM",
+    "MSXDOS2.ROM",
+    // "PAINTER.ROM",
+    // "KANJI.ROM",
+};
+
 static inline void SubmitFrame(void)
 {
     int crop_v = CropPicture ? (ScanLines212 ? 8 : 18) : 0;
@@ -409,12 +424,25 @@ void app_main(void)
     KeyboardEmulation = rg_settings_get_number(NS_APP, "Input", 1);
     CropPicture = rg_settings_get_number(NS_APP, "Crop", 0);
 
+    for (size_t i = 0; i < RG_COUNT(BiosFiles); ++i)
+    {
+        char pathbuf[RG_PATH_MAX + 1];
+        snprintf(pathbuf, RG_PATH_MAX, "%s/%s", BiosFolder, BiosFiles[i]);
+        if (!rg_storage_exists(pathbuf))
+        {
+            char message[512];
+            snprintf(message, 512, "File: %s\nYou can find it at:\n%s",
+                        pathbuf, "https://fms.komkon.org/fMSX/");
+            rg_gui_alert("BIOS file missing!", message);
+        }
+    }
+
     if (app->bootFlags & RG_BOOT_RESUME)
     {
         PendingLoadSTA = rg_emu_get_path(RG_PATH_SAVE_STATE + app->saveSlot, app->romPath);
     }
 
-    char *argv[] = {"fmsx", "-skip", "50", "-home", RG_BASE_PATH_BIOS, "-joy", "1", NULL, NULL, NULL,};
+    char *argv[] = {"fmsx", "-skip", "50", "-home", BiosFolder, "-joy", "1", NULL, NULL, NULL,};
     int argc = RG_COUNT(argv) - 3;
 
     if (strcasecmp(rg_extension(app->romPath), "dsk") == 0)

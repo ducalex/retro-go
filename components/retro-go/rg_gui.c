@@ -1390,16 +1390,16 @@ void rg_gui_sysinfo_menu(void)
 
 void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
-    char build_ver[40], build_date[40], build_user[40], title[40];
+    const rg_app_t *app = rg_system_get_app();
 
     size_t extra_options_count = get_dialog_items_count(extra_options);
-
     rg_gui_option_t options[16 + extra_options_count];
     rg_gui_option_t *opt = &options[0];
 
-    *opt++ = (rg_gui_option_t){0, "Version", build_ver,  RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t){0, "Date   ", build_date, RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t){0, "By     ", build_user, RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "Version", app->version, RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "Date   ", app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "By     ", app->buildUser, RG_DIALOG_FLAG_MESSAGE, NULL};
+    *opt++ = (rg_gui_option_t){0, "App    ", app->name, RG_DIALOG_FLAG_MESSAGE, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
     *opt++ = (rg_gui_option_t){1000, "System information", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     for (size_t i = 0; i < extra_options_count; i++)
@@ -1408,16 +1408,9 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     *opt++ = (rg_gui_option_t){3000, "Debug", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-    const rg_app_t *app = rg_system_get_app();
-
-    snprintf(build_ver, sizeof(build_ver), "%s", app->version);
-    snprintf(build_date, sizeof(build_date), "%s", app->buildDate);
-    snprintf(build_user, sizeof(build_user), "%s", app->buildUser);
-    snprintf(title, sizeof(title), "About Retro-Go"); // , app->name
-
     while (true)
     {
-        switch (rg_gui_dialog(title, options, 4))
+        switch (rg_gui_dialog("About Retro-Go", options, 4))
         {
             case 1000:
                 rg_gui_sysinfo_menu();

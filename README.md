@@ -74,7 +74,8 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 - GB: `/retro-go/bios/gb_bios.bin`
 - GBC: `/retro-go/bios/gbc_bios.bin`
 - FDS: `/retro-go/bios/fds_bios.bin`
-- MSX: `/retro-go/bios/MSX.ROM` `/retro-go/bios/MSX2.ROM` `/retro-go/bios/MSX2EXT.ROM`
+- MSX: In folder `/retro-go/bios/msx/` put: `MSX.ROM` `MSX2.ROM` `MSX2EXT.ROM` `MSX2P.ROM` `MSX2PEXT.ROM` `FMPAC.ROM` `DISK.ROM` `MSXDOS2.ROM` `PAINTER.ROM` `KANJI.ROM`
+
 
 ## Game & Watch
 The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Game-Shrinker) and a tutorial can be [found here](https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef).
