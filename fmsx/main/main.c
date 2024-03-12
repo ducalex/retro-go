@@ -432,7 +432,7 @@ void app_main(void)
         {
             char message[512];
             snprintf(message, 512, "File: %s\nYou can find it at:\n%s",
-                        pathbuf, "https://fms.komkon.org/fMSX/");
+                        rg_relpath(pathbuf), "https://fms.komkon.org/fMSX/");
             rg_gui_alert("BIOS file missing!", message);
         }
     }
