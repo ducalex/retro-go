@@ -48,9 +48,4 @@ unsigned int InitAudio(unsigned int Rate,unsigned int Latency);
 void TrashAudio(void);
 int PauseAudio(int Switch);
 
-// Unused but needed because we define UNIX
-int UseSound, UseZoom, SyncFreq, UseEffects;
-int  ARGC;
-char **ARGV;
-
 #endif /* LIBUNIX_H */

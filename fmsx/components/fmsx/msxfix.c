@@ -1,3 +1,8 @@
+// Unused but needed because we define UNIX
+int UseSound, UseZoom, SyncFreq, UseEffects;
+int  ARGC;
+char **ARGV;
+
 #ifdef ESP_PLATFORM
 /**
  * esp-idf has no concept of a current working directory, which fMSX relies heavily upon.
