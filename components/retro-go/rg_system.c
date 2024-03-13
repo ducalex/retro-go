@@ -46,7 +46,7 @@ typedef struct
     void (*func)(void *arg);
     void *arg;
 #ifdef ESP_PLATFORM
-    TaskHandle_t *handle;
+    TaskHandle_t handle;
 #else
     SDL_threadID handle;
 #endif

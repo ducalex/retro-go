@@ -1,11 +1,14 @@
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include <rg_system.h>
 #include <string.h>
 
-#define AUDIO_SAMPLE_RATE (22050)
+#define AUDIO_SAMPLE_RATE (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
+static QueueHandle_t audioQueue;
 static rg_app_t *app;
 
 static int JoyState, LastKey, InMenu, InKeyboard;
@@ -329,19 +332,20 @@ void TrashAudio(void)
 
 unsigned int GetFreeAudio(void)
 {
-    return AUDIO_BUFFER_LENGTH * 2;
+    return 1024;
 }
 
 void PlayAllSound(int uSec)
 {
-    RenderAndPlayAudio(2 * uSec * AUDIO_SAMPLE_RATE / 1000000);
+    int64_t start = rg_system_timer();
+    unsigned int samples = 2 * uSec * AUDIO_SAMPLE_RATE / 1000000;
+    xQueueSend(audioQueue, &samples, 100);
+    FrameStartTime += rg_system_timer() - start;
 }
 
 unsigned int WriteAudio(sample *Data, unsigned int Length)
 {
-    int64_t start = rg_system_timer();
     rg_audio_submit((void *)Data, Length >> 1);
-    FrameStartTime += rg_system_timer() - start;
     return Length;
 }
 
@@ -372,6 +376,18 @@ static void event_handler(int event, void *arg)
     if (event == RG_EVENT_REDRAW)
     {
         SubmitFrame();
+    }
+}
+
+static void audioTask(void *arg)
+{
+    RG_LOGI("task started");
+    while (true)
+    {
+        unsigned int samples;
+        xQueuePeek(audioQueue, &samples, portMAX_DELAY);
+        RenderAndPlayAudio(samples);
+        xQueueReceive(audioQueue, &samples, portMAX_DELAY);
     }
 }
 
@@ -442,7 +458,15 @@ void app_main(void)
         PendingLoadSTA = rg_emu_get_path(RG_PATH_SAVE_STATE + app->saveSlot, app->romPath);
     }
 
-    char *argv[] = {"fmsx", "-skip", "50", "-home", BiosFolder, "-joy", "1", NULL, NULL, NULL,};
+    const char *argv[] = {
+        "fmsx",
+        "-ram", "2",
+        "-vram", "2",
+        "-skip", "50",
+        "-home", BiosFolder,
+        "-joy", "1",
+        NULL, NULL, NULL,
+    };
     int argc = RG_COUNT(argv) - 3;
 
     if (strcasecmp(rg_extension(app->romPath), "dsk") == 0)
@@ -451,8 +475,11 @@ void app_main(void)
     }
     argv[argc++] = app->romPath;
 
+    audioQueue = xQueueCreate(1, sizeof(unsigned int));
+    rg_task_create("audioTask", &audioTask, NULL, 4096, RG_TASK_PRIORITY_2, 1);
+
     RG_LOGI("fMSX start");
-    fmsx_main(argc, argv);
+    fmsx_main(argc, (char **)argv);
 
     RG_LOGI("fMSX ended");
     rg_system_exit();
