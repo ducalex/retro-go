@@ -104,6 +104,7 @@ typedef enum
     RG_EVENT_TYPE_POWER   = 0xF20000,
     RG_EVENT_TYPE_NETWORK = 0xF30000,
     RG_EVENT_TYPE_NETPLAY = 0xF40000,
+    RG_EVENT_TYPE_MENU    = 0xF50000,
     RG_EVENT_TYPE_MASK    = 0xFF0000,
 
     /* Events */
@@ -176,6 +177,7 @@ typedef struct
     bool isLauncher;
     bool isRelease;
     int logLevel;
+    int ledValue;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;
@@ -234,12 +236,24 @@ void rg_system_load_time(void);
 void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
+// typedef void rg_task_t;
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.
 void rg_task_delay(int ms);
 void rg_task_yield(void);
+
+// Wrapper for FreeRTOS queues, which are essentially inter-task communication primitives
+// Retro-Go uses them for locks and message passing. Not sure how we could easily replicate in SDL2 yet...
+typedef void rg_queue_t;
+rg_queue_t *rg_queue_create(size_t length, size_t itemSize);
+void rg_queue_free(rg_queue_t *queue);
+bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS);
+bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS);
+bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
+bool rg_queue_is_empty(rg_queue_t *queue);
+bool rg_queue_is_full(rg_queue_t *queue);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

@@ -5,10 +5,7 @@
 #include <string.h>
 
 #ifdef ESP_PLATFORM
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include <driver/gpio.h>
-#include <driver/spi_master.h>
 #ifdef RG_GPIO_LCD_BCKL
 #include <driver/ledc.h>
 #endif
@@ -18,7 +15,7 @@
 
 #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
-static QueueHandle_t display_task_queue;
+static rg_queue_t *display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_surface_t *osd;
@@ -40,6 +37,9 @@ static const char *SETTING_BORDER = "DispBorder";
 static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 
 #ifdef ESP_PLATFORM
+#include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
+#include <driver/spi_master.h>
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
@@ -550,14 +550,14 @@ static bool load_border_file(const char *filename)
 IRAM_ATTR
 static void display_task(void *arg)
 {
-    display_task_queue = xQueueCreate(1, sizeof(rg_surface_t *));
+    display_task_queue = rg_queue_create(1, sizeof(rg_surface_t *));
 
     while (1)
     {
         const rg_surface_t *update;
 
-        xQueuePeek(display_task_queue, &update, portMAX_DELAY);
-        // xQueueReceive(display_task_queue, &update, portMAX_DELAY);
+        rg_queue_peek(display_task_queue, &update, -1);
+        // rg_queue_receive(display_task_queue, &update, -1);
 
         // Received a shutdown request!
         if (update == (void *)-1)
@@ -578,12 +578,12 @@ static void display_task(void *arg)
 
         write_update(update);
 
-        xQueueReceive(display_task_queue, &update, portMAX_DELAY);
+        rg_queue_receive(display_task_queue, &update, -1);
 
         lcd_sync();
     }
 
-    vQueueDelete(display_task_queue);
+    rg_queue_free(display_task_queue);
     display_task_queue = NULL;
 }
 
@@ -704,7 +704,7 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
         display.changed = true;
     }
 
-    xQueueSend(display_task_queue, &update, portMAX_DELAY);
+    rg_queue_send(display_task_queue, &update, 1000);
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
@@ -713,9 +713,9 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 bool rg_display_sync(bool block)
 {
 #ifdef ESP_PLATFORM
-    while (block && uxQueueMessagesWaiting(display_task_queue))
+    while (block && !rg_queue_is_empty(display_task_queue))
         continue; // Wait until display queue is done
-    return uxQueueMessagesWaiting(display_task_queue) == 0;
+    return rg_queue_is_empty(display_task_queue);
 #else
     return true;
 #endif
@@ -803,7 +803,7 @@ void rg_display_clear(uint16_t color_le)
 void rg_display_deinit(void)
 {
     void *stop = (void *)-1;
-    xQueueSend(display_task_queue, &stop, portMAX_DELAY);
+    rg_queue_send(display_task_queue, &stop, 1000);
     // display_task_queue has len == 1. When xQueueSend returns, we know that the only
     // thing in it is our quit request which won't touch the LCD or SPI anymore
     // while (display_task_queue)

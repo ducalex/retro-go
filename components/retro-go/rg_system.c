@@ -9,7 +9,7 @@
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <freertos/queue.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
@@ -65,7 +65,7 @@ static struct
 {
     int64_t time_started;
     int32_t total_frames;
-    SemaphoreHandle_t lock;
+    rg_queue_t *lock;
     profile_frame_t frames[512];
 } *profile;
 #endif
@@ -77,7 +77,6 @@ static bool panicTraceCleared = false;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
-static int ledValue = -1;
 static bool exitCalled = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
@@ -431,7 +430,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
-    profile->lock = xSemaphoreCreateMutex();
+    profile->lock = rg_queue_create(1, 0);
 #endif
 
 #ifdef ESP_PLATFORM
@@ -446,7 +445,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
 #endif
 
-    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
+    rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
@@ -531,6 +530,45 @@ void rg_task_yield(void)
 #else
     SDL_PumpEvents();
 #endif
+}
+
+rg_queue_t *rg_queue_create(size_t length, size_t itemSize)
+{
+    return (rg_queue_t *)xQueueCreate(length, itemSize);
+}
+
+void rg_queue_free(rg_queue_t *queue)
+{
+    if (queue)
+        vQueueDelete((QueueHandle_t)queue);
+}
+
+bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueueSend((QueueHandle_t)queue, item, ticks) == pdTRUE;
+}
+
+bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
+}
+
+bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueuePeek((QueueHandle_t)queue, out, ticks) == pdTRUE;
+}
+
+bool rg_queue_is_empty(rg_queue_t *queue)
+{
+    return uxQueueMessagesWaiting((QueueHandle_t)queue) == 0;
+}
+
+bool rg_queue_is_full(rg_queue_t *queue)
+{
+    return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
 }
 
 void rg_system_load_time(void)
@@ -830,15 +868,15 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 void rg_system_set_led(int value)
 {
 #ifdef ESP_PLATFORM
-    if (RG_GPIO_LED > -1 && ledValue != value)
+    if (RG_GPIO_LED > -1 && app.ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
 #endif
-    ledValue = value;
+    app.ledValue = value;
 }
 
 int rg_system_get_led(void)
 {
-    return ledValue;
+    return app.ledValue;
 }
 
 void rg_system_set_log_level(rg_log_level_t level)
@@ -1207,8 +1245,8 @@ float rg_emu_get_speed(void)
 // We also need to add multi-core support. Currently it's not an issue
 // because all our profiled code runs on the same core.
 
-#define LOCK_PROFILE()   xSemaphoreTake(lock, pdMS_TO_TICKS(10000));
-#define UNLOCK_PROFILE() xSemaphoreGive(lock);
+#define LOCK_PROFILE()   rg_queue_receive(profile->lock, NULL, 10000)
+#define UNLOCK_PROFILE() rg_queue_send(lock, NULL, 0)
 
 NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
 {

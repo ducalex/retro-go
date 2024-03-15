@@ -4,25 +4,20 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ESP_PLATFORM
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
-#include <driver/gpio.h>
-#define CREATE_DEVICE_LOCK() audioDevLock = audioDevLock ?: xSemaphoreCreateMutex()
-#define ACQUIRE_DEVICE(timeout)                        \
-    ({                                                 \
-        int x = xSemaphoreTake(audioDevLock, timeout); \
-        if (!x)                                        \
-            RG_LOGE("Failed to acquire lock!\n");      \
-        x;                                             \
+#define ACQUIRE_DEVICE(timeout)                                     \
+    ({                                                              \
+        bool lock = rg_queue_receive(audioDevLock, NULL, timeout);  \
+        if (!lock)                                                  \
+            RG_LOGE("Failed to acquire lock!\n");                   \
+        lock;                                                       \
     })
-#define RELEASE_DEVICE() xSemaphoreGive(audioDevLock)
-static SemaphoreHandle_t audioDevLock;
+#define RELEASE_DEVICE() rg_queue_send(audioDevLock, NULL, 0)
+static rg_queue_t *audioDevLock;
+
+#ifdef ESP_PLATFORM
+#include <driver/gpio.h>
 #else
 #include <SDL2/SDL.h>
-#define CREATE_DEVICE_LOCK()
-#define ACQUIRE_DEVICE(timeout) (1)
-#define RELEASE_DEVICE()
 static SDL_AudioDeviceID audioDevice;
 #endif
 
@@ -71,7 +66,12 @@ void rg_audio_init(int sampleRate)
 {
     RG_ASSERT(audio.sink == NULL, "Audio sink already initialized!");
 
-    CREATE_DEVICE_LOCK();
+    if (!audioDevLock)
+    {
+        audioDevLock = rg_queue_create(1, 0);
+        RELEASE_DEVICE();
+    }
+
     ACQUIRE_DEVICE(1000);
 
     int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[0].type);
@@ -363,6 +363,11 @@ void rg_audio_set_volume(int percent)
     audio.volume = RG_MIN(RG_MAX(percent, 0), 100);
     rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, audio.volume);
     RG_LOGI("Volume set to %d%%\n", audio.volume);
+}
+
+bool rg_audio_get_mute(void)
+{
+    return audio.muted;
 }
 
 void rg_audio_set_mute(bool mute)

@@ -1,5 +1,3 @@
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
 #include <rg_system.h>
 #include <string.h>
 
@@ -8,7 +6,7 @@
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
-static QueueHandle_t audioQueue;
+static rg_queue_t *audioQueue;
 static rg_app_t *app;
 
 static int JoyState, LastKey, InMenu, InKeyboard;
@@ -339,7 +337,7 @@ void PlayAllSound(int uSec)
 {
     int64_t start = rg_system_timer();
     unsigned int samples = 2 * uSec * AUDIO_SAMPLE_RATE / 1000000;
-    xQueueSend(audioQueue, &samples, 100);
+    rg_queue_send(audioQueue, &samples, 100);
     FrameStartTime += rg_system_timer() - start;
 }
 
@@ -379,18 +377,6 @@ static void event_handler(int event, void *arg)
     }
 }
 
-static void audioTask(void *arg)
-{
-    RG_LOGI("task started");
-    while (true)
-    {
-        unsigned int samples;
-        xQueuePeek(audioQueue, &samples, portMAX_DELAY);
-        RenderAndPlayAudio(samples);
-        xQueueReceive(audioQueue, &samples, portMAX_DELAY);
-    }
-}
-
 static rg_gui_event_t crop_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -412,6 +398,18 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
     }
     strcpy(option->value, KeyboardEmulation ? "Keyboard" : "Joystick");
     return RG_DIALOG_VOID;
+}
+
+static void audioTask(void *arg)
+{
+    RG_LOGI("task started");
+    while (true)
+    {
+        unsigned int samples;
+        rg_queue_peek(audioQueue, &samples, -1);
+        RenderAndPlayAudio(samples);
+        rg_queue_receive(audioQueue, &samples, -1);
+    }
 }
 
 void app_main(void)
@@ -475,7 +473,7 @@ void app_main(void)
     }
     argv[argc++] = app->romPath;
 
-    audioQueue = xQueueCreate(1, sizeof(unsigned int));
+    audioQueue = rg_queue_create(1, sizeof(unsigned int));
     rg_task_create("audioTask", &audioTask, NULL, 4096, RG_TASK_PRIORITY_2, 1);
 
     RG_LOGI("fMSX start");
