@@ -1228,7 +1228,6 @@ static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
     {
         // TZ has inverted offset for whatever reason
         TZ[3] = TZ[3] == '-' ? '+' : '-';
-        printf("%s\n", TZ);
         for (size_t i = 0; i < RG_COUNT(utc_offsets); ++i)
         {
             if (strcmp(TZ, utc_offsets[i]) == 0)
@@ -1410,7 +1409,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     while (true)
     {
-        switch (rg_gui_dialog("About Retro-Go", options, 4))
+        switch (rg_gui_dialog("About Retro-Go", options, 5))
         {
             case 1000:
                 rg_gui_sysinfo_menu();
