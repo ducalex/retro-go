@@ -177,12 +177,15 @@ typedef struct
     bool isLauncher;
     bool isRelease;
     int logLevel;
-    int ledValue;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
+
+    // Volatile values
+    int exitCalled;
+    int ledValue;
 } rg_app_t;
 
 typedef struct

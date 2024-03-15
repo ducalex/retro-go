@@ -77,7 +77,6 @@ static bool panicTraceCleared = false;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
-static bool exitCalled = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
@@ -177,7 +176,7 @@ static void system_monitor_task(void *arg)
 
     rg_task_delay(2000);
 
-    while (!exitCalled)
+    while (!app.exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
         rtcValue = time(NULL);
@@ -665,6 +664,7 @@ void rg_system_event(int event, void *arg)
 
 static void shutdown_cleanup(void)
 {
+    app.exitCalled = true;
     rg_display_clear(C_BLACK);                // Let the user know that something is happening
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
@@ -679,8 +679,7 @@ static void shutdown_cleanup(void)
 
 void rg_system_shutdown(void)
 {
-    RG_LOGI("Halting system.\n");
-    exitCalled = true;
+    RG_LOGW("Halting system!");
     shutdown_cleanup();
 #ifdef ESP_PLATFORM
     vTaskSuspendAll();
@@ -693,8 +692,7 @@ void rg_system_shutdown(void)
 
 void rg_system_sleep(void)
 {
-    RG_LOGI("Going to sleep!\n");
-    exitCalled = true;
+    RG_LOGW("Going to sleep!");
     shutdown_cleanup();
     rg_task_delay(1000);
 #ifdef ESP_PLATFORM
@@ -706,8 +704,7 @@ void rg_system_sleep(void)
 
 void rg_system_restart(void)
 {
-    RG_LOGI("Restarting system.\n");
-    exitCalled = true;
+    RG_LOGW("Restarting system!");
     shutdown_cleanup();
 #ifdef ESP_PLATFORM
     esp_restart();
@@ -718,14 +715,13 @@ void rg_system_restart(void)
 
 void rg_system_exit(void)
 {
-    RG_LOGI("Exiting application.\n");
+    RG_LOGW("Exiting application!");
     rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
 }
 
 void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
 {
-    RG_LOGI("Switching to app %s (%s)!\n", partition ?: "-", name ?: "-");
-    exitCalled = true;
+    RG_LOGI("Switching to app %s (%s)", partition ?: "-", name ?: "-");
 
     if (app.initialized)
     {
