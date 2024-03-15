@@ -185,6 +185,13 @@ rg_surface_t *rg_surface_convert(const rg_surface_t *source, int new_width, int 
     return dest;
 }
 
+bool rg_surface_fill(rg_surface_t *dest, const rg_rect_t *rect, rg_color_t color)
+{
+    CHECK_SURFACE(dest, false);
+    //
+    return true;
+}
+
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags)
 {
     RG_ASSERT(data && data_len >= 16, "bad param");

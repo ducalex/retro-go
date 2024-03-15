@@ -21,6 +21,9 @@ typedef enum
 
 #define RG_PIXEL_GET_SIZE(format) ((format & RG_PIXEL_PALETTE) ? 1 : (((format) & RG_PIXEL_FORMAT) == RG_PIXEL_888 ? 3 : 2))
 
+// color must accept 0-0xFFFF and -1 (transparent)
+typedef int rg_color_t;
+
 typedef struct
 {
     int top, left;
@@ -45,6 +48,7 @@ rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);
 void rg_surface_free(rg_surface_t *surface);
 bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, rg_surface_t *dest,
                      const rg_rect_t *dest_rect, bool scale);
+bool rg_surface_fill(rg_surface_t *dest, const rg_rect_t *rect, rg_color_t color);
 rg_surface_t *rg_surface_convert(const rg_surface_t *source, int new_width, int new_height, int new_format);
 #define rg_surface_resize(source, new_width, new_height) rg_surface_convert(source, new_width, new_height, RG_PIXEL_565_LE)
 bool rg_surface_save_image_file(const rg_surface_t *source, const char *filename, int width, int height);

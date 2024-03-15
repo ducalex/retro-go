@@ -56,9 +56,6 @@ typedef struct
     uint8_t data[];
 } rg_font_t;
 
-// color must accept 0-0xFFFF and -1 (transparent)
-typedef int rg_color_t;
-
 typedef struct
 {
     intptr_t arg;
