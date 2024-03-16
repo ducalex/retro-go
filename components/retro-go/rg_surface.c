@@ -23,6 +23,25 @@
         return retval;                                                                                     \
     }
 
+static bool create_window(const rg_surface_t *parent, const rg_rect_t *rect, rg_surface_t *out)
+{
+    if (!parent || !rect || !out)
+        return false;
+    // FIXME: Support negative values for left/top
+    if (rect->width < 1 || rect->height < 1 || rect->left >= parent->width || rect->top >= parent->height)
+    {
+        RG_LOGW("Rectangle does not overlap with surface!");
+        return false;
+    }
+    memcpy(out, parent, sizeof(rg_surface_t));
+    out->data += (rect->top * out->stride) + (rect->left * RG_PIXEL_GET_SIZE(out->format));
+    out->width = RG_MIN(rect->width, out->width - rect->left);
+    out->height = RG_MIN(rect->height, out->height - rect->top);
+    out->free_data = false;
+    out->free_palette = false;
+    return true;
+}
+
 rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags)
 {
     size_t pixel_size = RG_PIXEL_GET_SIZE(format);
@@ -35,18 +54,26 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
         RG_LOGE("Surface allocation failed!");
         return NULL;
     }
+    memset(surface, 0, sizeof(rg_surface_t));
     surface->width = width;
     surface->height = height;
     surface->stride = width * pixel_size;
-    surface->offset = 0;
     surface->format = format;
-    surface->data = data_size ? ((void *)surface + sizeof(rg_surface_t)) : NULL;
-    surface->palette = palette_size ? ((void *)surface + sizeof(rg_surface_t) + data_size) : NULL;
+    if (data_size)
+        surface->data = (void *)surface + sizeof(rg_surface_t);
+    if (palette_size)
+        surface->palette = (void *)surface + sizeof(rg_surface_t) + data_size;
     return surface;
 }
 
 void rg_surface_free(rg_surface_t *surface)
 {
+    if (!surface)
+        return;
+    if (surface->free_data)
+        free(surface->data);
+    if (surface->free_palette)
+        free(surface->palette);
     free(surface);
 }
 
@@ -57,15 +84,21 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
     CHECK_SURFACE(source, false);
     CHECK_SURFACE(dest, false);
 
-    int copy_width = dest->width;
-    int copy_height = dest->height;
-    int transparency = -1;
-
     if (dest->palette && (!source->palette || memcmp(source->palette, dest->palette, 512) != 0))
     {
         RG_LOGE("Copying to a paletted surface can only be done from a source surface with an identical palette!");
         return false;
     }
+
+    rg_surface_t temp1, temp2;
+    if (create_window(source, source_rect, &temp1))
+        source = &temp1;
+    if (create_window(dest, dest_rect, &temp2))
+        dest = &temp2;
+
+    int copy_width = dest->width;
+    int copy_height = dest->height;
+    int transparency = -1;
 
     if (source->width == copy_width && source->height == copy_height)
     {
@@ -123,8 +156,8 @@ bool rg_surface_copy(const rg_surface_t *source, const rg_rect_t *source_rect, r
     {
         for (int y = 0; y < copy_height; ++y)
         {
-            const uint8_t *src = source->data + source->offset + (y * source->stride); // + source_rect left
-            uint8_t *dst = dest->data + dest->offset + (y * dest->stride); // + dest_rect left
+            const uint8_t *src = source->data + source->offset + (y * source->stride);
+            uint8_t *dst = dest->data + dest->offset + (y * dest->stride);
             memcpy(dst, src, copy_width * RG_PIXEL_GET_SIZE(dest->format));
         }
     }

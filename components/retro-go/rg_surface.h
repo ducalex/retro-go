@@ -37,13 +37,14 @@ typedef struct
     int format;
     uint16_t *palette;
     void *data;
+    bool free_data;
+    bool free_palette;
 } rg_surface_t;
 
 // rg_image_t always contains a RG_PIXEL_565_LE surface
 typedef rg_surface_t rg_image_t;
 
 rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags);
-rg_surface_t *rg_surface_create_window(rg_surface_t *parent, const rg_rect_t *rect);
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags);
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);
 void rg_surface_free(rg_surface_t *surface);
