@@ -236,6 +236,8 @@ void sms_reset(void)
       coleco.keypad[0] = 0xf0;
       coleco.keypad[1] = 0xf0;
       coleco.pio_mode  = 0x00;
+      coleco.port53 = 0x00;
+      coleco.port7F = 0xFF;
 
       break;
     }
