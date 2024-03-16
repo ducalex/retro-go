@@ -26,7 +26,7 @@ typedef int rg_color_t;
 
 typedef struct
 {
-    int top, left;
+    int left, top;
     int width, height;
 } rg_rect_t;
 
@@ -43,6 +43,7 @@ typedef struct
 typedef rg_surface_t rg_image_t;
 
 rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t alloc_flags);
+rg_surface_t *rg_surface_create_window(rg_surface_t *parent, const rg_rect_t *rect);
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags);
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags);
 void rg_surface_free(rg_surface_t *surface);
