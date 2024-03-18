@@ -152,7 +152,7 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg);
 void gui_resize_list(tab_t *tab, int new_size);
 listbox_item_t *gui_get_selected_item(tab_t *tab);
 
-void gui_init(void);
+void gui_init(bool cold_boot);
 void gui_invalidate(void);
 void gui_update_theme(void);
 void gui_save_config(void);

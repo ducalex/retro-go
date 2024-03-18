@@ -32,7 +32,7 @@ static int max_visible_lines(const tab_t *tab, int *_line_height)
     return (gui.height - (HEADER_HEIGHT + 6) - (tab->navpath ? line_height : 0)) / line_height;
 }
 
-void gui_init(void)
+void gui_init(bool cold_boot)
 {
     gui = (retro_gui_t){
         .selected_tab = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
@@ -44,13 +44,11 @@ void gui_init(void)
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
+        .surface      = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW),
     };
-    // Always enter browse mode when leaving an emulator
-    gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
-                 (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
+    // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
+    gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
     gui_update_theme();
-
-    gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
