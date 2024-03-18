@@ -160,7 +160,6 @@ typedef struct
     char name[32];
     char version[32];
     char buildDate[32];
-    char buildUser[32];
     char buildTool[32];
     const char *configNs;
     const char *bootArgs;
@@ -175,6 +174,7 @@ typedef struct
     bool watchdog;
     bool lowMemoryMode;
     bool isLauncher;
+    // bool isOfficial;
     bool isRelease;
     int logLevel;
     int saveSlot;
@@ -285,7 +285,7 @@ float rg_emu_get_speed(void);
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
-#ifndef RG_RELEASE
+#if RG_BUILD_TYPE != 1
 #define RG_LOGV(x, ...) rg_system_log(RG_LOG_VERBOSE, RG_LOG_TAG, x, ## __VA_ARGS__)
 #else
 #define RG_LOGV(x, ...)

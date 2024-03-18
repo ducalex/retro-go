@@ -196,12 +196,13 @@ def clean_app(app):
     print("Done.\n")
 
 
-def build_app(app, device_type, with_profiling=False, no_networking=False):
+def build_app(app, device_type, with_profiling=False, no_networking=False, is_release=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     args = ["idf.py", "app"]
-    args.append(f"-DRG_PROJECT_VERSION={PROJECT_VER}")
+    args.append(f"-DRG_BUILD_VERSION={PROJECT_VER}")
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
+    args.append(f"-DRG_BUILD_TYPE={1 if is_release else 0}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
     run(args, cwd=os.path.join(os.getcwd(), app))
@@ -337,7 +338,7 @@ try:
     if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
         print("=== Step: Building ===\n")
         for app in apps:
-            build_app(app, args.target, command == "profile", args.no_networking)
+            build_app(app, args.target, command == "profile", args.no_networking, command == "release")
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")

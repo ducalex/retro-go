@@ -42,8 +42,12 @@ if(RG_ENABLE_PROFILING)
     component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
-if(RG_PROJECT_VERSION)
-    component_compile_options(-DRG_PROJECT_VERSION="${RG_PROJECT_VERSION}")
+if(RG_BUILD_VERSION)
+    component_compile_options(-DRG_BUILD_VERSION="${RG_BUILD_VERSION}")
+endif()
+
+if(RG_BUILD_TYPE)
+    component_compile_options(-DRG_BUILD_TYPE=${RG_BUILD_TYPE})
 endif()
 
 set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")

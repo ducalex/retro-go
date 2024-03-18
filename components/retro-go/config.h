@@ -43,15 +43,31 @@
 #endif
 
 #ifndef RG_PROJECT_NAME
-#define RG_PROJECT_NAME "unknown"
+#define RG_PROJECT_NAME "Retro-Go"
+#endif
+
+#ifndef RG_PROJECT_APP
+#define RG_PROJECT_APP "unknown"
 #endif
 
 #ifndef RG_PROJECT_VERSION
-#define RG_PROJECT_VERSION "unknown"
+#define RG_PROJECT_VERSION RG_BUILD_VERSION
 #endif
 
 #ifndef RG_PROJECT_AUTHOR
 #define RG_PROJECT_AUTHOR "ducalex"
+#endif
+
+#ifndef RG_PROJECT_WEBSITE
+#define RG_PROJECT_WEBSITE "https://github.com/ducalex/retro-go"
+#endif
+
+#ifndef RG_PROJECT_RELEASES_URL
+#define RG_PROJECT_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
+#endif
+
+#ifndef RG_BUILD_VERSION
+#define RG_BUILD_VERSION "unknown"
 #endif
 
 #ifndef RG_BUILD_TIME
@@ -61,10 +77,6 @@
 
 #ifndef RG_BUILD_DATE
 #define RG_BUILD_DATE __DATE__ " " __TIME__
-#endif
-
-#ifndef RG_BUILD_USER
-#define RG_BUILD_USER "ducalex"
 #endif
 
 #ifndef RG_BUILD_TOOL

@@ -1,12 +1,10 @@
-#include "rg_system.h"
+#include <rg_system.h>
 #include "gui.h"
 
 #ifdef RG_ENABLE_NETWORKING
 #include <malloc.h>
 #include <string.h>
 #include <cJSON.h>
-
-#define GITHUB_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
 
 #if defined(RG_TARGET_MRGC_G32)
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
@@ -143,7 +141,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 void updater_show_dialog(void)
 {
-    cJSON *releases_json = fetch_json(GITHUB_RELEASES_URL);
+    cJSON *releases_json = fetch_json(RG_PROJECT_RELEASES_URL);
     if (!releases_json)
     {
         rg_gui_alert("Connection failed", "Make sure that you are online!");

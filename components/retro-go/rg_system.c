@@ -266,7 +266,7 @@ static void enter_recovery_mode(void)
             rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
         case 2:
         default:
-            rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
+            rg_system_exit();
         }
     }
 }
@@ -311,12 +311,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
 
     app = (rg_app_t){
-        .name = RG_PROJECT_NAME,
+        .name = RG_PROJECT_APP,
         .version = RG_PROJECT_VERSION,
         .buildDate = RG_BUILD_DATE,
-        .buildUser = RG_BUILD_USER,
         .buildTool = RG_BUILD_TOOL,
-        .configNs = RG_PROJECT_NAME,
+        .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
@@ -328,7 +327,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .tickTimeout = 3000000,
         .watchdog = true,
         .lowMemoryMode = false,
-    #ifdef RG_RELEASE
+    #if RG_BUILD_TYPE == 1
         .isRelease = true,
         .logLevel = RG_LOG_INFO,
     #else
