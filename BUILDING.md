@@ -34,6 +34,8 @@ There are generally two active git branches on retro-go:
 For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
 1. `./rg_tool.py build-fw launcher prboom-go`
 
+Note that the app named `retro-core` contains the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these emulators cannot be selected individually. The reason for the bundling is simply size, together they account for a mere 700KB instead of almost 3MB when they were built separately.
+
 
 ## Build, flash, and monitor individual apps for faster development:
 It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
