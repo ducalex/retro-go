@@ -86,33 +86,32 @@ int ProcessEvents(int Wait)
 
     uint32_t joystick = rg_input_read_gamepad();
 
-    if (joystick & (RG_KEY_MENU | RG_KEY_OPTION))
+    if (joystick == RG_KEY_MENU)
     {
-        if (joystick & RG_KEY_MENU)
-            rg_gui_game_menu();
-        else
-            rg_gui_options_menu();
+        rg_gui_game_menu();
         return 0;
     }
-
-    if (!InMenu && joystick == RG_KEY_SELECT)
+    else if (joystick == RG_KEY_OPTION)
     {
-        InMenu = true;
-        rg_audio_set_mute(true);
-        MenuMSX();
-        rg_audio_set_mute(false);
-        rg_input_wait_for_key(RG_KEY_ANY, false, 500);
-        InMenu = false;
+        rg_gui_options_menu();
         return 0;
     }
-
-    if (joystick == RG_KEY_START)
+    else if (joystick == RG_KEY_SELECT)
     {
         InKeyboard = !InKeyboard;
         rg_input_wait_for_key(RG_KEY_ANY, false, 500);
     }
 
-    if (InMenu)
+    if (InMenu == 2)
+    {
+        InMenu = 1;
+        rg_audio_set_mute(true);
+        MenuMSX();
+        rg_audio_set_mute(false);
+        rg_input_wait_for_key(RG_KEY_ANY, false, 500);
+        InMenu = 0;
+    }
+    else if (InMenu)
     {
         if (joystick == RG_KEY_LEFT)
             LastKey = CON_LEFT;
@@ -400,6 +399,16 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t fmsx_menu_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        InMenu = 2;
+        return RG_DIALOG_CANCEL;
+    }
+    return RG_DIALOG_VOID;
+}
+
 static void audioTask(void *arg)
 {
     RG_LOGI("task started");
@@ -424,6 +433,7 @@ void app_main(void)
     const rg_gui_option_t options[] = {
         {0, "Input", "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
         {0, "Crop ", "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
+        {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
         RG_DIALOG_END,
     };
 
