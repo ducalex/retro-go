@@ -8,6 +8,7 @@ register_component()
 # but I guess we'll have to live with it in at least the prboom-go module...
 
 rg_setup_compile_options(
+    -Wno-error=address
     -Wno-misleading-indentation
     -Wno-format-overflow
     -Wno-char-subscripts

@@ -26,12 +26,12 @@ typedef struct
     R.Right = MIN(A.Right, B.Right); \
 }
 
-static int32_t IntCompare(const void* d1, const void* d2)
+static int IntCompare(const void* d1, const void* d2)
 {
    return *(uint32_t*) d1 - *(uint32_t*) d2;
 }
 
-static int32_t BandCompare(const void* d1, const void* d2)
+static int BandCompare(const void* d1, const void* d2)
 {
    return ((Band*) d1)->Left  - ((Band*) d2)->Left;
 }

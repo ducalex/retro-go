@@ -13,6 +13,12 @@
 #include "memmap.h"
 #include "cpuexec.h"
 
+#define CLIP16(v) \
+(v) = (((v) <= -32768) ? -32768 : (((v) >= 32767) ? 32767 : (v)))
+
+#define CLIP8(v) \
+(v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
+
 static struct {
    int32_t wave[SOUND_BUFFER_SIZE];
    int32_t Echo [24000];
@@ -95,12 +101,6 @@ static const uint32_t IncreaseRate [32] =
 
 #define VOL_DIV16 0x0080
 #define ENVX_SHIFT 24
-
-#define CLIP16(v) \
-(v) = (((v) <= -32768) ? -32768 : (((v) >= 32767) ? 32767 : (v)))
-
-#define CLIP8(v) \
-(v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
 
 /* F is channel's current frequency and M is the 16-bit modulation waveform
  * from the previous channel multiplied by the current envelope volume level. */
