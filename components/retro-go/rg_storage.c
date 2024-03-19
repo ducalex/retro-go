@@ -70,13 +70,12 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 
 void rg_storage_init(void)
 {
-    if (disk_mounted)
-        rg_storage_deinit();
-
-    int error_code = -1;
+    RG_ASSERT(!disk_mounted, "Storage already initialized!");
+    int error_code = 0;
 
 #if RG_STORAGE_DRIVER == 0 // Host (stdlib)
 
+    disk_mounted = true;
     error_code = 0;
 
 #elif RG_STORAGE_DRIVER == 1 // SDSPI
@@ -87,8 +86,6 @@ void rg_storage_init(void)
     host_config.do_transaction = &sdcard_do_transaction;
     esp_err_t err;
 
-// Starting with 4.2.0 we have to initialize the SPI bus ourselves
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 2, 0)
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
     slot_config.host_id = RG_STORAGE_HOST;
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
@@ -101,16 +98,7 @@ void rg_storage_init(void)
     };
     err = spi_bus_initialize(RG_STORAGE_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK) // check but do not abort, let esp_vfs_fat_sdspi_mount decide
-        RG_LOGE("SPI bus init failed (0x%x)\n", err);
-#else
-    sdspi_slot_config_t slot_config = SDSPI_SLOT_CONFIG_DEFAULT();
-    slot_config.gpio_miso = RG_GPIO_SDSPI_MISO;
-    slot_config.gpio_mosi = RG_GPIO_SDSPI_MOSI;
-    slot_config.gpio_sck = RG_GPIO_SDSPI_CLK;
-    slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
-    slot_config.dma_channel = 1;
-    #define esp_vfs_fat_sdspi_mount esp_vfs_fat_sdmmc_mount
-#endif
+        RG_LOGW("SPI bus init failed (0x%x)", err);
 
     esp_vfs_fat_mount_config_t mount_config = {.max_files = 8};
 
@@ -121,6 +109,7 @@ void rg_storage_init(void)
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
         err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     }
+    disk_mounted = (err == ESP_OK);
     error_code = err;
 
 #elif RG_STORAGE_DRIVER == 2 // SDMMC
@@ -150,17 +139,20 @@ void rg_storage_init(void)
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
         err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
     }
+    disk_mounted = (err == ESP_OK);
     error_code = err;
 
 #elif RG_STORAGE_DRIVER == 3 // USB OTG
 
     #warning "USB OTG isn't available on your SOC"
+    disk_mounted = false;
     error_code = -1;
 
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
     esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle);
+    disk_mounted = (err == ESP_OK);
     error_code = err;
 
 #else
@@ -169,21 +161,16 @@ void rg_storage_init(void)
 
 #endif
 
-    if (!error_code)
-        RG_LOGI("Storage mounted at %s. driver=%d\n", RG_STORAGE_ROOT, RG_STORAGE_DRIVER);
+    if (disk_mounted)
+        RG_LOGI("Storage mounted at %s. driver=%d", RG_STORAGE_ROOT, RG_STORAGE_DRIVER);
     else
-        RG_LOGE("Storage mounting failed. driver=%d, err=0x%x\n", RG_STORAGE_DRIVER, error_code);
-
-    disk_mounted = !error_code;
+        RG_LOGE("Storage mounting failed! driver=%d, err=0x%x", RG_STORAGE_DRIVER, error_code);
 }
 
 void rg_storage_deinit(void)
 {
     if (!disk_mounted)
-    {
-        RG_LOGW("Nothing to do.\n");
         return;
-    }
 
     rg_storage_commit();
 
@@ -191,13 +178,14 @@ void rg_storage_deinit(void)
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
     esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-    error_code = err;
+    if (err != ESP_OK)
+        error_code = err;
 #endif
 
-    if (!error_code)
-        RG_LOGI("Storage unmounted.\n");
+    if (error_code)
+        RG_LOGE("Storage unmounting failed. err=0x%x", error_code);
     else
-        RG_LOGE("Storage unmounting failed. err=0x%x\n", error_code);
+        RG_LOGI("Storage unmounted.");
 
     disk_mounted = false;
 }

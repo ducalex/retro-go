@@ -138,7 +138,7 @@ static void audioTask(void *arg)
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
             rg_task_yield();
-        psg_update((void*)audioBuffer, numSamples, 0xFF);
+        psg_update((int16_t *)audioBuffer, numSamples, 0xFF);
         rg_audio_submit(audioBuffer, numSamples);
     }
 }

@@ -1370,9 +1370,10 @@ void rg_gui_sysinfo_menu(void)
     snprintf(uptime, 32, "%ds", stats.uptime);
     snprintf(storage_str, 32, "%s", "N/A");
 
-#ifdef RG_ENABLE_NETWORKING
     rg_network_t net = rg_network_get_info();
-    if (net.state == RG_NETWORK_CONNECTED)
+    if (net.state == RG_NETWORK_DISABLED)
+        snprintf(network_str, 64, "%s", "not available");
+    else if (net.state == RG_NETWORK_CONNECTED)
         snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
     else if (net.state == RG_NETWORK_CONNECTING)
         snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
@@ -1380,9 +1381,6 @@ void rg_gui_sysinfo_menu(void)
         snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
     else
         snprintf(network_str, 64, "%s", "disconnected");
-#else
-    strcpy(network_str, "No adapter");
-#endif
 
     rg_gui_dialog("System Information", options, -1);
 }

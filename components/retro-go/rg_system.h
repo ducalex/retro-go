@@ -16,7 +16,9 @@ extern "C" {
 #include <esp_idf_version.h>
 #include <esp_heap_caps.h>
 #include <esp_attr.h>
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
+#error "Retro-Go requires ESP-IDF version 4.2.0 or newer!"
+#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
 #endif
 #else

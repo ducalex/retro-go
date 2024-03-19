@@ -24,7 +24,7 @@ typedef struct
     // } methods;
 } rg_audio_sink_t;
 
-typedef struct __attribute__((packed))
+typedef struct // __attribute__((packed))
 {
     int16_t left;
     int16_t right;
