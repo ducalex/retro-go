@@ -1181,6 +1181,16 @@ static rg_gui_event_t custom_zoom_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t overclock_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV)
+        rg_system_set_overclock(rg_system_get_overclock() - 1);
+    else if (event == RG_DIALOG_NEXT)
+        rg_system_set_overclock(rg_system_get_overclock() + 1);
+    sprintf(option->value, "%dMhz", 240 + (rg_system_get_overclock() * 40));
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
@@ -1450,6 +1460,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
+        {0, "Overclock", "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
         {1, "Reboot to firmware", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Clear cache    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, "Save screenshot", NULL, RG_DIALOG_FLAG_NORMAL, NULL},

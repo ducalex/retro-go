@@ -906,7 +906,7 @@ void rg_system_set_overclock(int level)
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
 
     uint8_t div_ref = 0;
-    uint8_t div7_0 = 32 + level * 8;
+    uint8_t div7_0 = (level + 4) * 8;
     uint8_t div10_8 = 0;
     uint8_t lref = 0;
     uint8_t dcur = 6;
@@ -936,8 +936,11 @@ void rg_system_set_overclock(int level)
         BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
         BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
     }
-
-    app.overclock = level;
+    else if (level < -4 || level > 3)
+    {
+        RG_LOGW("Invalid level %d, min:-4 max:3", level);
+        return;
+    }
 
     RG_LOGW(" ");
     RG_LOGW("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
@@ -950,6 +953,7 @@ void rg_system_set_overclock(int level)
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
 
+    RG_LOGW("Overclock applied!");
 #if 0
     extern uint64_t esp_rtc_get_time_us(void);
     uint64_t start = esp_rtc_get_time_us();
@@ -962,6 +966,8 @@ void rg_system_set_overclock(int level)
 
     // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
 #endif
+
+    app.overclock = level;
 }
 
 int rg_system_get_overclock(void)
