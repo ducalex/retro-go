@@ -49,6 +49,7 @@ void gui_init(bool cold_boot)
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
     gui_update_theme();
+    gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
