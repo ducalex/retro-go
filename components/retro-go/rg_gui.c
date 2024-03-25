@@ -1406,19 +1406,19 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     *opt++ = (rg_gui_option_t){0, "Version", (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL};
     *opt++ = (rg_gui_option_t){0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t){0, "By     ", (char *)RG_PROJECT_AUTHOR, RG_DIALOG_FLAG_MESSAGE, NULL};
     *opt++ = (rg_gui_option_t){0, "App    ", (char *)app->name, RG_DIALOG_FLAG_MESSAGE, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
+    *opt++ = (rg_gui_option_t){4000, "Credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     *opt++ = (rg_gui_option_t){1000, "System information", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     for (size_t i = 0; i < extra_options_count; i++)
         *opt++ = extra_options[i];
     *opt++ = (rg_gui_option_t){2000, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t){3000, "Debug", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+    *opt++ = (rg_gui_option_t){3000, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
     while (true)
     {
-        switch (rg_gui_dialog("About Retro-Go", options, 5))
+        switch (rg_gui_dialog("About Retro-Go", options, 4))
         {
             case 1000:
                 rg_gui_sysinfo_menu();
@@ -1433,6 +1433,10 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
                 break;
             case 3000:
                 rg_gui_debug_menu(NULL);
+                break;
+            case 4000:
+                // FIXME: This should probably be a regular dialog so that it's scrollable!
+                rg_gui_alert("Credits", RG_PROJECT_CREDITS);
                 break;
             default:
                 return;
