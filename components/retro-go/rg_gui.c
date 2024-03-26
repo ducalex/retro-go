@@ -1355,88 +1355,49 @@ void rg_gui_options_menu(void)
     rg_audio_set_mute(false);
 }
 
-void rg_gui_sysinfo_menu(void)
-{
-    char screen_str[32], network_str[64], memory_str[32];
-    char storage_str[32], uptime[32];
-
-    const rg_gui_option_t options[] = {
-        {0, "Console", RG_TARGET_NAME, RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Screen ", screen_str,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Memory ", memory_str,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Network", network_str,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Storage", storage_str,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Uptime ", uptime,         RG_DIALOG_FLAG_NORMAL, NULL},
-        RG_DIALOG_SEPARATOR,
-        {0, "Close  ", NULL,           RG_DIALOG_FLAG_NORMAL, NULL},
-        RG_DIALOG_END
-    };
-
-    const rg_display_t *display = rg_display_get_info();
-    rg_stats_t stats = rg_system_get_counters();
-
-    snprintf(screen_str, 32, "%dx%d (%d)", display->screen.width, display->screen.height, display->screen.format);
-    snprintf(memory_str, 32, "%dKB + %dKB", stats.totalMemoryInt / 1024, stats.totalMemoryExt / 1024);
-    snprintf(uptime, 32, "%ds", stats.uptime);
-    snprintf(storage_str, 32, "%s", "N/A");
-
-    rg_network_t net = rg_network_get_info();
-    if (net.state == RG_NETWORK_DISABLED)
-        snprintf(network_str, 64, "%s", "not available");
-    else if (net.state == RG_NETWORK_CONNECTED)
-        snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
-    else if (net.state == RG_NETWORK_CONNECTING)
-        snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
-    else if (net.name[0])
-        snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
-    else
-        snprintf(network_str, 64, "%s", "disconnected");
-
-    rg_gui_dialog("System Information", options, -1);
-}
-
 void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
     const rg_app_t *app = rg_system_get_app();
 
-    size_t extra_options_count = get_dialog_items_count(extra_options);
-    rg_gui_option_t options[16 + extra_options_count];
-    rg_gui_option_t *opt = &options[0];
-
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
-    *opt++ = (rg_gui_option_t){0, "Version", (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t){0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t){0, "App    ", (char *)app->name, RG_DIALOG_FLAG_MESSAGE, NULL};
-    *opt++ = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
-    *opt++ = (rg_gui_option_t){4000, "Credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t){1000, "System information", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-    for (size_t i = 0; i < extra_options_count; i++)
-        *opt++ = extra_options[i];
-    *opt++ = (rg_gui_option_t){2000, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t){3000, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
+    rg_gui_option_t options[20] = {
+        {0, "Version", (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, "Target ", (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
+        RG_DIALOG_SEPARATOR,
+        {1, "View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        RG_DIALOG_END,
+    };
+
+    size_t extra_options_count = get_dialog_items_count(extra_options);
+    if (extra_options_count > 0)
+    {
+        rg_gui_option_t *opt = options + get_dialog_items_count(options);
+        for (size_t i = 0; i < extra_options_count; i++)
+            *opt++ = extra_options[i];
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
+    }
 
     while (true)
     {
         switch (rg_gui_dialog("About Retro-Go", options, 4))
         {
-            case 1000:
-                rg_gui_sysinfo_menu();
+            case 1:
+                // FIXME: This should probably be a regular dialog so that it's scrollable!
+                rg_gui_alert("Credits", RG_PROJECT_CREDITS);
                 break;
-            case 2000:
+            case 2:
+                rg_gui_debug_menu(NULL);
+                break;
+            case 3:
                 if (rg_gui_confirm("Reset all settings?", NULL, false)) {
                     rg_storage_delete(RG_BASE_PATH_CACHE);
                     rg_settings_reset();
                     rg_system_restart();
                     return;
                 }
-                break;
-            case 3000:
-                rg_gui_debug_menu(NULL);
-                break;
-            case 4000:
-                // FIXME: This should probably be a regular dialog so that it's scrollable!
-                rg_gui_alert("Credits", RG_PROJECT_CREDITS);
                 break;
             default:
                 return;
@@ -1450,6 +1411,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
     char battery_info[25], frame_time[32];
+    char app_name[32], network_str[64];
 
     const rg_gui_option_t options[] = {
         {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1458,6 +1420,8 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         {0, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "App name  ", app_name,     RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Network   ", network_str,  RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Local time", local_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Timezone  ", timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1506,6 +1470,20 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     {
         snprintf(battery_info, sizeof(battery_info), "N/A");
     }
+
+    rg_network_t net = rg_network_get_info();
+    if (net.state == RG_NETWORK_DISABLED)
+        snprintf(network_str, 64, "%s", "not available");
+    else if (net.state == RG_NETWORK_CONNECTED)
+        snprintf(network_str, 64, "%s\n%s", net.name, net.ip_addr);
+    else if (net.state == RG_NETWORK_CONNECTING)
+        snprintf(network_str, 64, "%s\n%s", net.name, "connecting...");
+    else if (net.name[0])
+        snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
+    else
+        snprintf(network_str, 64, "%s", "disconnected");
+
+    snprintf(app_name, 32, "%s", rg_system_get_app()->name);
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
