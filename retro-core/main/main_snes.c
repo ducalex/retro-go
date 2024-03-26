@@ -5,31 +5,26 @@
 #include <time.h>
 #include <math.h>
 
-#include "snes9x.h"
-#include "soundux.h"
-#include "memmap.h"
-#include "apu.h"
-#include "display.h"
-#include "gfx.h"
-#include "cpuexec.h"
-#include "srtc.h"
-#include "save.h"
+#include "../components/snes9x/snes9x.h"
+#include "../components/snes9x/soundux.h"
+#include "../components/snes9x/memmap.h"
+#include "../components/snes9x/apu.h"
+#include "../components/snes9x/display.h"
+#include "../components/snes9x/gfx.h"
+#include "../components/snes9x/cpuexec.h"
+#include "../components/snes9x/srtc.h"
+#include "../components/snes9x/save.h"
 
-#include "keymap.h"
+#include "keymap_snes.h"
+#include "shared.h"
 
-#define AUDIO_SAMPLE_RATE (32040)
-#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 2)
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
-static rg_app_t *app;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
-
-bool overclock_cycles = false;
-int one_c = 4, slow_one_c = 5, two_c = 6;
 
 static int keymap_id = 0;
 static keymap_t keymap;
@@ -236,13 +231,12 @@ static void S9xAudioCallback(void)
 {
     S9xFinalizeSamples();
     size_t available_samples = S9xGetSampleCount();
-    rg_audio_sample_t mixbuffer[available_samples];
-    S9xMixSamples(&mixbuffer, available_samples);
-    rg_audio_submit(mixbuffer, available_samples >> 1);
+    S9xMixSamples((void *)audioBuffer, available_samples);
+    rg_audio_submit(audioBuffer, available_samples >> 1);
 }
 #endif
 
-void app_main(void)
+void snes_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -257,7 +251,7 @@ void app_main(void)
         {0, "Controls    ", "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
         RG_DIALOG_END,
     };
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
@@ -301,7 +295,6 @@ void app_main(void)
 #ifdef USE_BLARGG_APU
     S9xSetSamplesAvailableCallback(S9xAudioCallback);
 #else
-    rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH];
     S9xSetPlaybackRate(Settings.SoundPlaybackRate);
 #endif
 
@@ -359,16 +352,16 @@ void app_main(void)
 
     #ifndef USE_BLARGG_APU
         if (apu_enabled && lowpass_filter)
-            S9xMixSamplesLowPass((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1, AUDIO_LOW_PASS_RANGE);
+            S9xMixSamplesLowPass((void *)audioBuffer, AUDIO_BUFFER_LENGTH << 1, AUDIO_LOW_PASS_RANGE);
         else if (apu_enabled)
-            S9xMixSamples((void *)mixbuffer, AUDIO_BUFFER_LENGTH << 1);
+            S9xMixSamples((void *)audioBuffer, AUDIO_BUFFER_LENGTH << 1);
     #endif
 
         rg_system_tick(rg_system_timer() - startTime);
 
     #ifndef USE_BLARGG_APU
         if (apu_enabled)
-            rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
+            rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
     #endif
 
         if (skipFrames == 0)

@@ -19,9 +19,6 @@
 			"path": "retro-core"
 		},
 		{
-			"path": "snes9x-go"
-		},
-		{
 			"path": ".",
 			"name": "root"
 		}

@@ -667,7 +667,7 @@ static void application(const char *desc, const char *name, const char *exts, co
 void applications_init(void)
 {
     application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-core", 16);
-    application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
+    application("Super Nintendo", "snes", "smc sfc", "retro-core", 0);
     application("Nintendo Gameboy", "gb", "gb gbc", "retro-core", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-core", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);

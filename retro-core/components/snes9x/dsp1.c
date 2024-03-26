@@ -19,6 +19,10 @@ void S9xResetDSP1(void)
    DSP1.in_index = 0;
    DSP1.out_index = 0;
    DSP1.first_parameter = true;
+   if (!DSP1.output)
+      DSP1.output = malloc(512);
+   if (!DSP1.parameters)
+      DSP1.parameters = malloc(512);
 }
 
 uint8_t S9xGetDSP(uint16_t address)

@@ -24,8 +24,8 @@ typedef struct
    uint32_t in_index;
    uint32_t out_count;
    uint32_t out_index;
-   uint8_t  parameters [512];
-   uint8_t  output     [512];
+   uint8_t  *parameters; // [512];
+   uint8_t  *output;     // [512];
 } SDSP1;
 
 void S9xResetDSP1(void);

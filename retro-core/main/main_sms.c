@@ -1,6 +1,6 @@
 #include "shared.h"
 
-#include "smsplus.h"
+#include <smsplus.h>
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
