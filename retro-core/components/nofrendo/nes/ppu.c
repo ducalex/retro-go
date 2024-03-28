@@ -147,7 +147,7 @@ INLINE void ppu_oamdma(uint8 value)
 }
 
 /* Read from $2000-$2007 */
-IRAM_ATTR uint8 ppu_read(uint32 address)
+uint8 ppu_read(uint32 address)
 {
    uint8 value;
 
@@ -206,7 +206,7 @@ IRAM_ATTR uint8 ppu_read(uint32 address)
 }
 
 /* Write to $2000-$2007 and $4014 */
-IRAM_ATTR void ppu_write(uint32 address, uint8 value)
+void ppu_write(uint32 address, uint8 value)
 {
    // Special case for the one $4000 address...
    if (address == PPU_OAMDMA) {
@@ -657,7 +657,7 @@ void ppu_endline(void)
    }
 }
 
-IRAM_ATTR void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
+void ppu_renderline(uint8 *bmp, int scanline, bool draw_flag)
 {
    ppu.scanline = scanline;
 

@@ -91,7 +91,7 @@ uint8 *mem_getpage(uint32 page)
 }
 
 /* read a byte of 6502 memory space */
-IRAM_ATTR uint8 mem_getbyte(uint32 address)
+uint8 mem_getbyte(uint32 address)
 {
    uint32 flags = mem.flags[address >> MEM_PAGESHIFT];
 
@@ -114,7 +114,7 @@ IRAM_ATTR uint8 mem_getbyte(uint32 address)
 }
 
 /* write a byte of data to 6502 memory space */
-IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
+void mem_putbyte(uint32 address, uint8 value)
 {
    uint32 flags = mem.flags[address >> MEM_PAGESHIFT];
 
@@ -139,7 +139,7 @@ IRAM_ATTR void mem_putbyte(uint32 address, uint8 value)
    MESSAGE_DEBUG("Write to unmapped region: $%2X to $%4X\n", address, value);
 }
 
-IRAM_ATTR uint32 mem_getword(uint32 address)
+uint32 mem_getword(uint32 address)
 {
    return mem_getbyte(address + 1) << 8 | mem_getbyte(address);
 }
