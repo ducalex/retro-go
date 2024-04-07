@@ -1,3 +1,12 @@
+# Retro-Go 1.41 (2024-??-??)
+- MSX: Added fMSX emulator
+- COL: Added virtual keyboard so that more games work
+- COL: Fixed savestates not working
+- All: Improved scaling; you can now zoom to any size you want!
+- All: Eliminated battery icon flicker
+- All: Added overclock option in the debug menu (need feedback before making it permanent)
+
+
 # Retro-Go 1.40 (2024-02-27)
 - NES: Added sound emulation to mapper 19 (Pacman Championship Edition)
 - NES: Added 2KB CHR support to mapper 64 (Rolling Thunder)
