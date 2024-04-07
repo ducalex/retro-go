@@ -16,10 +16,10 @@
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_WIDTH             240
-#define RG_SCREEN_HEIGHT            230 // Display height 192 plus margin? Was 232
+#define RG_SCREEN_HEIGHT            230 // Value for plastic case. Black bar on bottom for metal case.
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        38
-#define RG_SCREEN_MARGIN_BOTTOM     2  // Too little gives you garbage under the bottom bezel.
+#define RG_SCREEN_MARGIN_BOTTOM     10  // Value for plastic case. Black bar on bottom for metal case.
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
 #define RG_SCREEN_INIT()                                                                                   \
