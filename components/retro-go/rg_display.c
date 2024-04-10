@@ -192,7 +192,7 @@ static void lcd_set_window(int left, int top, int width, int height)
     int right = left + width - 1;
     int bottom = top + height - 1;
 
-    if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
+    if (left < 0 || top < 0 || right >= display.screen.real_width || bottom >= display.screen.real_height)
         RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
 
     ILI9341_CMD(0x2A, left >> 8, left & 0xff, right >> 8, right & 0xff); // Horiz
@@ -438,8 +438,8 @@ static inline void write_update(const rg_surface_t *update)
 
         if (need_update)
         {
-            int left = RG_SCREEN_MARGIN_LEFT + draw_left;
-            int top = RG_SCREEN_MARGIN_TOP + draw_top + y - lines_to_copy;
+            int left = display.screen.margin_left + draw_left;
+            int top = display.screen.margin_top + draw_top + y - lines_to_copy;
             if (top != window_top)
                 lcd_set_window(left, top, draw_width, lines_remaining);
             lcd_send_data(line_buffer, draw_width * lines_to_copy);
@@ -749,7 +749,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     for (size_t y = 0; y < height; ++y)
         screen_line_checksum[top + y] = 0;
 
-    lcd_set_window(left + RG_SCREEN_MARGIN_LEFT, top + RG_SCREEN_MARGIN_TOP, width, height);
+    lcd_set_window(left + display.screen.margin_left, top + display.screen.margin_top, width, height);
 
     for (size_t y = 0; y < height;)
     {
@@ -781,14 +781,18 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
 
 void rg_display_clear(uint16_t color_le)
 {
-    lcd_set_window(0, 0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT); // We ignore margins here
+    // We ignore margins here, we want to fill the entire
+    int screen_width = display.screen.real_width;
+    int screen_height = display.screen.real_height;
+
+    lcd_set_window(0, 0, screen_width, screen_height);
 
     uint16_t color_be = (color_le << 8) | (color_le >> 8);
-    for (size_t y = 0; y < RG_SCREEN_HEIGHT;)
+    for (size_t y = 0; y < screen_height;)
     {
         uint16_t *buffer = lcd_get_buffer();
-        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT - y);
-        size_t pixels = RG_SCREEN_WIDTH * num_lines;
+        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / screen_width, screen_height - y);
+        size_t pixels = screen_width * num_lines;
         for (size_t j = 0; j < pixels; ++j)
             buffer[j] = color_be;
         lcd_send_data(buffer, pixels);
@@ -821,6 +825,12 @@ void rg_display_init(void)
         .custom_zoom = rg_settings_get_number(NS_APP, SETTING_CUSTOM_ZOOM, 1.0),
     };
     display = (rg_display_t){
+        .screen.real_width = RG_SCREEN_WIDTH,
+        .screen.real_height = RG_SCREEN_HEIGHT,
+        .screen.margin_top = RG_SCREEN_MARGIN_TOP,
+        .screen.margin_bottom = RG_SCREEN_MARGIN_BOTTOM,
+        .screen.margin_left = RG_SCREEN_MARGIN_LEFT,
+        .screen.margin_right = RG_SCREEN_MARGIN_RIGHT,
         .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
         .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
         .changed = true,

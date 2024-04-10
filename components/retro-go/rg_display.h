@@ -65,7 +65,9 @@ typedef struct
 {
     struct
     {
-        int width, height;
+        int real_width, real_height; // Real physical resolution
+        int margin_top, margin_bottom, margin_left, margin_right;
+        int width, height; // Visible resolution (minus margins)
         int format;
     } screen;
     struct
