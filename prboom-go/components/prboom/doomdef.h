@@ -40,15 +40,6 @@
 #include "config.h"
 #endif
 
-#ifdef RETRO_GO
-#include <rg_system.h>
-#define SCREENWIDTH  (RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT)
-#define SCREENHEIGHT (RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM)
-#else
-#define SCREENWIDTH  320
-#define SCREENHEIGHT 240
-#endif
-
 // This must come first, since it redefines malloc(), free(), etc. -- killough:
 #include "z_zone.h"
 
@@ -85,8 +76,14 @@ typedef enum {
 // when multiple screen sizes are supported
 
 // proff 08/17/98: Changed for high-res
-#define MAX_SCREENWIDTH  SCREENWIDTH
-#define MAX_SCREENHEIGHT SCREENHEIGHT
+#define MAX_SCREENWIDTH  320
+#define MAX_SCREENHEIGHT 240
+
+// SCREENWIDTH and SCREENHEIGHT define the visible size
+// #define SCREENWIDTH 320
+// #define SCREENHEIGHT 240
+extern int SCREENWIDTH;
+extern int SCREENHEIGHT;
 
 // The maximum number of players, multiplayer/networking.
 #define MAXPLAYERS       4

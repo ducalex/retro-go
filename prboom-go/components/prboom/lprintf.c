@@ -37,6 +37,10 @@
 #include "config.h"
 #endif
 
+#ifdef RETRO_GO
+#include <rg_system.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
