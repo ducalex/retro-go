@@ -11,11 +11,6 @@ macro(rg_setup_compile_options)
         ${ARGV}
     )
 
-    if(NOT ";${ARGV};" MATCHES ";-O[0123gs];")
-        # Only default to -O3 if not specified by the app
-        component_compile_options(-O3)
-    endif()
-
     if(RG_ENABLE_NETPLAY)
         component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
     elseif(RG_ENABLE_NETWORKING)

@@ -4,6 +4,9 @@
 			"path": "components"
 		},
 		{
+			"path": "fmsx"
+		},
+		{
 			"path": "gwenesis"
 		},
 		{
@@ -14,9 +17,6 @@
 		},
 		{
 			"path": "retro-core"
-		},
-		{
-			"path": "snes9x-go"
 		},
 		{
 			"path": ".",

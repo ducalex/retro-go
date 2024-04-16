@@ -1,12 +1,9 @@
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.1 to 4.4 are supported.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.2 to 5.2 are supported.
 
-Version 5.0 is also mostly supported, but you will have to build with `--no-networking` and there are
-some performance issues.
-
-_Note: As of retro-go 1.35, I use 4.3.3. Version 4.1.x was used for 1.20 to 1.34 versions._
+_Note: As of retro-go 1.35, I use 4.3. Version 4.1 was used for 1.20 to 1.34 versions._
 
 ### ESP-IDF Patches
 Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
@@ -33,6 +30,8 @@ There are generally two active git branches on retro-go:
 
 For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
 1. `./rg_tool.py build-fw launcher prboom-go`
+
+Note that the app named `retro-core` contains the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these emulators cannot be selected individually. The reason for the bundling is simply size, together they account for a mere 700KB instead of almost 3MB when they were built separately.
 
 
 ## Build, flash, and monitor individual apps for faster development:

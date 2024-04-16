@@ -24,7 +24,7 @@ typedef enum
 
 typedef struct
 {
-    char name[32];
+    char name[33];
     char ip_addr[16];
     int channel, rssi;
     int state;

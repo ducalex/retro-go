@@ -424,7 +424,7 @@ static inline int apu_dmc(void)
 }
 
 
-IRAM_ATTR void apu_write(uint32 address, uint8 value)
+void apu_write(uint32 address, uint8 value)
 {
    int chan;
 
@@ -635,7 +635,7 @@ IRAM_ATTR void apu_write(uint32 address, uint8 value)
 }
 
 /* Read from $4000-$4017 */
-IRAM_ATTR uint8 apu_read(uint32 address)
+uint8 apu_read(uint32 address)
 {
    uint8 value;
 

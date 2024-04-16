@@ -293,7 +293,7 @@ sprite_hit_check(void)
 }
 
 
-IRAM_ATTR void
+void
 gfx_latch_context(int force)
 {
 	if (!gfx_context.latched || force) { // Context is already saved + we haven't render the line using it

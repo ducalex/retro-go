@@ -142,7 +142,7 @@ extern UBYTE    *gPrimaryFrameBuffer;
 //
 #ifdef RETRO_GO
 #include <rg_system.h>
-#define log_printf(x...) rg_system_log(RG_LOG_USER, NULL, x)
+#define log_printf(x...) rg_system_log(RG_LOG_PRINTF, NULL, x)
 #define crc32_le(a, b, c) rg_crc32(a, b, c)
 #else
 #include <stdio.h>

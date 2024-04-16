@@ -21,23 +21,33 @@ component_compile_options(
     -Wno-unused-function
 )
 set_source_files_properties(
-    rg_audio.c rg_display.c
+    rg_audio.c rg_display.c rg_utils.c rg_surface.c
     PROPERTIES COMPILE_FLAGS
-    -O3
+    -O2
 )
 
-if(RG_ENABLE_NETPLAY)
-    component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
-elseif(RG_ENABLE_NETWORKING)
-    component_compile_options(-DRG_ENABLE_NETWORKING)
+if (IDF_VERSION_MAJOR EQUAL 5)
+    if(RG_ENABLE_NETPLAY OR RG_ENABLE_NETWORKING)
+        message(WARNING "Retro-Go's networking isn't compatible with esp-idf 5.x")
+    endif()
+else()
+    if(RG_ENABLE_NETPLAY)
+        component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
+    elseif(RG_ENABLE_NETWORKING)
+        component_compile_options(-DRG_ENABLE_NETWORKING)
+    endif()
 endif()
 
 if(RG_ENABLE_PROFILING)
     component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
-if(RG_PROJECT_VERSION)
-    component_compile_options(-DRG_PROJECT_VERSION="${RG_PROJECT_VERSION}")
+if(RG_BUILD_VERSION)
+    component_compile_options(-DRG_BUILD_VERSION="${RG_BUILD_VERSION}")
+endif()
+
+if(RG_BUILD_TYPE)
+    component_compile_options(-DRG_BUILD_TYPE=${RG_BUILD_TYPE})
 endif()
 
 set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")

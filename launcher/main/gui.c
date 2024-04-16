@@ -13,7 +13,6 @@
 #define PREVIEW_WIDTH       ((int)(gui.width * 0.50f))
 
 retro_gui_t gui;
-rg_video_update_t update;
 
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
@@ -33,7 +32,7 @@ static int max_visible_lines(const tab_t *tab, int *_line_height)
     return (gui.height - (HEADER_HEIGHT + 6) - (tab->navpath ? line_height : 0)) / line_height;
 }
 
-void gui_init(void)
+void gui_init(bool cold_boot)
 {
     gui = (retro_gui_t){
         .selected_tab = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
@@ -45,14 +44,12 @@ void gui_init(void)
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
+        .surface      = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW),
     };
-    // Always enter browse mode when leaving an emulator
-    gui.browse = gui.start_screen == START_SCREEN_BROWSER ||
-                 (gui.start_screen == START_SCREEN_AUTO && rg_system_get_app()->bootType == RG_RST_RESTART);
+    // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
+    gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
     gui_update_theme();
-
-    update.buffer = rg_alloc(gui.width * gui.height * 2, MEM_SLOW);
-    rg_display_set_source_format(gui.width, gui.height, 0, 0, gui.width * 2, RG_PIXEL_565_LE);
+    gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -149,7 +146,7 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
         {
             if (strcmp((*img)->name, name) == 0)
             {
-                image->img = rg_image_load_from_memory((*img)->data, (*img)->size, 0);
+                image->img = rg_surface_load_image((*img)->data, (*img)->size, 0);
                 break;
             }
         }
@@ -160,10 +157,10 @@ const rg_image_t *gui_get_image(const char *type, const char *subtype)
     {
         if (image->img && (image->img->width != gui.width || image->img->height != gui.height))
         {
-            rg_image_t *temp = rg_image_copy_resampled(image->img, gui.width, gui.height, 0);
+            rg_image_t *temp = rg_surface_resize(image->img, gui.width, gui.height);
             if (temp)
             {
-                rg_image_free(image->img);
+                rg_surface_free(image->img);
                 image->img = temp;
             }
         }
@@ -207,7 +204,7 @@ void gui_update_theme(void)
     // Flush our image cache to make sure the new images are loaded next time
     for (image_t *image = gui.images; image->id; ++image)
     {
-        rg_image_free(image->img);
+        rg_surface_free(image->img);
         image->id = 0;
         image->img = NULL;
     }
@@ -373,7 +370,7 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 void gui_redraw(void)
 {
     rg_display_sync(true);
-    rg_gui_set_buffered(update.buffer);
+    rg_gui_set_surface(gui.surface);
 
     tab_t *tab = gui_get_current_tab();
     if (!tab)
@@ -400,8 +397,8 @@ void gui_redraw(void)
         // gui_draw_tab_indicator();
     }
 
-    rg_gui_set_buffered(NULL);
-    rg_display_submit(&update, 0);
+    rg_gui_set_surface(NULL);
+    rg_display_submit(gui.surface, 0);
 }
 
 void gui_draw_background(tab_t *tab, int shade)
@@ -416,14 +413,16 @@ void gui_draw_background(tab_t *tab, int shade)
         // Only regenerate the shaded buffer if the background has changed
         if (buffer_content != (void*)img + shade)
         {
-            if (!buffer) buffer = rg_image_alloc(img->width, img->height);
+            if (!buffer) buffer = rg_surface_create(img->width, img->height, RG_PIXEL_565_LE, 0);
+            uint16_t *dst_data = buffer->data;
+            uint16_t *src_data = img->data;
             for (int x = 0; x < buffer->width * buffer->height; ++x)
             {
-                int pixel = img->data[x];
+                int pixel = src_data[x];
                 int r = ((pixel >> 11) & 0x1F) / shade;
                 int g = ((pixel >> 5) & 0x3F) / shade;
                 int b = ((pixel) & 0x1F) / shade;
-                buffer->data[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | ((b & 0x1F) << 0);
+                dst_data[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | ((b & 0x1F) << 0);
             }
             buffer_content = (void*)img + shade;
         }
@@ -436,7 +435,11 @@ void gui_draw_background(tab_t *tab, int shade)
 void gui_draw_header(tab_t *tab, int offset)
 {
     rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, gui_get_image("logo", tab->name));
-    rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, gui_get_image("banner", tab->name));
+    const rg_image_t *banner = gui_get_image("banner", tab->name);
+    if (banner)
+        rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, banner);
+    else
+        rg_gui_draw_text(LOGO_WIDTH + 8, offset + 8, 0, tab->desc, C_SNOW, C_BLACK, RG_TEXT_BIGGER);
 }
 
 void gui_draw_tab_indicator(void)
@@ -505,7 +508,7 @@ void gui_set_preview(tab_t *tab, rg_image_t *preview)
         return;
 
     if (tab->preview)
-        rg_image_free(tab->preview);
+        rg_surface_free(tab->preview);
 
     tab->preview = preview;
 }
@@ -584,7 +587,7 @@ void gui_load_preview(tab_t *tab)
 
         if (path_len < RG_PATH_MAX && rg_storage_exists(path))
         {
-            gui_set_preview(tab, rg_image_load_from_file(path, 0));
+            gui_set_preview(tab, rg_surface_load_image_file(path, 0));
             if (!tab->preview)
                 errors++;
         }

@@ -34,6 +34,8 @@ static rg_battery_t battery_state = {0};
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
+    bool present = true;
+    bool charging = false;
 
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
     for (int i = 0; i < 4; ++i)
@@ -44,6 +46,7 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     if (!rg_i2c_read(0x20, -1, &data, 5))
         return false;
     raw_value = data[4];
+    charging = data[4] == 255;
 #else
     return false;
 #endif
@@ -53,7 +56,8 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     *out = (rg_battery_t){
         .level = RG_MAX(0.f, RG_MIN(100.f, RG_BATTERY_CALC_PERCENT(raw_value))),
         .volts = RG_BATTERY_CALC_VOLTAGE(raw_value),
-        .present = true,
+        .present = present,
+        .charging = charging,
     };
     return true;
 }
@@ -194,9 +198,9 @@ static void input_task(void *arg)
             rg_battery_t temp = {0};
             if (rg_input_read_battery_raw(&temp))
             {
-                if (fabsf(battery_state.level - temp.level) < 1.0f)
+                if (fabsf(battery_state.level - temp.level) < RG_BATTERY_UPDATE_THRESHOLD)
                     temp.level = battery_state.level;
-                if (fabsf(battery_state.volts - temp.volts) < 0.010f)
+                if (fabsf(battery_state.volts - temp.volts) < RG_BATTERY_UPDATE_THRESHOLD_VOLT)
                     temp.volts = battery_state.volts;
             }
             battery_state = temp;
@@ -350,7 +354,7 @@ const char *rg_input_get_key_name(rg_key_t key)
     }
 }
 
-const rg_gui_keyboard_t virtual_map1 = {
+const rg_keyboard_map_t virtual_map1 = {
     .columns = 10,
     .rows = 4,
     .data = {
@@ -361,60 +365,25 @@ const rg_gui_keyboard_t virtual_map1 = {
     }
 };
 
-const rg_gui_keyboard_t virtual_map2 = {
-    .columns = 10,
-    .rows = 4,
-    .data = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-        'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j',
-        'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
-        'u', 'v', 'w', 'x', 'y', 'z', ' ', ',', '.', ' ',
-    }
-};
-
-const rg_gui_keyboard_t virtual_map3 = {
-    .columns = 10,
-    .rows = 4,
-    .data = {
-        '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-        '`', '~', '-', '+', '=', ' ', ' ', ' ', '<', '>',
-        ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', '{', '}',
-        ' ', ' ', ' ', ' ', ' ', '|','\\', '/', '[', ']',
-    }
-};
-
-const rg_gui_keyboard_t virtual_map4 = {
-    .columns = 4,
-    .rows = 4,
-    .data = {
-        '0', '1', '2', '3',
-        '4', '5', '6', '7',
-        '8', '9', 'A', 'B',
-        'C', 'D', 'E', 'F',
-    }
-};
-
-const rg_gui_keyboard_t *virtual_maps[] = {
-    &virtual_map1,
-    &virtual_map2,
-    &virtual_map3,
-    &virtual_map4,
-};
-
-int rg_input_read_keyboard(/* const char *custom_map */)
+int rg_input_read_keyboard(const rg_keyboard_map_t *map)
 {
-    static size_t selected_map = 0;
-    static size_t cursor = 0;
+    int cursor = -1;
+    int count = map->columns * map->rows;
+
+    if (!map)
+        map = &virtual_map1;
 
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
 
     while (1)
     {
         uint32_t joystick = rg_input_read_gamepad();
+        int prev_cursor = cursor;
 
-        const rg_gui_keyboard_t *map = virtual_maps[selected_map];
-
-        size_t prev_cursor = cursor;
+        if (joystick & RG_KEY_A)
+            return map->data[cursor];
+        if (joystick & RG_KEY_B)
+            break;
 
         if (joystick & RG_KEY_LEFT)
             cursor--;
@@ -425,22 +394,19 @@ int rg_input_read_keyboard(/* const char *custom_map */)
         if (joystick & RG_KEY_DOWN)
             cursor += map->columns;
 
-        if (cursor >= map->columns * map->rows)
+        if (cursor > count - 1)
             cursor = prev_cursor;
-        prev_cursor = cursor;
+        else if (cursor < 0)
+            cursor = prev_cursor;
 
-        if (joystick & RG_KEY_SELECT)
-            selected_map = (selected_map + 1) % RG_COUNT(virtual_maps);
+        cursor = RG_MIN(RG_MAX(cursor, 0), count - 1);
 
-        if (joystick & RG_KEY_A)
-            return map->data[cursor];
-        if (joystick & RG_KEY_B)
-            break;
+        if (cursor != prev_cursor)
+            rg_gui_draw_keyboard(map, cursor);
 
-        rg_gui_draw_keyboard("[select] to change map", map, cursor);
+        rg_input_wait_for_key(RG_KEY_ALL, false, 500);
+        rg_input_wait_for_key(RG_KEY_ANY, true, 500);
 
-        rg_input_wait_for_key(~(RG_KEY_UP|RG_KEY_DOWN|RG_KEY_LEFT|RG_KEY_RIGHT), false, 100);
-        rg_task_delay(50);
         rg_system_tick(0);
     }
 

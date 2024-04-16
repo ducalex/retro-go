@@ -16,7 +16,9 @@ extern "C" {
 #include <esp_idf_version.h>
 #include <esp_heap_caps.h>
 #include <esp_attr.h>
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
+#error "Retro-Go requires ESP-IDF version 4.2.0 or newer!"
+#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
 #define SPI_DMA_CH_AUTO 1
 #endif
 #else
@@ -48,7 +50,7 @@ typedef enum
     RG_PATH_GAME_CONFIG= 0x600,
 } rg_path_type_t;
 
-enum
+typedef enum
 {   // bits 0-3: Mode
     RG_BOOT_NORMAL    = 0x00,
     RG_BOOT_RESUME    = 0x01,
@@ -63,7 +65,7 @@ enum
     RG_BOOT_SLOT3     = 0x30,
     RG_BOOT_SLOT_MASK = 0xF0,
     // bits 8-31: unused...
-};
+} rg_boot_flags_t;
 
 // RG_TASK_PRIORITY_1 is the same as the main task's. Anything
 // higher will run even if main task never yields
@@ -79,23 +81,16 @@ typedef enum
     RG_TASK_PRIORITY_8,
 } rg_task_priority_t;
 
-enum
+typedef enum
 {
-    RG_LOG_PRINT = 0,
-    RG_LOG_USER,
+    RG_LOG_PRINTF = 0,
     RG_LOG_ERROR,
     RG_LOG_WARN,
     RG_LOG_INFO,
     RG_LOG_DEBUG,
+    RG_LOG_VERBOSE,
     RG_LOG_MAX,
-};
-
-typedef enum
-{
-    RG_OK = 0,
-    RG_FAIL,
-    RG_NOMEM,
-} rg_err_t;
+} rg_log_level_t;
 
 typedef enum
 {
@@ -111,6 +106,7 @@ typedef enum
     RG_EVENT_TYPE_POWER   = 0xF20000,
     RG_EVENT_TYPE_NETWORK = 0xF30000,
     RG_EVENT_TYPE_NETPLAY = 0xF40000,
+    RG_EVENT_TYPE_MENU    = 0xF50000,
     RG_EVENT_TYPE_MASK    = 0xFF0000,
 
     /* Events */
@@ -118,6 +114,7 @@ typedef enum
     RG_EVENT_LOWMEMORY    = RG_EVENT_TYPE_SYSTEM | 2,
     RG_EVENT_REDRAW       = RG_EVENT_TYPE_SYSTEM | 3,
     RG_EVENT_SPEEDUP      = RG_EVENT_TYPE_SYSTEM | 4,
+    RG_EVENT_SCREENSHOT   = RG_EVENT_TYPE_SYSTEM | 5,
     RG_EVENT_SHUTDOWN     = RG_EVENT_TYPE_POWER | 1,
     RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
 } rg_event_t;
@@ -165,7 +162,6 @@ typedef struct
     char name[32];
     char version[32];
     char buildDate[32];
-    char buildUser[32];
     char buildTool[32];
     const char *configNs;
     const char *bootArgs;
@@ -176,14 +172,22 @@ typedef struct
     int tickRate;
     int frameskip;
     int overclock;
-    int watchdog;
+    int tickTimeout;
+    bool watchdog;
+    bool lowMemoryMode;
+    bool isLauncher;
+    // bool isOfficial;
+    bool isRelease;
     int logLevel;
-    int isLauncher;
     int saveSlot;
     const char *romPath;
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
+
+    // Volatile values
+    int exitCalled;
+    int ledValue;
 } rg_app_t;
 
 typedef struct
@@ -218,8 +222,9 @@ bool rg_system_have_app(const char *app);
 void rg_system_set_led(int value);
 int  rg_system_get_led(void);
 void rg_system_set_overclock(int level);
-int rg_system_get_overclock(void);
-float rg_system_get_overclock_ratio(void);
+int  rg_system_get_overclock(void);
+void rg_system_set_log_level(rg_log_level_t level);
+int  rg_system_get_log_level(void);
 void rg_system_tick(int busyTime);
 void rg_system_vlog(int level, const char *context, const char *format, va_list va);
 void rg_system_log(int level, const char *context, const char *format, ...) __attribute__((format(printf,3,4)));
@@ -231,10 +236,12 @@ rg_stats_t rg_system_get_counters(void);
 
 // RTC and time-related functions
 void rg_system_set_timezone(const char *TZ);
+char *rg_system_get_timezone(void);
 void rg_system_load_time(void);
 void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
+// typedef void rg_task_t;
 bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
@@ -242,12 +249,25 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
 void rg_task_delay(int ms);
 void rg_task_yield(void);
 
+// Wrapper for FreeRTOS queues, which are essentially inter-task communication primitives
+// Retro-Go uses them for locks and message passing. Not sure how we could easily replicate in SDL2 yet...
+typedef void rg_queue_t;
+rg_queue_t *rg_queue_create(size_t length, size_t itemSize);
+void rg_queue_free(rg_queue_t *queue);
+bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS);
+bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS);
+bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
+bool rg_queue_is_empty(rg_queue_t *queue);
+bool rg_queue_is_full(rg_queue_t *queue);
+
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);
 bool rg_emu_load_state(uint8_t slot);
 bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
+void rg_emu_set_speed(float speed);
+float rg_emu_get_speed(void);
 
 /* Utilities */
 
@@ -263,16 +283,23 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
 #define RG_LOG_TAG __func__
 #endif
 
-#define RG_LOGX(x, ...) rg_system_log(RG_LOG_PRINT, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGE(x, ...) rg_system_log(RG_LOG_ERROR, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGW(x, ...) rg_system_log(RG_LOG_WARN, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGI(x, ...) rg_system_log(RG_LOG_INFO, RG_LOG_TAG, x, ## __VA_ARGS__)
-#define RG_LOGU(x, ...) rg_system_log(RG_LOG_USER, RG_LOG_TAG, x, ## __VA_ARGS__)
 #define RG_LOGD(x, ...) rg_system_log(RG_LOG_DEBUG, RG_LOG_TAG, x, ## __VA_ARGS__)
+#if RG_BUILD_TYPE != 1
+#define RG_LOGV(x, ...) rg_system_log(RG_LOG_VERBOSE, RG_LOG_TAG, x, ## __VA_ARGS__)
+#else
+#define RG_LOGV(x, ...)
+#endif
 
+#ifdef RG_ENABLE_PROFILING
 void __cyg_profile_func_enter(void *this_fn, void *call_site);
 void __cyg_profile_func_exit(void *this_fn, void *call_site);
 #define NO_PROFILE __attribute((no_instrument_function))
+#else
+#define NO_PROFILE
+#endif
 
 #ifdef __cplusplus
 }

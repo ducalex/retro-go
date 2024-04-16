@@ -52,7 +52,7 @@
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
 
-static rg_video_update_t update;
+static rg_surface_t *update;
 static rg_app_t *app;
 
 // Expected variables by doom
@@ -139,7 +139,7 @@ void I_UpdateNoBlit(void)
 
 void I_FinishUpdate(void)
 {
-    rg_display_submit(&update, 0);
+    rg_display_submit(update, 0);
     rg_display_sync(true); // Wait for update->buffer to be released
 }
 
@@ -157,7 +157,7 @@ void I_SetPalette(int pal)
 {
     uint16_t *palette = V_BuildPalette(pal, 16);
     for (int i = 0; i < 256; i++)
-        update.palette[i] = palette[i] << 8 | palette[i] >> 8;
+        update->palette[i] = palette[i] << 8 | palette[i] >> 8;
     Z_Free(palette);
     current_palette = pal;
 }
@@ -173,15 +173,13 @@ void I_InitGraphics(void)
     }
 
     // Main screen uses internal ram for speed
-    screens[0].data = update.buffer;
+    screens[0].data = update->data;
     screens[0].not_on_heap = true;
 
     // statusbar
     screens[4].width = SCREENWIDTH;
     screens[4].height = (ST_SCALED_HEIGHT + 1);
     screens[4].byte_pitch = SCREENWIDTH;
-
-    rg_display_set_source_format(SCREENWIDTH, SCREENHEIGHT, 0, 0, SCREENWIDTH, RG_PIXEL_PAL565_BE);
 }
 
 int I_GetTimeMS(void)
@@ -474,7 +472,7 @@ void I_Init(void)
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
-	return rg_display_save_frame(filename, &update, width, height);
+	return rg_surface_save_image_file(update, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -505,7 +503,7 @@ static void event_handler(int event, void *arg)
     }
     else if (event == RG_EVENT_REDRAW)
     {
-        rg_display_submit(&update, 0);
+        rg_display_submit(update, 0);
     }
 }
 
@@ -534,7 +532,11 @@ void app_main()
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
     app->tickRate = TICRATE;
 
-    update.buffer = rg_alloc(SCREENHEIGHT*SCREENWIDTH, MEM_FAST);
+    const rg_display_t *display = rg_display_get_info();
+    SCREENWIDTH = RG_MIN(display->screen.width, MAX_SCREENWIDTH);
+    SCREENHEIGHT = RG_MIN(display->screen.height, MAX_SCREENHEIGHT);
+
+    update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
 
     const char *save = RG_BASE_PATH_SAVES "/doom";
     const char *iwad = NULL;

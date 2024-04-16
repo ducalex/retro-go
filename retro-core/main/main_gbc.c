@@ -12,11 +12,16 @@ static int audio_time;
 static const char *sramFile;
 static int autoSaveSRAM = 0;
 static int autoSaveSRAM_Timer = 0;
-static int useSystemTime = true;
+static bool useSystemTime = true;
+static bool loadBIOSFile = false;
+
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 
 static const char *SETTING_SAVESRAM = "SaveSRAM";
 static const char *SETTING_PALETTE  = "Palette";
 static const char *SETTING_SYSTIME = "SysTime";
+static const char *SETTING_LOADBIOS = "LoadBIOS";
 // --- MAIN
 
 
@@ -39,7 +44,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -82,6 +87,12 @@ static bool reset_handler(bool hard)
 
 static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    if (gnuboy_get_hwtype() == GB_HW_CGB)
+    {
+        strcpy(option->value, "GBC");
+        return RG_DIALOG_VOID;
+    }
+
     int pal = gnuboy_get_palette();
     int max = GB_PALETTE_COUNT - 1;
 
@@ -130,6 +141,17 @@ static rg_gui_event_t sram_autosave_cb(rg_gui_option_t *option, rg_gui_event_t e
     if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
     else sprintf(option->value, "%3ds", autoSaveSRAM);
 
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t enable_bios_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        loadBIOSFile = !loadBIOSFile;
+        rg_settings_set_number(NS_APP, SETTING_LOADBIOS, loadBIOSFile);
+    }
+    strcpy(option->value, loadBIOSFile ? "Yes" : "No");
     return RG_DIALOG_VOID;
 }
 
@@ -222,17 +244,18 @@ void gbc_main(void)
         {0, "Palette      ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
         {0, "RTC config   ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
         {0, "SRAM autosave", "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
+        {0, "Enable BIOS  ", "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb},
         RG_DIALOG_END
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
-    updates[0].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
-    updates[1].buffer = rg_alloc(GB_WIDTH * GB_HEIGHT * 2, MEM_ANY);
+    updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
+    updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
+    currentUpdate = updates[0];
 
-    rg_display_set_source_format(GB_WIDTH, GB_HEIGHT, 0, 0, GB_WIDTH * 2, RG_PIXEL_565_BE);
-
-    useSystemTime = (int)rg_settings_get_number(NS_APP, SETTING_SYSTIME, 1);
+    useSystemTime = (bool)rg_settings_get_number(NS_APP, SETTING_SYSTIME, 1);
+    loadBIOSFile = (bool)rg_settings_get_number(NS_APP, SETTING_LOADBIOS, 0);
     autoSaveSRAM = (int)rg_settings_get_number(NS_APP, SETTING_SAVESRAM, 0);
     sramFile = rg_emu_get_path(RG_PATH_SAVE_SRAM, app->romPath);
 
@@ -243,7 +266,7 @@ void gbc_main(void)
     if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, GB_PIXEL_565_BE, &video_callback, &audio_callback) < 0)
         RG_PANIC("Emulator init failed!");
 
-    gnuboy_set_framebuffer(currentUpdate->buffer);
+    gnuboy_set_framebuffer(currentUpdate->data);
     gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
@@ -251,10 +274,13 @@ void gbc_main(void)
         RG_PANIC("ROM Loading failed!");
 
     // Load BIOS
-    if (gnuboy_get_hwtype() == GB_HW_CGB)
-        gnuboy_load_bios(RG_BASE_PATH_BIOS "/gbc_bios.bin");
-    else
-        gnuboy_load_bios(RG_BASE_PATH_BIOS "/gb_bios.bin");
+    if (loadBIOSFile)
+    {
+        if (gnuboy_get_hwtype() == GB_HW_CGB)
+            gnuboy_load_bios(RG_BASE_PATH_BIOS "/gbc_bios.bin");
+        else if (gnuboy_get_hwtype() == GB_HW_DMG)
+            gnuboy_load_bios(RG_BASE_PATH_BIOS "/gb_bios.bin");
+    }
 
     gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_DMG));
 
@@ -268,10 +294,6 @@ void gbc_main(void)
         gnuboy_load_sram(sramFile);
 
     update_rtc_time();
-
-    // Don't show palette option for GBC
-    if (gnuboy_get_hwtype() == GB_HW_CGB)
-        app->options++;
 
     // Ready!
 
@@ -315,8 +337,8 @@ void gbc_main(void)
 
         if (drawFrame)
         {
-            currentUpdate = &updates[currentUpdate == &updates[0]];
-            gnuboy_set_framebuffer(currentUpdate->buffer);
+            currentUpdate = updates[currentUpdate == updates[0]];
+            gnuboy_set_framebuffer(currentUpdate->data);
         }
         gnuboy_run(drawFrame);
 

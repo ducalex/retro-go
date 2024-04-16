@@ -353,6 +353,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
     if (event == TAB_INIT)
     {
         retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
+        if (selected && !rg_storage_exists(get_file_path(selected)))
+        {
+            RG_LOGE("Selected file no longer exists!");
+            selected = NULL;
+        }
         tab->navpath = selected ? selected->folder : NULL;
 
         application_init(app);
@@ -363,7 +368,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             for (int i = 0; i < tab->listbox.length; i++)
             {
                 retro_file_t *file = tab->listbox.items[i].arg;
-                if (strcmp(file->name, selected->name) == 0)
+                if (file && strcmp(file->name, selected->name) == 0)
                 {
                     gui_scroll_list(tab, SCROLL_SET, i);
                     break;
@@ -662,10 +667,11 @@ static void application(const char *desc, const char *name, const char *exts, co
 void applications_init(void)
 {
     application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-core", 16);
-    application("Super Nintendo", "snes", "smc sfc", "snes9x-go", 0);
+    application("Super Nintendo", "snes", "smc sfc", "retro-core", 0);
     application("Nintendo Gameboy", "gb", "gb gbc", "retro-core", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-core", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
+    // application("Sega SG-1000", "sg1", "sms sg sg1", "retro-core", 0);
     application("Sega Master System", "sms", "sms sg", "retro-core", 0);
     application("Sega Game Gear", "gg", "gg", "retro-core", 0);
     application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
@@ -675,6 +681,7 @@ void applications_init(void)
     // application("Atari 2600", "a26", "a26", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);
+    application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 
     // Special app to bootstrap native esp32 binaries from the SD card
     application("Bootstrap", "apps", "bin elf", "bootstrap", 0);

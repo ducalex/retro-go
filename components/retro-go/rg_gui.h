@@ -4,24 +4,25 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "rg_image.h"
+#include "rg_surface.h"
+#include "rg_input.h"
 
 typedef enum
 {
-    RG_DIALOG_VOID,
     RG_DIALOG_INIT,
-    RG_DIALOG_FOCUS,
-    RG_DIALOG_LEAVE,
+    RG_DIALOG_UPDATE,
 
-    RG_DIALOG_REDRAW,
+    RG_DIALOG_FOCUS_GAINED,
+    RG_DIALOG_FOCUS_LOST,
+
     RG_DIALOG_CANCEL,
     RG_DIALOG_CLOSE,
+    RG_DIALOG_REDRAW,
+    RG_DIALOG_VOID,
 
     RG_DIALOG_PREV,
     RG_DIALOG_NEXT,
     RG_DIALOG_ENTER,
-    RG_DIALOG_BACK,
-    RG_DIALOG_ALT,
 } rg_gui_event_t;
 
 enum
@@ -47,35 +48,20 @@ enum
 
 typedef struct
 {
-    size_t columns, rows;
-    char data[];
-} rg_gui_keyboard_t;
-
-typedef struct
-{
     uint8_t type;   // 0=bitmap, 1=prop
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
-    uint8_t chars;  // glyph count
+    size_t chars;   // glyph count
     char name[16];
     uint8_t data[];
 } rg_font_t;
-
-// color must accept 0-0xFFFF and -1 (transparent)
-typedef int rg_color_t;
-
-typedef struct
-{
-    uint16_t width;
-    uint16_t height;
-} rg_rect_t;
 
 typedef struct
 {
     intptr_t arg;
     size_t index;
     bool cancelled;
-} rg_dialog_t;
+} rg_dialog_ret_t;
 
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
@@ -107,15 +93,17 @@ struct rg_gui_option_s
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
-void rg_gui_set_buffered(uint16_t *framebuffer);
+void rg_gui_set_surface(rg_surface_t *surface);
 bool rg_gui_set_font(int index);
 bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
+rg_image_t *rg_gui_load_image_file(const char *path);
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
+
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_icons(void);
@@ -123,7 +111,7 @@ void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int 
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
-void rg_gui_draw_keyboard(const char *title, const rg_gui_keyboard_t *map, size_t cursor);
+void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);

@@ -10,11 +10,10 @@
 
 #ifdef RETRO_GO
 #include <rg_system.h>
-#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_USER, NULL, x)
+#define LOG_PRINTF(level, x...) rg_system_log(RG_LOG_PRINTF, NULL, x)
 #define crc32_le(a, b, c) rg_crc32(a, b, c)
 #else
 #define LOG_PRINTF(level, x...) printf(x)
-#define IRAM_ATTR
 #define crc32_le(a, b, c) (0)
 #endif
 
@@ -69,7 +68,7 @@
 // We need 16 bytes of scratch area on both side of each line. The 16 bytes can be shared by adjacent lines.
 // The buffer should look like [16 bytes] [line 1] [16 bytes] ... [16 bytes] [line 242] [16 bytes]
 #define XBUF_WIDTH 	(352 + 16)
-#define	XBUF_HEIGHT	(242 + 4)
+#define	XBUF_HEIGHT	(242)
 
 int LoadState(const char *name);
 int SaveState(const char *name);

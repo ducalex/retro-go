@@ -88,7 +88,7 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         }
     }
 
-    RG_LOGD("Event: %d %d\n", (int)event_base, (int)event_id);
+    RG_LOGV("Event: %d %d\n", (int)event_base, (int)event_id);
 }
 #endif
 
@@ -120,9 +120,9 @@ bool rg_network_wifi_load_config(int slot)
     char *ptr;
 
     if ((ptr = rg_settings_get_string(NS_WIFI, key_ssid, NULL)))
-        strncpy(config.ssid, ptr, 32), free(ptr);
+        memccpy(config.ssid, ptr, 0, 32), free(ptr);
     if ((ptr = rg_settings_get_string(NS_WIFI, key_password, NULL)))
-        strncpy(config.password, ptr, 64), free(ptr);
+        memccpy(config.password, ptr, 0, 64), free(ptr);
     config.channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
     config.ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
 
@@ -193,7 +193,7 @@ void rg_network_wifi_stop(void)
     RG_ASSERT(initialized, "Please call rg_network_init() first");
     esp_wifi_stop();
     rg_task_delay(100);
-    memset(network.name, 0, 32);
+    memset(network.name, 0, sizeof(network.name));
 #endif
 }
 

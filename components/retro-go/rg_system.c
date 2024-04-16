@@ -9,7 +9,7 @@
 
 #ifdef ESP_PLATFORM
 #include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
+#include <freertos/queue.h>
 #include <freertos/task.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
@@ -46,7 +46,7 @@ typedef struct
     void (*func)(void *arg);
     void *arg;
 #ifdef ESP_PLATFORM
-    TaskHandle_t *handle;
+    TaskHandle_t handle;
 #else
     SDL_threadID handle;
 #endif
@@ -65,7 +65,7 @@ static struct
 {
     int64_t time_started;
     int32_t total_frames;
-    SemaphoreHandle_t lock;
+    rg_queue_t *lock;
     profile_frame_t frames[512];
 } *profile;
 #endif
@@ -77,8 +77,6 @@ static bool panicTraceCleared = false;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
-static int ledValue = -1;
-static bool exitCalled = false;
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
@@ -176,7 +174,9 @@ static void system_monitor_task(void *arg)
     bool batteryLedState = false;
     int64_t nextLoopTime = 0;
 
-    while (!exitCalled)
+    rg_task_delay(2000);
+
+    while (!app.exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
         rtcValue = time(NULL);
@@ -193,7 +193,7 @@ static void system_monitor_task(void *arg)
         }
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
-        RG_LOGX("STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (SKIP:%d, PART:%d, FULL:%d), BATT:%d\n",
+        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
@@ -207,7 +207,7 @@ static void system_monitor_task(void *arg)
             (int)roundf((battery.volts * 1000) ?: battery.level));
 
         // Auto frameskip
-        if (statistics.ticks > app.tickRate)
+        if (statistics.ticks > app.tickRate * 2)
         {
             float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;
             // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
@@ -224,7 +224,7 @@ static void system_monitor_task(void *arg)
             }
         }
 
-        if (statistics.lastTick < rg_system_timer() - 4000000)
+        if (statistics.lastTick < rg_system_timer() - app.tickTimeout)
         {
             // App hasn't ticked in a while, listen for MENU presses to give feedback to the user
             if (rg_input_wait_for_key(RG_KEY_MENU, true, 1000))
@@ -266,7 +266,7 @@ static void enter_recovery_mode(void)
             rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
         case 2:
         default:
-            rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
+            rg_system_exit();
         }
     }
 }
@@ -311,27 +311,35 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
 
     app = (rg_app_t){
-        .name = RG_PROJECT_NAME,
+        .name = RG_PROJECT_APP,
         .version = RG_PROJECT_VERSION,
         .buildDate = RG_BUILD_DATE,
-        .buildUser = RG_BUILD_USER,
         .buildTool = RG_BUILD_TOOL,
-        .configNs = RG_PROJECT_NAME,
+        .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
-        .frameskip = 0,
+        .frameskip = 1,
         .overclock = 0,
-        .watchdog = 1,
+        .tickTimeout = 3000000,
+        .watchdog = true,
+        .lowMemoryMode = false,
+    #if RG_BUILD_TYPE == 1
+        .isRelease = true,
         .logLevel = RG_LOG_INFO,
+    #else
+        .isRelease = false,
+        .logLevel = RG_LOG_DEBUG,
+    #endif
         .options = options, // TO DO: We should make a copy of it?
     };
 
     // Do this very early, may be needed to enable serial console
     platform_init();
+    rg_system_set_led(0);
 
 #ifdef ESP_PLATFORM
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
@@ -353,16 +361,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
 #endif
 
-    rg_system_set_led(0);
-
     printf("\n========================================================\n");
     printf("%s %s (%s)\n", app.name, app.version, app.buildDate);
-    printf(" built for: %s. aud=%d disp=%d pad=%d sd=%d cfg=%d\n", RG_TARGET_NAME, 0, 0, 0, 0, 0);
+    printf(" built for: %s. type: %s\n", RG_TARGET_NAME, app.isRelease ? "release" : "dev");
     printf("========================================================\n\n");
-
-    update_memory_statistics();
-    RG_LOGI("Internal memory: free=%d, total=%d\n", statistics.freeMemoryInt, statistics.totalMemoryInt);
-    RG_LOGI("External memory: free=%d, total=%d\n", statistics.freeMemoryExt, statistics.totalMemoryExt);
 
     rg_storage_init();
     rg_input_init();
@@ -407,6 +409,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
+    app.isLauncher = strcmp(app.name, "launcher") == 0; // Might be overriden after init
 
     rg_display_init();
     rg_gui_init();
@@ -414,12 +417,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
-
-#ifdef ESP_PLATFORM
-    if (app.bootFlags & RG_BOOT_ONCE)
-        esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
-#endif
 
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
@@ -431,11 +428,22 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
-    profile->lock = xSemaphoreCreateMutex();
+    profile->lock = rg_queue_create(1, 0);
 #endif
 
-    rg_task_create("rg_system", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
+#ifdef ESP_PLATFORM
+    update_memory_statistics();
+    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
+    if ((app.lowMemoryMode = (statistics.totalMemoryExt == 0)))
+        rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
+    if (app.bootFlags & RG_BOOT_ONCE)
+        esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
+#endif
+
+    rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
     RG_LOGI("Retro-Go ready.\n\n");
@@ -522,6 +530,45 @@ void rg_task_yield(void)
 #endif
 }
 
+rg_queue_t *rg_queue_create(size_t length, size_t itemSize)
+{
+    return (rg_queue_t *)xQueueCreate(length, itemSize);
+}
+
+void rg_queue_free(rg_queue_t *queue)
+{
+    if (queue)
+        vQueueDelete((QueueHandle_t)queue);
+}
+
+bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueueSend((QueueHandle_t)queue, item, ticks) == pdTRUE;
+}
+
+bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
+}
+
+bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
+{
+    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueuePeek((QueueHandle_t)queue, out, ticks) == pdTRUE;
+}
+
+bool rg_queue_is_empty(rg_queue_t *queue)
+{
+    return uxQueueMessagesWaiting((QueueHandle_t)queue) == 0;
+}
+
+bool rg_queue_is_full(rg_queue_t *queue)
+{
+    return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
+}
+
 void rg_system_load_time(void)
 {
     time_t time_sec = RG_MAX(rtcValue, RG_BUILD_TIME);
@@ -574,6 +621,12 @@ void rg_system_set_timezone(const char *TZ)
 #endif
 }
 
+char *rg_system_get_timezone(void)
+{
+    return rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, NULL);
+    // return strdup(getenv("TZ"));
+}
+
 rg_app_t *rg_system_get_app(void)
 {
     return &app;
@@ -603,9 +656,323 @@ IRAM_ATTR int64_t rg_system_timer(void)
 
 void rg_system_event(int event, void *arg)
 {
-    RG_LOGD("Dispatching event:%d arg:%p\n", event, arg);
+    RG_LOGV("Dispatching event:%d arg:%p\n", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
+}
+
+static void shutdown_cleanup(void)
+{
+    app.exitCalled = true;
+    rg_display_clear(C_BLACK);                // Let the user know that something is happening
+    rg_gui_draw_hourglass();                  // ...
+    rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
+    rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
+    rg_system_save_time();                    // RTC might save to storage, do it before
+    rg_storage_deinit();                      // Unmount storage
+    rg_input_wait_for_key(RG_KEY_ALL, 0, -1); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
+    rg_input_deinit();                        // Now we can shutdown input
+    rg_i2c_deinit();                          // Must be after input, sound, and rtc
+    rg_display_deinit();                      // Do this very last to reduce flicker time
+}
+
+void rg_system_shutdown(void)
+{
+    RG_LOGW("Halting system!");
+    shutdown_cleanup();
+#ifdef ESP_PLATFORM
+    vTaskSuspendAll();
+    while (1)
+        ;
+#else
+    exit(0);
+#endif
+}
+
+void rg_system_sleep(void)
+{
+    RG_LOGW("Going to sleep!");
+    shutdown_cleanup();
+    rg_task_delay(1000);
+#ifdef ESP_PLATFORM
+    esp_deep_sleep_start();
+#else
+    exit(0);
+#endif
+}
+
+void rg_system_restart(void)
+{
+    RG_LOGW("Restarting system!");
+    shutdown_cleanup();
+#ifdef ESP_PLATFORM
+    esp_restart();
+#else
+    exit(1);
+#endif
+}
+
+void rg_system_exit(void)
+{
+    RG_LOGW("Exiting application!");
+    rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
+}
+
+void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
+{
+    RG_LOGI("Switching to app %s (%s)", partition ?: "-", name ?: "-");
+
+    if (app.initialized)
+    {
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
+        rg_settings_commit();
+    }
+#ifdef ESP_PLATFORM
+    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
+    if (err != ESP_OK)
+    {
+        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
+        RG_PANIC("Unable to set boot app!");
+    }
+#endif
+    rg_system_restart();
+}
+
+bool rg_system_have_app(const char *app)
+{
+#ifdef ESP_PLATFORM
+    return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
+#else
+    return true;
+#endif
+}
+
+void rg_system_panic(const char *context, const char *message)
+{
+    // Call begin_panic_trace first, it will normalize context and message for us
+    begin_panic_trace(context, message);
+    // Avoid using printf functions in case we're crashing because of a busted stack
+    fputs("\n*** RG_PANIC() CALLED IN '", stdout);
+    fputs(panicTrace.context, stdout);
+    fputs("' ***\n*** ", stdout);
+    fputs(panicTrace.message, stdout);
+    fputs(" ***\n\n", stdout);
+    abort();
+}
+
+void rg_system_vlog(int level, const char *context, const char *format, va_list va)
+{
+    const char *levels[RG_LOG_MAX] = {"=", "error", "warn", "info", "debug", "trace"};
+    const char *colors[RG_LOG_MAX] = {"", "\e[31m", "\e[33m", "", "\e[34m", "\e[36m"};
+    char buffer[300];
+    size_t len = 0;
+
+    if (level >= 0 && level < RG_LOG_MAX)
+    {
+        if (context)
+            len = snprintf(buffer, sizeof(buffer), "[%s] %s: ", levels[level], context);
+        else
+            len = snprintf(buffer, sizeof(buffer), "[%s] ", levels[level]);
+    }
+
+    len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
+
+    // Append a newline if needed only when possible
+    if (len > 0 && buffer[len - 1] != '\n')
+    {
+        buffer[len++] = '\n';
+        buffer[len] = 0;
+    }
+
+    if (panicTraceCleared)
+    {
+        logbuf_puts(&panicTrace, buffer);
+    }
+
+    if (level <= app.logLevel)
+    {
+        if (level >= 0 && level < RG_LOG_MAX)
+        {
+            fputs(colors[level], stdout);
+            fputs(buffer, stdout);
+            fputs("\e[0m", stdout);
+        }
+        else
+        {
+            fputs(buffer, stdout);
+        }
+        #ifdef RG_TARGET_SDL2
+        fflush(stdout);
+        #endif
+    }
+}
+
+void rg_system_log(int level, const char *context, const char *format, ...)
+{
+    va_list va;
+    va_start(va, format);
+    rg_system_vlog(level, context, format, va);
+    va_end(va);
+}
+
+bool rg_system_save_trace(const char *filename, bool panic_trace)
+{
+    if (!filename)
+        filename = RG_STORAGE_ROOT "/trace.txt";
+
+    RG_LOGI("Saving debug trace to '%s'...\n", filename);
+    FILE *fp = fopen(filename, "w");
+    if (!fp)
+    {
+        RG_LOGE("Open file '%s' failed, can't save trace!", filename);
+        return false;
+    }
+
+    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
+    fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
+    fprintf(fp, "Version: %s\n", app.version);
+    fprintf(fp, "Build date: %s\n", app.buildDate);
+    fprintf(fp, "Toolchain: %s\n", app.buildTool);
+    fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
+    fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
+    fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
+    fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
+    fprintf(fp, "Uptime: %ds (%d ticks)\n", stats->uptime, stats->ticks);
+    if (panic_trace && panicTrace.configNs[0])
+        fprintf(fp, "Panic configNs: %.16s\n", panicTrace.configNs);
+    if (panic_trace && panicTrace.message[0])
+        fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
+    if (panic_trace && panicTrace.context[0])
+        fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
+    fputs("\nLog output:\n", fp);
+    for (size_t i = 0; i < RG_LOGBUF_SIZE; i++)
+    {
+        size_t index = (panicTrace.cursor + i) % RG_LOGBUF_SIZE;
+        if (panicTrace.console[index])
+            fputc(panicTrace.console[index], fp);
+    }
+    fputs("\n\nEnd of trace\n\n", fp);
+    fclose(fp);
+
+    return true;
+}
+
+void rg_system_set_led(int value)
+{
+#ifdef ESP_PLATFORM
+    if (RG_GPIO_LED > -1 && app.ledValue != value)
+        gpio_set_level(RG_GPIO_LED, value);
+#endif
+    app.ledValue = value;
+}
+
+int rg_system_get_led(void)
+{
+    return app.ledValue;
+}
+
+void rg_system_set_log_level(rg_log_level_t level)
+{
+    if (level >= 0 && level < RG_LOG_MAX)
+        app.logLevel = level;
+    else
+        RG_LOGE("Invalid log level %d", level);
+}
+
+int rg_system_get_log_level(void)
+{
+    return app.logLevel;
+}
+
+void rg_system_set_overclock(int level)
+{
+#ifdef ESP_PLATFORM
+    // None of this is documented by espressif but can be found in the file rtc_clk.c
+    #define I2C_BBPLL                   0x66
+    #define I2C_BBPLL_ENDIV5              11
+    #define I2C_BBPLL_BBADC_DSMP           9
+    #define I2C_BBPLL_HOSTID               4
+    #define I2C_BBPLL_OC_LREF              2
+    #define I2C_BBPLL_OC_DIV_7_0           3
+    #define I2C_BBPLL_OC_DCUR              5
+    #define BBPLL_ENDIV5_VAL_320M       0x43
+    #define BBPLL_BBADC_DSMP_VAL_320M   0x84
+    #define BBPLL_ENDIV5_VAL_480M       0xc3
+    #define BBPLL_BBADC_DSMP_VAL_480M   0x74
+    extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
+    extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
+
+    uint8_t div_ref = 0;
+    uint8_t div7_0 = (level + 4) * 8;
+    uint8_t div10_8 = 0;
+    uint8_t lref = 0;
+    uint8_t dcur = 6;
+    uint8_t bw = 3;
+    uint8_t ENDIV5 = BBPLL_ENDIV5_VAL_480M;
+    uint8_t BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
+    uint8_t BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
+    uint8_t BBADC_OC_DIV_7_0 = div7_0;
+    uint8_t BBADC_OC_DCUR = (bw << 6) | dcur;
+
+    static uint8_t BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR, BASE_SAVED;
+    if (!BASE_SAVED)
+    {
+        BASE_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
+        BASE_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
+        BASE_BBADC_OC_LREF = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF);
+        BASE_BBADC_OC_DIV_7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
+        BASE_BBADC_OC_DCUR = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR);
+        BASE_SAVED = true;
+    }
+
+    if (level == 0)
+    {
+        ENDIV5 = BASE_ENDIV5;
+        BBADC_DSMP = BASE_BBADC_DSMP;
+        BBADC_OC_LREF = BASE_BBADC_OC_LREF;
+        BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
+        BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
+    }
+    else if (level < -4 || level > 3)
+    {
+        RG_LOGW("Invalid level %d, min:-4 max:3", level);
+        return;
+    }
+
+    RG_LOGW(" ");
+    RG_LOGW("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
+    RG_LOGW("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
+    RG_LOGW(" ");
+
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
+
+    RG_LOGW("Overclock applied!");
+#if 0
+    extern uint64_t esp_rtc_get_time_us(void);
+    uint64_t start = esp_rtc_get_time_us();
+    int64_t end = rg_system_timer() + 1000000;
+    while (rg_system_timer() < end)
+        continue;
+    overclock_ratio = 1000000.f / (esp_rtc_get_time_us() - start);
+#endif
+    // overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
+
+    // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
+#endif
+
+    app.overclock = level;
+}
+
+int rg_system_get_overclock(void)
+{
+    return app.overclock;
 }
 
 char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
@@ -686,7 +1053,8 @@ static void emu_update_save_slot(uint8_t slot)
 
 bool rg_emu_load_state(uint8_t slot)
 {
-    bool success = false;
+    if (slot == 0xFF)
+        slot = app.saveSlot;
 
     if (!app.romPath || !app.handlers.loadState)
     {
@@ -695,6 +1063,8 @@ bool rg_emu_load_state(uint8_t slot)
     }
 
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + slot, app.romPath);
+    bool success = false;
+
     RG_LOGI("Loading state from '%s'.\n", filename);
 
     rg_gui_draw_hourglass();
@@ -715,6 +1085,9 @@ bool rg_emu_load_state(uint8_t slot)
 
 bool rg_emu_save_state(uint8_t slot)
 {
+    if (slot == 0xFF)
+        slot = app.saveSlot;
+
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -846,236 +1219,24 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
+    app.frameskip = 0;
+    app.speed = 1.f;
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
 }
 
-static void shutdown_cleanup(void)
+void rg_emu_set_speed(float speed)
 {
-    rg_display_clear(C_BLACK);                // Let the user know that something is happening
-    rg_gui_draw_hourglass();                  // ...
-    rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
-    rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    rg_system_save_time();                    // RTC might save to storage, do it before
-    rg_storage_deinit();                      // Unmount storage
-    rg_input_wait_for_key(RG_KEY_ALL, 0, -1); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
-    rg_input_deinit();                        // Now we can shutdown input
-    rg_i2c_deinit();                          // Must be after input, sound, and rtc
-    rg_display_deinit();                      // Do this very last to reduce flicker time
+    app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
+    app.frameskip = RG_MAX(app.frameskip, (app.speed > 1.0f) ? 2 : 0);
+    rg_audio_set_sample_rate(app.sampleRate * app.speed);
+    rg_system_event(RG_EVENT_SPEEDUP, NULL);
 }
 
-void rg_system_shutdown(void)
+float rg_emu_get_speed(void)
 {
-    RG_LOGI("Halting system.\n");
-    exitCalled = true;
-    shutdown_cleanup();
-#ifdef ESP_PLATFORM
-    vTaskSuspendAll();
-    while (1)
-        ;
-#else
-    exit(0);
-#endif
-}
-
-void rg_system_sleep(void)
-{
-    RG_LOGI("Going to sleep!\n");
-    exitCalled = true;
-    shutdown_cleanup();
-    rg_task_delay(1000);
-#ifdef ESP_PLATFORM
-    esp_deep_sleep_start();
-#else
-    exit(0);
-#endif
-}
-
-void rg_system_restart(void)
-{
-    RG_LOGI("Restarting system.\n");
-    exitCalled = true;
-    shutdown_cleanup();
-#ifdef ESP_PLATFORM
-    esp_restart();
-#else
-    exit(1);
-#endif
-}
-
-void rg_system_exit(void)
-{
-    RG_LOGI("Exiting application.\n");
-    rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
-}
-
-void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
-{
-    RG_LOGI("Switching to app %s (%s)!\n", partition ?: "-", name ?: "-");
-    exitCalled = true;
-
-    if (app.initialized)
-    {
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
-        rg_settings_commit();
-    }
-#ifdef ESP_PLATFORM
-    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
-    if (err != ESP_OK)
-    {
-        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
-        RG_PANIC("Unable to set boot app!");
-    }
-#endif
-    rg_system_restart();
-}
-
-bool rg_system_have_app(const char *app)
-{
-#ifdef ESP_PLATFORM
-    return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
-#else
-    return true;
-#endif
-}
-
-void rg_system_panic(const char *context, const char *message)
-{
-    // Call begin_panic_trace first, it will normalize context and message for us
-    begin_panic_trace(context, message);
-    // Avoid using printf functions in case we're crashing because of a busted stack
-    fputs("\n*** RG_PANIC() CALLED IN '", stdout);
-    fputs(panicTrace.context, stdout);
-    fputs("' ***\n*** ", stdout);
-    fputs(panicTrace.message, stdout);
-    fputs(" ***\n\n", stdout);
-    abort();
-}
-
-void rg_system_vlog(int level, const char *context, const char *format, va_list va)
-{
-    const char *levels[RG_LOG_MAX] = {NULL, "=", "error", "warn", "info", "debug"};
-    char buffer[300];
-    size_t len = 0;
-
-    if (app.logLevel && level > app.logLevel)
-        return;
-
-    if (level > RG_LOG_PRINT && level < RG_LOG_MAX)
-    {
-        if (levels[level])
-            len += sprintf(buffer + len, "[%s] ", levels[level]);
-        if (context)
-            len += sprintf(buffer + len, "%s: ", context);
-    }
-
-    len += vsnprintf(buffer + len, sizeof(buffer) - len, format, va);
-
-    // Append a newline if needed only when possible
-    if (len > 0 && buffer[len - 1] != '\n')
-    {
-        buffer[len++] = '\n';
-        buffer[len] = 0;
-    }
-
-    if (panicTraceCleared)
-        logbuf_puts(&panicTrace, buffer);
-    fputs(buffer, stdout);
-
-    #ifdef RG_TARGET_SDL2
-    fflush(stdout);
-    #endif
-}
-
-void rg_system_log(int level, const char *context, const char *format, ...)
-{
-    va_list va;
-    va_start(va, format);
-    rg_system_vlog(level, context, format, va);
-    va_end(va);
-}
-
-bool rg_system_save_trace(const char *filename, bool panic_trace)
-{
-    if (!filename)
-        filename = RG_STORAGE_ROOT "/trace.txt";
-
-    RG_LOGI("Saving debug trace to '%s'...\n", filename);
-    FILE *fp = fopen(filename, "w");
-    if (!fp)
-    {
-        RG_LOGE("Open file '%s' failed, can't save trace!", filename);
-        return false;
-    }
-
-    rg_stats_t *stats = panic_trace ? &panicTrace.statistics : &statistics;
-    fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
-    fprintf(fp, "Version: %s\n", app.version);
-    fprintf(fp, "Build date: %s\n", app.buildDate);
-    fprintf(fp, "Toolchain: %s\n", app.buildTool);
-    fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
-    fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
-    fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
-    fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
-    fprintf(fp, "Uptime: %ds (%d ticks)\n", stats->uptime, stats->ticks);
-    if (panic_trace && panicTrace.configNs[0])
-        fprintf(fp, "Panic configNs: %.16s\n", panicTrace.configNs);
-    if (panic_trace && panicTrace.message[0])
-        fprintf(fp, "Panic message: %.256s\n", panicTrace.message);
-    if (panic_trace && panicTrace.context[0])
-        fprintf(fp, "Panic context: %.256s\n", panicTrace.context);
-    fputs("\nLog output:\n", fp);
-    for (size_t i = 0; i < RG_LOGBUF_SIZE; i++)
-    {
-        size_t index = (panicTrace.cursor + i) % RG_LOGBUF_SIZE;
-        if (panicTrace.console[index])
-            fputc(panicTrace.console[index], fp);
-    }
-    fputs("\n\nEnd of trace\n\n", fp);
-    fclose(fp);
-
-    return true;
-}
-
-void rg_system_set_led(int value)
-{
-#ifdef ESP_PLATFORM
-    if (RG_GPIO_LED > -1 && ledValue != value)
-        gpio_set_level(RG_GPIO_LED, value);
-#endif
-    ledValue = value;
-}
-
-int rg_system_get_led(void)
-{
-    return ledValue;
-}
-
-void rg_system_set_overclock(int level)
-{
-    //
-}
-
-int rg_system_get_overclock(void)
-{
-    return app.overclock;
-}
-
-float rg_system_get_overclock_ratio(void)
-{
-#if 0
-    extern uint64_t esp_rtc_get_time_us(void);
-    uint64_t start = esp_rtc_get_time_us();
-    int64_t end = rg_system_timer() + 1000000;
-    while (rg_system_timer() < end)
-        continue;
-    return 1000000.f / (esp_rtc_get_time_us() - start);
-#endif
-    return (240 + (app.overclock * 40)) / 240.f;
+    return app.speed;
 }
 
 #ifdef RG_ENABLE_PROFILING
@@ -1085,8 +1246,8 @@ float rg_system_get_overclock_ratio(void)
 // We also need to add multi-core support. Currently it's not an issue
 // because all our profiled code runs on the same core.
 
-#define LOCK_PROFILE()   xSemaphoreTake(lock, pdMS_TO_TICKS(10000));
-#define UNLOCK_PROFILE() xSemaphoreGive(lock);
+#define LOCK_PROFILE()   rg_queue_receive(profile->lock, NULL, 10000)
+#define UNLOCK_PROFILE() rg_queue_send(lock, NULL, 0)
 
 NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
 {

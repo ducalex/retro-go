@@ -15,7 +15,6 @@
 #include "gui.h"
 #include "wifi.h"
 #include "updater.h"
-#include "timezones.h"
 
 static rg_app_t *app;
 
@@ -62,37 +61,6 @@ static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t eve
         return RG_DIALOG_REDRAW;
 
     strcpy(option->value, modes[gui.scroll_mode]);
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t timezone_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        rg_gui_option_t options[timezones_count + 1];
-        rg_gui_option_t *opt = options;
-
-        for (size_t i = 0; i < timezones_count; i++)
-            *opt++ = (rg_gui_option_t){i, timezones[i].name, NULL, 1, NULL};
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-
-        int sel = rg_gui_dialog("Timezone", options, 0);
-        if (sel != RG_DIALOG_CANCELLED)
-            rg_system_set_timezone(timezones[sel].TZ);
-        return RG_DIALOG_REDRAW;
-    }
-
-    strcpy(option->value, getenv("TZ") ?: "N/A");
-
-    for (size_t i = 0; i < timezones_count; i++)
-    {
-        if (strcmp(timezones[i].TZ, option->value) == 0)
-        {
-            strcpy(option->value, timezones[i].name);
-            break;
-        }
-    }
-
     return RG_DIALOG_VOID;
 }
 
@@ -245,7 +213,7 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
-    gui_init();
+    gui_init(app->bootType != RG_RST_RESTART);
     applications_init();
     bookmarks_init();
     music_init();
@@ -453,7 +421,6 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Timezone    ", "...", 1, &timezone_cb},
         {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
     #ifdef RG_ENABLE_NETWORKING

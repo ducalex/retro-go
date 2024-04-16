@@ -13,13 +13,13 @@
 #define AUDIO_SAMPLE_RATE 22050
 
 static bool emulationPaused = false; // This should probably be a mutex
-static int current_height = 0;
-static int current_width = 0;
 static int overscan = false;
 static int skipFrames = 0;
 static bool drawFrame = true;
 static bool slowFrame = false;
-static uint8_t *framebuffers[2];
+
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 
 static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
@@ -31,7 +31,6 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
     {
         overscan = !overscan;
         rg_settings_set_number(NS_APP, SETTING_OVERSCAN, overscan);
-        current_width = current_height = 0;
         return RG_DIALOG_REDRAW;
     }
 
@@ -42,21 +41,12 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
 
 uint8_t *osd_gfx_framebuffer(int width, int height)
 {
-    if (width != current_width || height != current_height)
+    if (width > 0 && height > 0)
     {
-        RG_LOGI("Resolution changed to: %dx%d", width, height);
-
-        // PCE-GO needs 16 columns of scratch space + horizontally center
-        int offset_center = 16 + ((XBUF_WIDTH - width) / 2);
-        updates[0].buffer = framebuffers[0] + offset_center;
-        updates[1].buffer = framebuffers[1] + offset_center;
-
-        rg_display_set_source_format(width, height, 0, 0, XBUF_WIDTH, RG_PIXEL_PAL565_BE);
-
-        current_width = width;
-        current_height = height;
+        currentUpdate->width = width;
+        currentUpdate->height = height;
     }
-    return drawFrame ? currentUpdate->buffer : NULL;
+    return drawFrame ? currentUpdate->data : NULL;
 }
 
 void osd_vsync(void)
@@ -67,7 +57,7 @@ void osd_vsync(void)
     {
         slowFrame = !rg_display_sync(false);
         rg_display_submit(currentUpdate, 0);
-        currentUpdate = &updates[currentUpdate == &updates[0]];
+        currentUpdate = updates[currentUpdate == updates[0]];
     }
 
     // See if we need to skip a frame to keep up
@@ -148,7 +138,7 @@ static void audioTask(void *arg)
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
             rg_task_yield();
-        psg_update((void*)audioBuffer, numSamples, 0xFF);
+        psg_update((int16_t *)audioBuffer, numSamples, 0xFF);
         rg_audio_submit(audioBuffer, numSamples);
     }
 }
@@ -158,16 +148,14 @@ static void event_handler(int event, void *arg)
     if (event == RG_EVENT_REDRAW)
     {
         // We must use previous update because at this point current has been wiped.
-        rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-        rg_display_submit(previousUpdate, 0);
+        rg_display_submit(updates[currentUpdate == updates[0]], 0);
     }
 }
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
     // We must use previous update because at this point current has been wiped.
-    rg_video_update_t *previousUpdate = &updates[currentUpdate == &updates[0]];
-    return rg_display_save_frame(filename, previousUpdate, width, height);
+    return rg_surface_save_image_file(updates[currentUpdate == updates[0]], filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -206,23 +194,28 @@ void pce_main(void)
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
-
-    emulationPaused = true;
-    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
-
-    framebuffers[0] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
-    framebuffers[1] = rg_alloc(XBUF_WIDTH * XBUF_HEIGHT, MEM_FAST);
-
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
+
+    updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
+
+    updates[0]->data += 16;
+    updates[0]->width -= 16;
+    updates[1]->data += 16;
+    updates[1]->width -= 16;
 
     uint16_t *palette = PalettePCE(16);
     for (int i = 0; i < 256; i++)
     {
         uint16_t color = (palette[i] << 8) | (palette[i] >> 8);
-        updates[0].palette[i] = color;
-        updates[1].palette[i] = color;
+        updates[0]->palette[i] = color;
+        updates[1]->palette[i] = color;
     }
     free(palette);
+
+    emulationPaused = true;
+    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
     InitPCE(app->sampleRate, true, app->romPath);
 

@@ -27,22 +27,20 @@ int16_t gwenesis_ym2612_buffer[AUDIO_BUFFER_LENGTH];
 int ym2612_index;
 int ym2612_clock;
 
-static rg_video_update_t updates[2];
-static rg_video_update_t *currentUpdate = &updates[0];
-
-static rg_app_t *app;
+static FILE *savestate_fp = NULL;
+static int savestate_errors = 0;
 
 static bool yfm_enabled = true;
 static bool z80_enabled = true;
 static bool sn76489_enabled = true;
 
-static FILE *savestate_fp = NULL;
-static int savestate_errors = 0;
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
+static rg_app_t *app;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
 static const char *SETTING_SN76489_EMULATION = "sn_enable";
-
 // --- MAIN
 
 typedef struct {
@@ -156,7 +154,7 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -221,8 +219,15 @@ void app_main(void)
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
-    updates[0].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
-    // updates[1].buffer = rg_alloc(320 * 240 + 64, MEM_FAST) + 32;
+    updates[0] = rg_surface_create(320, 241, RG_PIXEL_PAL565_BE, MEM_FAST);
+    // updates[1] = rg_surface_create(320, 241, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
+
+    // This is a hack because our new surface format doesn't yet support overdraw space easily
+    updates[0]->data += 160;
+    updates[0]->height = 240;
+    // updates[1]->data += 160;
+    // updates[1]->height = 240;
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
@@ -262,12 +267,8 @@ void app_main(void)
     extern unsigned int screen_width, screen_height;
     extern int hint_pending;
 
-    unsigned int prev_screen_height = 0, prev_screen_width = 0;
-
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
     uint32_t joystick = 0, joystick_old;
-
-    RG_LOGI("rg_display_set_source_format()\n");
 
     int skipFrames = 0;
 
@@ -305,14 +306,7 @@ void app_main(void)
         screen_width = REG12_MODE_H40 ? 320 : 256;
         screen_height = REG1_PAL ? 240 : 224;
 
-        if (screen_width != prev_screen_width || prev_screen_height != screen_height)
-        {
-            rg_display_set_source_format(screen_width, screen_height, 0, 0, 320, RG_PIXEL_PAL565_BE);
-            prev_screen_width = screen_width;
-            prev_screen_height = screen_height;
-        }
-
-        gwenesis_vdp_set_buffer(currentUpdate->buffer);
+        gwenesis_vdp_set_buffer(currentUpdate->data);
         gwenesis_vdp_render_config();
 
         /* Reset the difference clocks and audio index */
@@ -399,6 +393,8 @@ void app_main(void)
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
             slowFrame = !rg_display_sync(false);
+            currentUpdate->width = screen_width;
+            currentUpdate->height = screen_height;
             rg_display_submit(currentUpdate, 0);
         }
 

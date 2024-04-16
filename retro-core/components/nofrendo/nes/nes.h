@@ -87,8 +87,7 @@ typedef struct nes_s
     input_t *input;
 
     /* Video buffer */
-    uint8 *framebuffers[2];
-    uint8 *vidbuf;
+    uint8 *vidbuf; // [NES_SCREEN_PITCH * NES_SCREEN_HEIGHT]
 
     /* Misc */
     nes_type_t system;
@@ -114,6 +113,7 @@ typedef struct nes_s
 
 nes_t *nes_getptr(void);
 nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo);
+uint8 *nes_setvidbuf(uint8 *vidbuf);
 void nes_shutdown(void);
 int nes_insertcart(const char *filename, const char *biosfile);
 int nes_insertdisk(const char *filename, const char *biosfile);

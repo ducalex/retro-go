@@ -6,7 +6,7 @@
 
 #define RG_TIMER_INIT() int64_t _rgts_ = rg_system_timer(), _rgtl_ = rg_system_timer();
 #define RG_TIMER_LAP(name)                                                                \
-    RG_LOGX("Lap %s: %dms   Total: %dms\n", #name, (int((rg_system_timer() - _rgtl_) / 1000), \
+    RG_LOGW("Lap %s: %dms   Total: %dms\n", #name, (int((rg_system_timer() - _rgtl_) / 1000), \
             (int)((rg_system_timer() - _rgts_) / 1000));                                  \
     _rgtl_ = rg_system_timer();
 
@@ -75,5 +75,6 @@ void rg_usleep(uint32_t us);
 #define MEM_8BIT  (8)
 #define MEM_32BIT (16)
 #define MEM_EXEC  (32)
+#define MEM_NOPANIC (64)
 
 #define PTR_IN_SPIRAM(ptr) ((void *)(ptr) >= (void *)0x3F800000 && (void *)(ptr) < (void *)0x3FC00000)

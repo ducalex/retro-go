@@ -13,6 +13,9 @@ static int dpad_mapped_up;
 static int dpad_mapped_down;
 static int dpad_mapped_left;
 static int dpad_mapped_right;
+
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 // static bool netplay = false;
 // --- MAIN
 
@@ -77,7 +80,10 @@ static void set_display_mode(void)
             break;
     }
 
-    rg_display_set_source_format(width, height, 0, 0, HANDY_SCREEN_WIDTH * 2, RG_PIXEL_565_BE);
+    updates[0]->width = width;
+    updates[0]->height = height;
+    updates[1]->width = width;
+    updates[1]->height = height;
 }
 
 
@@ -89,11 +95,13 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
         if (--rotation < 0) rotation = RG_DISPLAY_ROTATION_COUNT - 1;
         rg_display_set_rotation((display_rotation_t)rotation);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
     if (event == RG_DIALOG_NEXT) {
         if (++rotation > RG_DISPLAY_ROTATION_COUNT - 1) rotation = 0;
         rg_display_set_rotation((display_rotation_t)rotation);
         set_display_mode();
+        return RG_DIALOG_REDRAW;
     }
 
     strcpy(option->value, "Off  ");
@@ -114,7 +122,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-    return rg_display_save_frame(filename, currentUpdate, width, height);
+    return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -174,8 +182,9 @@ extern "C" void lynx_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
-    updates[0].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
-    updates[1].buffer = (void*)rg_alloc(HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH * 2, MEM_FAST);
+    updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
+    currentUpdate = updates[0];
 
     // The Lynx has a variable framerate but 60 is typical
     app->tickRate = 60;
@@ -188,7 +197,7 @@ extern "C" void lynx_main(void)
         RG_PANIC("ROM loading failed!");
     }
 
-    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
+    gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
     gAudioBuffer = (SWORD*)&audioBuffer;
     gAudioEnabled = 1;
 
@@ -237,8 +246,8 @@ extern "C" void lynx_main(void)
         {
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
-            currentUpdate = &updates[currentUpdate == &updates[0]];
-            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->buffer;
+            currentUpdate = updates[currentUpdate == updates[0]];
+            gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
         }
 
         app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);

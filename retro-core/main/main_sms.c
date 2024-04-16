@@ -1,16 +1,20 @@
 #include "shared.h"
 
-#include "smsplus.h"
+#include <smsplus.h>
 
-static uint32_t joystick1;
-static uint32_t *localJoystick = &joystick1;
+static rg_surface_t *updates[2];
+static rg_surface_t *currentUpdate;
 
-#ifdef RG_ENABLE_NETPLAY
-static uint32_t joystick2;
-static uint32_t *remoteJoystick = &joystick2;
-
-static bool netplay = false;
-#endif
+const rg_keyboard_map_t coleco_keyboard = {
+    .columns = 3,
+    .rows = 4,
+    .data = {
+        '1', '2', '3',
+        '4', '5', '6',
+        '7', '8', '9',
+        '*', '0', '#',
+    },
+};
 
 static const char *SETTING_PALETTE = "palette";
 // --- MAIN
@@ -18,41 +22,6 @@ static const char *SETTING_PALETTE = "palette";
 
 static void event_handler(int event, void *arg)
 {
-#ifdef RG_ENABLE_NETPLAY
-   bool new_netplay;
-
-   switch (event)
-   {
-      case NETPLAY_EVENT_STATUS_CHANGED:
-         new_netplay = (rg_netplay_status() == NETPLAY_STATUS_CONNECTED);
-
-         if (netplay && !new_netplay)
-         {
-            rg_gui_alert("Netplay", "Connection lost!");
-         }
-         else if (!netplay && new_netplay)
-         {
-            system_reset();
-         }
-
-         netplay = new_netplay;
-         break;
-
-      default:
-         break;
-   }
-
-   if (netplay && rg_netplay_mode() == NETPLAY_MODE_GUEST)
-   {
-      localJoystick = &joystick2;
-      remoteJoystick = &joystick1;
-   }
-   else
-   {
-      localJoystick = &joystick1;
-      remoteJoystick = &joystick2;
-   }
-#endif
     if (event == RG_EVENT_REDRAW)
     {
         rg_display_submit(currentUpdate, 0);
@@ -61,7 +30,7 @@ static void event_handler(int event, void *arg)
 
 static bool screenshot_handler(const char *filename, int width, int height)
 {
-	return rg_display_save_frame(filename, currentUpdate, width, height);
+	return rg_surface_save_image_file(currentUpdate, filename, width, height);
 }
 
 static bool save_state_handler(const char *filename)
@@ -97,12 +66,6 @@ static bool reset_handler(bool hard)
 
 static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t event)
 {
-    if (sms.console >= CONSOLE_SMS)
-    {
-        opt->flags = RG_DIALOG_FLAG_HIDDEN;
-        return RG_DIALOG_VOID;
-    }
-
     int pal = option.tms_pal;
     int max = 2;
 
@@ -119,7 +82,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t eve
             for (int i = 0; i < PALETTE_SIZE; i++)
                 palette_sync(i);
             if (render_copy_palette(currentUpdate->palette))
-                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+                memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
             rg_settings_set_number(NS_APP, SETTING_PALETTE, pal);
         }
         return RG_DIALOG_REDRAW;
@@ -145,8 +108,9 @@ void sms_main(void)
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
 
-    updates[0].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
-    updates[1].buffer = rg_alloc(SMS_WIDTH * SMS_HEIGHT, MEM_FAST);
+    updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    currentUpdate = updates[0];
 
     system_reset_config();
     option.sndrate = AUDIO_SAMPLE_RATE;
@@ -167,16 +131,18 @@ void sms_main(void)
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;
     bitmap.pitch = bitmap.width;
-    bitmap.data = currentUpdate->buffer;
+    bitmap.data = currentUpdate->data;
 
     system_poweron();
 
     app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
 
-    updates[0].buffer += bitmap.viewport.x;
-    updates[1].buffer += bitmap.viewport.x;
-
-    rg_display_set_source_format(bitmap.viewport.w, bitmap.viewport.h, 0, 0, bitmap.pitch, RG_PIXEL_PAL565_BE);
+    updates[0]->offset = bitmap.viewport.x;
+    updates[0]->width = bitmap.viewport.w;
+    updates[0]->height = bitmap.viewport.h;
+    updates[1]->offset = bitmap.viewport.x;
+    updates[1]->width = bitmap.viewport.w;
+    updates[1]->height = bitmap.viewport.h;
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
@@ -184,14 +150,16 @@ void sms_main(void)
     }
 
     int skipFrames = 0;
+    int colecoKey = 0;
+    int colecoKeyDecay = 0;
 
     while (true)
     {
-        *localJoystick = rg_input_read_gamepad();
+        uint32_t joystick = rg_input_read_gamepad();
 
-        if (*localJoystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-            if (*localJoystick & RG_KEY_MENU)
+            if (joystick & RG_KEY_MENU)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
@@ -204,34 +172,6 @@ void sms_main(void)
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
         input.system = 0x00;
-
-        #ifdef RG_ENABLE_NETPLAY
-        if (netplay)
-        {
-            rg_netplay_sync(localJoystick, remoteJoystick, sizeof(*localJoystick));
-
-            uint32_t joystick = *remoteJoystick;
-
-            if (joystick & RG_KEY_UP)    input.pad[1] |= INPUT_UP;
-            if (joystick & RG_KEY_DOWN)  input.pad[1] |= INPUT_DOWN;
-            if (joystick & RG_KEY_LEFT)  input.pad[1] |= INPUT_LEFT;
-            if (joystick & RG_KEY_RIGHT) input.pad[1] |= INPUT_RIGHT;
-            if (joystick & RG_KEY_A)     input.pad[1] |= INPUT_BUTTON2;
-            if (joystick & RG_KEY_B)     input.pad[1] |= INPUT_BUTTON1;
-            if (IS_SMS)
-            {
-                if (joystick & RG_KEY_START)  input.system |= INPUT_PAUSE;
-                if (joystick & RG_KEY_SELECT) input.system |= INPUT_START;
-            }
-            else if (IS_GG)
-            {
-                if (joystick & RG_KEY_START)  input.system |= INPUT_START;
-                if (joystick & RG_KEY_SELECT) input.system |= INPUT_PAUSE;
-            }
-        }
-        #endif
-
-        uint32_t joystick = *localJoystick;
 
         if (joystick & RG_KEY_UP)    input.pad[0] |= INPUT_UP;
         if (joystick & RG_KEY_DOWN)  input.pad[0] |= INPUT_DOWN;
@@ -255,56 +195,33 @@ void sms_main(void)
             coleco.keypad[0] = 0xff;
             coleco.keypad[1] = 0xff;
 
-            if (joystick & RG_KEY_SELECT)
+            if (colecoKeyDecay > 0)
+            {
+                coleco.keypad[0] = colecoKey;
+                colecoKeyDecay--;
+            }
+
+            if (joystick & RG_KEY_START)
+            {
+                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, "To start, try: 1 or * or #", C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
+                rg_audio_set_mute(true);
+                int key = rg_input_read_keyboard(&coleco_keyboard);
+                rg_audio_set_mute(false);
+
+                if (key >= '0' && key <= '9')
+                    colecoKey = key - '0';
+                else if (key == '*')
+                    colecoKey = 10;
+                else if (key == '#')
+                    colecoKey = 11;
+                else
+                    colecoKey = 255;
+                colecoKeyDecay = 3;
+            }
+            else if (joystick & RG_KEY_SELECT)
             {
                 rg_task_delay(100);
                 system_reset();
-            }
-
-            // 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, *, #
-            switch (cart.crc)
-            {
-                case 0x798002a2:    // Frogger
-                case 0x32b95be0:    // Frogger
-                case 0x9cc3fabc:    // Alcazar
-                case 0x964db3bc:    // Fraction Fever
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 10; // *
-                    }
-                    break;
-
-                case 0x1796de5e:    // Boulder Dash
-                case 0x5933ac18:    // Boulder Dash
-                case 0x6e5c4b11:    // Boulder Dash
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 11; // #
-                    }
-
-                    if ((joystick & RG_KEY_START) && (joystick & RG_KEY_LEFT))
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    break;
-                case 0x109699e2:    // Dr. Seuss's Fix-Up The Mix-Up Puzzler
-                case 0x614bb621:    // Decathlon
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    if ((joystick & RG_KEY_START) && (joystick & RG_KEY_LEFT))
-                    {
-                        coleco.keypad[0] = 10; // *
-                    }
-                    break;
-
-                default:
-                    if (joystick & RG_KEY_START)
-                    {
-                        coleco.keypad[0] = 1;
-                    }
-                    break;
             }
         }
 
@@ -313,11 +230,11 @@ void sms_main(void)
         if (drawFrame)
         {
             if (render_copy_palette(currentUpdate->palette))
-                memcpy(&updates[currentUpdate == &updates[0]].palette, currentUpdate->palette, 512);
+                memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
-            currentUpdate = &updates[currentUpdate == &updates[0]]; // Swap
-            bitmap.data = currentUpdate->buffer - bitmap.viewport.x;
+            currentUpdate = updates[currentUpdate == updates[0]]; // Swap
+            bitmap.data = currentUpdate->data;
         }
 
         // The emulator's sound buffer isn't in a very convenient format, we must remix it.

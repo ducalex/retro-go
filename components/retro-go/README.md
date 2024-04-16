@@ -35,4 +35,5 @@ I develop and test mainly on the ODROID-GO. I occasionally test on the MRGC-G32 
 - Lode Vandevenne (lvandeve)
 
 # License
-[LICENSE](LICENSE)
+[GPLv2](COPYING)
+

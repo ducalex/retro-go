@@ -1,7 +1,4 @@
 #if 0
-#include <freertos/FreeRTOS.h>
-#include <freertos/queue.h>
-
 #include <rg_system.h>
 #include <string.h>
 #include <stdlib.h>
@@ -13,7 +10,7 @@
 
 static rg_scandir_t *music_files = NULL;
 static size_t music_files_count = 0;
-static QueueHandle_t playback_queue;
+static rg_queue_t *playback_queue;
 
 static void music_player(void *arg);
 static void tab_refresh(tab_t *tab);
@@ -50,7 +47,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         {
             char filepath[RG_PATH_MAX];
             snprintf(filepath, RG_PATH_MAX, "%s/%s", RG_BASE_PATH_MUSIC, file->name);
-            xQueueSend(playback_queue, &filepath, portMAX_DELAY);
+            rg_queue_send(playback_queue, &filepath, -1);
         }
     }
     else if (event == TAB_BACK)
@@ -109,7 +106,7 @@ static void music_player(void *arg)
 
     while (1)
     {
-        xQueueReceive(playback_queue, &filepath, portMAX_DELAY);
+        rg_queue_receive(playback_queue, &filepath, -1);
 
         RG_LOGI("Playing file '%s'", filepath);
 
@@ -117,7 +114,7 @@ static void music_player(void *arg)
         {
             rg_audio_set_sample_rate(mp3->sampleRate);
 
-            while (!mp3->atEnd && !uxQueueMessagesWaiting(playback_queue))
+            while (!mp3->atEnd && rg_queue_peek(playback_queue, NULL, 0))
             {
                 drmp3_uint64 len = drmp3_read_pcm_frames_s16(mp3, 180, (drmp3_int16 *)buffer);
                 rg_audio_submit(buffer, len);
@@ -135,7 +132,7 @@ void music_init(void)
 {
     gui_add_tab("music", "Music Player", NULL, event_handler);
 
-    playback_queue = xQueueCreate(1, RG_PATH_MAX);
+    playback_queue = rg_queue_create(1, RG_PATH_MAX);
     rg_task_create("music_player", &music_player, NULL, 32000, RG_TASK_PRIORITY, -1);
 }
 

@@ -4,43 +4,21 @@
 #include <stdlib.h>
 #include <string.h>
 
+#if !defined(ESP_PLATFORM) && (RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC)
+#error "I2S support can only be build inside esp-idf!"
+#elif !CONFIG_IDF_TARGET_ESP32 && RG_AUDIO_USE_INT_DAC
+#error "Your chip has no DAC! Please set RG_AUDIO_USE_INT_DAC to 0 in your target file."
+#endif
+
 #ifdef ESP_PLATFORM
-#include <freertos/FreeRTOS.h>
-#include <freertos/semphr.h>
 #include <driver/gpio.h>
-#define CREATE_DEVICE_LOCK() audioDevLock = audioDevLock ?: xSemaphoreCreateMutex()
-#define ACQUIRE_DEVICE(timeout)                        \
-    ({                                                 \
-        int x = xSemaphoreTake(audioDevLock, timeout); \
-        if (!x)                                        \
-            RG_LOGE("Failed to acquire lock!\n");      \
-        x;                                             \
-    })
-#define RELEASE_DEVICE() xSemaphoreGive(audioDevLock)
-static SemaphoreHandle_t audioDevLock;
+#include <driver/i2s.h>
+#if RG_AUDIO_USE_INT_DAC
+#include <driver/dac.h>
+#endif
 #else
 #include <SDL2/SDL.h>
-#define CREATE_DEVICE_LOCK()
-#define ACQUIRE_DEVICE(timeout) (1)
-#define RELEASE_DEVICE()
 static SDL_AudioDeviceID audioDevice;
-#endif
-
-#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
-#include <driver/i2s.h>
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
-// The inversion is deliberate, it was a bug in older esp-idf
-#define I2S_COMM_FORMAT_STAND_I2S (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB)
-#define I2S_COMM_FORMAT_STAND_MSB (I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_LSB)
-#endif
-#endif
-
-#if RG_AUDIO_USE_INT_DAC
-#ifdef CONFIG_IDF_TARGET_ESP32
-#include <driver/dac.h>
-#else
-#error "Only the ESP32 has a DAC! Please set RG_AUDIO_USE_INT_DAC to 0 in your target file."
-#endif
 #endif
 
 static const rg_audio_sink_t sinks[] = {
@@ -59,7 +37,17 @@ static const rg_audio_sink_t sinks[] = {
   // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
 };
 
+#define ACQUIRE_DEVICE(timeout)                                     \
+    ({                                                              \
+        bool lock = rg_queue_receive(audioDevLock, NULL, timeout);  \
+        if (!lock)                                                  \
+            RG_LOGE("Failed to acquire lock!\n");                   \
+        lock;                                                       \
+    })
+#define RELEASE_DEVICE() rg_queue_send(audioDevLock, NULL, 0)
+
 static rg_audio_t audio;
+static rg_queue_t *audioDevLock;
 static rg_audio_counters_t counters;
 
 static const char *SETTING_OUTPUT = "AudioSink";
@@ -71,7 +59,12 @@ void rg_audio_init(int sampleRate)
 {
     RG_ASSERT(audio.sink == NULL, "Audio sink already initialized!");
 
-    CREATE_DEVICE_LOCK();
+    if (!audioDevLock)
+    {
+        audioDevLock = rg_queue_create(1, 0);
+        RELEASE_DEVICE();
+    }
+
     ACQUIRE_DEVICE(1000);
 
     int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[0].type);
@@ -119,17 +112,11 @@ void rg_audio_init(int sampleRate)
             .sample_rate = sampleRate,
             .bits_per_sample = 16,
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
-        #ifdef RG_TARGET_ESPLAY_S3
-            .communication_format = I2S_COMM_FORMAT_STAND_I2S | I2S_COMM_FORMAT_STAND_MSB,
-            .intr_alloc_flags = ESP_INTR_FLAG_LEVEL1, // ESP_INTR_FLAG_LEVEL1
-            .dma_buf_count = 8, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-            .dma_buf_len = 534, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
-            .use_apll = false, // S3 cant use apll
-        #else
             .communication_format = I2S_COMM_FORMAT_STAND_I2S,
             .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
             .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
             .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+        #if CONFIG_IDF_TARGET_ESP32
             .use_apll = true, // External DAC may care about accuracy
         #endif
         }, 0, NULL);
@@ -365,6 +352,11 @@ void rg_audio_set_volume(int percent)
     RG_LOGI("Volume set to %d%%\n", audio.volume);
 }
 
+bool rg_audio_get_mute(void)
+{
+    return audio.muted;
+}
+
 void rg_audio_set_mute(bool mute)
 {
     RG_ASSERT(audio.sink != NULL, "Audio device not ready!");
@@ -404,9 +396,9 @@ void rg_audio_set_sample_rate(int sampleRate)
     if (audio.sampleRate == sampleRate)
         return;
 
-#if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
     if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
     {
+    #if RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC
         if (ACQUIRE_DEVICE(1000))
         {
             RG_LOGI("i2s_set_sample_rates(%d)\n", sampleRate);
@@ -414,9 +406,11 @@ void rg_audio_set_sample_rate(int sampleRate)
             audio.sampleRate = sampleRate;
             RELEASE_DEVICE();
         }
+    #endif
     }
-#else
-    rg_audio_deinit();
-    rg_audio_init(sampleRate);
-#endif
+    else
+    {
+        rg_audio_deinit();
+        rg_audio_init(sampleRate);
+    }
 }
