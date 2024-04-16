@@ -101,6 +101,12 @@ int ProcessEvents(int Wait)
         InKeyboard = !InKeyboard;
         rg_input_wait_for_key(RG_KEY_ANY, false, 500);
     }
+    else if (joystick == RG_KEY_START)
+    {
+        // I think this key could be better used for something else
+        // but for now the feedback is to keep a key for fMSX menu...
+        InMenu = 2;
+    }
 
     if (InMenu == 2)
     {
@@ -433,7 +439,7 @@ void app_main(void)
     const rg_gui_option_t options[] = {
         {0, "Input", "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
         {0, "Crop ", "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
-        {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
+        // {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
         RG_DIALOG_END,
     };
 
