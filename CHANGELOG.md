@@ -1,4 +1,4 @@
-# Retro-Go 1.41 (2024-??-??)
+# Retro-Go 1.41 (2024-04-16)
 - MSX: Added fMSX emulator
 - COL: Added virtual keyboard so that more games work
 - COL: Fixed savestates not working

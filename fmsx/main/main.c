@@ -106,6 +106,7 @@ int ProcessEvents(int Wait)
         // I think this key could be better used for something else
         // but for now the feedback is to keep a key for fMSX menu...
         InMenu = 2;
+        return 0;
     }
 
     if (InMenu == 2)
