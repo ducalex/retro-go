@@ -536,7 +536,7 @@ pce_writeIO(uint16_t A, uint8_t V)
 
 		case 3:                                 // Color table address (MSB)
 			PCE.VCE.reg &= 0xFF;
-			PCE.VCE.reg |= V << 8;
+			PCE.VCE.reg |= (V & 1) << 8;
 			return;
 
 		case 4:                                 // Color table data (LSB)
