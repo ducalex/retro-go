@@ -47,22 +47,29 @@ typedef struct
 typedef struct
 {
     rg_key_t key;
-    int src;
+    uint32_t src;
 } rg_keymap_i2c_t;
 
 // #define RG_GAMEPAD_KBD_MAP {{}, ...} for Keyboard driver
 typedef struct
 {
     rg_key_t key;
-    int src;
+    uint32_t src;
 } rg_keymap_kbd_t;
 
 // #define RG_GAMEPAD_SERIAL_MAP {{}, ...} to use Serial (74164, SNES, etc) driver
 typedef struct
 {
     rg_key_t key;
-    int src;
+    uint32_t src;
 } rg_keymap_serial_t;
+
+// #define RG_GAMEPAD_VIRT_MAP {{}, ...} to add virtual buttons (eg start+select = menu)
+typedef struct
+{
+    rg_key_t key;
+    uint32_t src;
+} rg_keymap_virt_t;
 
 // FIXME: Create a single unified keymap...
 // ...

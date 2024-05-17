@@ -58,6 +58,10 @@
     {RG_KEY_A,      GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
     {RG_KEY_B,      GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
 }
+#define RG_GAMEPAD_VIRT_MAP {\
+    {RG_KEY_MENU,   RG_KEY_START | RG_KEY_SELECT},\
+    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+}
 
 // Battery
 #define RG_BATTERY_DRIVER           1

@@ -32,6 +32,9 @@ static rg_keymap_kbd_t keymap_kbd[] = RG_GAMEPAD_KBD_MAP;
 #ifdef RG_GAMEPAD_SERIAL_MAP
 static rg_keymap_serial_t keymap_serial[] = RG_GAMEPAD_SERIAL_MAP;
 #endif
+#ifdef RG_GAMEPAD_VIRT_MAP
+static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
+#endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
 static rg_battery_t battery_state = {0};
@@ -145,17 +148,16 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     }
 #endif
 
-    // Virtual buttons (combos) to replace essential missing buttons.
-#if !RG_GAMEPAD_HAS_MENU_BTN
-    if (state == (RG_KEY_SELECT | RG_KEY_START))
-        state = RG_KEY_MENU;
-#endif
-#if !RG_GAMEPAD_HAS_OPTION_BTN
-    if (state == (RG_KEY_SELECT | RG_KEY_A))
-        state = RG_KEY_OPTION;
+#if defined(RG_GAMEPAD_VIRT_MAP)
+    for (size_t i = 0; i < RG_COUNT(keymap_virt); ++i)
+    {
+        if (state == keymap_virt[i].src)
+            state = keymap_virt[i].key;
+    }
 #endif
 
-    if (out) *out = state;
+    if (out)
+        *out = state;
     return true;
 }
 

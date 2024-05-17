@@ -61,6 +61,9 @@
     {RG_KEY_A,      (1<<6)},\
     {RG_KEY_B,      (1<<7)},\
 }
+#define RG_GAMEPAD_VIRT_MAP {\
+    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+}
 
 // Battery
 #define RG_BATTERY_DRIVER           2
