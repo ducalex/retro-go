@@ -42,7 +42,6 @@
 // #define RG_SCREEN_MARGIN_BOTTOM     0  // Fullscreen for metal case. Cropped on bottom for plastic case.
 
 // Input
-#define RG_GAMEPAD_DRIVER           3   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 4 = AW9523, 5 = ESPLAY-S3, 6 = SDL2
 #define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0   // The power button does not seem to be mappable.
 /**
@@ -50,9 +49,8 @@
  * With the plastic shell, the buttons are: S/P,    Reset,  Sound,  On/Off
  * Left to right, these buttons are:        (1<<0), (1<<1), (1<<8), null?
  */
-// Note: Depending on the driver, the button map can be a bitmask, an index, or a GPIO.
-// Refer to rg_input.h to see all available RG_KEY_*
-#define RG_GAMEPAD_MAP {\
+// Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
+#define RG_GAMEPAD_I2C_MAP {\
     {RG_KEY_UP,     (1<<2)},\
     {RG_KEY_RIGHT,  (1<<5)},\
     {RG_KEY_DOWN,   (1<<3)},\

@@ -178,7 +178,8 @@ static void lcd_set_backlight(float percent)
 #if defined(RG_GPIO_LCD_BCKL)
     error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
 #elif defined(RG_TARGET_QTPY_GAMER)
-    // error_code = aw_analogWrite(AW_TFT_BACKLIGHT, level * 255);
+    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, 0);
+    rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, level * 255);
 #endif
 
     if (error_code)
@@ -250,10 +251,16 @@ static void lcd_init(void)
     rg_usleep(100 * 1000);
     gpio_set_level(RG_GPIO_LCD_RST, 1);
     rg_usleep(10 * 1000);
+#elif defined(RG_TARGET_QTPY_GAMER)
+    rg_i2c_gpio_set_direction(AW_TFT_RESET, 0);
+    rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
+    rg_usleep(100 * 1000);
+    rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
+    rg_usleep(10 * 1000);
 #endif
 
     ILI9341_CMD(0x01);          // Reset
-    rg_usleep(5 * 1000);           // Wait 5ms after reset
+    rg_usleep(5 * 1000);        // Wait 5ms after reset
     ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565
     #ifdef RG_SCREEN_INIT
         RG_SCREEN_INIT();

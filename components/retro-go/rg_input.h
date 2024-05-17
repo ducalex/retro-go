@@ -25,6 +25,7 @@ typedef enum
     RG_KEY_NONE    = 0,
 } rg_key_t;
 
+// #define RG_GAMEPAD_ADC1_MAP {{}, ...} to use ADC1 driver
 typedef struct
 {
     rg_key_t key;
@@ -33,6 +34,7 @@ typedef struct
     int min, max;
 } rg_keymap_adc1_t;
 
+// #define RG_GAMEPAD_GPIO_MAP {{}, ...} to use GPIO driver
 typedef struct
 {
     rg_key_t key;
@@ -41,11 +43,29 @@ typedef struct
     int level;
 } rg_keymap_gpio_t;
 
+// #define RG_GAMEPAD_I2C_MAP {{}, ...} to use I2C driver
 typedef struct
 {
     rg_key_t key;
     int src;
-} rg_keymap_t;
+} rg_keymap_i2c_t;
+
+// #define RG_GAMEPAD_KBD_MAP {{}, ...} for Keyboard driver
+typedef struct
+{
+    rg_key_t key;
+    int src;
+} rg_keymap_kbd_t;
+
+// #define RG_GAMEPAD_SERIAL_MAP {{}, ...} to use Serial (74164, SNES, etc) driver
+typedef struct
+{
+    rg_key_t key;
+    int src;
+} rg_keymap_serial_t;
+
+// FIXME: Create a single unified keymap...
+// ...
 
 typedef struct
 {
