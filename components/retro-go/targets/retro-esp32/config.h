@@ -43,7 +43,6 @@
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
 // Input
-#define RG_GAMEPAD_HAS_MENU_BTN     0
 #define RG_GAMEPAD_HAS_OPTION_BTN   0
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_ADC1_MAP {\

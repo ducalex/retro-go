@@ -42,7 +42,6 @@
 // #define RG_SCREEN_MARGIN_BOTTOM     0  // Fullscreen for metal case. Cropped on bottom for plastic case.
 
 // Input
-#define RG_GAMEPAD_HAS_MENU_BTN     1
 #define RG_GAMEPAD_HAS_OPTION_BTN   0   // The power button does not seem to be mappable.
 /**
  * The Stock firmware, left to right is:    Start,  Select, Menu,   Power

@@ -1365,6 +1365,9 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         {0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "Target ", (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
+        #if !RG_GAMEPAD_HAS_OPTION_BTN
+        {4, "Options ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        #endif
         {1, "View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1398,6 +1401,9 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
                     rg_system_restart();
                     return;
                 }
+                break;
+            case 4:
+                rg_gui_options_menu();
                 break;
             default:
                 return;
