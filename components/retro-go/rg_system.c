@@ -794,6 +794,7 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
 
     if (level <= app.logLevel)
     {
+    #if RG_LOG_COLORS
         if (level >= 0 && level < RG_LOG_MAX)
         {
             fputs(colors[level], stdout);
@@ -801,12 +802,13 @@ void rg_system_vlog(int level, const char *context, const char *format, va_list 
             fputs("\e[0m", stdout);
         }
         else
+    #endif
         {
             fputs(buffer, stdout);
         }
-        #ifdef RG_TARGET_SDL2
+    #ifdef RG_TARGET_SDL2
         fflush(stdout);
-        #endif
+    #endif
     }
 }
 
