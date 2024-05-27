@@ -26,7 +26,6 @@
 #define RG_SCREEN_INIT()
 
 // Input
-#define RG_GAMEPAD_HAS_OPTION_BTN   1
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_KBD_MAP {\
     {RG_KEY_UP,     SDL_SCANCODE_UP},\

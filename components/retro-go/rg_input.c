@@ -37,8 +37,12 @@ static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
 #endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
+static uint32_t gamepad_mapped = 0;
 static rg_battery_t battery_state = {0};
 
+#define UPDATE_GLOBAL_MAP(keymap)                 \
+    for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
+        gamepad_mapped |= keymap[i].key;          \
 
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
@@ -226,6 +230,7 @@ void rg_input_init(void)
         const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
         adc1_config_channel_atten(mapping->channel, mapping->atten);
     }
+    UPDATE_GLOBAL_MAP(keymap_adc1);
 #endif
 
 #if defined(RG_GAMEPAD_GPIO_MAP)
@@ -236,6 +241,7 @@ void rg_input_init(void)
         gpio_set_direction(mapping->num, GPIO_MODE_INPUT);
         gpio_set_pull_mode(mapping->num, mapping->pull);
     }
+    UPDATE_GLOBAL_MAP(keymap_gpio);
 #endif
 
 #if defined(RG_GAMEPAD_I2C_MAP)
@@ -244,10 +250,12 @@ void rg_input_init(void)
 #if defined(RG_TARGET_QTPY_GAMER)
     rg_i2c_gpio_init();
 #endif
+    UPDATE_GLOBAL_MAP(keymap_i2c);
 #endif
 
 #if defined(RG_GAMEPAD_KBD_MAP)
     RG_LOGI("Initializing KBD gamepad driver...");
+    UPDATE_GLOBAL_MAP(keymap_kbd);
 #endif
 
 #if defined(RG_GAMEPAD_SERIAL_MAP)
@@ -257,6 +265,7 @@ void rg_input_init(void)
     gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
+    UPDATE_GLOBAL_MAP(keymap_serial);
 #endif
 
 
@@ -336,6 +345,13 @@ const char *rg_input_get_key_name(rg_key_t key)
     case RG_KEY_NONE: return "None";
     default: return "Unknown";
     }
+}
+
+const char *rg_input_get_key_mapping(rg_key_t key)
+{
+    if ((gamepad_mapped & key) == key)
+        return "PHYSICAL";
+    return NULL;
 }
 
 const rg_keyboard_map_t virtual_map1 = {

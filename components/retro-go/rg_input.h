@@ -93,6 +93,7 @@ void rg_input_deinit(void);
 bool rg_input_key_is_pressed(rg_key_t mask);
 bool rg_input_wait_for_key(rg_key_t mask, bool pressed, int timeout_ms);
 const char *rg_input_get_key_name(rg_key_t key);
+const char *rg_input_get_key_mapping(rg_key_t key);
 uint32_t rg_input_read_gamepad(void);
 int rg_input_read_keyboard(const rg_keyboard_map_t *map);
 rg_battery_t rg_input_read_battery(void);
