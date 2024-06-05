@@ -11,7 +11,6 @@
 
 #include "applications.h"
 #include "bookmarks.h"
-#include "music.h"
 #include "gui.h"
 #include "wifi.h"
 #include "updater.h"
@@ -207,7 +206,6 @@ static void retro_loop(void)
     gui_init(app->bootType != RG_RST_RESTART);
     applications_init();
     bookmarks_init();
-    music_init();
 
 #ifdef RG_ENABLE_NETWORKING
     wifi_init();
