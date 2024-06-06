@@ -211,12 +211,9 @@ static void retro_loop(void)
     wifi_init();
 #endif
 
-    tab = gui_get_current_tab();
-    if (!tab)
-    {
+    if (!gui_get_current_tab())
         gui.selected_tab = 0;
-        tab = gui_get_current_tab();
-    }
+    tab = gui_set_current_tab(gui.selected_tab);
 
     while (true)
     {

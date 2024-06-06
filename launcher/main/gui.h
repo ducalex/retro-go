@@ -109,7 +109,11 @@ typedef struct tab_s {
     void *arg;
     const char *navpath;
     listbox_t listbox;
+    rg_image_t *background;
+    rg_image_t *banner;
+    rg_image_t *logo;
     rg_image_t *preview;
+    int background_shade;
     gui_event_handler_t event_handler;
 } tab_t;
 
@@ -127,7 +131,6 @@ typedef struct {
     int scroll_mode;
     int width;
     int height;
-    image_t images[128];
     theme_t themes[4];
     uint32_t idle_counter;
     uint32_t joystick;
@@ -145,7 +148,7 @@ tab_t *gui_set_current_tab(int index);
 void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
 
-const rg_image_t *gui_get_image(const char *type, const char *subtype);
+rg_image_t *gui_get_image(const char *type, const char *subtype);
 
 void gui_sort_list(tab_t *tab);
 void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg);
