@@ -539,12 +539,13 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
    if (!ppu.obj_on)
       return;
 
-   /* Save left hand column */
-   uint32 savecol1 = ((uint32 *) vidbuf)[0];
-   uint32 savecol2 = ((uint32 *) vidbuf)[1];
-
    int sprite_height = ppu.obj_height;
    int sprite_offset = ppu.obj_base;
+   uint8 savecol[8];
+
+   /* Left column masking enabled, save first 8 pixels to reapply at the end */
+   if (draw && !ppu.left_obj_on)
+      memcpy(&savecol, vidbuf, 8);
 
    for (int sprite_num = 0, count = 0; sprite_num < 64; sprite_num++)
    {
@@ -615,12 +616,9 @@ INLINE void ppu_renderoam(uint8 *vidbuf, int scanline, bool draw)
       }
    }
 
-   /* Restore lefthand column */
-   if (!ppu.left_obj_on)
-   {
-      ((uint32 *) vidbuf)[0] = savecol1;
-      ((uint32 *) vidbuf)[1] = savecol2;
-   }
+   /* Mask left columns if necessary */
+   if (draw && !ppu.left_obj_on)
+      memcpy(vidbuf, &savecol, 8);
 }
 
 bool ppu_enabled(void)

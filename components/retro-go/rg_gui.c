@@ -1358,6 +1358,7 @@ void rg_gui_options_menu(void)
 void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 {
     const rg_app_t *app = rg_system_get_app();
+    bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
 
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
@@ -1365,6 +1366,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         {0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "Target ", (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
+        {4, "Options ", NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
         {1, "View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1398,6 +1400,9 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
                     rg_system_restart();
                     return;
                 }
+                break;
+            case 4:
+                rg_gui_options_menu();
                 break;
             default:
                 return;
@@ -1579,6 +1584,7 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
 
 void rg_gui_game_menu(void)
 {
+    bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
     const rg_gui_option_t choices[] = {
         {1000, "Save & Continue", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2000, "Save & Quit    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1587,9 +1593,7 @@ void rg_gui_game_menu(void)
         #ifdef RG_ENABLE_NETPLAY
         {5000, "Netplay ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         #endif
-        #if !RG_GAMEPAD_HAS_OPTION_BTN
-        {5500, "Options ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        #endif
+        {5500, "Options ", NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL, NULL},
         {6000, "About   ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {7000, "Quit    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END

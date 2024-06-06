@@ -1,3 +1,9 @@
+# Retro-Go 1.42 (2024-06-05)
+- PCE: Fixed out-of-bounds VCE regs access (Crash in Raiden, probably others)
+- NES: Fixed panic in some games (Snow Brothers, Chip'n'Dale, probably others)
+- Launcher: Fixed stability issues when cycling through all tabs
+
+
 # Retro-Go 1.41 (2024-04-16)
 - MSX: Added fMSX emulator
 - COL: Added virtual keyboard so that more games work

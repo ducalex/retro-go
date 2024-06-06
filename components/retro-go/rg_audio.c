@@ -375,7 +375,8 @@ void rg_audio_set_mute(bool mute)
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
-    #elif defined(AW_HEADPHONE_EN)
+    #elif defined(RG_TARGET_QTPY_GAMER)
+        rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
 #endif

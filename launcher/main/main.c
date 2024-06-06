@@ -11,7 +11,6 @@
 
 #include "applications.h"
 #include "bookmarks.h"
-#include "music.h"
 #include "gui.h"
 #include "wifi.h"
 #include "updater.h"
@@ -193,15 +192,6 @@ static void show_about_menu(void)
     rg_gui_about_menu(options);
 }
 
-#if !RG_GAMEPAD_HAS_OPTION_BTN
-static rg_gui_event_t about_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-        show_about_menu();
-    return RG_DIALOG_VOID;
-}
-#endif
-
 static void retro_loop(void)
 {
     tab_t *tab = NULL;
@@ -216,18 +206,14 @@ static void retro_loop(void)
     gui_init(app->bootType != RG_RST_RESTART);
     applications_init();
     bookmarks_init();
-    music_init();
 
 #ifdef RG_ENABLE_NETWORKING
     wifi_init();
 #endif
 
-    tab = gui_get_current_tab();
-    if (!tab)
-    {
+    if (!gui_get_current_tab())
         gui.selected_tab = 0;
-        tab = gui_get_current_tab();
-    }
+    tab = gui_set_current_tab(gui.selected_tab);
 
     while (true)
     {
@@ -262,12 +248,10 @@ static void retro_loop(void)
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
-        #if RG_GAMEPAD_HAS_OPTION_BTN
             if (joystick == RG_KEY_MENU)
                 show_about_menu();
             else
-        #endif
-            rg_gui_options_menu();
+                rg_gui_options_menu();
 
             gui_update_theme();
             gui_save_config();
@@ -425,10 +409,6 @@ void app_main(void)
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
     #ifdef RG_ENABLE_NETWORKING
         {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
-    #endif
-    #if !RG_GAMEPAD_HAS_OPTION_BTN
-        RG_DIALOG_SEPARATOR,
-        {0, "About Retro-Go", NULL,  1, &about_app_cb},
     #endif
         RG_DIALOG_END,
     };

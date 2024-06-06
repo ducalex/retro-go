@@ -46,10 +46,7 @@
 
 
 // Input
-#define RG_GAMEPAD_DRIVER           7   // 1 = ODROID-GO, 2 = Serial, 3 = I2C, 7 = Like ODROID but all pull up pins
-#define RG_GAMEPAD_HAS_MENU_BTN     1
-#define RG_GAMEPAD_HAS_OPTION_BTN   1
-
+// Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_ADC1_MAP {\
     {RG_KEY_UP,    ADC1_CHANNEL_5, ADC_ATTEN_DB_11, 3072, 4096},\
     {RG_KEY_RIGHT, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 3072},\

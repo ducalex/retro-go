@@ -44,12 +44,12 @@ compatibility!
 # Installation
 
 ### ODROID-GO
-  1. Download `retro-go_1.x_odroid-go.fw` from the release page and copy it to `/odroid/firmware` on your sdcard.
+  1. Download `retro-go_1.x_odroid-go.fw` from the [release page](https://github.com/ducalex/retro-go/releases/) and copy it to `/odroid/firmware` on your sdcard.
   2. Power up the device while holding down B.
   3. Select retro-go in the files list and flash it.
 
 ### MyRetroGameCase G32 (GBC)
-  1. Download `retro-go_1.x_mrgc-g32.fw` from the release page and copy it to `/espgbc/firmware` on your sdcard.
+  1. Download `retro-go_1.x_mrgc-g32.fw` from the [release page](https://github.com/ducalex/retro-go/releases/) and copy it to `/espgbc/firmware` on your sdcard.
   2. Power up the device while holding down MENU (the volume knob).
   3. Select retro-go in the files list and flash it.
 

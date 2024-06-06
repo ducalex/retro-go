@@ -41,6 +41,9 @@
 #include <midifile.h>
 #include <oplplayer.h>
 #include <rg_system.h>
+#ifdef ESP_PLATFORM
+#include <esp_heap_caps.h>
+#endif
 
 // 22050 reduces perf by almost 15% but 11025 sounds awful on the G32...
 #ifdef RG_TARGET_MRGC_G32
@@ -553,7 +556,10 @@ void app_main()
     }
 
     if (!iwad)
+    {
         iwad = rg_gui_file_picker("Select IWAD file", I_DoomExeDir(), is_iwad, false) ?: "";
+        rg_gui_draw_hourglass(); // Redraw hourglass to indicate loading...
+    }
 
     if (pwad)
     {
@@ -566,7 +572,12 @@ void app_main()
         myargc = 5;
     }
 
-    rg_display_clear(C_BLACK);
+#ifdef ESP_PLATFORM
+    // Some things might be nice to place in internal RAM, but I do not have time to find such
+    // structures. So for now, prefer external RAM for most things except the framebuffer which
+    // is allocated above.
+    heap_caps_malloc_extmem_enable(0);
+#endif
 
     Z_Init();
     D_DoomMain();

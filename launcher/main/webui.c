@@ -143,15 +143,16 @@ static esp_err_t http_upload_handler(httpd_req_t *req)
     gui_invalidate();
 
 _done:
-    free(filename);
     if (!success)
     {
         RG_LOGE("File receive error!");
         httpd_resp_sendstr(req, "ERROR");
         remove(filename);
+        free(filename);
         return ESP_FAIL;
     }
     httpd_resp_sendstr(req, "OK");
+    free(filename);
     return ESP_OK;
 }
 

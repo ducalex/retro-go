@@ -23,13 +23,26 @@ static rg_keymap_adc1_t keymap_adc1[] = RG_GAMEPAD_ADC1_MAP;
 #ifdef RG_GAMEPAD_GPIO_MAP
 static rg_keymap_gpio_t keymap_gpio[] = RG_GAMEPAD_GPIO_MAP;
 #endif
-#ifdef RG_GAMEPAD_MAP
-static rg_keymap_t keymap[] = RG_GAMEPAD_MAP;
+#ifdef RG_GAMEPAD_I2C_MAP
+static rg_keymap_i2c_t keymap_i2c[] = RG_GAMEPAD_I2C_MAP;
+#endif
+#ifdef RG_GAMEPAD_KBD_MAP
+static rg_keymap_kbd_t keymap_kbd[] = RG_GAMEPAD_KBD_MAP;
+#endif
+#ifdef RG_GAMEPAD_SERIAL_MAP
+static rg_keymap_serial_t keymap_serial[] = RG_GAMEPAD_SERIAL_MAP;
+#endif
+#ifdef RG_GAMEPAD_VIRT_MAP
+static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
 #endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
+static uint32_t gamepad_mapped = 0;
 static rg_battery_t battery_state = {0};
 
+#define UPDATE_GLOBAL_MAP(keymap)                 \
+    for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
+        gamepad_mapped |= keymap[i].key;          \
 
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
@@ -85,13 +98,44 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     }
 #endif
 
-#if RG_GAMEPAD_DRIVER == 2 // Serial
+#if defined(RG_GAMEPAD_I2C_MAP)
+    uint32_t buttons = 0;
+    uint8_t data[5];
+#if defined(RG_TARGET_QTPY_GAMER)
+    buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
+#else
+    if (rg_i2c_read(0x20, -1, &data, 5))
+        buttons = ~((data[2] << 8) | data[1]);
+#endif
+    for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
+    {
+        if ((buttons & keymap_i2c[i].src) == keymap_i2c[i].src)
+            state |= keymap_i2c[i].key;
+    }
+#endif
 
+#if defined(RG_GAMEPAD_KBD_MAP)
+#ifdef RG_TARGET_SDL2
+    int numkeys = 0;
+    const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
+    for (size_t i = 0; i < RG_COUNT(keymap); ++i)
+    {
+        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
+        if (mapping->src < 0 || mapping->src >= numkeys)
+            continue;
+        if (keys[mapping->src])
+            state |= mapping->key;
+    }
+#else
+#warning "not implemented"
+#endif
+#endif
+
+#if defined(RG_GAMEPAD_SERIAL_MAP)
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     rg_usleep(5);
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
     rg_usleep(1);
-
     uint32_t buttons = 0;
     for (int i = 0; i < 16; i++)
     {
@@ -101,63 +145,23 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
         gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
         rg_usleep(1);
     }
-
-    for (size_t i = 0; i < RG_COUNT(keymap); ++i)
+    for (size_t i = 0; i < RG_COUNT(keymap_serial); ++i)
     {
-        if ((buttons & keymap[i].src) == keymap[i].src)
-            state |= keymap[i].key;
+        if ((buttons & keymap_serial[i].src) == keymap_serial[i].src)
+            state |= keymap_serial[i].src;
     }
-
-#elif RG_GAMEPAD_DRIVER == 3 // I2C
-
-    uint8_t data[5];
-    if (rg_i2c_read(0x20, -1, &data, 5))
-    {
-        uint32_t buttons = ~((data[2] << 8) | data[1]);
-
-        for (size_t i = 0; i < RG_COUNT(keymap); ++i)
-        {
-            if ((buttons & keymap[i].src) == keymap[i].src)
-                state |= keymap[i].key;
-        }
-    }
-
-#elif RG_GAMEPAD_DRIVER == 4 // I2C via AW9523
-
-    uint32_t buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
-
-    for (size_t i = 0; i < RG_COUNT(keymap); ++i)
-    {
-        if ((buttons & keymap[i].src) == keymap[i].src)
-            state |= keymap[i].key;
-    }
-
-#elif RG_GAMEPAD_DRIVER == 6
-
-    int numkeys = 0;
-    const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
-
-    for (size_t i = 0; i < RG_COUNT(keymap); ++i)
-    {
-        if (keymap[i].src < 0 || keymap[i].src >= numkeys)
-            continue;
-        if (keys[keymap[i].src])
-            state |= keymap[i].key;
-    }
-
 #endif
 
-    // Virtual buttons (combos) to replace essential missing buttons.
-#if !RG_GAMEPAD_HAS_MENU_BTN
-    if (state == (RG_KEY_SELECT | RG_KEY_START))
-        state = RG_KEY_MENU;
-#endif
-#if !RG_GAMEPAD_HAS_OPTION_BTN
-    if (state == (RG_KEY_SELECT | RG_KEY_A))
-        state = RG_KEY_OPTION;
+#if defined(RG_GAMEPAD_VIRT_MAP)
+    for (size_t i = 0; i < RG_COUNT(keymap_virt); ++i)
+    {
+        if (state == keymap_virt[i].src)
+            state = keymap_virt[i].key;
+    }
 #endif
 
-    if (out) *out = state;
+    if (out)
+        *out = state;
     return true;
 }
 
@@ -226,6 +230,7 @@ void rg_input_init(void)
         const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
         adc1_config_channel_atten(mapping->channel, mapping->atten);
     }
+    UPDATE_GLOBAL_MAP(keymap_adc1);
 #endif
 
 #if defined(RG_GAMEPAD_GPIO_MAP)
@@ -236,48 +241,33 @@ void rg_input_init(void)
         gpio_set_direction(mapping->num, GPIO_MODE_INPUT);
         gpio_set_pull_mode(mapping->num, mapping->pull);
     }
+    UPDATE_GLOBAL_MAP(keymap_gpio);
 #endif
 
-#if RG_GAMEPAD_DRIVER == 2 // Serial
+#if defined(RG_GAMEPAD_I2C_MAP)
+    RG_LOGI("Initializing I2C gamepad driver...");
+    rg_i2c_init();
+#if defined(RG_TARGET_QTPY_GAMER)
+    rg_i2c_gpio_init();
+#endif
+    UPDATE_GLOBAL_MAP(keymap_i2c);
+#endif
 
+#if defined(RG_GAMEPAD_KBD_MAP)
+    RG_LOGI("Initializing KBD gamepad driver...");
+    UPDATE_GLOBAL_MAP(keymap_kbd);
+#endif
+
+#if defined(RG_GAMEPAD_SERIAL_MAP)
     RG_LOGI("Initializing SERIAL gamepad driver...");
     gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
     gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
     gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
     gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
-
-#elif RG_GAMEPAD_DRIVER == 3 // I2C
-
-    RG_LOGI("Initializing I2C gamepad driver...");
-    rg_i2c_init();
-    // The first read returns bogus data, waste it.
-    rg_input_read_gamepad_raw(NULL);
-
-#elif RG_GAMEPAD_DRIVER == 4 // I2C w/AW9523
-
-    RG_LOGI("Initializing I2C-GPIO gamepad driver...");
-    rg_i2c_gpio_init();
-
-    // All that below should be moved elsewhere, and possibly specific to the qtpy...
-    rg_i2c_gpio_set_direction(AW_TFT_RESET, 0);
-    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, 0);
-    rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
-
-    rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, 1);
-    rg_i2c_gpio_set_level(AW_HEADPHONE_EN, 1);
-
-    // tft reset
-    rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
-    rg_usleep(10 * 1000);
-    rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
-    rg_usleep(10 * 1000);
-
-#elif RG_GAMEPAD_DRIVER == 6 // SDL2
-
-    RG_LOGI("Initializing SDL2 gamepad driver...");
-
+    UPDATE_GLOBAL_MAP(keymap_serial);
 #endif
+
 
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
     RG_LOGI("Initializing ADC1 battery driver...");
@@ -285,6 +275,9 @@ void rg_input_init(void)
     adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
     esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
+
+    // The first read returns bogus data in some drivers, waste it.
+    rg_input_read_gamepad_raw(NULL);
 
     // Start background polling
     rg_task_create("rg_input", &input_task, NULL, 3 * 1024, RG_TASK_PRIORITY_6, 1);
@@ -352,6 +345,13 @@ const char *rg_input_get_key_name(rg_key_t key)
     case RG_KEY_NONE: return "None";
     default: return "Unknown";
     }
+}
+
+const char *rg_input_get_key_mapping(rg_key_t key)
+{
+    if ((gamepad_mapped & key) == key)
+        return "PHYSICAL";
+    return NULL;
 }
 
 const rg_keyboard_map_t virtual_map1 = {

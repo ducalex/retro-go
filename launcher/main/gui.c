@@ -116,57 +116,28 @@ void gui_invalidate(void)
     }
 }
 
-const rg_image_t *gui_get_image(const char *type, const char *subtype)
+rg_image_t *gui_get_image(const char *type, const char *subtype)
 {
     char name[64];
 
     if (subtype && *subtype)
-        sprintf(name, "%s_%s.png", type, subtype);
+        snprintf(name, sizeof(name), "%s_%s.png", type, subtype);
     else
-        sprintf(name, "%s.png", type);
-
-    uint32_t fileid = rg_crc32(0, (uint8_t *)name, strlen(name));
-    image_t *image = gui.images;
-
-    for (; image->id; ++image)
-    {
-        if (image->id == fileid)
-            return image->img;
-    }
-
-    // Append to list
-    image->id = fileid;
-    image->img = NULL;
+        snprintf(name, sizeof(name), "%s.png", type);
 
     // Try to get image from theme
-    if (!(image->img = rg_gui_get_theme_image(name)))
+    rg_image_t *img = rg_gui_get_theme_image(name);
+    if (img)
+        return img;
+
+    // Then fallback to built-in images
+    for (const binfile_t **img = builtin_images; *img; img++)
     {
-        // Then fallback to built-in images
-        for (const binfile_t **img = builtin_images; *img; img++)
-        {
-            if (strcmp((*img)->name, name) == 0)
-            {
-                image->img = rg_surface_load_image((*img)->data, (*img)->size, 0);
-                break;
-            }
-        }
+        if (strcmp((*img)->name, name) == 0)
+            return rg_surface_load_image((*img)->data, (*img)->size, 0);
     }
 
-    // Some images might need resampling
-    if (strcmp(type, "background") == 0)
-    {
-        if (image->img && (image->img->width != gui.width || image->img->height != gui.height))
-        {
-            rg_image_t *temp = rg_surface_resize(image->img, gui.width, gui.height);
-            if (temp)
-            {
-                rg_surface_free(image->img);
-                image->img = temp;
-            }
-        }
-    }
-
-    return image->img;
+    return NULL;
 }
 
 tab_t *gui_get_current_tab(void)
@@ -179,6 +150,9 @@ tab_t *gui_get_current_tab(void)
 
 tab_t *gui_set_current_tab(int index)
 {
+    tab_t *prev_tab = gui_get_tab(gui.selected_tab);
+    tab_t *curr_tab;
+
     index %= (int)gui.tabs_count;
 
     if (index < 0)
@@ -186,7 +160,18 @@ tab_t *gui_set_current_tab(int index)
 
     gui.selected_tab = index;
 
-    return gui_get_tab(gui.selected_tab);
+    curr_tab = gui_get_tab(gui.selected_tab);
+
+    if (prev_tab && prev_tab != curr_tab)
+    {
+        // FIXME: We should recompress the images rather than fully free them, because if a custom theme is
+        //        used then it means that we're constantly reloading from SD Card which is very slow...
+        rg_surface_free(prev_tab->background), prev_tab->background = NULL;
+        // rg_surface_free(prev_tab->banner), prev_tab->banner = NULL;
+        // rg_surface_free(prev_tab->logo), prev_tab->logo = NULL;
+    }
+
+    return curr_tab;
 }
 
 void gui_set_status(tab_t *tab, const char *left, const char *right)
@@ -201,14 +186,6 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
 
 void gui_update_theme(void)
 {
-    // Flush our image cache to make sure the new images are loaded next time
-    for (image_t *image = gui.images; image->id; ++image)
-    {
-        rg_surface_free(image->img);
-        image->id = 0;
-        image->img = NULL;
-    }
-
     // Load our four color schemes from gui theme
     gui.themes[0].list.standard_bg = rg_gui_get_theme_color("launcher_1", "list_standard_bg", C_TRANSPARENT);
     gui.themes[0].list.standard_fg = rg_gui_get_theme_color("launcher_1", "list_standard_fg", C_GRAY);
@@ -229,6 +206,15 @@ void gui_update_theme(void)
     gui.themes[3].list.standard_fg = rg_gui_get_theme_color("launcher_4", "list_standard_fg", C_DARK_GRAY);
     gui.themes[3].list.selected_bg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_WHITE);
     gui.themes[3].list.selected_fg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_BLACK);
+
+    // Flush our image cache to make sure the new images are loaded next time
+    for (size_t i = 0; i < gui.tabs_count; ++i)
+    {
+        tab_t *tab = gui.tabs[i];
+        rg_surface_free(tab->background), tab->background = NULL;
+        rg_surface_free(tab->banner), tab->banner = NULL;
+        rg_surface_free(tab->logo), tab->logo = NULL;
+    }
 }
 
 void gui_save_config(void)
@@ -403,41 +389,59 @@ void gui_redraw(void)
 
 void gui_draw_background(tab_t *tab, int shade)
 {
-    static rg_image_t *buffer = NULL;
-    static void *buffer_content = 0;
-
-    const rg_image_t *img = gui_get_image("background", tab->name);
-
-    if (img && shade > 0)
+    // We can't losslessly change shade, must reload!
+    if (tab->background && tab->background_shade > 0 && tab->background_shade != shade)
     {
-        // Only regenerate the shaded buffer if the background has changed
-        if (buffer_content != (void*)img + shade)
+        rg_surface_free(tab->background);
+        tab->background = NULL;
+    }
+
+    if (!tab->background)
+    {
+        tab->background = gui_get_image("background", tab->name);
+        tab->background_shade = 0;
+        if (tab->background && (tab->background->width != gui.width || tab->background->height != gui.height))
         {
-            if (!buffer) buffer = rg_surface_create(img->width, img->height, RG_PIXEL_565_LE, 0);
-            uint16_t *dst_data = buffer->data;
-            uint16_t *src_data = img->data;
-            for (int x = 0; x < buffer->width * buffer->height; ++x)
+            rg_image_t *temp = rg_surface_resize(tab->background, gui.width, gui.height);
+            if (temp)
             {
-                int pixel = src_data[x];
+                rg_surface_free(tab->background);
+                tab->background = temp;
+            }
+        }
+    }
+
+    if (tab->background && tab->background_shade != shade && shade > 0)
+    {
+        rg_image_t *img = tab->background;
+        for (int y = 0; y < img->height; ++y)
+        {
+            uint16_t *line = img->data + y * img->stride;
+            for (int x = 0; x < img->width; ++x)
+            {
+                int pixel = line[x];
                 int r = ((pixel >> 11) & 0x1F) / shade;
                 int g = ((pixel >> 5) & 0x3F) / shade;
                 int b = ((pixel) & 0x1F) / shade;
-                dst_data[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | ((b & 0x1F) << 0);
+                line[x] = ((r & 0x1F) << 11) | ((g & 0x3F) << 5) | ((b & 0x1F) << 0);
             }
-            buffer_content = (void*)img + shade;
         }
-        img = buffer;
+        tab->background_shade = shade;
     }
 
-    rg_gui_draw_image(0, 0, gui.width, gui.height, false, img);
+    rg_gui_draw_image(0, 0, gui.width, gui.height, false, tab->background);
 }
 
 void gui_draw_header(tab_t *tab, int offset)
 {
-    rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, gui_get_image("logo", tab->name));
-    const rg_image_t *banner = gui_get_image("banner", tab->name);
-    if (banner)
-        rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, banner);
+    if (!tab->banner)
+        tab->banner = gui_get_image("banner", tab->name);
+    if (!tab->logo)
+        tab->logo = gui_get_image("logo", tab->name);
+
+    rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, tab->logo);
+    if (tab->banner)
+        rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, tab->banner);
     else
         rg_gui_draw_text(LOGO_WIDTH + 8, offset + 8, 0, tab->desc, C_SNOW, C_BLACK, RG_TEXT_BIGGER);
 }
