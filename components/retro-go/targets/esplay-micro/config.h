@@ -48,7 +48,6 @@
     ILI9341_CMD(0x29, 0x80);
 
 // Input
-#define    0
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 // A and B silkscreen on the board are swapped relative to standard Nintendo layout
 // Temporarily unmapped menu and option. Start + Select activates menu.
