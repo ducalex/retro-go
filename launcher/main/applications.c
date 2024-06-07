@@ -9,7 +9,7 @@
 #include "bookmarks.h"
 #include "gui.h"
 
-#define CRC_CACHE_MAGIC 0x21112222
+#define CRC_CACHE_MAGIC 0x21112223
 #define CRC_CACHE_MAX_ENTRIES 8192
 static struct __attribute__((__packed__))
 {
@@ -147,29 +147,6 @@ static void crc_cache_init(void)
     }
 }
 
-static uint32_t crc_cache_calc_key(retro_file_t *file)
-{
-    // return ((uint64_t)rg_crc32(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
-    // This should be reasonably unique
-    return rg_crc32(0, (void *)file->name, strlen(file->name));
-}
-
-static uint32_t crc_cache_lookup(retro_file_t *file)
-{
-    uint32_t key = crc_cache_calc_key(file);
-
-    if (!crc_cache)
-        return 0;
-
-    for (int i = 0; i < crc_cache->count; i++)
-    {
-        if (crc_cache->entries[i].key == key)
-            return crc_cache->entries[i].crc;
-    }
-
-    return 0;
-}
-
 static void crc_cache_save(void)
 {
     if (!crc_cache || !crc_cache_dirty)
@@ -187,94 +164,135 @@ static void crc_cache_save(void)
     }
 }
 
+static uint32_t crc_cache_calc_key(retro_file_t *file)
+{
+    // return ((uint64_t)rg_crc32(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
+    // This should be reasonably unique
+    const char *path = get_file_path(file);
+    return rg_crc32(0, (const uint8_t *)path, strlen(path));
+}
+
+static int crc_cache_find(retro_file_t *file)
+{
+    if (!crc_cache)
+        return -1;
+
+    uint32_t key = crc_cache_calc_key(file);
+
+    for (int i = 0; i < crc_cache->count; i++)
+    {
+        if (crc_cache->entries[i].key == key)
+            return i;
+    }
+
+    return -1;
+}
+
+static uint32_t crc_cache_lookup(retro_file_t *file)
+{
+    int index = crc_cache_find(file);
+    if (index != -1)
+        return crc_cache->entries[index].crc;
+    return 0;
+}
+
 static void crc_cache_update(retro_file_t *file)
 {
-    uint32_t key = crc_cache_calc_key(file);
-    size_t index = 0;
-
     if (!crc_cache)
         return;
 
-    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
-        index = crc_cache->count++;
+    uint32_t key = crc_cache_calc_key(file);
+    int index = crc_cache_find(file);
+    if (index == -1)
+    {
+        if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+            index = crc_cache->count++;
+        else
+            index = rand() % CRC_CACHE_MAX_ENTRIES;
+
+        RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
+            key, file->checksum, crc_cache->count);
+    }
     else
-        index = rand() % CRC_CACHE_MAX_ENTRIES;
+    {
+        RG_LOGI("Updating %08X => %08X to cache (total: %d)",
+            key, file->checksum, crc_cache->count);
+    }
 
     crc_cache->magic = CRC_CACHE_MAGIC;
     crc_cache->entries[index].key = key;
     crc_cache->entries[index].crc = file->checksum;
     crc_cache_dirty = true;
 
-    RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
-        key, file->checksum, crc_cache->count);
-
     // crc_cache_save();
 }
 
 void crc_cache_idle_task(tab_t *tab)
 {
-    // FIXME: Disabled for now because it interferes with the webserver...
-    return;
-
     if (!crc_cache)
         return;
 
-    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+    crc_cache_save();
+
+    if (crc_cache->count >= CRC_CACHE_MAX_ENTRIES)
+        return;
+
+    // FIXME: Disabled for now because it interferes with the webserver...
+    return;
+
+    int start_offset = 0;
+    int remaining = 100;
+
+    // Find the currently focused app, if any
+    for (int i = 0; i < apps_count; i++)
     {
-        int start_offset = 0;
-        int remaining = 100;
-
-        // Find the currently focused app, if any
-        for (int i = 0; i < apps_count; i++)
+        if (tab && tab->arg == apps[i])
         {
-            if (tab && tab->arg == apps[i])
-            {
-                start_offset = i;
-                break;
-            }
+            start_offset = i;
+            break;
         }
+    }
 
-        for (int i = 0; i < apps_count && remaining > 0; i++)
+    for (int i = 0; i < apps_count && remaining > 0; i++)
+    {
+        retro_app_t *app = apps[(start_offset + i) % apps_count];
+        int processed = 0;
+
+        if (!app->available || app->crc_scan_done)
+            continue;
+
+        gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
+        gui_redraw(); // gui_draw_status(tab);
+
+        if (!app->initialized)
+            application_init(app);
+
+        if ((gui.joystick |= rg_input_read_gamepad()))
+            remaining = -1;
+
+        for (int j = 0; j < app->files_count && remaining > 0; j++)
         {
-            retro_app_t *app = apps[(start_offset + i) % apps_count];
-            int processed = 0;
+            retro_file_t *file = &app->files[j];
 
-            if (!app->available || app->crc_scan_done)
-                continue;
+            if (file->checksum == 0)
+                file->checksum = crc_cache_lookup(file);
 
-            gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
-            gui_redraw(); // gui_draw_status(tab);
+            if (file->checksum == 0 && application_get_file_crc32(file))
+            {
+                processed++;
+                remaining--;
+            }
 
-            if (!app->initialized)
-                application_init(app);
-
+            // Give up on any button press to improve responsiveness
             if ((gui.joystick |= rg_input_read_gamepad()))
                 remaining = -1;
-
-            for (int j = 0; j < app->files_count && remaining > 0; j++)
-            {
-                retro_file_t *file = &app->files[j];
-
-                if (file->checksum == 0)
-                    file->checksum = crc_cache_lookup(file);
-
-                if (file->checksum == 0 && application_get_file_crc32(file))
-                {
-                    processed++;
-                    remaining--;
-                }
-
-                // Give up on any button press to improve responsiveness
-                if ((gui.joystick |= rg_input_read_gamepad()))
-                    remaining = -1;
-            }
-
-            if (processed == 0 && remaining != -1)
-                app->crc_scan_done = true;
-
-            gui_set_status(tab, "", "");
-            gui_redraw(); // gui_draw_status(tab);
         }
+
+        if (processed == 0 && remaining != -1)
+            app->crc_scan_done = true;
+
+        gui_set_status(tab, "", "");
+        gui_redraw(); // gui_draw_status(tab);
     }
 
     crc_cache_save();
@@ -568,7 +586,7 @@ static void show_file_info(retro_file_t *file)
 
 void application_show_file_menu(retro_file_t *file, bool advanced)
 {
-    const char *rom_path = get_file_path(file);
+    char *rom_path = strdup(get_file_path(file));
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
     rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
     bool has_save = savestates->used > 0;
@@ -627,6 +645,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
     }
 
+    free(rom_path);
     free(sram_path);
     free(savestates);
 
