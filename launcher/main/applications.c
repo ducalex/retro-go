@@ -232,30 +232,25 @@ void crc_cache_idle_task(tab_t *tab)
     if (!crc_cache)
         return;
 
-    crc_cache_save();
-
-    if (crc_cache->count >= CRC_CACHE_MAX_ENTRIES)
-        return;
-
     // FIXME: Disabled for now because it interferes with the webserver...
-    return;
-
-    int start_offset = 0;
-    int remaining = 100;
-
-    // Find the currently focused app, if any
-    for (int i = 0; i < apps_count; i++)
+    //        But what should be done is make http_lock a mutex that we can take here
+    if (rg_network_get_info().state == RG_NETWORK_CONNECTED)
     {
-        if (tab && tab->arg == apps[i])
-        {
-            start_offset = i;
-            break;
-        }
+        crc_cache_save();
+        return;
     }
 
-    for (int i = 0; i < apps_count && remaining > 0; i++)
+    // Chunk should be reasonably small so that other idle tasks have a chance to run
+    int remaining = 100;
+
+    if (crc_cache->count >= CRC_CACHE_MAX_ENTRIES)
     {
-        retro_app_t *app = apps[(start_offset + i) % apps_count];
+        remaining = 0;
+    }
+
+    for (int i = 0; i < apps_count && remaining != -1; i++)
+    {
+        retro_app_t *app = apps[i];
         int processed = 0;
 
         if (!app->available || app->crc_scan_done)
