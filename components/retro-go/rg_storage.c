@@ -156,6 +156,8 @@ void rg_storage_init(void)
 
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+        .max_files = 16, // must be initialized, otherwise it will use an uninitialized ("random") value, which can trigger ESP_ERR_NO_MEM if it's a big one
+        .allocation_unit_size = 0 // "Setting this field to 0 will result in allocation unit set to the sector size." - in other words: the default value, which is fine
     };
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
