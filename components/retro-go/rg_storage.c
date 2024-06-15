@@ -15,6 +15,8 @@
 #include <driver/sdmmc_host.h>
 #include <esp_vfs_fat.h>
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
+#elif RG_STORAGE_DRIVER == 4
+#include <esp_vfs_fat.h>
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -152,8 +154,14 @@ void rg_storage_init(void)
 
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
+    esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+        .max_files = 16, // must be initialized, otherwise it will use an uninitialized ("random") value, which can trigger ESP_ERR_NO_MEM if it's a big one
+        .allocation_unit_size = 0 // "Setting this field to 0 will result in allocation unit set to the sector size." - in other words: the default value, which is fine
+    };
+
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &s_wl_handle);
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &mount_config, &s_wl_handle);
     error_code = (int)err;
 
 #else // Host (stdlib)
