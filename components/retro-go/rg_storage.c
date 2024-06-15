@@ -92,6 +92,7 @@ void rg_storage_init(void)
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files = 4,
+        .allocation_unit_size = 0,
     };
 
     spi_bus_config_t bus_cfg = {
@@ -136,6 +137,7 @@ void rg_storage_init(void)
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files = 4,
+        .allocation_unit_size = 0,
     };
 
     esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
