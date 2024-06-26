@@ -25,14 +25,15 @@ typedef enum
     RG_KEY_NONE    = 0,
 } rg_key_t;
 
-// #define RG_GAMEPAD_ADC1_MAP {{}, ...} to use ADC1 driver
+// #define RG_GAMEPAD_ADC_MAP {{}, ...} to use ADC driver
 typedef struct
 {
     rg_key_t key;
-    int channel;
-    int atten;
+    int unit;   // adc_unit_t
+    int channel;// adc_channel_t
+    int atten;  // adc_atten_t
     int min, max;
-} rg_keymap_adc1_t;
+} rg_keymap_adc_t;
 
 // #define RG_GAMEPAD_GPIO_MAP {{}, ...} to use GPIO driver
 typedef struct

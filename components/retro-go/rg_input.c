@@ -17,8 +17,8 @@
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
-#ifdef RG_GAMEPAD_ADC1_MAP
-static rg_keymap_adc1_t keymap_adc1[] = RG_GAMEPAD_ADC1_MAP;
+#ifdef RG_GAMEPAD_ADC_MAP
+static rg_keymap_adc_t keymap_adc[] = RG_GAMEPAD_ADC_MAP;
 #endif
 #ifdef RG_GAMEPAD_GPIO_MAP
 static rg_keymap_gpio_t keymap_gpio[] = RG_GAMEPAD_GPIO_MAP;
@@ -79,11 +79,15 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 {
     uint32_t state = 0;
 
-#if defined(RG_GAMEPAD_ADC1_MAP)
-    for (size_t i = 0; i < RG_COUNT(keymap_adc1); ++i)
+#if defined(RG_GAMEPAD_ADC_MAP)
+    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
-        int value = adc1_get_raw(mapping->channel);
+        const rg_keymap_adc_t *mapping = &keymap_adc[i];
+        int value = -1;
+        if (mapping->unit == ADC_UNIT_1)
+            value = adc1_get_raw(mapping->channel);
+        else if (mapping->unit == ADC_UNIT_2)
+            adc2_get_raw(mapping->channel, ADC_WIDTH_MAX - 1, &value);
         if (value > mapping->min && value < mapping->max)
             state |= mapping->key;
     }
@@ -222,15 +226,20 @@ void rg_input_init(void)
 {
     RG_ASSERT(!input_task_running, "Input already initialized!");
 
-#if defined(RG_GAMEPAD_ADC1_MAP)
-    RG_LOGI("Initializing ADC1 gamepad driver...");
+#if defined(RG_GAMEPAD_ADC_MAP)
+    RG_LOGI("Initializing ADC gamepad driver...");
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    for (size_t i = 0; i < RG_COUNT(keymap_adc1); ++i)
+    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
-        adc1_config_channel_atten(mapping->channel, mapping->atten);
+        const rg_keymap_adc_t *mapping = &keymap_adc[i];
+        if (mapping->unit == ADC_UNIT_1)
+            adc1_config_channel_atten(mapping->channel, mapping->atten);
+        else if (mapping->unit == ADC_UNIT_2)
+            adc2_config_channel_atten(mapping->channel, mapping->atten);
+        else
+            RG_LOGE("Invalid ADC unit %d!", (int)mapping->unit);
     }
-    UPDATE_GLOBAL_MAP(keymap_adc1);
+    UPDATE_GLOBAL_MAP(keymap_adc);
 #endif
 
 #if defined(RG_GAMEPAD_GPIO_MAP)
