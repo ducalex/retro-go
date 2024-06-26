@@ -251,8 +251,13 @@ void rg_usleep(uint32_t us)
 {
     int64_t goal = rg_system_timer() + us;
     int64_t ms = us / 1000;
-    // We yield only if we have more than tick time (anywhere from 0 to 10ms)
-    if (ms >= 10)
+    #ifdef ESP_PLATFORM
+    int msPerTick = 1000 / CONFIG_FREERTOS_HZ; // use the configured value on ESP
+    #else
+    int msPerTick = 10;
+    #endif
+    // Only yield if it's for more than one tick duration, otherwise the delay will overshoot
+    if (ms > msPerTick)
         rg_task_delay(ms);
     // Then we busy wait, which is fine as it's a short delay
     while (rg_system_timer() < goal)
