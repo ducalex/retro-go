@@ -120,7 +120,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
     for (size_t i = 0; i < RG_COUNT(keymap); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
+        const rg_keymap_kbd_t *mapping = &keymap_kbd[i];
         if (mapping->src < 0 || mapping->src >= numkeys)
             continue;
         if (keys[mapping->src])
