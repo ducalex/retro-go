@@ -574,7 +574,7 @@ bool rg_queue_is_full(rg_queue_t *queue)
     return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
 }
 
-uint32_t rg_queue_messages_waiting(rg_queue_t *queue)
+size_t rg_queue_messages_waiting(rg_queue_t *queue)
 {
     return uxQueueMessagesWaiting((QueueHandle_t)queue);
 }

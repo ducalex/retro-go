@@ -260,7 +260,7 @@ bool rg_queue_receive_from_isr(rg_queue_t *queue, void *out, void *xTaskWokenByR
 bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
 bool rg_queue_is_empty(rg_queue_t *queue);
 bool rg_queue_is_full(rg_queue_t *queue);
-uint32_t rg_queue_messages_waiting(rg_queue_t *queue);
+size_t rg_queue_messages_waiting(rg_queue_t *queue);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);
