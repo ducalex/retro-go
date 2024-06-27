@@ -157,6 +157,9 @@ def build_image(apps, device_type, img_format="esp32"):
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
 
+    if args.fatsize:
+        table_csv.append("vfs, data, fat, , " + args.fatsize + ","); # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
+
     print("Generating partition table...")
     with open("partitions.csv", "w") as f:
         f.write("\n".join(table_csv))
@@ -307,6 +310,9 @@ parser.add_argument(
 )
 parser.add_argument(
     "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
+)
+parser.add_argument(
+    "--fatsize", help="Add FAT storage partition of provided size (500K, 5M,...) to the built image."
 )
 args = parser.parse_args()
 
