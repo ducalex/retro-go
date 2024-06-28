@@ -511,7 +511,7 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
     return false;
 }
 
-void rg_task_delay(int ms)
+void rg_task_delay(uint32_t ms)
 {
 #ifdef ESP_PLATFORM
     vTaskDelay(pdMS_TO_TICKS(ms));

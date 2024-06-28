@@ -246,7 +246,7 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.
-void rg_task_delay(int ms);
+void rg_task_delay(uint32_t ms);
 void rg_task_yield(void);
 
 // Wrapper for FreeRTOS queues, which are essentially inter-task communication primitives
