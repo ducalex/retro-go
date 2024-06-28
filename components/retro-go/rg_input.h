@@ -39,9 +39,9 @@ typedef struct
 typedef struct
 {
     rg_key_t key;
-    int num;
-    int pull;
-    int level;
+    int num;    // gpio_num_t
+    int pull;   // gpio_pull_mode_t
+    int level;  // 0-1
 } rg_keymap_gpio_t;
 
 // #define RG_GAMEPAD_I2C_MAP {{}, ...} to use I2C driver
