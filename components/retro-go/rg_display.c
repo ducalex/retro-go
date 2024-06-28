@@ -286,12 +286,65 @@ static void lcd_deinit(void)
     // gpio_reset_pin(RG_GPIO_LCD_DC);
 }
 #else
-#define lcd_init()
 #define lcd_deinit()
-#define lcd_get_buffer() (void *)0
 #define lcd_set_backlight(l)
-#define lcd_send_data(a, b)
-#define lcd_set_window(a, b, c, d)
+
+static SDL_Window *window;
+static SDL_Surface *surface, *canvas;
+static int win_left, win_top, win_width, win_height, cursor;
+static uint16_t lcd_buffer[LCD_BUFFER_LENGTH];
+
+static void lcd_set_window(int left, int top, int width, int height)
+{
+    int right = left + width - 1;
+    int bottom = top + height - 1;
+    if (left < 0 || top < 0 || right >= RG_SCREEN_WIDTH || bottom >= RG_SCREEN_HEIGHT)
+        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
+    win_left = left;
+    win_top = top;
+    win_width = width;
+    win_height = height;
+    cursor = 0;
+}
+
+static inline void lcd_send_data(const uint16_t *buffer, size_t length)
+{
+    int bpp = canvas->format->BytesPerPixel;
+    int pitch = canvas->pitch;
+    void *pixels = canvas->pixels;
+    for (size_t i = 0; i < length; ++i) {
+        int real_top = win_top + (cursor / win_width);
+        int real_left = win_left + (cursor % win_width);
+        if (real_top >= RG_SCREEN_HEIGHT || real_left >= RG_SCREEN_WIDTH)
+            return;
+        uint16_t *dst = (void*)pixels + (real_top * pitch) + (real_left * bpp);
+        uint16_t pixel = buffer[i];
+        *dst = ((pixel & 0xFF) << 8) | ((pixel & 0xFF00) >> 8);;
+        cursor++;
+    }
+}
+
+static inline uint16_t *lcd_get_buffer(void)
+{
+    return lcd_buffer;
+}
+
+static void lcd_sync(void)
+{
+    SDL_Event user_event;
+    user_event.type = SDL_USEREVENT;
+    user_event.user.code = 2;
+    user_event.user.data1 = NULL;
+    user_event.user.data2 = NULL;
+    SDL_PushEvent(&user_event);
+}
+
+static void lcd_init(void)
+{
+    window = SDL_CreateWindow("Retro-Go", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT, 0);
+    surface = SDL_GetWindowSurface(window);
+    canvas = SDL_CreateRGBSurfaceWithFormat(0, display.screen.width, display.screen.height, 16, SDL_PIXELFORMAT_RGB565);
+}
 #endif
 
 static inline unsigned blend_pixels(unsigned a, unsigned b)
@@ -456,7 +509,7 @@ static inline void write_update(const rg_surface_t *update)
         else
         {
             // Return buffer
-            xQueueSend(spi_buffers, &line_buffer, portMAX_DELAY);
+            // xQueueSend(spi_buffers, &line_buffer, portMAX_DELAY);
         }
 
         lines_remaining -= lines_to_copy;
@@ -563,8 +616,24 @@ static void display_task(void *arg)
     {
         const rg_surface_t *update;
 
+#ifdef RG_TARGET_SDL2
+        SDL_BlitSurface(canvas, NULL, surface, NULL);
+        SDL_UpdateWindowSurface(window);
+
+        SDL_Event e;
+        while (SDL_PollEvent(&e) > 0)
+        {
+            if (e.type == SDL_QUIT)
+                rg_system_shutdown();
+            if (e.type == SDL_USEREVENT)
+                break;
+        }
+        update = e.user.data1;
+        if (!update)
+            continue;
+#else
         rg_queue_peek(display_task_queue, &update, -1);
-        // rg_queue_receive(display_task_queue, &update, -1);
+#endif
 
         // Received a shutdown request!
         if (update == (void *)-1)
@@ -711,7 +780,16 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
         display.changed = true;
     }
 
+#ifdef RG_TARGET_SDL2
+    SDL_Event user_event;
+    user_event.type = SDL_USEREVENT;
+    user_event.user.code = 2;
+    user_event.user.data1 = update;
+    user_event.user.data2 = NULL;
+    SDL_PushEvent(&user_event);
+#else
     rg_queue_send(display_task_queue, &update, 1000);
+#endif
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;

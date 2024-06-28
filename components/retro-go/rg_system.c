@@ -287,6 +287,7 @@ static void platform_init(void)
     // freopen("stdout.txt", "w", stdout);
     // freopen("stderr.txt", "w", stderr);
     SDL_SetMainReady();
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "system");
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
         RG_PANIC("SDL Init failed!");
 #endif
@@ -532,51 +533,48 @@ void rg_task_yield(void)
 
 rg_queue_t *rg_queue_create(size_t length, size_t itemSize)
 {
-    return (rg_queue_t *)xQueueCreate(length, itemSize);
+    return NULL;
 }
 
 void rg_queue_free(rg_queue_t *queue)
 {
-    if (queue)
-        vQueueDelete((QueueHandle_t)queue);
+    // if (queue)
+    //     vQueueDelete((QueueHandle_t)queue);
 }
 
 bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS)
 {
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueSend((QueueHandle_t)queue, item, ticks) == pdTRUE;
+    return true;
 }
 
 bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
 {
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
+    return true;
 }
 
 bool rg_queue_receive_from_isr(rg_queue_t *queue, void *out, void *xTaskWokenByReceive)
 {
-    return xQueueReceiveFromISR((QueueHandle_t)queue, out, xTaskWokenByReceive) == pdTRUE;
+    return true;
 }
 
 bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
 {
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueuePeek((QueueHandle_t)queue, out, ticks) == pdTRUE;
+    return true;
 }
 
 bool rg_queue_is_empty(rg_queue_t *queue)
 {
-    return uxQueueMessagesWaiting((QueueHandle_t)queue) == 0;
+    return true;
 }
 
 bool rg_queue_is_full(rg_queue_t *queue)
 {
-    return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
+    return false;
 }
 
 size_t rg_queue_messages_waiting(rg_queue_t *queue)
 {
-    return uxQueueMessagesWaiting((QueueHandle_t)queue);
+    return 0;
 }
 
 void rg_system_load_time(void)

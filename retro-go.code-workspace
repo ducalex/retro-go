@@ -39,22 +39,22 @@
 			"RG_ENABLE_NETPLAY=",
 			"RG_ENABLE_NETWORKING=",
 			"RTC_NOINIT_ATTR=",
-			"ESP_PLATFORM="
+			"RG_TARGET_SDL2="
 		],
 		"C_Cpp.default.includePath": [
 			"${workspaceFolder}/components/**",
 			"${workspaceFolder}/../components/**",
-			"${config:retro-go.sdk-path}/components/**",
-			"${config:retro-go.tools-path}/include/**"
+			"C:/msys64/mingw64/include/**"
 		],
 		"C_Cpp.default.forcedInclude": [
 			"${workspaceFolder}/build/config/sdkconfig.h",
 			"${workspaceFolder}/build/sdkconfig.h",
 		],
-		"C_Cpp.default.compilerPath": "${config:retro-go.tools-path}/bin/xtensa-esp32-elf-g++.exe",
+		"C_Cpp.default.compilerPath": "C:/msys64/mingw64/bin/gcc.exe",
 		"C_Cpp.default.cStandard": "c11",
 		"C_Cpp.default.cppStandard": "c++11",
-		"C_Cpp.default.intelliSenseMode": "gcc-x86",
+		"C_Cpp.default.intelliSenseMode": "gcc-x64",
+//		"C_Cpp.debugShortcut": false,
 		"cSpell.words": [
 			"apll",
 			"coleco",

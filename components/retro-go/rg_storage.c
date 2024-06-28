@@ -24,6 +24,40 @@
 #include <windows.h>
 #define access _access
 #define mkdir(A, B) mkdir(A)
+typedef struct {
+    char path[RG_PATH_MAX];
+    HANDLE hFind;
+    WIN32_FIND_DATA data;
+    struct dirent {char d_name[RG_PATH_MAX];} ent;
+    size_t consumed;
+} DIR;
+DIR *opendir(const char *path)
+{
+    DIR *dir = calloc(1, sizeof(DIR));
+    snprintf(dir->path, RG_PATH_MAX, "%s/*", path);
+    dir->hFind = FindFirstFile(dir->path, &dir->data);
+    dir->consumed = 0;
+    if (dir->hFind == INVALID_HANDLE_VALUE) {
+        free(dir);
+        return NULL;
+    }
+    strcpy(dir->ent.d_name, dir->data.cFileName);
+    return dir;
+}
+struct dirent *readdir(DIR *dir)
+{
+    if (!dir->consumed++)
+        return &dir->ent;
+    if (!FindNextFile(dir->hFind, &dir->data))
+        return NULL;
+    strcpy(dir->ent.d_name, dir->data.cFileName);
+    return &dir->ent;
+}
+void closedir(DIR *dir)
+{
+    FindClose(dir->hFind);
+    free(dir);
+}
 #else
 #include <dirent.h>
 #include <unistd.h>
