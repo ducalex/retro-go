@@ -553,6 +553,11 @@ bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
     return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
 }
 
+bool rg_queue_receive_from_isr(rg_queue_t *queue, void *out, void *xTaskWokenByReceive)
+{
+    return xQueueReceiveFromISR((QueueHandle_t)queue, out, xTaskWokenByReceive) == pdTRUE;
+}
+
 bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
 {
     int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
@@ -567,6 +572,11 @@ bool rg_queue_is_empty(rg_queue_t *queue)
 bool rg_queue_is_full(rg_queue_t *queue)
 {
     return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
+}
+
+size_t rg_queue_messages_waiting(rg_queue_t *queue)
+{
+    return uxQueueMessagesWaiting((QueueHandle_t)queue);
 }
 
 void rg_system_load_time(void)
