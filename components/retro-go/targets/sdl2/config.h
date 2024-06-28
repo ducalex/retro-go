@@ -53,5 +53,6 @@
 #define __VERSION__ "TinyC"
 #endif
 
+#undef app_main
 #define app_main(...) main(int argc, char **argv)
 // #define rg_system_init(a, b, c) rg_system_init(argc, argv, a, b, c)
