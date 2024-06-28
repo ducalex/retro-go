@@ -6,9 +6,7 @@
 
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
-#ifdef RG_GPIO_LCD_BCKL
 #include <driver/ledc.h>
-#endif
 #else
 #include <SDL2/SDL.h>
 #endif
@@ -48,6 +46,19 @@ static QueueHandle_t spi_buffers;
 #define SPI_BUFFER_COUNT      (5)
 #define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
 
+static inline uint16_t *spi_take_buffer(void)
+{
+    uint16_t *buffer;
+    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+        RG_PANIC("display");
+    return buffer;
+}
+
+static inline void spi_give_buffer(uint16_t *buffer)
+{
+    xQueueSend(spi_buffers, &buffer, portMAX_DELAY);
+}
+
 static inline void spi_queue_transaction(const void *data, size_t length, uint32_t type)
 {
     spi_transaction_t *t;
@@ -75,10 +86,7 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     }
     else
     {
-        void *tx_buffer;
-        if (xQueueReceive(spi_buffers, &tx_buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-            RG_PANIC("display");
-        t->tx_buffer = memcpy(tx_buffer, data, length);
+        t->tx_buffer = memcpy(spi_take_buffer(), data, length);
         t->user = (void *)(type | 2);
     }
 
@@ -208,10 +216,12 @@ static inline void lcd_send_data(const uint16_t *buffer, size_t length)
 
 static inline uint16_t *lcd_get_buffer(void)
 {
-    uint16_t *buffer;
-    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-        RG_PANIC("display");
-    return buffer;
+    return spi_take_buffer();
+}
+
+static inline void lcd_put_buffer(uint16_t *buffer)
+{
+    spi_give_buffer(buffer);
 }
 
 static void lcd_sync(void)
@@ -289,6 +299,7 @@ static void lcd_deinit(void)
 #define lcd_init()
 #define lcd_deinit()
 #define lcd_get_buffer() (void *)0
+#define lcd_put_buffer(a)
 #define lcd_set_backlight(l)
 #define lcd_send_data(a, b)
 #define lcd_set_window(a, b, c, d)
@@ -455,8 +466,8 @@ static inline void write_update(const rg_surface_t *update)
         }
         else
         {
-            // Return buffer
-            xQueueSend(spi_buffers, &line_buffer, portMAX_DELAY);
+            // Return unused buffer
+            lcd_put_buffer(line_buffer);
         }
 
         lines_remaining -= lines_to_copy;
