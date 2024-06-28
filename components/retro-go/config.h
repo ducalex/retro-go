@@ -115,3 +115,11 @@
 #ifndef RG_LOG_COLORS
 #define RG_LOG_COLORS (1)
 #endif
+
+#ifndef RG_TICK_RATE
+#ifdef ESP_PLATFORM
+#define RG_TICK_RATE CONFIG_FREERTOS_HZ
+#else
+#define RG_TICK_RATE 1000
+#endif
+#endif

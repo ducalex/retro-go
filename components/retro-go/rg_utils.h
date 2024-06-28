@@ -66,6 +66,8 @@ const char *rg_relpath(const char *path);
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t rg_hash(const char *buf, size_t len);
 void *rg_alloc(size_t size, uint32_t caps);
+// rg_usleep behaves like usleep in libc: it will sleep for *at least* `us` microseconds, but possibly more
+// due to scheduling. You should use rg_task_delay() if you don't need more than 10-15ms granularity.
 void rg_usleep(uint32_t us);
 
 #define MEM_ANY   (0)
