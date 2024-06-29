@@ -44,7 +44,7 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 
 #define SOURCE_CLOCK_MIN_DIVIDER	  2 // divider must be [2-65536], according to the docs
 #define SOURCE_CLOCK_FREQUENCY        80000000
-#define SOURCE_CLOCK_MAX_FREQUENCY	  SOURCE_CLOCK_FREQUENCY/SOURCE_CLOCK_MIN_DIVIDER
+#define SOURCE_CLOCK_MAX_FREQUENCY    SOURCE_CLOCK_FREQUENCY/SOURCE_CLOCK_MIN_DIVIDER
 #define LEDC_PWM_SPEED_MODE           LEDC_HIGH_SPEED_MODE
 #define LEDC_PWM_CHANNEL              LEDC_CHANNEL_0
 #define LEDC_PWM_TIMER                LEDC_TIMER_0
