@@ -281,8 +281,9 @@ static void platform_init(void)
         gpio_reset_pin(GPIO_NUM_14);
         gpio_reset_pin(GPIO_NUM_15);
     #endif
-    if (RG_GPIO_LED != GPIO_NUM_NC)
+    #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+    #endif
 #elif defined(RG_TARGET_SDL2)
     // freopen("stdout.txt", "w", stdout);
     // freopen("stderr.txt", "w", stderr);
@@ -874,8 +875,8 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_led(int value)
 {
-#ifdef ESP_PLATFORM
-    if (RG_GPIO_LED > -1 && app.ledValue != value)
+#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
+    if (app.ledValue != value)
         gpio_set_level(RG_GPIO_LED, value);
 #endif
     app.ledValue = value;

@@ -9,13 +9,13 @@
 
 #if RG_STORAGE_DRIVER == 1
 #include <driver/sdspi_host.h>
-#include <esp_vfs_fat.h>
 #define SDCARD_DO_TRANSACTION sdspi_host_do_transaction
 #elif RG_STORAGE_DRIVER == 2
 #include <driver/sdmmc_host.h>
-#include <esp_vfs_fat.h>
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
-#elif RG_STORAGE_DRIVER == 4
+#endif
+
+#ifdef ESP_PLATFORM
 #include <esp_vfs_fat.h>
 #endif
 
@@ -80,6 +80,8 @@ void rg_storage_init(void)
 
 #if RG_STORAGE_DRIVER == 1 // SDSPI
 
+    RG_LOGI("Looking for SD Card using SDSPI...");
+
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.slot = RG_STORAGE_HOST;
     host_config.max_freq_khz = RG_STORAGE_SPEED;
@@ -118,6 +120,8 @@ void rg_storage_init(void)
 
 #elif RG_STORAGE_DRIVER == 2 // SDMMC
 
+    RG_LOGI("Looking for SD Card using SDMMC...");
+
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
     host_config.slot = RG_STORAGE_HOST;
@@ -152,18 +156,20 @@ void rg_storage_init(void)
 #elif RG_STORAGE_DRIVER == 3 // USB OTG
 
     #warning "USB OTG isn't available on your SOC"
+    RG_LOGI("Looking for USB mass storage...");
     error_code = -1;
 
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
+    RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
+
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
-        .max_files = 16, // must be initialized, otherwise it will use an uninitialized ("random") value, which can trigger ESP_ERR_NO_MEM if it's a big one
-        .allocation_unit_size = 0 // "Setting this field to 0 will result in allocation unit set to the sector size." - in other words: the default value, which is fine
+        .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
     };
 
     wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &mount_config, &s_wl_handle);
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
     error_code = (int)err;
 
 #else // Host (stdlib)
@@ -176,9 +182,9 @@ void rg_storage_init(void)
     disk_mounted = !error_code;
 
     if (disk_mounted)
-        RG_LOGI("Storage mounted at %s. driver=%d", RG_STORAGE_ROOT, RG_STORAGE_DRIVER);
+        RG_LOGI("Storage mounted at %s.", RG_STORAGE_ROOT);
     else
-        RG_LOGE("Storage mounting failed! driver=%d, err=0x%x", RG_STORAGE_DRIVER, error_code);
+        RG_LOGE("Storage mounting failed! err=0x%x", error_code);
 }
 
 void rg_storage_deinit(void)
