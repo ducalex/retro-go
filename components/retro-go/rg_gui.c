@@ -1317,7 +1317,7 @@ void rg_gui_options_menu(void)
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
 
-#if defined(RG_GPIO_LCD_BCKL) || defined(AW_TFT_BACKLIGHT) // Don't show brightness option if no backlight pins are defined
+#if defined(RG_GPIO_LCD_BCKL) || defined(AW_TFT_BACKLIGHT) // Only show brightness option if backlight pin is defined
     *opt++ = (rg_gui_option_t){0, "Brightness", "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
 #endif
     *opt++ = (rg_gui_option_t){0, "Volume    ", "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
@@ -1326,7 +1326,7 @@ void rg_gui_options_menu(void)
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
-#ifdef RG_GPIO_LED // Don't show disk LED option if no disk LED GPIO pin is defined
+#ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
         *opt++ = (rg_gui_option_t){0, "Disk LED  ", "-", RG_DIALOG_FLAG_NORMAL, &disk_activity_cb};
 #endif
         *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
