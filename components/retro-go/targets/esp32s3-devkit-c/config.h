@@ -4,7 +4,7 @@
 #define RG_TARGET_NAME             "ESP32S3-DEVKIT-C"
 
 // Storage
-#define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB
+#define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
 #define RG_STORAGE_HOST             SPI3_HOST   // Used by driver 1 and 2
 #define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT  // Used by driver 1 and 2
 #define RG_STORAGE_ROOT             "/sd"               // Storage mount point
