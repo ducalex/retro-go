@@ -218,14 +218,13 @@ void setup_buzzer(int sampleRate) {
 
     // Try to find the perfect clock divider value that matches the sampleRate.
     // Prefer to use the largest divider that still results in an integer alarmTrigger, so the counter increments slowest.
-    int foundDivider = SOURCE_CLOCK_MAX_FREQUENCY / sampleRate; // divider can't be bigger than this
-    for (; foundDivider>1; foundDivider--) {
+    int foundDivider;
+    for (foundDivider=SOURCE_CLOCK_MAX_FREQUENCY/sampleRate; foundDivider>1; foundDivider--) {
         if ((SOURCE_CLOCK_MAX_FREQUENCY % foundDivider == 0) && (SOURCE_CLOCK_MAX_FREQUENCY / foundDivider % sampleRate) == 0) {
 	        RG_LOGD("found sample playing timer divider: %d", foundDivider);
 	        break;
 	    }
     }
-
     if (foundDivider < SOURCE_CLOCK_MIN_DIVIDER) {
         RG_LOGI("Could not find a valid integer divider that results in an integer alarmTrigger, defaulting to non-integers...");
         foundDivider = SOURCE_CLOCK_MIN_DIVIDER; // use the biggest possible source clock frequency to minimize the error due to non-integer alarmTrigger
