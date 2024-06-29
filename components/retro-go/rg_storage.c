@@ -78,11 +78,9 @@ void rg_storage_init(void)
     RG_ASSERT(!disk_mounted, "Storage already initialized!");
     int error_code = -1;
 
-#ifdef RG_STORAGE_DRIVER
-    RG_LOGI("Mounting storage using driver=%d", RG_STORAGE_DRIVER);
-#endif
-
 #if RG_STORAGE_DRIVER == 1 // SDSPI
+
+    RG_LOGI("Looking for SD Card using SDSPI...");
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
     host_config.slot = RG_STORAGE_HOST;
@@ -122,6 +120,8 @@ void rg_storage_init(void)
 
 #elif RG_STORAGE_DRIVER == 2 // SDMMC
 
+    RG_LOGI("Looking for SD Card using SDMMC...");
+
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
     host_config.slot = RG_STORAGE_HOST;
@@ -156,10 +156,22 @@ void rg_storage_init(void)
 #elif RG_STORAGE_DRIVER == 3 // USB OTG
 
     #warning "USB OTG isn't available on your SOC"
+    RG_LOGI("Looking for USB mass storage...");
     error_code = -1;
 
-#elif ESP_PLATFORM // fallback to trying internal flash storage on ESP_PLATFORM
+#elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
+    // See code below
+
+#else // Host (stdlib)
+
+    // Maybe we should just check if RG_STORAGE_ROOT exists?
+    error_code = 0;
+
+#endif
+
+#ifdef ESP_PLATFORM
+    // fallback to trying internal flash storage on ESP_PLATFORM
     if (error_code)
     {
         RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
@@ -173,12 +185,6 @@ void rg_storage_init(void)
         esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
         error_code = (int)err;
     }
-
-#else // Host (stdlib)
-
-    // Maybe we should just check if RG_STORAGE_ROOT exists?
-    error_code = 0;
-
 #endif
 
     disk_mounted = !error_code;
