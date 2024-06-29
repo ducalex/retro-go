@@ -161,30 +161,22 @@ void rg_storage_init(void)
 
 #elif RG_STORAGE_DRIVER == 4 // SPI Flash
 
-    // See code below
+    RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
+
+    esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+        .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
+    };
+
+    wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
+    error_code = (int)err;
 
 #else // Host (stdlib)
 
     // Maybe we should just check if RG_STORAGE_ROOT exists?
     error_code = 0;
 
-#endif
-
-#ifdef ESP_PLATFORM
-    // fallback to trying internal flash storage on ESP_PLATFORM
-    if (error_code)
-    {
-        RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
-
-        esp_vfs_fat_mount_config_t mount_config = {
-            .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
-            .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
-        };
-
-        wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
-        error_code = (int)err;
-    }
 #endif
 
     disk_mounted = !error_code;
