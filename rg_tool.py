@@ -138,7 +138,7 @@ def build_firmware(apps, device_type, fw_format="odroid-go"):
     run(args)
 
 
-def build_image(apps, device_type, img_format="esp32"):
+def build_image(apps, device_type, img_format="esp32", fatsize=0):
     print("Building image with: %s\n" % " ".join(apps))
     image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
     image_data = bytearray(b"\xFF" * 0x10000)
@@ -157,7 +157,7 @@ def build_image(apps, device_type, img_format="esp32"):
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
 
-    if args.fatsize:
+    if fatsize:
         table_csv.append("vfs, data, fat, , " + args.fatsize + ","); # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
 
     print("Generating partition table...")
@@ -352,7 +352,7 @@ try:
 
     if command in ["build-img", "release"]:
         print("=== Step: Packing ===\n")
-        build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")))
+        build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
