@@ -170,9 +170,8 @@ void rg_storage_init(void)
         };
 
         wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with MicroPython
-        if (err)
-            error_code = (int)err;
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
+        error_code = (int)err;
     }
 
 #else // Host (stdlib)
