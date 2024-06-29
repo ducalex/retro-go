@@ -10,6 +10,7 @@ typedef enum
     RG_AUDIO_SINK_BT_A2DP,
     RG_AUDIO_SINK_SDL2,
     RG_AUDIO_SINK_DUMMY,
+    RG_AUDIO_SINK_BUZZER,
 } rg_sink_type_t;
 
 typedef struct

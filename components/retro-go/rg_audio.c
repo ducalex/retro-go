@@ -5,9 +5,11 @@
 #include <string.h>
 
 #if !defined(ESP_PLATFORM) && (RG_AUDIO_USE_INT_DAC || RG_AUDIO_USE_EXT_DAC)
-#error "I2S support can only be build inside esp-idf!"
+#error "I2S support can only be built inside esp-idf!"
 #elif !CONFIG_IDF_TARGET_ESP32 && RG_AUDIO_USE_INT_DAC
 #error "Your chip has no DAC! Please set RG_AUDIO_USE_INT_DAC to 0 in your target file."
+#elif !defined(ESP_PLATFORM) && RG_AUDIO_USE_BUZZER_PIN
+#error "Audio buzzer support can only be built inside esp-idf because it uses its LEDC, TIMER and interrupt handlers!"
 #endif
 
 #ifdef ESP_PLATFORM
@@ -15,6 +17,8 @@
 #include <driver/i2s.h>
 #if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
+#elif RG_AUDIO_USE_BUZZER_PIN
+#include "rg_audio_buzzer.h"
 #endif
 #else
 #include <SDL2/SDL.h>
@@ -33,6 +37,9 @@ static const rg_audio_sink_t sinks[] = {
 #endif
 #if RG_AUDIO_USE_SDL2
     {RG_AUDIO_SINK_SDL2,    0, "SDL2"   },
+#endif
+#ifdef RG_AUDIO_USE_BUZZER_PIN
+    {RG_AUDIO_SINK_BUZZER,   0, "Buzzer"  },
 #endif
   // {RG_AUDIO_SINK_BT_A2DP, 0, "Bluetooth"},
 };
@@ -150,6 +157,12 @@ void rg_audio_init(int sampleRate)
         error_string = "This device does not support SDL2!";
     #endif
     }
+    else if (audio.sink->type == RG_AUDIO_SINK_BUZZER)
+    {
+    #ifdef RG_AUDIO_USE_BUZZER_PIN
+        setup_buzzer(sampleRate);
+    #endif
+    }
 
     if (error_string == NULL)
     {
@@ -214,6 +227,12 @@ void rg_audio_deinit(void)
         SDL_CloseAudioDevice(audioDevice);
     #endif
     }
+    else if (audio.sink->type == RG_AUDIO_SINK_BUZZER)
+    {
+    #ifdef RG_AUDIO_USE_BUZZER_PIN
+        stop_buzzer();
+    #endif
+    }
 
     RG_LOGI("Audio terminated. sink='%s'\n", audio.sink->name);
     audio.sink = NULL;
@@ -236,6 +255,8 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
+        // BUG: this usleeps too long because it doesn't take into account the time that was spent drawing the frame
+        // before submitting the audio, thus making the emulator run too slow, although you can speed it up in the settings.
         rg_usleep((uint32_t)(count * (1000000.f / audio.sampleRate)));
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
@@ -302,6 +323,12 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
         if (frame_end > rg_system_timer())
             rg_usleep((frame_end - rg_system_timer()));
         frame_start = rg_system_timer();
+    #endif
+    }
+    else if (audio.sink->type == RG_AUDIO_SINK_BUZZER)
+    {
+    #ifdef RG_AUDIO_USE_BUZZER_PIN
+        rg_audio_submit_buzzer(frames, count);
     #endif
     }
 
@@ -379,6 +406,9 @@ void rg_audio_set_mute(bool mute)
         rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
+#elif RG_AUDIO_USE_BUZZER_PIN
+    if (audio.sink->type == RG_AUDIO_SINK_BUZZER)
+        rg_audio_set_mute_buzzer(mute);
 #endif
 
     audio.muted = mute;
