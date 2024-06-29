@@ -108,10 +108,6 @@
 #define RG_BATTERY_UPDATE_THRESHOLD_VOLT 0.010f
 #endif
 
-#ifndef RG_GPIO_LED
-#define RG_GPIO_LED (-1)
-#endif
-
 #ifndef RG_LOG_COLORS
 #define RG_LOG_COLORS (1)
 #endif
