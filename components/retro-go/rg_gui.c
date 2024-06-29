@@ -1317,14 +1317,18 @@ void rg_gui_options_menu(void)
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
 
+#ifdef RG_GPIO_LCD_BCKL // Don't show brightness option if no backlight GPIO pin is defined
     *opt++ = (rg_gui_option_t){0, "Brightness", "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
+#endif
     *opt++ = (rg_gui_option_t){0, "Volume    ", "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
     *opt++ = (rg_gui_option_t){0, "Audio out ", "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb};
 
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
+#ifdef RG_GPIO_LED // Don't show disk LED option if no disk LED GPIO pin is defined
         *opt++ = (rg_gui_option_t){0, "Disk LED  ", "-", RG_DIALOG_FLAG_NORMAL, &disk_activity_cb};
+#endif
         *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
         *opt++ = (rg_gui_option_t){0, "Theme     ", "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
         *opt++ = (rg_gui_option_t){0, "Show clock", "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
