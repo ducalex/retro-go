@@ -11,7 +11,7 @@ For example: if the buzzer is turned on and off at 440Hz, an "A" note (with a sh
 The position of the piezoelectric buzzer is actually proportional to the output voltage on RG_AUDIO_USE_BUZZER_PIN.
 So a voltage of 1.65V of 3.3V total will cause the position of the buzzer's ceramic disk to be halfway.
 
-This can be used to output audio, but without a DAC, the only way to approximating an analog output voltage in the range of 0 and 3.3V
+This can be used to output audio, but without a DAC, the only way to approximate an analog output voltage in the range of 0 and 3.3V
 on the pin is by quickly turning that pin on and off, using the Pulse-Width-Modulation (PWM) facilities of the ESP32 microcontroller.
 
 For example: to get an average voltage of 1.1V, the PWM can be configured for a high frequency (say 32kHz) with a duty cycle of 33.33%.
