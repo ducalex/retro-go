@@ -80,7 +80,8 @@ int approxRollingAverage(float avg, int input) {
 
 #include <math.h>
 
-#define AMPLITUDE 32767 # audio samples are int16_t, which ranges from -32k to 32k
+#define SINE_AMPLITUDE 32767 // audio samples are int16_t, which ranges from -32k to 32k
+#define SINE_PERIOD (11 * 32000) / NOTE_A // period is sampleRate / NOTE_A and then *11 to make it an integer
 
 // Global variables used for sine wave playing:
 int sinePosition = 0;
@@ -90,7 +91,7 @@ void generate_sine_wave(int16_t* buffer, int nrOfSamples, int sampleRate) {
     int32_t phase = 0;
     int bufferPos = 0;
     for (int i = 0; i < nrOfSamples; i++) {
-        float sample = sinf(phase * M_PI * 2 / sampleRate) * AMPLITUDE;
+        float sample = sinf(phase * M_PI * 2 / sampleRate) * SINE_AMPLITUDE;
         buffer[bufferPos] = sample;
         buffer[bufferPos+1] = sample; // stereo so use same sample for right audio channel
         phase += NOTE_A;
@@ -140,12 +141,12 @@ void setup_buzzer(int sampleRate) {
     int cacheSamples = (sampleRate/1000)*MS_OF_CACHED_SAMPLES;
 
 #ifdef PLAY_SINE_AS_TEST
-    sineBuffer = malloc(801 * 2 * sizeof(int16_t)); // Allocate memory for the buffer (2 channels)
+    sineBuffer = malloc(SINE_PERIOD * 2 * sizeof(int16_t)); // Allocate memory for the buffer (2 channels)
     if (!sineBuffer) {
         RG_LOGE("could not allocate memory for sineBuffer");
         return;
     }
-    generate_sine_wave(sineBuffer, 801, sampleRate); // Generate a full period of the sine wave
+    generate_sine_wave(sineBuffer, SINE_PERIOD, sampleRate); // Generate a full period of the sine wave
 #endif
 
     sampleQueue = rg_queue_create(cacheSamples*2, sizeof(int16_t*));
@@ -279,7 +280,10 @@ void rg_audio_submit_buzzer(const rg_audio_frame_t *frames, size_t count)
         int16_t left = frames[i].left * BOOSTVOLUME * volume;
 
 #ifdef PLAY_SINE_AS_TEST
-        left = sineBuffer[sinePosition]; sinePosition+=2; if (sinePosition > 800*2) sinePosition = 0; // 2 channels
+        left = sineBuffer[sinePosition];
+        sinePosition+=2; // 2 channels
+        if (sinePosition >= SINE_PERIOD*2)
+            sinePosition = 0;
 #endif
 
         rg_queue_send(sampleQueue, (void*)&left, 0);
