@@ -81,19 +81,29 @@ int approxRollingAverage(float avg, int input) {
 #include <math.h>
 
 #define SINE_AMPLITUDE 32767 // audio samples are int16_t, which ranges from -32k to 32k
-#define SINE_PERIOD (11 * 32000) / NOTE_A // period is sampleRate / NOTE_A and then *11 to make it an integer
 
 // Global variables used for sine wave playing:
-int sinePosition = 0;
+int sinePeriod;
+int sinePosition;
 int16_t *sineBuffer;
 
-void generate_sine_wave(int16_t* buffer, int nrOfSamples, int sampleRate) {
+// Generating the sine wave sample values in realtime (at 32kHz!) is too slow on the ESP32, so precompute it into sineBuffer
+void precompute_sine_wave(int sampleRate)
+{
+    sinePosition = 0;
+    sinePeriod = 11 * sampleRate / NOTE_A; // period is sampleRate / NOTE_A and *11 makes it integer at 32kHz (although that probably doesn't matter much)
+    sineBuffer = malloc(sinePeriod * 2 * sizeof(int16_t)); // Allocate memory for the buffer (2 channels)
+    if (!sineBuffer) {
+        RG_LOGE("could not allocate memory for sineBuffer");
+        return;
+    }
+
     int32_t phase = 0;
     int bufferPos = 0;
-    for (int i = 0; i < nrOfSamples; i++) {
+    for (int i = 0; i < sinePeriod; i++) {
         float sample = sinf(phase * M_PI * 2 / sampleRate) * SINE_AMPLITUDE;
-        buffer[bufferPos] = sample;
-        buffer[bufferPos+1] = sample; // stereo so use same sample for right audio channel
+        sineBuffer[bufferPos] = sample;
+        sineBuffer[bufferPos+1] = sample; // stereo so use same sample for right audio channel
         phase += NOTE_A;
         bufferPos += 2;
     }
@@ -141,12 +151,7 @@ void setup_buzzer(int sampleRate) {
     int cacheSamples = (sampleRate/1000)*MS_OF_CACHED_SAMPLES;
 
 #ifdef PLAY_SINE_AS_TEST
-    sineBuffer = malloc(SINE_PERIOD * 2 * sizeof(int16_t)); // Allocate memory for the buffer (2 channels)
-    if (!sineBuffer) {
-        RG_LOGE("could not allocate memory for sineBuffer");
-        return;
-    }
-    generate_sine_wave(sineBuffer, SINE_PERIOD, sampleRate); // Generate a full period of the sine wave
+    precompute_sine_wave(sampleRate);
 #endif
 
     sampleQueue = rg_queue_create(cacheSamples*2, sizeof(int16_t*));
@@ -282,7 +287,7 @@ void rg_audio_submit_buzzer(const rg_audio_frame_t *frames, size_t count)
 #ifdef PLAY_SINE_AS_TEST
         left = sineBuffer[sinePosition];
         sinePosition+=2; // 2 channels
-        if (sinePosition >= SINE_PERIOD*2)
+        if (sinePosition >= sinePeriod*2)
             sinePosition = 0;
 #endif
 
