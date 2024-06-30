@@ -286,7 +286,8 @@ void rg_audio_submit_buzzer(const rg_audio_frame_t *frames, size_t count)
             sinePosition = 0;
 #endif
 
-        rg_queue_send(sampleQueue, (void*)&left, 0);
+        if (!rg_queue_send(sampleQueue, (void*)&left, 0))
+            overflows++;
     }
 
     // Sleep a bit while the samples are being played.
