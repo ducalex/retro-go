@@ -19,7 +19,7 @@
 #include <driver/dac.h>
 #endif
 #if RG_AUDIO_USE_BUZZER_PIN
-#include "rg_audio_buzzer.h"
+#include "drivers/buzzer.h"
 #endif
 #else
 #include <SDL2/SDL.h>
