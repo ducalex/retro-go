@@ -15,6 +15,7 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_80M
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0

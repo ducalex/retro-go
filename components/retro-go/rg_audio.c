@@ -27,9 +27,7 @@ static SDL_AudioDeviceID audioDevice;
 #endif
 
 static const rg_audio_sink_t sinks[] = {
-#if !RG_AUDIO_USE_INT_DAC && !RG_AUDIO_USE_EXT_DAC
     {RG_AUDIO_SINK_DUMMY,   0, "Dummy"  },
-#endif
 #if RG_AUDIO_USE_INT_DAC
     {RG_AUDIO_SINK_I2S_DAC, 0, "Speaker"},
 #endif
@@ -58,7 +56,8 @@ static rg_audio_t audio;
 static rg_queue_t *audioDevLock;
 static rg_audio_counters_t counters;
 
-static const char *SETTING_OUTPUT = "AudioSink";
+static const char *SETTING_DRIVER = "AudioSink";
+static const char *SETTING_DEVICE = "AudioDevice";
 static const char *SETTING_VOLUME = "Volume";
 static const char *SETTING_FILTER = "AudioFilter";
 
@@ -75,12 +74,16 @@ void rg_audio_init(int sampleRate)
 
     ACQUIRE_DEVICE(1000);
 
-    int sinkType = (int)rg_settings_get_number(NS_GLOBAL, SETTING_OUTPUT, sinks[0].type);
+    rg_audio_driver_t driver = (int)rg_settings_get_number(NS_GLOBAL, SETTING_DRIVER, -1);
+    uint32_t device = 0; // (uint32_t)rg_settings_get_number(NS_GLOBAL, SETTING_DEVICE, 0);
     for (size_t i = 0; i < RG_COUNT(sinks); ++i)
     {
-        if (!audio.sink || sinks[i].type == sinkType)
+        if (sinks[i].type == driver && sinks[i].device == device)
             audio.sink = &sinks[i];
     }
+    if (!audio.sink) // Default to first non-dummy if no match found
+        audio.sink = &sinks[1 % RG_COUNT(sinks)];
+
     audio.filter = (int)rg_settings_get_number(NS_GLOBAL, SETTING_FILTER, 0);
     audio.volume = (int)rg_settings_get_number(NS_GLOBAL, SETTING_VOLUME, 50);
     audio.sampleRate = sampleRate;
@@ -359,12 +362,13 @@ const rg_audio_sink_t *rg_audio_get_sinks(size_t *count)
 
 const rg_audio_sink_t *rg_audio_get_sink(void)
 {
-    return audio.sink ?: &sinks[0];
+    return audio.sink;
 }
 
-void rg_audio_set_sink(rg_sink_type_t sink)
+void rg_audio_set_sink(rg_audio_driver_t driver, uint32_t device)
 {
-    rg_settings_set_number(NS_GLOBAL, SETTING_OUTPUT, sink);
+    rg_settings_set_number(NS_GLOBAL, SETTING_DRIVER, driver);
+    rg_settings_set_number(NS_GLOBAL, SETTING_DEVICE, device);
     rg_audio_deinit();
     rg_audio_init(audio.sampleRate);
 }

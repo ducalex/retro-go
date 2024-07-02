@@ -1,6 +1,8 @@
 name: ci
 
-on: [push]
+on: 
+  workflow_dispatch:      # Start a workflow
+  push:
 
 jobs:
   build:
@@ -8,13 +10,13 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
 
     - name: Build
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v6
       with:
         context: .
         tags: retro-go:latest
@@ -27,7 +29,7 @@ jobs:
         docker run --rm -v $(pwd)/build:/build retro-go:latest sh -c "cp /app/*.fw /build"
 
     - name: Upload artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: binaries
         path: build/*.fw

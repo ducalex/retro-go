@@ -11,18 +11,13 @@ typedef enum
     RG_AUDIO_SINK_SDL2,
     RG_AUDIO_SINK_DUMMY,
     RG_AUDIO_SINK_BUZZER,
-} rg_sink_type_t;
+} rg_audio_driver_t;
 
 typedef struct
 {
-    rg_sink_type_t type;
+    rg_audio_driver_t type;
     uint32_t device;
     const char *name;
-    // struct {
-    //     void *init;
-    //     void *submit;
-    //     void *deinit;
-    // } methods;
 } rg_audio_sink_t;
 
 typedef struct // __attribute__((packed))
@@ -56,7 +51,7 @@ rg_audio_counters_t rg_audio_get_counters(void);
 
 const rg_audio_sink_t *rg_audio_get_sinks(size_t *count);
 const rg_audio_sink_t *rg_audio_get_sink(void);
-void rg_audio_set_sink(rg_sink_type_t sink);
+void rg_audio_set_sink(rg_audio_driver_t driver, uint32_t device);
 
 int rg_audio_get_volume(void);
 void rg_audio_set_volume(int percent);
