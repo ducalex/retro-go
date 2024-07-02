@@ -255,8 +255,9 @@ void rg_audio_submit(const rg_audio_frame_t *frames, size_t count)
 
     if (audio.sink->type == RG_AUDIO_SINK_DUMMY)
     {
-        // BUG: this usleeps too long because it doesn't take into account the time that was spent drawing the frame
-        // before submitting the audio, thus making the emulator run too slow, although you can speed it up in the settings.
+        // NOTE: this usleeps "too long" without substracting the time that was spent drawing the frame before submitting the audio,
+        // thus making the emulator run "too slow". This is a deliberate choice, for profiling purposes.
+        // A dummy driver that is time-accurate for devices that simply have no other audio drivers might be implemented later.
         rg_usleep((uint32_t)(count * (1000000.f / audio.sampleRate)));
     }
     else if (audio.sink->type == RG_AUDIO_SINK_I2S_DAC || audio.sink->type == RG_AUDIO_SINK_I2S_EXT)
