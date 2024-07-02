@@ -46,8 +46,8 @@ if(RG_BUILD_VERSION)
     component_compile_options(-DRG_BUILD_VERSION="${RG_BUILD_VERSION}")
 endif()
 
-if(RG_BUILD_TYPE)
-    component_compile_options(-DRG_BUILD_TYPE=${RG_BUILD_TYPE})
+if(RG_BUILD_RELEASE)
+    component_compile_options(-DRG_BUILD_RELEASE=1)
 endif()
 
 set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")

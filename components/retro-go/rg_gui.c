@@ -1080,22 +1080,23 @@ static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
     size_t count = 0;
     const rg_audio_sink_t *sinks = rg_audio_get_sinks(&count);
     const rg_audio_sink_t *ssink = rg_audio_get_sink();
+    int min = 1 % count; // Hide dummy unless it's the only one
     int max = count - 1;
     int sink = 0;
 
     for (int i = 0; i < count; ++i)
-        if (sinks[i].type == ssink->type)
+        if (sinks[i].type == ssink->type && sinks[i].device == ssink->device)
             sink = i;
 
     int prev_sink = sink;
 
-    if (event == RG_DIALOG_PREV && --sink < 0)
+    if (event == RG_DIALOG_PREV && --sink < min)
         sink = max;
     if (event == RG_DIALOG_NEXT && ++sink > max)
-        sink = 0;
+        sink = min;
 
     if (sink != prev_sink)
-        rg_audio_set_sink(sinks[sink].type);
+        rg_audio_set_sink(sinks[sink].type, sinks[sink].device);
 
     strcpy(option->value, sinks[sink].name);
 

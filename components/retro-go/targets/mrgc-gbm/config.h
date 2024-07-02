@@ -15,6 +15,7 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -69,7 +70,6 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) (128 * 3.3f / (raw))
 
 // Status LED (Does not seem to be mappable)
-// #define RG_GPIO_LED                 GPIO_NUM_NC
 // #define RG_GPIO_LED                 GPIO_NUM_13 // From OG Firmware
 
 // I2C BUS
