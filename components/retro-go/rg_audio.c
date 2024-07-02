@@ -17,7 +17,8 @@
 #include <driver/i2s.h>
 #if RG_AUDIO_USE_INT_DAC
 #include <driver/dac.h>
-#elif RG_AUDIO_USE_BUZZER_PIN
+#endif
+#if RG_AUDIO_USE_BUZZER_PIN
 #include "rg_audio_buzzer.h"
 #endif
 #else
@@ -407,7 +408,8 @@ void rg_audio_set_mute(bool mute)
         rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
-#elif RG_AUDIO_USE_BUZZER_PIN
+#endif
+#if RG_AUDIO_USE_BUZZER_PIN
     if (audio.sink->type == RG_AUDIO_SINK_BUZZER)
         rg_audio_set_mute_buzzer(mute);
 #endif
