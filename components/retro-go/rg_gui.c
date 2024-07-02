@@ -1318,7 +1318,7 @@ void rg_gui_options_menu(void)
     rg_gui_option_t options[24];
     rg_gui_option_t *opt = &options[0];
 
-#if defined(RG_GPIO_LCD_BCKL) || defined(AW_TFT_BACKLIGHT) // Only show brightness option if backlight pin is defined
+#ifdef RG_SCREEN_BACKLIGHT
     *opt++ = (rg_gui_option_t){0, "Brightness", "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
 #endif
     *opt++ = (rg_gui_option_t){0, "Volume    ", "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
