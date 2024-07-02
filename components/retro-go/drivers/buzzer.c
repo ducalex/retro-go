@@ -51,6 +51,22 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 #define GENERAL_PURPOSE_TIMER_GROUP   TIMER_GROUP_0
 #define GENERAL_PURPOSE_TIMER         TIMER_0
 
+// Max PWM frequencies of ESP from documentation on General Purpose Timers:
+#define ESP_MAX_PWM_FREQ_1_BIT        40000000
+#define ESP_MAX_PWM_FREQ_2_BIT        20000000
+#define ESP_MAX_PWM_FREQ_3_BIT        10000000
+#define ESP_MAX_PWM_FREQ_4_BIT        5000000
+#define ESP_MAX_PWM_FREQ_5_BIT        2500000
+#define ESP_MAX_PWM_FREQ_6_BIT        1250000
+#define ESP_MAX_PWM_FREQ_7_BIT        625000
+#define ESP_MAX_PWM_FREQ_8_BIT        312500
+#define ESP_MAX_PWM_FREQ_9_BIT        156250
+#define ESP_MAX_PWM_FREQ_10_BIT       78125
+#define ESP_MAX_PWM_FREQ_11_BIT       39062
+#define ESP_MAX_PWM_FREQ_12_BIT       19531
+#define ESP_MAX_PWM_FREQ_13_BIT       9765
+#define ESP_MAX_PWM_FREQ_14_BIT       4882
+
 // Some notes that are used here:
 #define NOTE_A 440
 #define NOTE_C 523
@@ -171,13 +187,15 @@ void setup_buzzer(int sampleRate) {
 
     // Choose highest possible PWM duty resolution (that still fits the sampleRate) to increase fidelity of the PWM duty cycle
     int pwm_resolution = 8; // default to worst case if no match is found below
-    if (freq < 19530)
+    if (freq < ESP_MAX_PWM_FREQ_13_BIT)
+        pwm_resolution = 13;
+    else if (freq < ESP_MAX_PWM_FREQ_12_BIT)
         pwm_resolution = 12;
-    else if (freq < 39063)
+    else if (freq < ESP_MAX_PWM_FREQ_11_BIT)
         pwm_resolution = 11;
-    else if (freq < 78125)
+    else if (freq < ESP_MAX_PWM_FREQ_10_BIT)
         pwm_resolution = 10;
-    else if (freq < 156250)
+    else if (freq < ESP_MAX_PWM_FREQ_9_BIT)
         pwm_resolution = 9;
 
     // Higher PWM resolution means fewer bits need to be clipped off of the duty cycle
