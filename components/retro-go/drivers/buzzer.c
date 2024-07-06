@@ -30,7 +30,10 @@ to ensure the queue never underflows, nor overflows.
 Note that there are some restrictions on how high the PWM frequency can be, and a tradeoff with the precision of the duty cycle.
 
 */
-#include "rg_system.h"
+
+#include "rg_system.h" // include configuration from components/retro-go/targets/*/config.h
+
+#ifdef RG_AUDIO_USE_BUZZER_PIN
 #include "rg_audio.h"
 
 #include <freertos/FreeRTOS.h>
@@ -347,3 +350,5 @@ void rg_audio_set_mute_buzzer(bool mute)
         timer_enable_intr(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
     }
 }
+
+#endif // RG_AUDIO_USE_BUZZER_PIN
