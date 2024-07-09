@@ -57,8 +57,8 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         }
         else if (event_id == WIFI_EVENT_AP_START)
         {
-            tcpip_adapter_ip_info_t ip_info;
-            if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info) == ESP_OK)
+            esp_netif_ip_info_t ip_info;
+            if (esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info) == ESP_OK)
                 snprintf(network.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
 
             RG_LOGI("Access point started! IP: %s\n", network.ip_addr);
