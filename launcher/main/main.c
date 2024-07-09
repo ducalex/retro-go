@@ -172,6 +172,11 @@ static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    if (rg_network_get_info().state != RG_NETWORK_CONNECTED)
+    {
+        option->flags = RG_DIALOG_FLAG_DISABLED;
+        return RG_DIALOG_VOID;
+    }
     if (event == RG_DIALOG_ENTER)
     {
         updater_show_dialog();
@@ -186,7 +191,9 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_ENTER)
     {
         rg_input_wait_for_key(RG_KEY_ANY, false, 1000);
+        #ifdef RG_ENABLE_NETWORKING
         webui_stop();
+        #endif
         crc_cache_prebuild();
     }
     return RG_DIALOG_VOID;
@@ -194,10 +201,9 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
 
 static void show_about_menu(void)
 {
-    bool online = rg_network_get_info().state == RG_NETWORK_CONNECTED;
     const rg_gui_option_t options[] = {
     #ifdef RG_ENABLE_NETWORKING
-        {0, "Check for updates", NULL, online ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, &updater_cb},
+        {0, "Check for updates", NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
     #endif
         {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
         RG_DIALOG_END,
