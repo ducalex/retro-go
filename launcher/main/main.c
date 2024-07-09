@@ -202,10 +202,10 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
 static void show_about_menu(void)
 {
     const rg_gui_option_t options[] = {
+        {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
     #ifdef RG_ENABLE_NETWORKING
         {0, "Check for updates", NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
     #endif
-        {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
         RG_DIALOG_END,
     };
     rg_gui_about_menu(options);
