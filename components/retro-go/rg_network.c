@@ -86,6 +86,12 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
                 rg_system_save_time();
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
         }
+        else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
+        {
+            ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
+            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip));
+            RG_LOGI("Access point assigned IP to client: %s", network.ip_addr);
+        }
     }
 
     RG_LOGV("Event: %d %d\n", (int)event_base, (int)event_id);
@@ -277,8 +283,7 @@ bool rg_network_init(void)
     // Init event loop first
     esp_err_t err;
     TRY(esp_event_loop_create_default());
-    TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
-    TRY(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
 
     // Then TCP stack
     esp_netif_init();
