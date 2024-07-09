@@ -267,10 +267,7 @@ void crc_cache_prebuild(void)
     if (!crc_cache)
         return;
 
-    // Chunk should be reasonably small so that other idle tasks have a chance to run
-    int remaining = CRC_CACHE_MAX_ENTRIES;
-
-    for (int i = 0; i < apps_count && remaining != -1; i++)
+    for (int i = 0; i < apps_count; i++)
     {
         retro_app_t *app = apps[i];
 
@@ -280,15 +277,16 @@ void crc_cache_prebuild(void)
         if (!app->initialized)
             application_init(app);
 
-        if (rg_input_read_gamepad())
-            remaining = -1;
-
-        for (int j = 0; j < app->files_count && remaining > 0; j++)
+        for (int j = 0; j < app->files_count; j++)
         {
             retro_file_t *file = &app->files[j];
 
             snprintf(status_msg, sizeof(status_msg), "Scanning %s %d/%d", app->short_name, j, app->files_count);
             rg_gui_draw_dialog(status_msg, NULL, 0);
+
+            // Give up on any button press to improve responsiveness
+            if (rg_input_read_gamepad())
+                break;
 
             if (file->checksum)
                 continue;
@@ -297,17 +295,14 @@ void crc_cache_prebuild(void)
                 continue;
 
             if ((file->checksum = crc_read_file(file, true)))
-            {
                 crc_cache_update(file);
-                remaining--;
-            }
-
-            // Give up on any button press to improve responsiveness
-            if (rg_input_read_gamepad())
-                remaining = -1;
         }
 
-        gui_redraw(); // gui_draw_status(tab);
+        if (rg_input_read_gamepad())
+            break;
+
+        crc_cache_save();
+        gui_redraw();
     }
 
     crc_cache_save();
