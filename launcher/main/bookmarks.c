@@ -36,8 +36,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file && !tab->preview && gui.browse && gui.idle_counter == 1)
             gui_load_preview(tab);
-        else if ((gui.idle_counter % 100) == 0)
-            crc_cache_idle_task(tab);
     }
     else if (event == TAB_ACTION)
     {

@@ -120,6 +120,39 @@ static void application_start(retro_file_t *file, int load_state)
     rg_system_switch_app(part, name, path, flags);
 }
 
+static uint32_t crc_read_file(retro_file_t *file, bool interactive)
+{
+    uint8_t buffer[0x800];
+    uint32_t crc_tmp = 0;
+    bool done = false;
+    int count = -1;
+    FILE *fp;
+
+    if (file == NULL)
+        return 0;
+
+    if ((fp = fopen(get_file_path(file), "rb")))
+    {
+        fseek(fp, file->app->crc_offset, SEEK_SET);
+
+        while (count != 0)
+        {
+            // Give up on any button press to improve responsiveness
+            if (interactive && (gui.joystick = rg_input_read_gamepad()))
+                break;
+
+            count = fread(buffer, 1, sizeof(buffer), fp);
+            crc_tmp = rg_crc32(crc_tmp, buffer, count);
+        }
+
+        done = feof(fp);
+
+        fclose(fp);
+    }
+
+    return done ? crc_tmp : 0;
+}
+
 static void crc_cache_init(void)
 {
     crc_cache = calloc(1, sizeof(*crc_cache));
@@ -227,66 +260,53 @@ static void crc_cache_update(retro_file_t *file)
     // crc_cache_save();
 }
 
-void crc_cache_idle_task(tab_t *tab)
+void crc_cache_prebuild(void)
 {
+    char status_msg[40];
+
     if (!crc_cache)
         return;
 
-    // FIXME: Disabled for now because it interferes with the webserver...
-    //        But what should be done is make http_lock a mutex that we can take here
-    if (rg_network_get_info().state == RG_NETWORK_CONNECTED)
-    {
-        crc_cache_save();
-        return;
-    }
-
     // Chunk should be reasonably small so that other idle tasks have a chance to run
-    int remaining = 100;
-
-    if (crc_cache->count >= CRC_CACHE_MAX_ENTRIES)
-    {
-        remaining = 0;
-    }
+    int remaining = CRC_CACHE_MAX_ENTRIES;
 
     for (int i = 0; i < apps_count && remaining != -1; i++)
     {
         retro_app_t *app = apps[i];
-        int processed = 0;
 
-        if (!app->available || app->crc_scan_done)
+        if (!app->available)
             continue;
-
-        gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
-        gui_redraw(); // gui_draw_status(tab);
 
         if (!app->initialized)
             application_init(app);
 
-        if ((gui.joystick |= rg_input_read_gamepad()))
+        if (rg_input_read_gamepad())
             remaining = -1;
 
         for (int j = 0; j < app->files_count && remaining > 0; j++)
         {
             retro_file_t *file = &app->files[j];
 
-            if (file->checksum == 0)
-                file->checksum = crc_cache_lookup(file);
+            snprintf(status_msg, sizeof(status_msg), "Scanning %s %d/%d", app->short_name, j, app->files_count);
+            rg_gui_draw_dialog(status_msg, NULL, 0);
 
-            if (file->checksum == 0 && application_get_file_crc32(file))
+            if (file->checksum)
+                continue;
+
+            if ((file->checksum = crc_cache_lookup(file)))
+                continue;
+
+            if ((file->checksum = crc_read_file(file, true)))
             {
-                processed++;
+                crc_cache_update(file);
                 remaining--;
             }
 
             // Give up on any button press to improve responsiveness
-            if ((gui.joystick |= rg_input_read_gamepad()))
+            if (rg_input_read_gamepad())
                 remaining = -1;
         }
 
-        if (processed == 0 && remaining != -1)
-            app->crc_scan_done = true;
-
-        gui_set_status(tab, "", "");
         gui_redraw(); // gui_draw_status(tab);
     }
 
@@ -406,8 +426,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file && !tab->preview && gui.browse && gui.idle_counter == 1)
             gui_load_preview(tab);
-        else if ((gui.idle_counter % 100) == 0)
-            crc_cache_idle_task(tab);
     }
     else if (event == TAB_ACTION)
     {
@@ -474,10 +492,7 @@ bool application_path_to_file(const char *path, retro_file_t *file)
 
 bool application_get_file_crc32(retro_file_t *file)
 {
-    uint8_t buffer[0x800];
     uint32_t crc_tmp = 0;
-    int count = -1;
-    FILE *fp;
 
     if (file == NULL)
         return false;
@@ -495,27 +510,10 @@ bool application_get_file_crc32(retro_file_t *file)
         gui_set_status(tab, NULL, "CRC32...");
         gui_redraw(); // gui_draw_status(tab);
 
-        if ((fp = fopen(get_file_path(file), "rb")))
+        if ((crc_tmp = crc_read_file(file, true)))
         {
-            fseek(fp, file->app->crc_offset, SEEK_SET);
-
-            while (count != 0)
-            {
-                // Give up on any button press to improve responsiveness
-                if ((gui.joystick = rg_input_read_gamepad()))
-                    break;
-
-                count = fread(buffer, 1, sizeof(buffer), fp);
-                crc_tmp = rg_crc32(crc_tmp, buffer, count);
-            }
-
-            if (feof(fp))
-            {
-                file->checksum = crc_tmp;
-                crc_cache_update(file);
-            }
-
-            fclose(fp);
+            file->checksum = crc_tmp;
+            crc_cache_update(file);
         }
 
         gui_set_status(tab, NULL, "");

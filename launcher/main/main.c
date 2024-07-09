@@ -13,6 +13,7 @@
 #include "bookmarks.h"
 #include "gui.h"
 #include "wifi.h"
+#include "webui.h"
 #include "updater.h"
 
 static rg_app_t *app;
@@ -180,6 +181,17 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 }
 #endif
 
+static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_input_wait_for_key(RG_KEY_ANY, false, 1000);
+        webui_stop();
+        crc_cache_prebuild();
+    }
+    return RG_DIALOG_VOID;
+}
+
 static void show_about_menu(void)
 {
     bool online = rg_network_get_info().state == RG_NETWORK_CONNECTED;
@@ -187,6 +199,7 @@ static void show_about_menu(void)
     #ifdef RG_ENABLE_NETWORKING
         {0, "Check for updates", NULL, online ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, &updater_cb},
     #endif
+        {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
         RG_DIALOG_END,
     };
     rg_gui_about_menu(options);
