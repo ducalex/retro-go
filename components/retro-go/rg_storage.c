@@ -168,11 +168,11 @@ void rg_storage_init(void)
 
 #endif
 
-#if ( RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_INTERNAL_FLASH_FALLBACK) ) && ESP_PLATFORM // SPI Internal Flash
+#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_INTERNAL_FLASH_FALLBACK) // SPI Internal Flash
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
-        RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
 
         esp_vfs_fat_mount_config_t mount_config = {
             .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
@@ -180,7 +180,7 @@ void rg_storage_init(void)
         };
 
         wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &s_wl_handle);
         error_code = (int)err;
     }
 
