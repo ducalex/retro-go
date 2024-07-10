@@ -57,8 +57,8 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         }
         else if (event_id == WIFI_EVENT_AP_START)
         {
-            tcpip_adapter_ip_info_t ip_info;
-            if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info) == ESP_OK)
+            esp_netif_ip_info_t ip_info;
+            if (esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info) == ESP_OK)
                 snprintf(network.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
 
             RG_LOGI("Access point started! IP: %s\n", network.ip_addr);
@@ -85,6 +85,12 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
             if (rg_network_sync_time("pool.ntp.org", 0))
                 rg_system_save_time();
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
+        }
+        else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
+        {
+            ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
+            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip));
+            RG_LOGI("Access point assigned IP to client: %s", network.ip_addr);
         }
     }
 
@@ -263,7 +269,7 @@ void rg_network_deinit(void)
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
     esp_wifi_deinit();
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler);
+    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
 #endif
 }
@@ -278,7 +284,7 @@ bool rg_network_init(void)
     esp_err_t err;
     TRY(esp_event_loop_create_default());
     TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
-    TRY(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
 
     // Then TCP stack
     esp_netif_init();
