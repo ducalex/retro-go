@@ -78,7 +78,14 @@ void rg_storage_init(void)
     RG_ASSERT(!disk_mounted, "Storage already initialized!");
     int error_code = -1;
 
-#if RG_STORAGE_DRIVER == 1 // SDSPI
+#if RG_STORAGE_DRIVER == 0 // Host (stdlib)
+
+    RG_LOGI("Using host (stdlib) for storage.");
+
+    // Maybe we should just check if RG_STORAGE_ROOT exists?
+    error_code = 0;
+
+#elif RG_STORAGE_DRIVER == 1 // SDSPI
 
     RG_LOGI("Looking for SD Card using SDSPI...");
 
@@ -159,23 +166,23 @@ void rg_storage_init(void)
     RG_LOGI("Looking for USB mass storage...");
     error_code = -1;
 
-#elif RG_STORAGE_DRIVER == 4 // SPI Flash
+#endif
 
-    RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
+#if ( RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FALLBACK_FLASH) ) && ESP_PLATFORM // SPI Flash
 
-    esp_vfs_fat_mount_config_t mount_config = {
-        .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
-        .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
-    };
+    if (error_code) // only if no previous storage was successfully mounted already
+    {
+        RG_LOGI("Looking for an internal flash partition labelled 'vfs' to mount for storage...");
 
-    wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
-    error_code = (int)err;
+        esp_vfs_fat_mount_config_t mount_config = {
+            .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+            .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
+        };
 
-#else // Host (stdlib)
-
-    // Maybe we should just check if RG_STORAGE_ROOT exists?
-    error_code = 0;
+        wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "vfs", &mount_config, &s_wl_handle);  // MicroPython's partition table also uses "vfs", so use that one in case the storage is shared with it
+        error_code = (int)err;
+    }
 
 #endif
 
