@@ -31,6 +31,10 @@
 
 static bool disk_mounted = false;
 static bool disk_led = true;
+#ifdef ESP_PLATFORM
+static sdmmc_card_t *card_handle = NULL;
+static wl_handle_t wl_handle = WL_INVALID_HANDLE;
+#endif
 
 static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
 
@@ -116,12 +120,12 @@ void rg_storage_init(void)
     if (err != ESP_OK) // check but do not abort, let esp_vfs_fat_sdspi_mount decide
         RG_LOGW("SPI bus init failed (0x%x)", err);
 
-    err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+    err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     }
     error_code = (int)err;
 
@@ -151,12 +155,12 @@ void rg_storage_init(void)
         .allocation_unit_size = 0,
     };
 
-    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     }
     error_code = (int)err;
 
@@ -179,8 +183,7 @@ void rg_storage_init(void)
             .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
         };
 
-        wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &s_wl_handle);
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
         error_code = (int)err;
     }
 
@@ -204,9 +207,21 @@ void rg_storage_deinit(void)
     int error_code = 0;
 
 #if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
-    esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-    if (err != ESP_OK)
-        error_code = err;
+    if (card_handle != NULL)
+    {
+        esp_err_t err = esp_vfs_fat_sdcard_unmount(RG_STORAGE_ROOT, card_handle);
+        card_handle = NULL; // NULL it regardless of success, nothing we can do on errors...
+        error_code = (int)err;
+    }
+#endif
+
+#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FLASH_PARTITION)
+    if (wl_handle != WL_INVALID_HANDLE)
+    {
+        esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);
+        wl_handle = WL_INVALID_HANDLE;
+        error_code = (int)err;
+    }
 #endif
 
     if (error_code)
