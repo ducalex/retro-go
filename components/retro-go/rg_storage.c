@@ -168,7 +168,7 @@ void rg_storage_init(void)
 
 #endif
 
-#if ( RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_INTERNAL_FLASH_FALLBACK) ) && ESP_PLATFORM // SPI Flash
+#if ( RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_INTERNAL_FLASH_FALLBACK) ) && ESP_PLATFORM // SPI Internal Flash
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
