@@ -269,7 +269,7 @@ void rg_network_deinit(void)
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
     esp_wifi_deinit();
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler);
+    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
 #endif
 }
@@ -283,7 +283,8 @@ bool rg_network_init(void)
     // Init event loop first
     esp_err_t err;
     TRY(esp_event_loop_create_default());
-    TRY(esp_event_handler_register(ESP_EVENT_ANY_BASE, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
 
     // Then TCP stack
     esp_netif_init();
