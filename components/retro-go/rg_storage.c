@@ -31,8 +31,10 @@
 
 static bool disk_mounted = false;
 static bool disk_led = true;
-#ifdef ESP_PLATFORM
+#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
 static sdmmc_card_t *card_handle = NULL;
+#endif
+#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FLASH_PARTITION)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
 #endif
 
