@@ -88,7 +88,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
             value = adc1_get_raw(mapping->channel);
         else if (mapping->unit == ADC_UNIT_2)
             adc2_get_raw(mapping->channel, ADC_WIDTH_MAX - 1, &value);
-        if (value > mapping->min && value < mapping->max)
+        if (value >= mapping->min && value <= mapping->max)
             state |= mapping->key;
     }
 #endif
