@@ -47,12 +47,21 @@ static rg_battery_t battery_state = {0};
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
+    int raw_value_adc2 = 0;
     bool present = true;
     bool charging = false;
 
 #if RG_BATTERY_DRIVER == 1 /* ADC1 */
     for (int i = 0; i < 4; ++i)
-        raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+        if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+            raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+        else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+            if (adc2_get_raw(RG_BATTERY_ADC_CHANNEL, ADC_WIDTH_MAX - 1, &raw_value_adc2) == ESP_OK)
+                raw_value += esp_adc_cal_raw_to_voltage(raw_value_adc2, &adc_chars);
+            else
+                return false; // ADC2 reading might fail between esp_wifi_start() and esp_wifi_stop()
+       else
+            return false; // only ADC1 and ADC2 are supported
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
     uint8_t data[5];
@@ -212,7 +221,7 @@ static void input_task(void *arg)
                     temp.volts = battery_state.volts;
             }
             battery_state = temp;
-            next_battery_update = rg_system_timer() + 2 * 1000000;
+            next_battery_update = rg_system_timer() + 2 * 1000000; // update every 2 seconds
         }
 
         rg_task_delay(10);
