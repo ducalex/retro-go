@@ -301,11 +301,12 @@ void rg_input_init(void)
 #endif
 
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
-    RG_LOGI("Initializing ADC1 battery driver...");
-    adc1_config_width(ADC_WIDTH_MAX - 1);
+#if RG_BATTERY_DRIVER == 1 /* ADC */
+    RG_LOGI("Initializing ADC battery driver...");
+    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+        adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
     adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+    esp_adc_cal_characterize(RG_BATTERY_ADC_UNIT, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.
