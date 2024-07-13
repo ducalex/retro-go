@@ -51,17 +51,31 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     bool present = true;
     bool charging = false;
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
+#if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
+    {
         if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+        {
             raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+        }
         else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+        {
             if (adc2_get_raw(RG_BATTERY_ADC_CHANNEL, ADC_WIDTH_MAX - 1, &raw_value_adc2) == ESP_OK)
+            {
                 raw_value += esp_adc_cal_raw_to_voltage(raw_value_adc2, &adc_chars);
+            }
             else
-                return false; // ADC2 reading might fail between esp_wifi_start() and esp_wifi_stop()
+            {
+                RG_LOGI("ADC2 reading failed, this can happen while wifi is active.");
+                return false;
+            }
+       }
        else
-            return false; // only ADC1 and ADC2 are supported
+       {
+            RG_LOGW("Only ADC1 and ADC2 are supported for ADC battery driver!");
+            return false;
+       }
+    }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
     uint8_t data[5];
