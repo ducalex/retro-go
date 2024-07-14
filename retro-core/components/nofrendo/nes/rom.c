@@ -255,62 +255,58 @@ rom_t *rom_loadfile(const char *filename)
 {
    uint8 *data = NULL;
    long size = 0;
+   FILE *fp;
 
    if (!filename)
       return NULL;
 
-   FILE *fp = fopen(filename, "rb");
-   if (!fp)
+   if ((fp = fopen(filename, "rb")))
    {
-      MESSAGE_ERROR("ROM: Unable to open file '%s'\n", filename);
+      MESSAGE_INFO("ROM: Loading file '%s'\n", filename);
+
+      fseek(fp, 0, SEEK_END);
+      size = ftell(fp);
+      fseek(fp, 0, SEEK_SET);
+
+      if (size < 16 || size > 0x200000)
+      {
+         MESSAGE_ERROR("ROM: File size error\n");
+      }
+      else if ((data = malloc(size)) == NULL)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed\n");
+      }
+      else if (fread(data, size, 1, fp) != 1)
+      {
+         MESSAGE_ERROR("ROM: Read error\n");
+         free(data);
+         data = NULL;
+      }
+      fclose(fp);
+   }
+
+   if (rom_loadmem(data, size) == NULL)
+   {
+      MESSAGE_ERROR("ROM: Load error\n");
+      free(data);
       return NULL;
    }
 
-   MESSAGE_INFO("ROM: Loading file '%s'\n", filename);
-
-   fseek(fp, 0, SEEK_END);
-   size = ftell(fp);
-   fseek(fp, 0, SEEK_SET);
-
-   if (size < 16 || size > 0x200000)
+   if (rom.system == SYS_UNKNOWN)
    {
-      MESSAGE_ERROR("ROM: File size error\n");
+      if (strstr(filename, "(E)")
+         || strstr(filename, "(Europe)")
+         || strstr(filename, "(A)")
+         || strstr(filename, "(Australia)"))
+         rom.system = SYS_NES_PAL;
    }
-   else if ((data = malloc(size)) == NULL)
-   {
-      MESSAGE_ERROR("ROM: Memory allocation failed\n");
-   }
-   else if (fread(data, size, 1, fp) != 1)
-   {
-      MESSAGE_ERROR("ROM: Read error\n");
-   }
-   else if (rom_loadmem(data, size) == NULL)
-   {
-      MESSAGE_ERROR("ROM: Load error\n");
-   }
-   else
-   {
-      fclose(fp);
-      if (rom.system == SYS_UNKNOWN)
-      {
-         if (strstr(filename, "(E)")
-            || strstr(filename, "(Europe)")
-            || strstr(filename, "(A)")
-            || strstr(filename, "(Australia)"))
-            rom.system = SYS_NES_PAL;
-      }
-      rom.flags |= ROM_FLAG_FREE_DATA;
-      // This is fine, rom_loadmem zeroes `rom`.
-      strncpy(rom.filename, filename, sizeof(rom.filename) - 1);
-      #ifdef USE_SRAM_FILE
-         rom_loadsram();
-      #endif
-      return &rom;
-   }
-
-   fclose(fp);
-   free(data);
-   return NULL;
+   rom.flags |= ROM_FLAG_FREE_DATA;
+   // This is fine, rom_loadmem zeroes `rom`.
+   strncpy(rom.filename, filename, sizeof(rom.filename) - 1);
+   #ifdef USE_SRAM_FILE
+      rom_loadsram();
+   #endif
+   return &rom;
 }
 
 /* Free a ROM */
