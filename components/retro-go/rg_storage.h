@@ -66,5 +66,6 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t 
 bool rg_storage_delete(const char *path);
 bool rg_storage_exists(const char *path);
 bool rg_storage_mkdir(const char *dir);
-bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);
 rg_stat_t rg_storage_stat(const char *path);
+bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len);

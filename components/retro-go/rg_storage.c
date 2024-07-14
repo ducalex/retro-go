@@ -412,3 +412,110 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
 
     return true;
 }
+
+#if 0
+/**
+ * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
+ * I think that we should use miniz' ZIP API instead and bundle miniz with retro-go. But first I need
+ * to do some testing to determine if the increased executable size is acceptable...
+ */
+#include <rom/miniz.h>
+
+typedef struct __attribute__((packed))
+{
+    uint32_t magic;
+    uint16_t version;
+    uint16_t flags;
+    uint16_t compression;
+    uint16_t mtime;
+    uint16_t mdate;
+    uint32_t checksum;
+    uint32_t compressed_size;
+    uint32_t uncompressed_size;
+    uint16_t filename_size;
+    uint16_t extra_field_size;
+    uint8_t filename[226];
+} zip_header_t;
+
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len)
+{
+    zip_header_t header = {0};
+    int header_pos = 0;
+    FILE *fp = fopen(zip_path, "rb");
+
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed");
+        return false;
+    }
+
+    // Very inefficient, we should read a block at a time and search it for a header. But I'm lazy.
+    // Thankfully the header is usually found on the very first read :)
+    for (header_pos = 0; !feof(fp); ++header_pos)
+    {
+        fseek(fp, header_pos, SEEK_SET);
+        fread(&header, sizeof(header), 1, fp);
+        if (header.magic == 0x04034b50)
+            break;
+    }
+
+    if (header.magic != 0x04034b50)
+    {
+        RG_LOGE("No valid header found!");
+        fclose(fp);
+        return false;
+    }
+
+    // Zero terminate or truncate filename just in case
+    header.filename[RG_MIN(header.filename_size, 225)] = 0;
+
+    RG_LOGI("Found file at %d, name: '%s'", header_pos, header.filename);
+
+    size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
+    size_t compressed_size = header.compressed_size;
+    void *compressed_stream = malloc(compressed_size);
+    size_t uncompressed_size = header.uncompressed_size;
+    void *uncompressed_stream = malloc(uncompressed_size);
+    tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
+    tinfl_init(decomp);
+
+    if (!compressed_stream || !uncompressed_stream || !decomp)
+    {
+        RG_LOGE("Out of memory");
+        goto _fail;
+    }
+
+    if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(compressed_stream, compressed_size, 1, fp) != 1)
+    {
+        RG_LOGE("Read failure");
+        goto _fail;
+    }
+
+    tinfl_status status =
+        tinfl_decompress(decomp, compressed_stream, &compressed_size, uncompressed_stream, uncompressed_stream,
+                         &uncompressed_size, TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+
+    free(compressed_stream);
+    free(decomp);
+    fclose(fp);
+
+    if (status != TINFL_STATUS_DONE)
+    {
+        RG_LOGE("Decompression failed! ret: %d", (int)status);
+        free(uncompressed_stream);
+        return false;
+    }
+
+    *data_out = uncompressed_stream;
+    *data_len = uncompressed_size;
+    return true;
+
+_fail:
+    free(uncompressed_stream);
+    free(compressed_stream);
+    free(decomp);
+    fclose(fp);
+    return false;
+}
+
+#endif
