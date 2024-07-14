@@ -561,7 +561,7 @@ void rg_gui_draw_icons(void)
         struct tm *time = localtime(&time_sec);
 
         sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
-        rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_SILVER, app->isLauncher ? C_TRANSPARENT : C_BLACK, 0);
+        rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_SILVER, gui.screen_buffer ? C_TRANSPARENT : C_BLACK, 0);
     }
 }
 
