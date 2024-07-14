@@ -47,12 +47,35 @@ static rg_battery_t battery_state = {0};
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
+    int raw_value_adc2 = 0;
     bool present = true;
     bool charging = false;
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
+#if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
-        raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+    {
+        if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+        {
+            raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+        }
+        else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+        {
+            if (adc2_get_raw(RG_BATTERY_ADC_CHANNEL, ADC_WIDTH_MAX - 1, &raw_value_adc2) == ESP_OK)
+            {
+                raw_value += esp_adc_cal_raw_to_voltage(raw_value_adc2, &adc_chars);
+            }
+            else
+            {
+                RG_LOGI("ADC2 reading failed, this can happen while wifi is active.");
+                return false;
+            }
+       }
+       else
+       {
+            RG_LOGW("Only ADC1 and ADC2 are supported for ADC battery driver!");
+            return false;
+       }
+    }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
     uint8_t data[5];
@@ -212,7 +235,7 @@ static void input_task(void *arg)
                     temp.volts = battery_state.volts;
             }
             battery_state = temp;
-            next_battery_update = rg_system_timer() + 2 * 1000000;
+            next_battery_update = rg_system_timer() + 2 * 1000000; // update every 2 seconds
         }
 
         rg_task_delay(10);
@@ -278,11 +301,22 @@ void rg_input_init(void)
 #endif
 
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
-    RG_LOGI("Initializing ADC1 battery driver...");
-    adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+#if RG_BATTERY_DRIVER == 1 /* ADC */
+    RG_LOGI("Initializing ADC battery driver...");
+    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+    {
+        adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
+        adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+    }
+    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+    {
+        adc2_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+    }
+    else
+    {
+        RG_LOGW("Only ADC1 and ADC2 are supported for ADC battery driver!");
+    }
+    esp_adc_cal_characterize(RG_BATTERY_ADC_UNIT, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.
