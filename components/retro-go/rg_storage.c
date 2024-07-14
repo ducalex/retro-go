@@ -421,14 +421,15 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
  */
 #include <rom/miniz.h>
 
+#define ZIP_MAGIC 0x04034b50
 typedef struct __attribute__((packed))
 {
     uint32_t magic;
     uint16_t version;
     uint16_t flags;
     uint16_t compression;
-    uint16_t mtime;
-    uint16_t mdate;
+    uint16_t modified_time;
+    uint16_t modified_date;
     uint32_t checksum;
     uint32_t compressed_size;
     uint32_t uncompressed_size;
@@ -439,6 +440,8 @@ typedef struct __attribute__((packed))
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len)
 {
+    CHECK_PATH(zip_path);
+
     zip_header_t header = {0};
     int header_pos = 0;
     FILE *fp = fopen(zip_path, "rb");
@@ -455,11 +458,11 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     {
         fseek(fp, header_pos, SEEK_SET);
         fread(&header, sizeof(header), 1, fp);
-        if (header.magic == 0x04034b50)
+        if (header.magic == ZIP_MAGIC)
             break;
     }
 
-    if (header.magic != 0x04034b50)
+    if (header.magic != ZIP_MAGIC)
     {
         RG_LOGE("No valid header found!");
         fclose(fp);
@@ -472,10 +475,10 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     RG_LOGI("Found file at %d, name: '%s'", header_pos, header.filename);
 
     size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
-    size_t compressed_size = header.compressed_size;
-    void *compressed_stream = malloc(compressed_size);
     size_t uncompressed_size = header.uncompressed_size;
     void *uncompressed_stream = malloc(uncompressed_size);
+    size_t compressed_size = header.compressed_size;
+    void *compressed_stream = malloc(compressed_size);
     tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
     tinfl_init(decomp);
 
@@ -495,16 +498,15 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
         tinfl_decompress(decomp, compressed_stream, &compressed_size, uncompressed_stream, uncompressed_stream,
                          &uncompressed_size, TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
 
-    free(compressed_stream);
-    free(decomp);
-    fclose(fp);
-
     if (status != TINFL_STATUS_DONE)
     {
         RG_LOGE("Decompression failed! ret: %d", (int)status);
-        free(uncompressed_stream);
-        return false;
+        goto _fail;
     }
+
+    free(compressed_stream);
+    free(decomp);
+    fclose(fp);
 
     *data_out = uncompressed_stream;
     *data_len = uncompressed_size;
