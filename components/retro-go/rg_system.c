@@ -186,7 +186,7 @@ static void system_monitor_task(void *arg)
         rg_battery_t battery = rg_input_read_battery();
         if (battery.present)
         {
-            if (battery.level < 2)
+            if (battery.level <= 2)
                 rg_system_set_led((batteryLedState ^= 1));
             else if (batteryLedState)
                 rg_system_set_led((batteryLedState = 0));
