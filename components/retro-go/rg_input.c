@@ -307,16 +307,17 @@ void rg_input_init(void)
     {
         adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
         adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
     }
     else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
     {
         adc2_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+        esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
     }
     else
     {
-        RG_LOGW("Only ADC1 and ADC2 are supported for ADC battery driver!");
+        RG_LOGE("Only ADC1 and ADC2 are supported for ADC battery driver!");
     }
-    esp_adc_cal_characterize(RG_BATTERY_ADC_UNIT, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.
