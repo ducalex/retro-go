@@ -500,43 +500,44 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 
 void rg_gui_draw_icons(void)
 {
-    const rg_app_t *app = rg_system_get_app();
     rg_battery_t battery = rg_input_read_battery();
     rg_network_t network = rg_network_get_info();
     rg_rect_t txt = TEXT_RECT("00:00", 0);
+    int bar_height = txt.height;
+    int icon_height = RG_MAX(8, bar_height - 4);
+    int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
     int right = 0;
-    int top = app->isLauncher ? 0 : -1;
 
     if (battery.present)
     {
         right += 22;
 
         int width = 16;
-        int height = 10;
+        int height = icon_height;
         int width_fill = width / 100.f * battery.level;
+        int x_pos = -right;
+        int y_pos = icon_top;
+
         rg_color_t color_fill = (battery.level > 20 ? (battery.level > 40 ? C_FOREST_GREEN : C_ORANGE) : C_RED);
         rg_color_t color_border = C_SILVER;
         rg_color_t color_empty = C_BLACK;
 
-        int x_pos = -right;
-        int y_pos = RG_MAX(0, (txt.height - 10) / 2 + top);
-
         rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
         rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
         rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
-        rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, 8, 0, 0, color_empty);
+        rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, height - 2, 0, 0, color_empty);
     }
 
     if (network.state > RG_NETWORK_DISCONNECTED)
     {
         right += 22;
 
-        int x_pos = -right;
-        int y_pos = RG_MAX(0, (txt.height - 10) / 2 + top);
-
         int width = 16;
-        int height = 10;
+        int height = icon_height;
         int seg_width = (width - 2 - 2) / 3;
+        int x_pos = -right;
+        int y_pos = icon_top;
+
         rg_color_t color_fill = (network.state == RG_NETWORK_CONNECTED) ? C_GREEN : C_NONE;
         rg_color_t color_border = (network.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
@@ -555,7 +556,7 @@ void rg_gui_draw_icons(void)
         right += txt.width + 4;
 
         int x_pos = -right;
-        int y_pos = RG_MAX(0, 1 + top);
+        int y_pos = 0;
         char buffer[12];
         time_t time_sec = time(NULL);
         struct tm *time = localtime(&time_sec);
