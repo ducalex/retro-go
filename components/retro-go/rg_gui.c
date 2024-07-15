@@ -578,34 +578,31 @@ void rg_gui_draw_hourglass(void)
 
 void rg_gui_draw_status_bars(void)
 {
-    const rg_app_t *app = rg_system_get_app();
+    size_t max_len = gui.screen_width / 8;
+    char header[max_len];
+    char footer[max_len];
 
-    if (!app->initialized)
+    const rg_app_t *app = rg_system_get_app();
+    rg_stats_t stats = rg_system_get_counters();
+
+    if (!app->initialized || app->isLauncher)
         return;
 
-    if (!app->isLauncher)
-    {
-        rg_stats_t stats = rg_system_get_counters();
-        size_t max_len = gui.screen_width / 8;
-        char header[max_len];
-        char footer[max_len];
+    snprintf(header, max_len, "SPEED: %d%% (%d %d) / BUSY: %d%%",
+        (int)round(stats.totalFPS / app->tickRate * 100.f),
+        (int)round(stats.totalFPS),
+        (int)app->frameskip,
+        (int)round(stats.busyPercent));
 
-        snprintf(header, max_len, "SPEED: %d%% (%d %d) / BUSY: %d%%",
-            (int)round(stats.totalFPS / app->tickRate * 100.f),
-            (int)round(stats.totalFPS),
-            (int)app->frameskip,
-            (int)round(stats.busyPercent));
+    if (app->romPath && strlen(app->romPath) > max_len - 1)
+        snprintf(footer, max_len, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 4)));
+    else if (app->romPath)
+        snprintf(footer, max_len, "%s", app->romPath);
+    else
+        snprintf(footer, max_len, "Retro-Go %s", app->version);
 
-        if (app->romPath && strlen(app->romPath) > max_len - 1)
-            snprintf(footer, max_len, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 4)));
-        else if (app->romPath)
-            snprintf(footer, max_len, "%s", app->romPath);
-        else
-            snprintf(footer, max_len, "Retro-Go %s", app->version);
-
-        rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
-        rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
-    }
+    rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
+    rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
     rg_gui_draw_icons();
 }
