@@ -45,12 +45,7 @@
 #include <esp_heap_caps.h>
 #endif
 
-// 22050 reduces perf by almost 15% but 11025 sounds awful on the G32...
-#ifdef RG_TARGET_MRGC_G32
 #define AUDIO_SAMPLE_RATE 22050
-#else
-#define AUDIO_SAMPLE_RATE 11025
-#endif
 
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
@@ -283,18 +278,24 @@ static void soundTask(void *arg)
 {
     while (1)
     {
-        int16_t *audioBuffer = (int16_t *)mixbuffer;
-        int16_t *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
-        int16_t stream[2];
+        bool haveMusic = musicPlaying && snd_MusicVolume > 0;
+        bool haveSFX = snd_SfxVolume > 0 && I_AnySoundStillPlaying();
 
-        while (audioBuffer < audioBufferEnd)
+        if (haveMusic)
         {
-            int totalSample = 0;
-            int totalSources = 0;
-            int sample;
+            music_player->render(mixbuffer, AUDIO_BUFFER_LENGTH);
+        }
 
-            if (snd_SfxVolume > 0)
+        if (haveSFX)
+        {
+            int16_t *audioBuffer = (int16_t *)mixbuffer;
+            int16_t *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
+            while (audioBuffer < audioBufferEnd)
             {
+                int totalSample = 0;
+                int totalSources = 0;
+                int sample;
+
                 for (int i = 0; i < NUM_MIX_CHANNELS; i++)
                 {
                     channel_t *chan = &channels[i];
@@ -316,30 +317,24 @@ static void soundTask(void *arg)
 
                 totalSample <<= 7;
                 totalSample /= (16 - snd_SfxVolume);
-            }
 
-            if (musicPlaying && snd_MusicVolume > 0)
-            {
-                music_player->render(&stream, 1); // It returns 2 (stereo) 16bits values per sample
-                sample = stream[0]; // [0] and [1] are the same value
-                if (sample > 0)
+                if (haveMusic)
                 {
-                    totalSample += sample / (16 - snd_MusicVolume);
-                    if (totalSources == 0)
-                        totalSources = 1;
+                    totalSample += *audioBuffer;
+                    totalSources += (totalSources == 0);
                 }
+
+                if (totalSources > 0)
+                    totalSample /= totalSources;
+
+                if (totalSample > 32767)
+                    totalSample = 32767;
+                else if (totalSample < -32768)
+                    totalSample = -32768;
+
+                *audioBuffer++ = totalSample;
+                *audioBuffer++ = totalSample;
             }
-
-            if (totalSources > 0)
-                totalSample /= totalSources;
-
-            if (totalSample > 32767)
-                totalSample = 32767;
-            else if (totalSample < -32768)
-                totalSample = -32768;
-
-            *audioBuffer++ = totalSample;
-            *audioBuffer++ = totalSample;
         }
 
         rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
