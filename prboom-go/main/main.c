@@ -58,6 +58,8 @@
 static rg_surface_t *update;
 static rg_app_t *app;
 
+static const char *doom_argv[10];
+
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
 int snd_samplerate = AUDIO_SAMPLE_RATE;
@@ -251,7 +253,7 @@ int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priori
 
     channel_t *chan = &channels[slot];
     chan->sfx = sfx[sfxid];
-    chan->factor = (float)chan->sfx->samplerate / AUDIO_SAMPLE_RATE;
+    chan->factor = (float)chan->sfx->samplerate / snd_samplerate;
     chan->pos = 0;
 
     return slot;
@@ -541,7 +543,6 @@ void app_main()
 
     update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
 
-    const char *save = RG_BASE_PATH_SAVES "/doom";
     const char *iwad = NULL;
     const char *pwad = NULL;
     FILE *fp;
@@ -561,16 +562,16 @@ void app_main()
         rg_gui_draw_hourglass(); // Redraw hourglass to indicate loading...
     }
 
-    if (pwad)
-    {
-        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad, "-file", pwad};
-        myargc = 7;
-    }
-    else
-    {
-        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad};
-        myargc = 5;
-    }
+    myargv = doom_argv;
+    myargc = pwad ? 7 : 5;
+    doom_argv[0] = "doom";
+    doom_argv[1] = "-save";
+    doom_argv[2] = RG_BASE_PATH_SAVES "/doom";
+    doom_argv[3] = "-iwad";
+    doom_argv[4] = iwad;
+    doom_argv[5] = "-file";
+    doom_argv[6] = pwad;
+    doom_argv[myargc] = 0;
 
 #ifdef ESP_PLATFORM
     // Some things might be nice to place in internal RAM, but I do not have time to find such
