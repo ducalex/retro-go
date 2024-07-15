@@ -278,7 +278,7 @@ static void soundTask(void *arg)
 {
     while (1)
     {
-        bool haveMusic = musicPlaying && snd_MusicVolume > 0;
+        bool haveMusic = snd_MusicVolume > 0 && musicPlaying;
         bool haveSFX = snd_SfxVolume > 0 && I_AnySoundStillPlaying();
 
         if (haveMusic)
@@ -335,6 +335,11 @@ static void soundTask(void *arg)
                 *audioBuffer++ = totalSample;
                 *audioBuffer++ = totalSample;
             }
+        }
+
+        if (!haveMusic && !haveSFX)
+        {
+            memset(mixbuffer, 0, sizeof(mixbuffer));
         }
 
         rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
