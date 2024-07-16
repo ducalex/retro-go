@@ -1,6 +1,7 @@
 #include "rg_system.h"
 #include "rg_utils.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,16 +58,31 @@ const char *rg_basename(const char *path)
     return name ? name + 1 : path;
 }
 
-const char *rg_extension(const char *path)
+const char *rg_extension(const char *filename)
 {
-    if (!path)
+    if (!filename)
         return NULL;
 
-    const char *ptr = rg_basename(path);
+    const char *ptr = rg_basename(filename);
     const char *ext = strrchr(ptr, '.');
     if (!ext)
         return ptr + strlen(ptr);
     return ext + 1;
+}
+
+bool rg_extension_match(const char *filename, const char *extension)
+{
+    const char *fileext = rg_extension(filename);
+    if (!fileext || !extension)
+        return false;
+
+    while (*fileext && *extension)
+    {
+        if (toupper(*fileext++) != toupper(*extension++))
+            return false;
+    }
+
+    return *fileext == 0 && *extension == 0;
 }
 
 const char *rg_relpath(const char *path)

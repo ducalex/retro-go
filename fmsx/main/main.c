@@ -484,7 +484,7 @@ void app_main(void)
     };
     int argc = RG_COUNT(argv) - 3;
 
-    if (strcasecmp(rg_extension(app->romPath), "dsk") == 0)
+    if (rg_extension_match(app->romPath, "dsk"))
     {
         argv[argc++] = "-diska";
     }

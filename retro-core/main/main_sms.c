@@ -118,7 +118,7 @@ void sms_main(void)
     option.extra_gg = 0;
     option.tms_pal = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
-    if (strcmp(rg_extension(app->romPath), "sg") == 0)
+    if (rg_extension_match(app->romPath, "sg"))
         option.console = 5;
     else if (strcmp(app->configNs, "col") == 0)
         option.console = 6;
