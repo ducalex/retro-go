@@ -26,7 +26,8 @@
 #define _LOADROM_H_
 
 /* Function prototypes */
-int load_rom(const char *filename);
+int load_rom(void *data, int size, int crc_size);
+int load_rom_file(const char *filename);
 void set_rom_config(void);
 
 #endif /* _LOADROM_H_ */

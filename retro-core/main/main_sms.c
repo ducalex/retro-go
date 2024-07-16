@@ -125,7 +125,7 @@ void sms_main(void)
     else
         option.console = 0;
 
-    if (!load_rom(app->romPath))
+    if (!load_rom_file(app->romPath))
         RG_PANIC("ROM file loading failed!");
 
     bitmap.width = SMS_WIDTH;
