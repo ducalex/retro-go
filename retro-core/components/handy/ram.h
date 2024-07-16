@@ -61,7 +61,7 @@ class CRam : public CLynxBase
 
    public:
 
-      CRam(UBYTE *filedata, ULONG filesize)
+      CRam(const UBYTE *filedata, ULONG filesize)
       {
          if (filedata && filesize > 64 && memcmp(filedata + 6, "BS93", 4) == 0) {
             #ifdef MSB_FIRST

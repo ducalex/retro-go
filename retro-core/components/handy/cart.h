@@ -107,7 +107,7 @@ class CCart : public CLynxBase
    // Function members
 
    public:
-      CCart(UBYTE *gamedata,ULONG gamesize);
+      CCart(const UBYTE *gamedata,ULONG gamesize);
       ~CCart();
 
    public:
