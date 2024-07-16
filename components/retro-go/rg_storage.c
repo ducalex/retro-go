@@ -440,12 +440,14 @@ typedef struct __attribute__((packed))
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len)
 {
+    RG_ASSERT(data_out && data_len, "Bad param");
     CHECK_PATH(zip_path);
 
     zip_header_t header = {0};
+    size_t data_align = 0x2000;
     int header_pos = 0;
-    FILE *fp = fopen(zip_path, "rb");
 
+    FILE *fp = fopen(zip_path, "rb");
     if (!fp)
     {
         RG_LOGE("Fopen failed");
@@ -476,7 +478,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
 
     size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
     size_t uncompressed_size = header.uncompressed_size;
-    void *uncompressed_stream = malloc(uncompressed_size);
+    void *uncompressed_stream = malloc(((uncompressed_size & ~data_align) + data_align));
     size_t compressed_size = header.compressed_size;
     void *compressed_stream = malloc(compressed_size);
     tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
@@ -488,6 +490,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
         goto _fail;
     }
 
+    // TODO: decompress in chunk to reduce memory usage
     if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(compressed_stream, compressed_size, 1, fp) != 1)
     {
         RG_LOGE("Read failure");

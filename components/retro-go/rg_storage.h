@@ -61,11 +61,12 @@ bool rg_storage_ready(void);
 void rg_storage_commit(void);
 void rg_storage_set_activity_led(bool enable);
 bool rg_storage_get_activity_led(void);
-bool rg_storage_read_file(const char *path, void **data_ptr, size_t *data_len);
-bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_delete(const char *path);
 bool rg_storage_exists(const char *path);
 bool rg_storage_mkdir(const char *dir);
 rg_stat_t rg_storage_stat(const char *path);
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);
+
+bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len);
+bool rg_storage_write_file(const char *path, const void *data_ptr, const size_t data_len);
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len);
