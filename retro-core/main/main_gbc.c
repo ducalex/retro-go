@@ -270,16 +270,16 @@ void gbc_main(void)
     gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
-    if (gnuboy_load_rom(app->romPath) < 0)
+    if (gnuboy_load_rom_file(app->romPath) < 0)
         RG_PANIC("ROM Loading failed!");
 
     // Load BIOS
     if (loadBIOSFile)
     {
         if (gnuboy_get_hwtype() == GB_HW_CGB)
-            gnuboy_load_bios(RG_BASE_PATH_BIOS "/gbc_bios.bin");
+            gnuboy_load_bios_file(RG_BASE_PATH_BIOS "/gbc_bios.bin");
         else if (gnuboy_get_hwtype() == GB_HW_DMG)
-            gnuboy_load_bios(RG_BASE_PATH_BIOS "/gb_bios.bin");
+            gnuboy_load_bios_file(RG_BASE_PATH_BIOS "/gb_bios.bin");
     }
 
     gnuboy_set_palette(rg_settings_get_number(NS_APP, SETTING_PALETTE, GB_PALETTE_DMG));
