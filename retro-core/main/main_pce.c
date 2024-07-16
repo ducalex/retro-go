@@ -219,7 +219,16 @@ void pce_main(void)
 
     InitPCE(app->sampleRate, true);
 
-    if (LoadFile(app->romPath) != 0)
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+            RG_PANIC("ROM file unzipping failed!");
+        if (LoadCard(data, size) != 0)
+            RG_PANIC("ROM loading failed");
+    }
+    else if (LoadFile(app->romPath) != 0)
     {
         RG_PANIC("ROM loading failed");
     }

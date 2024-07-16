@@ -413,6 +413,49 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
     return true;
 }
 
+bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len)
+{
+    RG_ASSERT(data_out && data_len, "Bad param");
+    CHECK_PATH(path);
+
+    FILE *fp = fopen(path, "rb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed");
+        return false;
+    }
+
+    size_t data_align = 0x4000;
+    size_t file_size;
+    void *file_data;
+
+    fseek(fp, 0, SEEK_END);
+    file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    file_data = malloc(((file_size & ~data_align) + data_align));
+    if (!file_data)
+    {
+        RG_LOGE("Memory allocation failed");
+        fclose(fp);
+        return false;
+    }
+
+    if (!fread(file_data, file_size, 1, fp))
+    {
+        RG_LOGE("File read failed");
+        free(file_data);
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
+
+    *data_out = file_data;
+    *data_len = file_size;
+    return true;
+}
+
 #if RG_HAVE_MINIZ
 /**
  * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
@@ -443,16 +486,16 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     RG_ASSERT(data_out && data_len, "Bad param");
     CHECK_PATH(zip_path);
 
-    zip_header_t header = {0};
-    size_t data_align = 0x2000;
-    int header_pos = 0;
-
     FILE *fp = fopen(zip_path, "rb");
     if (!fp)
     {
         RG_LOGE("Fopen failed");
         return false;
     }
+
+    zip_header_t header = {0};
+    size_t data_align = 0x4000;
+    int header_pos = 0;
 
     // Very inefficient, we should read a block at a time and search it for a header. But I'm lazy.
     // Thankfully the header is usually found on the very first read :)

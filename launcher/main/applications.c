@@ -673,18 +673,18 @@ static void application(const char *desc, const char *name, const char *exts, co
 
 void applications_init(void)
 {
-    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-core", 16);
-    application("Super Nintendo", "snes", "smc sfc", "retro-core", 0);
-    application("Nintendo Gameboy", "gb", "gb gbc", "retro-core", 0);
-    application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-core", 0);
+    application("Nintendo Entertainment System", "nes", "nes fc fds nsf zip", "retro-core", 16);
+    application("Super Nintendo", "snes", "smc sfc zip", "retro-core", 0);
+    application("Nintendo Gameboy", "gb", "gb gbc zip", "retro-core", 0);
+    application("Nintendo Gameboy Color", "gbc", "gbc gb zip", "retro-core", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
     // application("Sega SG-1000", "sg1", "sms sg sg1", "retro-core", 0);
-    application("Sega Master System", "sms", "sms sg", "retro-core", 0);
-    application("Sega Game Gear", "gg", "gg", "retro-core", 0);
-    application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
-    application("Coleco ColecoVision", "col", "col rom", "retro-core", 0);
-    application("NEC PC Engine", "pce", "pce", "retro-core", 0);
-    application("Atari Lynx", "lnx", "lnx", "retro-core", 64);
+    application("Sega Master System", "sms", "sms sg zip", "retro-core", 0);
+    application("Sega Game Gear", "gg", "gg zip", "retro-core", 0);
+    application("Sega Mega Drive", "md", "md gen bin zip", "gwenesis", 0);
+    application("Coleco ColecoVision", "col", "col rom zip", "retro-core", 0);
+    application("NEC PC Engine", "pce", "pce zip", "retro-core", 0);
+    application("Atari Lynx", "lnx", "lnx zip", "retro-core", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
     application("DOOM", "doom", "wad", "prboom-go", 0);

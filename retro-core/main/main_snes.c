@@ -289,7 +289,17 @@ void snes_main(void)
     if (!S9xInitGFX())
         RG_PANIC("Graphics init failed!");
 
-    if (!LoadROM(app->romPath))
+    const char *filename = app->romPath;
+
+    if (rg_extension_match(filename, "zip"))
+    {
+        free(Memory.ROM); // Would be nice to reuse it directly...
+        if (!rg_storage_unzip_file(filename, NULL, (void **)&Memory.ROM, &Memory.ROM_Size))
+            RG_PANIC("ROM file unzipping failed!");
+        filename = NULL;
+    }
+
+    if (!LoadROM(filename))
         RG_PANIC("ROM loading failed!");
 
 #ifdef USE_BLARGG_APU

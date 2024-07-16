@@ -208,11 +208,23 @@ void nes_main(void)
 
     nes = nes_init(SYS_DETECT, app->sampleRate, true, RG_BASE_PATH_BIOS "/fds_bios.bin");
     if (!nes)
-    {
         RG_PANIC("Init failed.");
+
+    int ret = -1;
+
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+            RG_PANIC("ROM file unzipping failed!");
+        ret = nes_insertcart(rom_loadmem(data, size));
+    }
+    else
+    {
+        ret = nes_loadfile(app->romPath);
     }
 
-    int ret = nes_loadfile(app->romPath);
     if (ret == -1)
         RG_PANIC("ROM load failed.");
     else if (ret == -2)

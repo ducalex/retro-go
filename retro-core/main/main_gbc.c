@@ -270,8 +270,19 @@ void gbc_main(void)
     gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
 
     // Load ROM
-    if (gnuboy_load_rom_file(app->romPath) < 0)
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+            RG_PANIC("ROM file unzipping failed!");
+        if (gnuboy_load_rom(data, size) < 0)
+            RG_PANIC("ROM Loading failed!");
+    }
+    else if (gnuboy_load_rom_file(app->romPath) < 0)
+    {
         RG_PANIC("ROM Loading failed!");
+    }
 
     // Load BIOS
     if (loadBIOSFile)
