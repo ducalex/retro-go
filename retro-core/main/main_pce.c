@@ -217,7 +217,12 @@ void pce_main(void)
     emulationPaused = true;
     rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
-    InitPCE(app->sampleRate, true, app->romPath);
+    InitPCE(app->sampleRate, true);
+
+    if (LoadFile(app->romPath) != 0)
+    {
+        RG_PANIC("ROM loading failed");
+    }
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {

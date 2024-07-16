@@ -97,48 +97,27 @@ static bool running = false;
 
 /**
  * Load card into memory and set its memory map
+ * NOTE: This function takes ownership of `data`
  */
 int
-LoadCard(const char *name)
+LoadCard(uint8_t *data, size_t size)
 {
-	int fsize, offset;
-
-	MESSAGE_INFO("Opening %s...\n", name);
-
-	FILE *fp = fopen(name, "rb");
-
-	if (fp == NULL)
+	if (data == NULL || size < 0x2000 || size > 0x1000000)
 	{
-		MESSAGE_ERROR("Failed to open %s!\n", name);
+		MESSAGE_ERROR("Invalid rom data received\n");
 		return -1;
 	}
 
-	if (PCE.ROM != NULL) {
+	if (PCE.ROM != NULL)
 		free(PCE.ROM);
-	}
 
-	// find file size
-	fseek(fp, 0, SEEK_END);
-	fsize = ftell(fp);
-	offset = fsize & 0x1fff;
+	int offset = size & 0x1fff;
 
 	// read ROM
-	PCE.ROM = malloc(fsize);
-
-	if (PCE.ROM == NULL)
-	{
-		MESSAGE_ERROR("Failed to allocate ROM buffer!\n");
-		return -1;
-	}
-
-	fseek(fp, 0, SEEK_SET);
-	fread(PCE.ROM, 1, fsize, fp);
-
-	fclose(fp);
-
-	PCE.ROM_SIZE = (fsize - offset) / 0x2000;
+	PCE.ROM = data;
+	PCE.ROM_SIZE = (size - offset) / 0x2000;
 	PCE.ROM_DATA = PCE.ROM + offset;
-	PCE.ROM_CRC = crc32_le(0, PCE.ROM, fsize);
+	PCE.ROM_CRC = crc32_le(0, PCE.ROM, size);
 
 	uint32_t IDX = 0;
 	uint32_t ROM_MASK = 1;
@@ -223,7 +202,45 @@ LoadCard(const char *name)
 	if (PCE.ROM_SIZE >= 192)
 		PCE.MemoryMapW[0x00] = PCE.IOAREA;
 
+	ResetPCE(0);
+
 	return 0;
+}
+
+
+/**
+ * Load card into memory and set its memory map
+ */
+int
+LoadFile(const char *name)
+{
+	MESSAGE_INFO("Opening %s...\n", name);
+
+	FILE *fp = fopen(name, "rb");
+	if (fp == NULL)
+	{
+		MESSAGE_ERROR("Failed to open %s!\n", name);
+		return -1;
+	}
+
+	// find file size
+	fseek(fp, 0, SEEK_END);
+	size_t fsize = ftell(fp);
+
+	// read ROM
+	void *data = malloc(fsize);
+	if (data == NULL)
+	{
+		MESSAGE_ERROR("Failed to allocate ROM buffer!\n");
+		fclose(fp);
+		return -1;
+	}
+
+	fseek(fp, 0, SEEK_SET);
+	fread(data, 1, fsize, fp);
+	fclose(fp);
+
+	return LoadCard(data, fsize);
 }
 
 
@@ -242,7 +259,7 @@ ResetPCE(bool hard)
  * Initialize the emulator (allocate memory, call osd_init* functions)
  */
 int
-InitPCE(int samplerate, bool stereo, const char *huecard)
+InitPCE(int samplerate, bool stereo)
 {
 	if (gfx_init())
 		return 1;
@@ -252,11 +269,6 @@ InitPCE(int samplerate, bool stereo, const char *huecard)
 
 	if (pce_init())
 		return 1;
-
-	if (huecard && LoadCard(huecard))
-		return 1;
-
-	ResetPCE(0);
 
 	return 0;
 }
