@@ -295,17 +295,18 @@ int gnuboy_load_rom(const byte *data, size_t size)
 	}
 
 	cart.rambanks = calloc(cart.ramsize, 0x2000);
-	if (!cart.rambanks)
+	cart.rombanks = calloc(cart.romsize, sizeof(byte *));
+
+	if (!cart.rambanks || !cart.rombanks)
 	{
-		MESSAGE_ERROR("SRAM alloc failed");
+		MESSAGE_ERROR("Memory allocation failed.");
 		return -3;
 	}
 
-	cart.rombanks = calloc(cart.romsize, sizeof(uint8_t *));
-	if (!cart.rombanks)
+	for (size_t pos = 0; size - pos >= BANK_SIZE; pos += BANK_SIZE)
 	{
-		MESSAGE_ERROR("ROMBANKS alloc failed");
-		return -4;
+		// FIXME: We need a way to tag this as non-freeable...
+		cart.rombanks[pos / BANK_SIZE] = (byte *)(data + pos);
 	}
 
 	// Detect colorization palette that the real GBC would be using
@@ -400,14 +401,6 @@ int gnuboy_load_rom(const byte *data, size_t size)
 		hw.compat.window_offset = 0;
 	}
 
-	// Copy data to banks if provided, otherwise it will be loaded as needed from the file
-	for (size_t pos = 0; size - pos >= BANK_SIZE; pos += BANK_SIZE)
-	{
-		void *bank = malloc(BANK_SIZE);
-		if (!bank) abort();
-		cart.rombanks[pos / BANK_SIZE] = memcpy(bank, data + pos, BANK_SIZE);
-	}
-
 	return 0;
 }
 
@@ -429,6 +422,7 @@ int gnuboy_load_rom_file(const char *file)
 	{
 		MESSAGE_ERROR("ROM fread failed\n");
 		fclose(cart.romFile);
+		cart.romFile = NULL;
 		return -1;
 	}
 
@@ -462,13 +456,13 @@ int gnuboy_load_rom_file(const char *file)
 
 void gnuboy_free_rom(void)
 {
-	for (int i = 0; i < cart.romsize; i++)
+	// If cart.romFile isn't NULL it indicates that we haven't allocated those buffers, don't free them.
+	if (cart.romFile && cart.rombanks)
 	{
-		if (cart.rombanks[i]) {
+		for (int i = 0; i < cart.romsize; i++)
 			free(cart.rombanks[i]);
-			cart.rombanks[i] = NULL;
-		}
 	}
+
 	free(cart.rombanks);
 	cart.rombanks = NULL;
 
