@@ -93,12 +93,12 @@ void nes_settimer(nes_timer_t *func, int period)
 }
 
 /* insert a cart into the NES */
-int nes_insertcart(const char *filename, const char *biosfile)
+int nes_insertcart(rom_t *cart)
 {
     int status = 0;
 
     /* rom file */
-    nes.cart = rom_loadfile(filename);
+    nes.cart = cart;
     if (NULL == nes.cart)
     {
         status = -1;
@@ -149,22 +149,22 @@ int nes_insertcart(const char *filename, const char *biosfile)
     /* Load BIOS file if required (currently only for Famicom Disk System) */
     if (nes.cart->flags & ROM_FLAG_FDS_DISK)
     {
-        if (biosfile == NULL)
+        if (nes.fds_bios == NULL)
         {
             // TO DO: Try biosfile = dirname(filename) / disksys.rom
             status = -3;
             goto _fail;
         }
-        FILE *fp = fopen(biosfile, "rb");
+        FILE *fp = fopen(nes.fds_bios, "rb");
         if (!fp || !fread(nes.cart->prg_rom, ROM_PRG_BANK_SIZE, nes.cart->prg_rom_banks, fp))
         {
-            MESSAGE_ERROR("NES: BIOS file load failed from '%s'.\n", biosfile);
+            MESSAGE_ERROR("NES: BIOS file load failed from '%s'.\n", nes.fds_bios);
             status = -3;
             fclose(fp);
             goto _fail;
         }
         fclose(fp);
-        MESSAGE_INFO("NES: BIOS file loaded from '%s'.\n", biosfile);
+        MESSAGE_INFO("NES: BIOS file loaded from '%s'.\n", nes.fds_bios);
     }
 
     nes_reset(true);
@@ -176,10 +176,10 @@ _fail:
     return status;
 }
 
-/* insert a disk into the FDS */
-int nes_insertdisk(const char *filename, const char *biosfile)
+/* Load a ROM file */
+int nes_loadfile(const char *filename)
 {
-    return nes_insertcart(filename, biosfile);
+    return nes_insertcart(rom_loadfile(filename));
 }
 
 /* Reset NES hardware */
@@ -222,7 +222,7 @@ void nes_shutdown(void)
 }
 
 /* Initialize NES CPU, hardware, etc. */
-nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
+nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo, const char *fds_bios)
 {
     memset(&nes, 0, sizeof(nes_t));
 
@@ -253,6 +253,10 @@ nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo)
     nes.input = input_init();
     if (NULL == nes.input)
         goto _fail;
+
+    /* fds */
+    if (fds_bios)
+        nes.fds_bios = strdup(fds_bios);
 
     MESSAGE_INFO("NES: System initialized!\n");
     return &nes;

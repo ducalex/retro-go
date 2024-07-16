@@ -92,6 +92,7 @@ typedef struct nes_s
     /* Misc */
     nes_type_t system;
     int overscan;
+    char *fds_bios;
 
     /* Timing constants */
     int refresh_rate;
@@ -112,11 +113,11 @@ typedef struct nes_s
 } nes_t;
 
 nes_t *nes_getptr(void);
-nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo);
+nes_t *nes_init(nes_type_t system, int sample_rate, bool stereo, const char *fds_bios);
 uint8 *nes_setvidbuf(uint8 *vidbuf);
 void nes_shutdown(void);
-int nes_insertcart(const char *filename, const char *biosfile);
-int nes_insertdisk(const char *filename, const char *biosfile);
+int nes_insertcart(rom_t *cart);
+int nes_loadfile(const char *filename);
 void nes_settimer(nes_timer_t *func, int period);
 void nes_emulate(bool draw);
 void nes_reset(bool hard_reset);

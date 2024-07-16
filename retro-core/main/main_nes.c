@@ -206,13 +206,13 @@ void nes_main(void)
     updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     currentUpdate = updates[0];
 
-    nes = nes_init(SYS_DETECT, app->sampleRate, true);
+    nes = nes_init(SYS_DETECT, app->sampleRate, true, RG_BASE_PATH_BIOS "/fds_bios.bin");
     if (!nes)
     {
         RG_PANIC("Init failed.");
     }
 
-    int ret = nes_insertcart(app->romPath, RG_BASE_PATH_BIOS "/fds_bios.bin");
+    int ret = nes_loadfile(app->romPath);
     if (ret == -1)
         RG_PANIC("ROM load failed.");
     else if (ret == -2)

@@ -32,7 +32,7 @@ static bool running;
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input)
 {
-    nes_t *nes = nes_init(system, sample_rate, stereo);
+    nes_t *nes = nes_init(system, sample_rate, stereo, NULL);
     if (!nes)
     {
         MESSAGE_ERROR("Failed to create NES instance.\n");
@@ -102,7 +102,7 @@ void *nofrendo_buildpalette(nespal_t palette, int bitdepth)
 
 int nofrendo_start(const char *filename, const char *savefile)
 {
-    if (nes_insertcart(filename, NULL) < 0)
+    if (nes_loadfile(filename) < 0)
     {
         MESSAGE_ERROR("Failed to insert NES cart.\n");
         return -2;
