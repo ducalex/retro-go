@@ -119,3 +119,9 @@
 #define RG_TICK_RATE 1000
 #endif
 #endif
+
+#ifdef ESP_PLATFORM
+#define RG_HAVE_MINIZ 1
+#else
+#define RG_HAVE_MINIZ 0
+#endif

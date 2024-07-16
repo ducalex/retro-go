@@ -413,7 +413,7 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
     return true;
 }
 
-#if 0
+#if RG_HAVE_MINIZ
 /**
  * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
  * I think that we should use miniz' ZIP API instead and bundle miniz with retro-go. But first I need
