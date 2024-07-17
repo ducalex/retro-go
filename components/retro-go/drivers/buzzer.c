@@ -227,13 +227,17 @@ void setup_buzzer(int sampleRate) {
     result = ledc_channel_config(&ledc_channel);
     RG_LOGI("ledc_channel_config returns: %d", result);
 
-    // Play startup sound
+    /*
+    // Play startup sound.
+    // This is nice, but can also be unwanted if it happens at night for instance, as there is no volume control.
+    // Therefore, it's disabled for now.
     ledc_timer.freq_hz = NOTE_C;
     ledc_timer_config(&ledc_timer);
     rg_task_delay(100);
     ledc_timer.freq_hz = NOTE_HIGH_C;
     ledc_timer_config(&ledc_timer);
     rg_task_delay(400);
+    */
     // Turn off sound
     ledc_set_duty(LEDC_PWM_SPEED_MODE, LEDC_PWM_CHANNEL, 0);
     ledc_update_duty(LEDC_PWM_SPEED_MODE, LEDC_PWM_CHANNEL);
