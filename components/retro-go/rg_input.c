@@ -47,7 +47,6 @@ static rg_battery_t battery_state = {0};
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
-    int raw_value_adc2 = 0;
     bool present = true;
     bool charging = false;
 
@@ -60,6 +59,7 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
         }
         else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
         {
+            int raw_value_adc2;
             if (adc2_get_raw(RG_BATTERY_ADC_CHANNEL, ADC_WIDTH_MAX - 1, &raw_value_adc2) == ESP_OK)
             {
                 raw_value += esp_adc_cal_raw_to_voltage(raw_value_adc2, &adc_chars);
@@ -86,6 +86,7 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 #else
     return false;
 #endif
+
     if (!out)
         return true;
 
