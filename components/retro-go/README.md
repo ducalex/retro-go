@@ -12,6 +12,7 @@ I develop and test mainly on the ODROID-GO. I occasionally test on the MRGC-G32 
 | [esp32s3-devkit-c](esp32s3-devkit-c/docs/README.md)       |   |
 | [esplay-micro](targets/esplay-micro/docs/README.md)   |   |
 | [esplay-s3](targets/esplay-s3/docs/README.md)         |   |
+| [fri3d-2024](targets/fri3d-2024/docs/README.md)       |   |
 | [mrgc-g32](targets/mrgc-g32/docs/README.md)           |   |
 | [mrgc-gbm](targets/mrgc-gbm/docs/README.md)           |   |
 | [odroid-go](targets/odroid-go/docs/README.md)         |   |
