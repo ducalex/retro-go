@@ -157,7 +157,7 @@ void rg_buzzer_statistics(void *args)
 	int cacheSamples = (int) args;
     while (sampleQueue)
     {
-        RG_LOGI("underflows %d, overflows %d, averageSamplesNeeded: %.6f, sampleQueue: [0,%d,%d]", underflows, overflows, averageSamplesNeeded, rg_queue_messages_waiting(sampleQueue), cacheSamples*2);
+        RG_LOGD("underflows %d, overflows %d, averageSamplesNeeded: %.6f, sampleQueue: [0,%d,%d]", underflows, overflows, averageSamplesNeeded, rg_queue_messages_waiting(sampleQueue), cacheSamples*2);
         rg_task_delay(500);
     }
 }
