@@ -7,10 +7,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if RG_STORAGE_DRIVER == 1
+#if defined(RG_STORAGE_SDSPI_HOST)
 #include <driver/sdspi_host.h>
 #define SDCARD_DO_TRANSACTION sdspi_host_do_transaction
-#elif RG_STORAGE_DRIVER == 2
+#elif defined(RG_STORAGE_SDMMC_HOST)
 #include <driver/sdmmc_host.h>
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
 #endif
@@ -31,10 +31,10 @@
 
 static bool disk_mounted = false;
 static bool disk_led = true;
-#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static sdmmc_card_t *card_handle = NULL;
 #endif
-#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FLASH_PARTITION)
+#if defined(RG_STORAGE_FLASH_PARTITION)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
 #endif
 
@@ -58,7 +58,7 @@ bool rg_storage_get_activity_led(void)
     return rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, disk_led);
 }
 
-#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
     bool use_led = (disk_led && !rg_system_get_led());
@@ -84,24 +84,17 @@ void rg_storage_init(void)
     RG_ASSERT(!disk_mounted, "Storage already initialized!");
     int error_code = -1;
 
-#if RG_STORAGE_DRIVER == 0 // Host (stdlib)
-
-    RG_LOGI("Using host (stdlib) for storage.");
-
-    // Maybe we should just check if RG_STORAGE_ROOT exists?
-    error_code = 0;
-
-#elif RG_STORAGE_DRIVER == 1 // SDSPI
+#if defined(RG_STORAGE_SDSPI_HOST)
 
     RG_LOGI("Looking for SD Card using SDSPI...");
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = RG_STORAGE_HOST;
-    host_config.max_freq_khz = RG_STORAGE_SPEED;
+    host_config.slot = RG_STORAGE_SDSPI_HOST;
+    host_config.max_freq_khz = RG_STORAGE_SDSPI_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.host_id = RG_STORAGE_HOST;
+    slot_config.host_id = RG_STORAGE_SDSPI_HOST;
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
 
     esp_vfs_fat_mount_config_t mount_config = {
@@ -118,7 +111,7 @@ void rg_storage_init(void)
         .quadhd_io_num = -1,
     };
 
-    esp_err_t err = spi_bus_initialize(RG_STORAGE_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    esp_err_t err = spi_bus_initialize(RG_STORAGE_SDSPI_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK) // check but do not abort, let esp_vfs_fat_sdspi_mount decide
         RG_LOGW("SPI bus init failed (0x%x)", err);
 
@@ -131,14 +124,14 @@ void rg_storage_init(void)
     }
     error_code = (int)err;
 
-#elif RG_STORAGE_DRIVER == 2 // SDMMC
+#elif defined(RG_STORAGE_SDMMC_HOST)
 
     RG_LOGI("Looking for SD Card using SDMMC...");
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
-    host_config.slot = RG_STORAGE_HOST;
-    host_config.max_freq_khz = RG_STORAGE_SPEED;
+    host_config.slot = RG_STORAGE_SDMMC_HOST;
+    host_config.max_freq_khz = RG_STORAGE_SDMMC_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
@@ -166,15 +159,21 @@ void rg_storage_init(void)
     }
     error_code = (int)err;
 
-#elif RG_STORAGE_DRIVER == 3 // USB OTG
+#elif defined(RG_STORAGE_USBOTG_HOST)
 
     #warning "USB OTG isn't available on your SOC"
     RG_LOGI("Looking for USB mass storage...");
     error_code = -1;
 
+#elif !defined(RG_STORAGE_FLASH_PARTITION)
+
+    RG_LOGI("Using host (stdlib) for storage.");
+    // Maybe we should just check if RG_STORAGE_ROOT exists?
+    error_code = 0;
+
 #endif
 
-#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FLASH_PARTITION) // SPI Internal Flash
+#if defined(RG_STORAGE_FLASH_PARTITION) // SPI Internal Flash
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
@@ -208,7 +207,7 @@ void rg_storage_deinit(void)
 
     int error_code = 0;
 
-#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
     if (card_handle != NULL)
     {
         esp_err_t err = esp_vfs_fat_sdcard_unmount(RG_STORAGE_ROOT, card_handle);
@@ -217,7 +216,7 @@ void rg_storage_deinit(void)
     }
 #endif
 
-#if RG_STORAGE_DRIVER == 4 || defined(RG_STORAGE_FLASH_PARTITION)
+#if defined(RG_STORAGE_FLASH_PARTITION)
     if (wl_handle != WL_INVALID_HANDLE)
     {
         esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);

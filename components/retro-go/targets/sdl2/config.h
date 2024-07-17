@@ -2,9 +2,6 @@
 #define RG_TARGET_NAME             "SDL2"
 
 // Storage
-#define RG_STORAGE_DRIVER           0       // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             0       // Used by SDSPI and SDMMC
-#define RG_STORAGE_SPEED            0       // Used by SDSPI and SDMMC
 #define RG_STORAGE_ROOT             "./sd"  // Storage mount point
 
 // Audio
