@@ -173,7 +173,7 @@ void rg_storage_init(void)
 
 #endif
 
-#if defined(RG_STORAGE_FLASH_PARTITION) // SPI Internal Flash
+#if defined(RG_STORAGE_FLASH_PARTITION)
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
@@ -409,6 +409,73 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
     closedir(dir);
     free(result);
 
+    return true;
+}
+
+bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len)
+{
+    RG_ASSERT(data_out && data_len, "Bad param");
+    CHECK_PATH(path);
+
+    FILE *fp = fopen(path, "rb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed");
+        return false;
+    }
+
+    size_t data_align = 0x2000;
+    size_t file_size;
+    void *file_data;
+
+    fseek(fp, 0, SEEK_END);
+    file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    file_data = malloc(((file_size & ~data_align) + data_align));
+    if (!file_data)
+    {
+        RG_LOGE("Memory allocation failed");
+        fclose(fp);
+        return false;
+    }
+
+    if (!fread(file_data, file_size, 1, fp))
+    {
+        RG_LOGE("File read failed");
+        free(file_data);
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
+
+    *data_out = file_data;
+    *data_len = file_size;
+    return true;
+}
+
+bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, bool atomic)
+{
+    RG_ASSERT(data_ptr, "Bad param");
+    CHECK_PATH(path);
+
+    // TODO: If atomic is true we should write to a temp file and only replace the target on success
+    FILE *fp = fopen(path, "wb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed");
+        return false;
+    }
+
+    if (!fwrite(data_ptr, data_len, 1, fp))
+    {
+        RG_LOGE("Fwrite failed");
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
     return true;
 }
 
