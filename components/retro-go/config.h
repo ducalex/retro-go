@@ -41,8 +41,8 @@
 #endif
 
 #ifndef RG_APP_UPDATER
-#define RG_APP_UPDATER RG_APP_FACTORY
-// #define RG_APP_UPDATER "updater"
+// #define RG_APP_UPDATER RG_APP_FACTORY
+#define RG_APP_UPDATER "updater"
 #endif
 
 #ifndef RG_PATH_MAX

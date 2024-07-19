@@ -252,6 +252,7 @@ static void enter_recovery_mode(void)
         {0, "Reset all settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {1, "Reboot to factory ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Reboot to launcher", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3, "Reboot to updater ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     while (true)
@@ -264,6 +265,8 @@ static void enter_recovery_mode(void)
             break;
         case 1:
             rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
+        case 3:
+            rg_system_switch_app(RG_APP_UPDATER, 0, 0, 0);
         case 2:
         default:
             rg_system_exit();
