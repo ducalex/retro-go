@@ -44,6 +44,25 @@ static rg_battery_t battery_state = {0};
     for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
         gamepad_mapped |= keymap[i].key;          \
 
+#ifdef ESP_PLATFORM
+static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
+{
+    if (unit == ADC_UNIT_1)
+    {
+        return adc1_get_raw(channel);
+    }
+    else if (unit == ADC_UNIT_2)
+    {
+        int adc_raw_value = -1;
+        if (adc2_get_raw(channel, ADC_WIDTH_MAX - 1, &adc_raw_value) != ESP_OK)
+            RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
+        return adc_raw_value;
+    }
+    RG_LOGE("Invalid ADC unit %d", (int)unit);
+    return -1;
+}
+#endif
+
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
@@ -53,28 +72,10 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
     {
-        if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
-        {
-            raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
-        }
-        else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
-        {
-            int raw_value_adc2;
-            if (adc2_get_raw(RG_BATTERY_ADC_CHANNEL, ADC_WIDTH_MAX - 1, &raw_value_adc2) == ESP_OK)
-            {
-                raw_value += esp_adc_cal_raw_to_voltage(raw_value_adc2, &adc_chars);
-            }
-            else
-            {
-                RG_LOGI("ADC2 reading failed, this can happen while wifi is active.");
-                return false;
-            }
-       }
-       else
-       {
-            RG_LOGW("Only ADC1 and ADC2 are supported for ADC battery driver!");
+        int value = adc_get_raw(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL);
+        if (value < 0)
             return false;
-       }
+        raw_value += esp_adc_cal_raw_to_voltage(value, &adc_chars);
     }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
@@ -107,11 +108,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        int value = -1;
-        if (mapping->unit == ADC_UNIT_1)
-            value = adc1_get_raw(mapping->channel);
-        else if (mapping->unit == ADC_UNIT_2)
-            adc2_get_raw(mapping->channel, ADC_WIDTH_MAX - 1, &value);
+        int value = adc_get_raw(mapping->unit, mapping->channel);
         if (value >= mapping->min && value <= mapping->max)
             state |= mapping->key;
     }
