@@ -26,7 +26,7 @@ typedef struct
     size_t assets_count;
 } release_t;
 
-static int download_file(const char *url, const char *filename)
+static bool download_file(const char *url, const char *filename)
 {
     RG_ASSERT(url && filename, "bad param");
 
@@ -34,42 +34,58 @@ static int download_file(const char *url, const char *filename)
     FILE *fp = NULL;
     void *buffer = NULL;
     int received = 0;
+    int written = 0;
     int len;
-    int ret = -1;
 
     RG_LOGI("Downloading: '%s' to '%s'", url, filename);
     rg_gui_draw_dialog("Connecting...", NULL, 0);
 
     if (!(req = rg_network_http_open(url, NULL)))
-        goto cleanup;
-
-    if (!(fp = fopen(filename, "wb")))
-        goto cleanup;
+    {
+        rg_gui_alert("Download failed!", "Connection failed!");
+        return false;
+    }
 
     if (!(buffer = malloc(16 * 1024)))
-        goto cleanup;
+    {
+        rg_network_http_close(req);
+        rg_gui_alert("Download failed!", "Out of memory!");
+        return false;
+    }
 
-    rg_gui_draw_dialog("Receiving...", NULL, 0);
+    if (!(fp = fopen(filename, "wb")))
+    {
+        rg_network_http_close(req);
+        free(buffer);
+        rg_gui_alert("Download failed!", "File open failed!");
+        return false;
+    }
+
+    rg_gui_draw_dialog("Receiving file...", NULL, 0);
+    int content_length = req->content_length;
 
     while ((len = rg_network_http_read(req, buffer, 16 * 1024)) > 0)
     {
         received += len;
-        fwrite(buffer, 1, len, fp);
-        sprintf(buffer, "Received %d / %d", received, req->content_length);
+        written += fwrite(buffer, 1, len, fp);
+        sprintf(buffer, "Received %d / %d", received, content_length);
         rg_gui_draw_dialog(buffer, NULL, 0);
+        if (received != written)
+            break; // No point in continuing
     }
 
-    if (req->content_length == received)
-        ret = 0;
-    else if (req->content_length == -1)
-        ret = 0;
-
-cleanup:
     rg_network_http_close(req);
     free(buffer);
     fclose(fp);
 
-    return ret;
+    if (received != written || (received != content_length && content_length != -1))
+    {
+        rg_storage_delete(filename);
+        rg_gui_alert("Download failed!", "Read/write error!");
+        return false;
+    }
+
+    return true;
 }
 
 static cJSON *fetch_json(const char *url)
@@ -124,14 +140,12 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
         {
             char dest_path[RG_PATH_MAX];
             snprintf(dest_path, RG_PATH_MAX, "%s/%s", DOWNLOAD_LOCATION, release->assets[sel].name);
-
-            int ret = download_file(release->assets[sel].url, dest_path);
             gui_redraw();
-
-            if (ret != 0)
-                rg_gui_alert("Download failed!", "...");
-            else if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
-                rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0);
+            if (download_file(release->assets[sel].url, dest_path))
+            {
+                if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
+                    rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0);
+            }
         }
         gui_redraw();
     }
