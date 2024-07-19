@@ -544,7 +544,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
 
     size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
     size_t uncompressed_size = header.uncompressed_size;
-    void *uncompressed_stream = malloc(((uncompressed_size & ~data_align) + data_align));
+    void *uncompressed_stream = malloc((uncompressed_size + (data_align - 1)) & ~(data_align - 1));
     size_t compressed_size = header.compressed_size;
     void *compressed_stream = malloc(compressed_size);
     tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
