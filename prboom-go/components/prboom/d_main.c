@@ -621,6 +621,9 @@ static void CheckIWAD(const char *iwadname,GameMode_t *gmode,boolean *hassec)
     else // missing IWAD tag in header
       I_Error("CheckIWAD: IWAD tag %s not present", iwadname);
 
+    if (fp)
+      fclose(fp);
+
     // Determine game mode from levels present
     // Must be a full set for whichever mode is present
     // Lack of wolf-3d levels also detected here
