@@ -177,7 +177,7 @@ void app_main(void)
             const esp_partition_info_t *part = &img->partitions[i];
             if (part->magic == ESP_PARTITION_MAGIC)
             {
-                if (part->type == PART_TYPE_END)
+                if (part->type != PART_TYPE_APP && part->type != PART_TYPE_DATA)
                     break;
                 // FIXME: label might not be nul-terminated, we should move it to a buffer and ensure it is
                 if (fseek(fp, part->pos.offset, SEEK_SET) == 0 && fread(partition_buffer, part->pos.size, 1, fp))
