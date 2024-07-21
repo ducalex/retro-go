@@ -1,4 +1,4 @@
-set(COMPONENT_SRCDIRS ". drivers fonts libs/netplay libs/lodepng")
+set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 
 message(STATUS "ESP-IDF version: ${IDF_VER}")

@@ -1081,12 +1081,13 @@ static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
     size_t count = 0;
     const rg_audio_sink_t *sinks = rg_audio_get_sinks(&count);
     const rg_audio_sink_t *ssink = rg_audio_get_sink();
-    int min = 1 % count; // Hide dummy unless it's the only one
+    // Hide dummy unless it's the only one or we're a debug build
+    int min = rg_system_get_app()->isRelease ? (1 % count) : (0);
     int max = count - 1;
     int sink = 0;
 
     for (int i = 0; i < count; ++i)
-        if (sinks[i].type == ssink->type && sinks[i].device == ssink->device)
+        if (sinks[i].driver == ssink->driver && sinks[i].device == ssink->device)
             sink = i;
 
     int prev_sink = sink;
@@ -1097,7 +1098,7 @@ static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
         sink = min;
 
     if (sink != prev_sink)
-        rg_audio_set_sink(sinks[sink].type, sinks[sink].device);
+        rg_audio_set_sink(sinks[sink].driver->name, sinks[sink].device);
 
     strcpy(option->value, sinks[sink].name);
 

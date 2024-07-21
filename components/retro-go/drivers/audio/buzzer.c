@@ -25,7 +25,7 @@ It's configured to trigger an interrupt handler at the right moment, which then 
 
 One challenge is that the audio should always keep playing, even when the chip is very busy rendering a frame or parsing
 user input. To achieve this, audio samples are buffered in a queue, and the timing of each frame is dynamically adjusted
-to ensure the queue never underflows, nor overflows. 
+to ensure the queue never underflows, nor overflows.
 
 Note that there are some restrictions on how high the PWM frequency can be, and a tradeoff with the precision of the duty cycle.
 
@@ -35,6 +35,10 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 
 #ifdef RG_AUDIO_USE_BUZZER_PIN
 #include "rg_audio.h"
+
+#ifndef ESP_PLATFORM
+#error "Audio buzzer support can only be built inside esp-idf because it uses its LEDC, TIMER and interrupt handlers!"
+#endif
 
 #include <freertos/FreeRTOS.h>
 #include <driver/timer.h>
@@ -162,7 +166,8 @@ void rg_buzzer_statistics(void *args)
     }
 }
 
-void setup_buzzer(int sampleRate) {
+static bool buzzer_init(int device, int sampleRate)
+{
     RG_LOGI("Configuring buzzer for %d Hz samplerate", sampleRate);
 
     underflows = 0;
@@ -176,7 +181,7 @@ void setup_buzzer(int sampleRate) {
     sampleQueue = rg_queue_create(cacheSamples*2, sizeof(int16_t*));
     if (!sampleQueue) {
         RG_LOGE("could not create sampleQueue");
-        return;
+        return false;
     }
 
     rg_task_create("rg_buzzer_statistics", &rg_buzzer_statistics, (void*) cacheSamples, 3 * 1024, RG_TASK_PRIORITY_5, -1);
@@ -279,9 +284,11 @@ void setup_buzzer(int sampleRate) {
 
     timer_isr_callback_add(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER, buzzer_interrupt_handler, (void*)clipbits, 0);
     timer_start(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
+
+    return true;
 }
 
-void stop_buzzer()
+static bool buzzer_deinit(void)
 {
     RG_LOGI("stopping buzzer");
     timer_pause(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
@@ -297,17 +304,20 @@ void stop_buzzer()
 #ifdef PLAY_SINE_AS_TEST
     if (sineBuffer) free(sineBuffer);
 #endif
+
+    return true;
 }
 
 
-void rg_audio_submit_buzzer(const rg_audio_frame_t *frames, size_t count)
+static bool buzzer_submit(const rg_audio_frame_t *frames, size_t count)
 {
-    const rg_audio_t * audio = rg_audio_get_info();
+    // FIXME: We should probably use globals here instead of doing three function calls per submission...
+    float volumeFactor = rg_audio_get_mute() ? 0.f : (rg_audio_get_volume() * 0.01f) * BOOSTVOLUME;
+    int sampleRate = rg_audio_get_sample_rate();
 
     for (size_t i = 0; i < count; ++i)
     {
-        float volume = audio->muted ? 0.f : (audio->volume * 0.01f);
-        int16_t left = frames[i].left * BOOSTVOLUME * volume;
+        int16_t left = frames[i].left * volume;
 
 #ifdef PLAY_SINE_AS_TEST
         left = sineBuffer[sinePosition];
@@ -322,17 +332,19 @@ void rg_audio_submit_buzzer(const rg_audio_frame_t *frames, size_t count)
 
     // Sleep a bit while the samples are being played.
     // uSleepTime is kept in a sweet spot so the sampleQueue doesn't underrun nor overruns
-    int uSleepTime = count * (1000000.f / audio->sampleRate);
-    int usDeltaToCorrectSamplesInBuffer = (averageSamplesNeeded * 1000000.f ) / audio->sampleRate; // how much underflow there is, so how much shorter to usleep
+    int uSleepTime = count * (1000000.f / sampleRate);
+    int usDeltaToCorrectSamplesInBuffer = (averageSamplesNeeded * 1000000.f ) / sampleRate; // how much underflow there is, so how much shorter to usleep
     rg_usleep((uint32_t)(RG_MAX(0,uSleepTime - usDeltaToCorrectSamplesInBuffer)));
 
     // Keep an average of the samples needed (or too much) and use it to tweak uSleepTime for the next frame
-    int cacheSamples = (audio->sampleRate/1000)*MS_OF_CACHED_SAMPLES;
+    int cacheSamples = (sampleRate/1000)*MS_OF_CACHED_SAMPLES;
     int samplesNeeded = cacheSamples - rg_queue_messages_waiting(sampleQueue);
     averageSamplesNeeded = approxRollingAverage(averageSamplesNeeded, samplesNeeded);
+
+    return true;
 }
 
-void rg_audio_set_mute_buzzer(bool mute)
+static bool buzzer_set_mute(bool mute)
 {
     RG_LOGI("setting mute to %d", mute);
     if (mute)
@@ -353,6 +365,19 @@ void rg_audio_set_mute_buzzer(bool mute)
         timer_start(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
         timer_enable_intr(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
     }
+
+    return true;
 }
+
+const rg_audio_driver_t rg_audio_driver_buzzer = {
+    .name = "buzzer",
+    .init = buzzer_init,
+    .deinit = buzzer_deinit,
+    .submit = buzzer_submit,
+    .set_mute = buzzer_set_mute,
+    .set_volume = NULL,
+    .set_sample_rate = NULL,
+    .get_error = NULL,
+};
 
 #endif // RG_AUDIO_USE_BUZZER_PIN
