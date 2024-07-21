@@ -81,7 +81,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
 
       MESSAGE_INFO("ROM: Found iNES file of size %d.\n", (int)size);
 
-      rom.data_offset = sizeof(inesheader_t) + (header->rom_type & ROM_FLAG_TRAINER) ? 512 : 0;
+      rom.data_offset = (header->rom_type & ROM_FLAG_TRAINER) ? 0x210 : 0x010;
       rom.checksum = CRC32(0, rom.data_ptr + rom.data_offset, rom.data_len - rom.data_offset);
       rom.prg_rom_banks = header->prg_banks * 2;
       rom.chr_rom_banks = header->chr_banks;
