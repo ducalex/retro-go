@@ -1086,6 +1086,13 @@ static rg_gui_event_t audio_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
     int max = count - 1;
     int sink = 0;
 
+    // If there's no choice to be made we can just hide the entry
+    if (min == max)
+    {
+        option->flags |= RG_DIALOG_FLAG_HIDDEN;
+        return RG_DIALOG_VOID;
+    }
+
     for (int i = 0; i < count; ++i)
         if (sinks[i].driver == ssink->driver && sinks[i].device == ssink->device)
             sink = i;
