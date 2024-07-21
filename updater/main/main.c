@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <esp_partition.h>
+#include <esp_flash_partitions.h>
 
 #if defined(RG_TARGET_ODROID_GO)
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
@@ -42,6 +43,49 @@ typedef struct
     // uint32_t checksum;
 } fw_t;
 
+typedef struct
+{
+    uint8_t padding[0x8000];
+    esp_partition_info_t partitions[ESP_PARTITION_TABLE_MAX_ENTRIES];
+} img_t;
+
+void update_partition(esp_partition_type_t type, esp_partition_subtype_t subtype, const char *label, void *data, size_t data_len)
+{
+    const esp_partition_t *part = esp_partition_find_first(type, subtype, label);
+
+    rg_display_clear(C_BLACK);
+    rg_gui_draw_text(0, 32, RG_SCREEN_WIDTH, label, C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
+
+    if (!part)
+    {
+        // We don't seem to have this partition and we can't rewrite the partition table to add it...
+        rg_gui_alert("Unknown partition", label);
+    }
+    else if (strncmp(label, "updater", 8) == 0)
+    {
+        // Can't update self, skip
+    }
+    else if (data_len > part->size)
+    {
+        // If it's a .img we should truncate and try anyway, who knows if the extra is empty and it would work!
+        rg_gui_alert("New size won't fit current partition!", label);
+    }
+    else if (data_len > 0)
+    {
+        if (type == ESP_PARTITION_TYPE_DATA)
+        {
+            // maybe we should ask the user if they want to overwrite it? Could be a filesystem
+        }
+        rg_gui_draw_text(0, 64, RG_SCREEN_WIDTH, "Erasing....", C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
+        esp_partition_erase_range(part, 0, part->size);
+        rg_gui_draw_text(0, 64, RG_SCREEN_WIDTH, "Writing....", C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
+        esp_partition_write(part, 0, data, data_len);
+    }
+    else
+    {
+        // Do nothing, could be a data partition
+    }
+}
 
 void app_main(void)
 {
@@ -74,90 +118,78 @@ void app_main(void)
         goto launcher;
     }
 
-    // In the final version we'll read in chunk but since we have 4MB of PSRAM let's use it for this POC
-    void *buffer = malloc(2 * 1024 * 1024);
-    fw_t *fw = calloc(1, sizeof(fw_t));
-    if (!fw || !buffer)
+    uint8_t *partition_buffer = malloc(2 * 1024 * 1024);
+    uint8_t *header_buffer = calloc(1, 0x10000);
+    if (!header_buffer || !partition_buffer)
     {
         rg_gui_alert("Error", "Out of memory");
         goto launcher;
     }
 
     // No need to check this one, the header check will tell us if all is good
-    fread(fw, sizeof(fw_t), 1, fp);
+    fread(header_buffer, 0x10000, 1, fp);
 
-    if (memcmp(fw->header, ODROID_HEADER, 24) == 0)
+    const fw_t *fw = header_buffer;
+    const img_t *img = header_buffer;
+
+    // .fw format
+    if (memcmp(fw->header, ODROID_HEADER, 24) == 0 || memcmp(fw->header, ESPLAY_HEADER, 22) == 0)
     {
-        // All good
+        size_t next_entry = 24;
+
+        if (memcmp(fw->header, ESPLAY_HEADER, 22) == 0)
+        {
+            // ESPLAY header is 2 bytes shorter, just shift the data and everything else is good
+            memmove((void *)fw + 2, fw, sizeof(fw_t) - 2);
+            next_entry = 22;
+        }
+
+        if (!rg_gui_confirm("Flash fw update?", fw->description, false))
+        {
+            goto launcher;
+        }
+
+        // Here we should check the checksum blah blah blah
+
+        while (!feof(fp))
+        {
+            fw_partition_t part;
+            if (fseek(fp, next_entry, SEEK_SET) != 0 || !fread(&part, sizeof(part), 1, fp))
+                break;
+            next_entry = ftell(fp) + part.dataLength;
+            if (fread(partition_buffer, part.dataLength, 1, fp))
+                update_partition(part.type, part.subtype, part.label, partition_buffer, part.dataLength);
+            else
+                rg_gui_alert("File read error", part.label);
+        }
     }
-    else if (memcmp(fw->header, ESPLAY_HEADER, 22) == 0)
+
+    // .img format
+    else if (img->partitions[0].magic == ESP_PARTITION_MAGIC)
     {
-        // ESPLAY header is 2 bytes shorter, just shift the data and everything else is good
-        memmove((void *)fw + 2, fw, sizeof(fw_t) - 2);
-        fseek(fp, sizeof(fw_t) - 2, SEEK_SET);
+        if (!rg_gui_confirm("Flash img update?", "", false))
+        {
+            goto launcher;
+        }
+
+        for (size_t i = 0; i < ESP_PARTITION_TABLE_MAX_ENTRIES; ++i)
+        {
+            const esp_partition_info_t *part = &img->partitions[i];
+            if (part->magic == ESP_PARTITION_MAGIC)
+            {
+                if (part->type == PART_TYPE_END)
+                    break;
+                if (fseek(fp, part->pos.offset, SEEK_SET) == 0 && fread(partition_buffer, part->pos.size, 1, fp))
+                    update_partition(part->type, part->subtype, part->label, partition_buffer, part->pos.size);
+                else
+                    rg_gui_alert("File read error", part->label);
+            }
+        }
     }
     else
     {
         rg_gui_alert("Error", "Invalid file format!");
         goto launcher;
-    }
-
-    if (!rg_gui_confirm("Flash update?", fw->description, false))
-    {
-        goto launcher;
-    }
-
-    // Here we should check the checksum blah blah blah
-
-
-    // Copy the firmware
-    for (fw_partition_t fw_part; fread(&fw_part, sizeof(fw_part), 1, fp);)
-    {
-        const esp_partition_t *part = esp_partition_find_first(fw_part.type, fw_part.subtype, fw_part.label);
-        size_t nextEntry = ftell(fp) + fw_part.dataLength;
-
-        rg_display_clear(C_BLACK);
-        rg_gui_draw_text(0, 32, RG_SCREEN_WIDTH, part->label, C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
-
-        if (!part)
-        {
-            // We don't seem to have this partition and we can't rewrite the partition table to add it...
-            rg_gui_alert("Unknown partition", fw_part.label);
-        }
-        else if (strncmp(part->label, "updater", 8) == 0)
-        {
-            // Can't update self
-            rg_gui_alert("Skipping self", fw_part.label);
-        }
-        else if (fw_part.dataLength > part->size)
-        {
-            rg_gui_alert("Size mismatch, can't flash", fw_part.label);
-        }
-        else if (fw_part.dataLength > 0)
-        {
-            if (fw_part.length != part->size)
-            {
-                rg_gui_draw_text(0, 96, RG_SCREEN_WIDTH, "Warning: Size mismatch", C_ORANGE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
-            }
-
-            if (fread(buffer, fw_part.dataLength, 1, fp))
-            {
-                rg_gui_draw_text(0, 64, RG_SCREEN_WIDTH, "Erasing....", C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
-                esp_partition_erase_range(part, 0, part->size);
-                rg_gui_draw_text(0, 64, RG_SCREEN_WIDTH, "Writing....", C_WHITE, C_BLACK, RG_TEXT_BIGGER|RG_TEXT_ALIGN_CENTER);
-                esp_partition_write(part, 0, buffer, fw_part.dataLength);
-            }
-            else
-            {
-                rg_gui_alert("File read error", fw_part.label);
-            }
-        }
-        else
-        {
-            // Do nothing, could be a data partition
-        }
-
-        fseek(fp, nextEntry, SEEK_SET);
     }
 
     fclose(fp);
