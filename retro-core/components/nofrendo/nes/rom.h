@@ -103,3 +103,6 @@ typedef struct
 rom_t *rom_loadfile(const char *filename);
 rom_t *rom_loadmem(uint8 *data, size_t size);
 void rom_free(void);
+
+void rom_savesram(const char *filename);
+void rom_loadsram(const char *filename);

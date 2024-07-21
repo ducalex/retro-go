@@ -27,42 +27,39 @@
 
 static rom_t rom;
 
-#ifdef USE_SRAM_FILE
-
 /* Save battery-backed RAM */
-static void rom_savesram(void)
+void rom_savesram(const char *filename)
 {
-   char fn[sizeof(rom.filename)+8];
-   FILE *fp;
-
-   if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
+   if (!(rom.flags & ROM_FLAG_BATTERY) || rom.prg_ram_banks < 1)
    {
-      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "wb")))
-      {
-         fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
-         fclose(fp);
-         MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", fn);
-      }
+      MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
+      return;
+   }
+   FILE *fp = fopen(filename, "wb");
+   if (fp)
+   {
+      fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
+      fclose(fp);
+      MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", filename);
    }
 }
 
 /* Load battery-backed RAM from disk */
-static void rom_loadsram(void)
+void rom_loadsram(const char *filename)
 {
-   char fn[sizeof(rom.filename)+8];
-   FILE *fp;
-
-   if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
+   if (!(rom.flags & ROM_FLAG_BATTERY) || rom.prg_ram_banks < 1)
    {
-      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "rb")))
-      {
-         fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
-         fclose(fp);
-         MESSAGE_INFO("ROM: Read battery RAM from %s.\n", fn);
-      }
+      MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
+      return;
+   }
+   FILE *fp = fopen(filename, "rb");
+   if (fp)
+   {
+      fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
+      fclose(fp);
+      MESSAGE_INFO("ROM: Read battery RAM from %s.\n", filename);
    }
 }
-#endif
 
 /* Load a ROM from a memory buffer */
 rom_t *rom_loadmem(uint8 *data, size_t size)
