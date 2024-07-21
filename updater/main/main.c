@@ -129,8 +129,8 @@ void app_main(void)
     // No need to check this one, the header check will tell us if all is good
     fread(header_buffer, 0x10000, 1, fp);
 
-    const fw_t *fw = header_buffer;
-    const img_t *img = header_buffer;
+    const fw_t *fw = (const fw_t *)header_buffer;
+    const img_t *img = (const img_t *)header_buffer;
 
     // .fw format
     if (memcmp(fw->header, ODROID_HEADER, 24) == 0 || memcmp(fw->header, ESPLAY_HEADER, 22) == 0)
@@ -179,10 +179,11 @@ void app_main(void)
             {
                 if (part->type == PART_TYPE_END)
                     break;
+                // FIXME: label might not be nul-terminated, we should move it to a buffer and ensure it is
                 if (fseek(fp, part->pos.offset, SEEK_SET) == 0 && fread(partition_buffer, part->pos.size, 1, fp))
-                    update_partition(part->type, part->subtype, part->label, partition_buffer, part->pos.size);
+                    update_partition(part->type, part->subtype, (char *)part->label, partition_buffer, part->pos.size);
                 else
-                    rg_gui_alert("File read error", part->label);
+                    rg_gui_alert("File read error", (char *)part->label);
             }
         }
     }
