@@ -77,10 +77,13 @@ typedef struct __attribute__((packed))
 
 typedef struct
 {
-   char filename[256];
-
+   char *filename;
    uint8 *data_ptr; // Top of our allocation
-   size_t data_len; // Size of our allocation
+   size_t data_len;  // Size of our allocation
+   size_t data_offset; // offset where the game begins
+
+   bool free_data;
+   bool free_prg_rom;
 
    uint8 *prg_rom;
    uint8 *chr_rom;
