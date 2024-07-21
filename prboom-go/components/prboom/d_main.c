@@ -564,16 +564,22 @@ bool D_AddFile(const char *file)
 // jff 4/19/98 Add routine to test IWAD for validity and determine
 // the gamemode from it. Also note if DOOM II, whether secret levels exist
 // CPhipps - const char* for iwadname, made static
-static void CheckIWAD(const char *iwadname,GameMode_t *gmode,boolean *hassec)
+static void CheckIWAD(wadfile_info_t *iwad,GameMode_t *gmode,boolean *hassec)
 {
     int ud=0,rg=0,sw=0,cm=0,sc=0;
-    wadinfo_t header;
-    FILE *fp;
+    wadinfo_t header = {0};
+    FILE *fp = NULL;
 
-    if (!(fp = fopen(iwadname, "rb")))
-      I_Error("CheckIWAD: Can't open IWAD %s", iwadname);
+    if (!iwad)
+      I_Error("CheckIWAD: Can't open NULL IWAD");
 
-    fread(&header, sizeof(header), 1, fp);
+    if (iwad->data)
+      memcpy(&header, iwad->data, sizeof(header));
+    else if ((fp = fopen(iwad->name, "rb")))
+      fread(&header, sizeof(header), 1, fp);
+    else
+      I_Error("CheckIWAD: Can't open IWAD: %s", iwad->name);
+
     // read IWAD header
     if (!strncmp(header.identification, "IWAD", 4))
     {
@@ -585,9 +591,13 @@ static void CheckIWAD(const char *iwadname,GameMode_t *gmode,boolean *hassec)
       header.infotableofs = LONG(header.infotableofs);
       length = header.numlumps;
       fileinfo = calloc(sizeof(filelump_t), length);
-      fseek(fp, header.infotableofs, SEEK_SET);
-      fread(fileinfo, sizeof(filelump_t), length, fp);
 
+      if (iwad->data)
+        memcpy(fileinfo, iwad->data + header.infotableofs, sizeof(filelump_t) * length);
+      else if (fseek(fp, header.infotableofs, SEEK_SET) == 0)
+        fread(fileinfo, sizeof(filelump_t), length, fp);
+      else
+        I_Error("CheckIWAD: Can't read IWAD: %s", iwad->name);
 
       // scan directory for levelname lumps
       while (length--)
@@ -619,7 +629,7 @@ static void CheckIWAD(const char *iwadname,GameMode_t *gmode,boolean *hassec)
       free(fileinfo);
     }
     else // missing IWAD tag in header
-      I_Error("CheckIWAD: IWAD tag %s not present", iwadname);
+      I_Error("CheckIWAD: IWAD tag %s not present", iwad->name);
 
     if (fp)
       fclose(fp);
@@ -671,7 +681,7 @@ static void L_SetupConsoleMasks(void) {
 static void D_DoomMainSetup(void)
 {
   const char *doomverstr;
-  const char *iwad;
+  wadfile_info_t *iwad;
   int p,slot;
 
   L_SetupConsoleMasks();
@@ -695,10 +705,10 @@ static void D_DoomMainSetup(void)
   if (!numwadfiles)
     I_Error("IWAD not found\n");
 
-  iwad = wadfiles[numwadfiles-1].name;
+  iwad = &wadfiles[numwadfiles-1];
 
   CheckIWAD(iwad, &gamemode, &haswolflevels);
-  lprintf(LO_CONFIRM, "IWAD found: %s\n", iwad);
+  lprintf(LO_CONFIRM, "IWAD found: %s\n", iwad->name);
 
   switch (gamemode)
   {
@@ -715,11 +725,11 @@ static void D_DoomMainSetup(void)
     gamemission = doom;
     break;
   case commercial:  // Ty 08/27/98 - fixed gamemode vs gamemission
-      p = strlen(iwad);
-      if (p>=7 && !strncasecmp(iwad+p-7,"tnt.wad",7)) {
+      p = strlen(iwad->name);
+      if (p>=7 && !strncasecmp(iwad->name+p-7,"tnt.wad",7)) {
         doomverstr = "DOOM 2: TNT - Evilution";
         gamemission = pack_tnt;
-      } else if (p>=12 && !strncasecmp(iwad+p-12,"plutonia.wad",12)) {
+      } else if (p>=12 && !strncasecmp(iwad->name+p-12,"plutonia.wad",12)) {
         doomverstr = "DOOM 2: Plutonia Experiment";
         gamemission = pack_plut;
       } else {
