@@ -317,7 +317,7 @@ static bool buzzer_submit(const rg_audio_frame_t *frames, size_t count)
 
     for (size_t i = 0; i < count; ++i)
     {
-        int16_t left = frames[i].left * volume;
+        int16_t left = frames[i].left * volumeFactor;
 
 #ifdef PLAY_SINE_AS_TEST
         left = sineBuffer[sinePosition];
