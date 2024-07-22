@@ -127,15 +127,21 @@ void sms_main(void)
 
     if (rg_extension_match(app->romPath, "zip"))
     {
+#if RG_ZIP_SUPPORT
         void *data;
         size_t size;
         if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
             RG_PANIC("ROM file unzipping failed!");
         if (!load_rom(data, RG_MAX(0x4000, size), size))
             RG_PANIC("ROM file loading failed!");
+#else
+        RG_PANIC("ZIP files aren't supported!");
+#endif
     }
     else if (!load_rom_file(app->romPath))
+    {
         RG_PANIC("ROM file loading failed!");
+    }
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;

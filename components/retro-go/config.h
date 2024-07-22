@@ -128,7 +128,7 @@
 #endif
 
 #ifdef ESP_PLATFORM
-#define RG_HAVE_MINIZ 1
+#define RG_ZIP_SUPPORT 1
 #else
-#define RG_HAVE_MINIZ 0
+#define RG_ZIP_SUPPORT 0
 #endif

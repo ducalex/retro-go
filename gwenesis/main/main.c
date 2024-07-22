@@ -238,13 +238,16 @@ void app_main(void)
 
     if (rg_extension_match(app->romPath, "zip"))
     {
+#if RG_ZIP_SUPPORT
         if (!rg_storage_unzip_file(app->romPath, NULL, &rom_data, &rom_size))
             RG_PANIC("ROM file unzipping failed!");
+#else
+        RG_PANIC("ZIP files aren't supported!");
+#endif
     }
-    else
+    else if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size))
     {
-        if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size))
-            RG_PANIC("ROM load failed!");
+        RG_PANIC("ROM load failed!");
     }
 
     RG_LOGI("load_cartridge(%p, %d)\n", rom_data, rom_size);

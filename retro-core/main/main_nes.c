@@ -214,11 +214,15 @@ void nes_main(void)
 
     if (rg_extension_match(app->romPath, "zip"))
     {
+#if RG_ZIP_SUPPORT
         void *data;
         size_t size;
         if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
             RG_PANIC("ROM file unzipping failed!");
         ret = nes_insertcart(rom_loadmem(data, size));
+#else
+        RG_PANIC("ZIP files aren't supported!");
+#endif
     }
     else
     {

@@ -479,7 +479,7 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
     return true;
 }
 
-#if RG_HAVE_MINIZ
+#if RG_ZIP_SUPPORT
 /**
  * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
  * I think that we should use miniz' ZIP API instead and bundle miniz with retro-go. But first I need

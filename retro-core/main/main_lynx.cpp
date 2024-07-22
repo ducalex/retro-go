@@ -90,6 +90,7 @@ static CSystem *new_lynx(void)
 {
     if (rg_extension_match(app->romPath, "zip"))
     {
+#if RG_ZIP_SUPPORT
         void *data;
         size_t size;
         if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
@@ -97,6 +98,9 @@ static CSystem *new_lynx(void)
         CSystem *lynx = new CSystem((UBYTE*)data, size, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
         free(data);
         return lynx;
+#else
+        RG_PANIC("ZIP files aren't supported!");
+#endif
     }
     return new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
 }

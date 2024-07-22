@@ -293,10 +293,14 @@ void snes_main(void)
 
     if (rg_extension_match(filename, "zip"))
     {
+#if RG_ZIP_SUPPORT
         free(Memory.ROM); // Would be nice to reuse it directly...
         if (!rg_storage_unzip_file(filename, NULL, (void **)&Memory.ROM, &Memory.ROM_Size))
             RG_PANIC("ROM file unzipping failed!");
         filename = NULL;
+#else
+        RG_PANIC("ZIP files aren't supported!");
+#endif
     }
 
     if (!LoadROM(filename))
