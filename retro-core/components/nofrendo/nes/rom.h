@@ -32,11 +32,17 @@
 #define ROM_FLAG_TRAINER        0x04
 #define ROM_FLAG_BATTERY        0x02
 #define ROM_FLAG_VERTICAL       0x01
-#define ROM_FLAG_FREE_DATA      0x100
-#define ROM_FLAG_FDS_DISK       0x200
 
 #define ROM_PRG_BANK_SIZE       0x2000
 #define ROM_CHR_BANK_SIZE       0x2000
+
+typedef enum
+{
+   ROM_TYPE_INVALID = 0,
+   ROM_TYPE_INES,
+   ROM_TYPE_FDS,
+   ROM_TYPE_NSF,
+} rom_type_t;
 
 typedef struct __attribute__((packed))
 {
@@ -77,29 +83,37 @@ typedef struct __attribute__((packed))
 
 typedef struct
 {
-   char *filename;
-   uint8 *data_ptr; // Top of our allocation
-   size_t data_len;  // Size of our allocation
-   size_t data_offset; // offset where the game begins
+   rom_type_t type;
+   uint8 mapper_number;
+   uint8 mirroring;
+   uint8 system;
+   uint32 checksum;
 
-   bool free_data;
-   bool free_prg_rom;
+   uint8 *data_ptr;
+   size_t data_len;
 
    uint8 *prg_rom;
    uint8 *chr_rom;
    uint8 *prg_ram;
    uint8 *chr_ram;
+   uint8 *trainer;
+
+   bool free_data_ptr;
+   bool free_prg_rom;
+   bool free_chr_rom;
+   bool free_trainer;
+
+   bool battery;
+   bool disksystem;
+   bool fourscreen;
+   bool vertical;
 
    int prg_rom_banks;
    int chr_rom_banks;
    int prg_ram_banks;
    int chr_ram_banks;
 
-   unsigned mapper_number;
-   unsigned flags;
-   unsigned system;
-   unsigned mirroring;
-   unsigned checksum;
+   char *filename;
 } rom_t;
 
 

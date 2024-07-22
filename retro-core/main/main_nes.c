@@ -237,7 +237,7 @@ void nes_main(void)
     app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
-    nsfPlayer = nes->cart->mapper_number == 31;
+    nsfPlayer = nes->cart->type == ROM_TYPE_NSF;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 

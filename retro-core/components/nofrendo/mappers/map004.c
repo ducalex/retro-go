@@ -159,7 +159,7 @@ static void map_init(rom_t *cart)
 {
     irq.enabled = irq.counter = irq.latch = 0;
     reg8000 = vrombase = 0;
-    fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
+    fourscreen = cart->fourscreen;
 
     // This is a very bad, and hopefully temporary, hack.
     if (cart->mapper_number != 4)

@@ -147,7 +147,7 @@ int nes_insertcart(rom_t *cart)
     }
 
     /* Load BIOS file if required (currently only for Famicom Disk System) */
-    if (nes.cart->flags & ROM_FLAG_FDS_DISK)
+    if (nes.cart->type == ROM_TYPE_FDS)
     {
         if (nes.fds_bios == NULL)
         {

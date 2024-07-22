@@ -30,7 +30,7 @@ static rom_t rom;
 /* Save battery-backed RAM */
 void rom_savesram(const char *filename)
 {
-   if (!(rom.flags & ROM_FLAG_BATTERY) || rom.prg_ram_banks < 1)
+   if (!rom.battery || rom.prg_ram_banks < 1)
    {
       MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
       return;
@@ -47,7 +47,7 @@ void rom_savesram(const char *filename)
 /* Load battery-backed RAM from disk */
 void rom_loadsram(const char *filename)
 {
-   if (!(rom.flags & ROM_FLAG_BATTERY) || rom.prg_ram_banks < 1)
+   if (!rom.battery || rom.prg_ram_banks < 1)
    {
       MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
       return;
@@ -68,11 +68,12 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       return NULL;
 
    rom = (rom_t) {
+      .type = ROM_TYPE_INVALID,
+      .mapper_number = 0,
+      .mirroring = PPU_MIRROR_HORI,
+      .system = SYS_UNKNOWN,
       .data_ptr = data,
       .data_len = size,
-      .data_offset = 0,
-      .system = SYS_UNKNOWN,
-      .mirroring = PPU_MIRROR_HORI,
    };
 
    if (!memcmp(data, ROM_NES_MAGIC, 4))
@@ -81,28 +82,31 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
 
       MESSAGE_INFO("ROM: Found iNES file of size %d.\n", (int)size);
 
-      rom.data_offset = (header->rom_type & ROM_FLAG_TRAINER) ? 0x210 : 0x010;
-      rom.checksum = CRC32(0, rom.data_ptr + rom.data_offset, rom.data_len - rom.data_offset);
+      rom.type = ROM_TYPE_INES;
+      rom.mapper_number = ((header->mapper_hinybble & 0xF0) | (header->rom_type >> 4));
+      // https://wiki.nesdev.com/w/index.php/INES
+      // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
+      // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
+      // of the mapper number or simply refuse to load the ROM.
+      if (header->reserved2 != 0)
+         rom.mapper_number &= 0x0F;
+      rom.battery = (header->rom_type & ROM_FLAG_BATTERY);
+      rom.fourscreen = (header->rom_type & ROM_FLAG_FOURSCREEN);
+      rom.vertical = (header->rom_type & ROM_FLAG_VERTICAL);
+      rom.trainer = (header->rom_type & ROM_FLAG_TRAINER) ? data + 0x10 : NULL;
       rom.prg_rom_banks = header->prg_banks * 2;
       rom.chr_rom_banks = header->chr_banks;
       rom.prg_ram_banks = 1; // 8KB. Not specified by iNES
       rom.chr_ram_banks = 1; // 8KB. Not specified by iNES
-      rom.flags = header->rom_type;
-      rom.mapper_number = header->rom_type >> 4;
 
-      if (header->reserved2 == 0)
-      {
-         // https://wiki.nesdev.com/w/index.php/INES
-         // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
-         // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
-         // of the mapper number or simply refuse to load the ROM.
-         rom.mapper_number |= (header->mapper_hinybble & 0xF0);
-      }
-
-      if (rom.flags & ROM_FLAG_FOURSCREEN)
+      if (rom.fourscreen)
          rom.mirroring = PPU_MIRROR_FOUR;
-      else if (rom.flags & ROM_FLAG_VERTICAL)
+      else if (rom.vertical)
          rom.mirroring = PPU_MIRROR_VERT;
+
+      size_t data_offset = rom.trainer ? 0x210 : 0x010;
+
+      rom.checksum = CRC32(0, rom.data_ptr + data_offset, rom.data_len - data_offset);
 
       const db_game_t *entry = games_database;
       while (entry->crc && entry->crc != rom.checksum)
@@ -155,38 +159,40 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          MESSAGE_INFO("ROM: Game not found in database.\n");
       }
 
-      size_t expected_size = sizeof(inesheader_t) + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE) + (rom.chr_rom_banks * ROM_CHR_BANK_SIZE);
+      size_t expected_size = data_offset + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE) + (rom.chr_rom_banks * ROM_CHR_BANK_SIZE);
       if (size < expected_size)
       {
          MESSAGE_ERROR("ROM: Expected rom size to be at least %d bytes, got %d.\n", expected_size, size);
          // return NULL;
       }
 
-      rom.prg_rom = data + rom.data_offset;
+      rom.prg_rom = data + data_offset;
       if (rom.chr_rom_banks > 0)
-         rom.chr_rom = data + rom.data_offset + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
+         rom.chr_rom = data + data_offset + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
    }
    else if (!memcmp(data, ROM_FDS_MAGIC, 4) || !memcmp(data, ROM_FDS_RAW_MAGIC, 15))
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", (int)size);
 
-      rom.flags = ROM_FLAG_FDS_DISK|ROM_FLAG_BATTERY;
+      rom.type = ROM_TYPE_FDS;
+      rom.mapper_number = 20;
+      rom.system = SYS_FAMICOM;
+      rom.battery = true;
       rom.prg_ram_banks = 4; // The FDS adapter contains 32KB to store game program
       rom.chr_ram_banks = 1; // The FDS adapter contains 8KB
       rom.prg_rom_banks = 1; // This will contain the FDS BIOS
       rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
-      rom.mapper_number = 20;
-      rom.system = SYS_FAMICOM;
    }
    else if (!memcmp(data, ROM_NSF_MAGIC, 5))
    {
       MESSAGE_INFO("ROM: Found NSF file of size %d.\n", (int)size);
 
+      rom.type = ROM_TYPE_NSF;
+      rom.mapper_number = 31;
       rom.prg_ram_banks = 1; // Some songs may need it. I store a bootstrap program there at the moment
       rom.chr_ram_banks = 1; // Not used but some code might assume it will be present...
       rom.prg_rom_banks = 4; // This is actually PRG-RAM but some of our code assumes PRG-ROM to be present...
       rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
-      rom.mapper_number = 31;
    }
    else
    {
@@ -198,10 +204,10 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
    MESSAGE_INFO("ROM: Mapper: %d, PRG:%dK, CHR:%dK, Flags: %c%c%c%c\n",
                rom.mapper_number,
                rom.prg_rom_banks * 8, rom.chr_rom_banks * 8,
-               (rom.flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
-               (rom.flags & ROM_FLAG_BATTERY) ? 'B' : '-',
-               (rom.flags & ROM_FLAG_TRAINER) ? 'T' : '-',
-               (rom.flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
+               (rom.vertical) ? 'V' : 'H',
+               (rom.battery) ? 'B' : '-',
+               (rom.trainer) ? 'T' : '-',
+               (rom.fourscreen) ? '4' : '-');
 
    rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
    rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
@@ -274,21 +280,27 @@ rom_t *rom_loadfile(const char *filename)
          || strstr(filename, "(Australia)"))
          rom.system = SYS_NES_PAL;
    }
-   rom.free_data = true;
-   // rom.filename = strdup(filename);
+   rom.free_data_ptr = true;
+   rom.filename = strdup(filename);
    return &rom;
 }
 
 /* Free a ROM */
 void rom_free(void)
 {
-   free(rom.prg_ram);
-   free(rom.chr_ram);
-   if (rom.free_data)
-      free(rom.data_ptr);
-   if (rom.free_prg_rom)
-      free(rom.prg_rom);
-   if (rom.filename)
+   if (rom.type != ROM_TYPE_INVALID)
+   {
+      if (rom.free_data_ptr)
+         free(rom.data_ptr);
+      if (rom.free_prg_rom)
+         free(rom.prg_rom);
+      if (rom.free_chr_rom)
+         free(rom.chr_rom);
+      if (rom.free_trainer)
+         free(rom.trainer);
+      free(rom.prg_ram);
+      free(rom.chr_ram);
       free(rom.filename);
+   }
    memset(&rom, 0, sizeof(rom_t));
 }
