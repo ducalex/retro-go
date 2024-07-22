@@ -233,15 +233,19 @@ void app_main(void)
 
     RG_LOGI("Genesis start\n");
 
-    FILE *fp = fopen(app->romPath, "rb");
-    if (!fp)
-        RG_PANIC("Rom load failed");
-    fseek(fp, 0, SEEK_END);
-    size_t rom_size = ftell(fp);
-    void *rom_data = malloc((rom_size & ~0xFFFF) + 0x10000);
-    fseek(fp, 0, SEEK_SET);
-    fread(rom_data, 1, rom_size, fp);
-    fclose(fp);
+    size_t rom_size;
+    void *rom_data;
+
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        if (!rg_storage_unzip_file(app->romPath, NULL, &rom_data, &rom_size))
+            RG_PANIC("ROM file unzipping failed!");
+    }
+    else
+    {
+        if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size))
+            RG_PANIC("ROM load failed!");
+    }
 
     RG_LOGI("load_cartridge(%p, %d)\n", rom_data, rom_size);
     load_cartridge(rom_data, rom_size);
