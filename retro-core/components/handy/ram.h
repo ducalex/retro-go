@@ -75,7 +75,7 @@ class CRam : public CLynxBase
             mHomebrewAddr -= 10;
             mHomebrewData = new UBYTE[mHomebrewSize];
             memcpy(mHomebrewData, filedata, mHomebrewSize);
-            log_printf("Homebrew found: size=%d, addr=0x%04X\n", mHomebrewSize, mHomebrewAddr);
+            log_printf("Homebrew found: size=%u, addr=0x%04X\n", (unsigned int)mHomebrewSize, (unsigned int)mHomebrewAddr);
          } else {
             mHomebrewData = NULL;
             mHomebrewAddr = 0;
