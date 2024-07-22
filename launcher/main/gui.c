@@ -570,15 +570,24 @@ void gui_load_preview(tab_t *tab)
         if (file->missing_cover & (1 << type))
             continue;
 
+
+        // Any .zip extension in the filename is ignored so that both regular and .zip ROMs can use the same cover art file.
+        char name_without_dotzip[RG_PATH_MAX-1]; // -1 otherwise snprintf complains about 'output 2 or more bytes (assuming 256) into a destination of size 255'
+        size_t length_without_dotzip = strnlen(file->name, RG_PATH_MAX-2); // -2 because a \0 byte needs to be added at the end
+        if (rg_extension_match(file->name, "zip"))
+            length_without_dotzip -= 4;
+        strncpy(name_without_dotzip, file->name, length_without_dotzip);
+        name_without_dotzip[length_without_dotzip] = '\0';
+
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
             path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
             path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, name_without_dotzip);
         else if (type == 0x4) // Save state screenshot (png)
         {
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, name_without_dotzip);
             rg_emu_states_t *savestates = rg_emu_get_states(path, 4);
             if (savestates->lastused)
                 path_len = snprintf(path, RG_PATH_MAX, "%s", savestates->lastused->preview);
