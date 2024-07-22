@@ -126,7 +126,7 @@ LoadCard(uint8_t *data, size_t size)
 	ROM_MASK--;
 
 	MESSAGE_INFO("ROM LOADED: OFFSET=%d, BANKS=%d, MASK=%03X, CRC=%08X\n",
-		offset, PCE.ROM_SIZE, ROM_MASK, PCE.ROM_CRC);
+		offset, (int)PCE.ROM_SIZE, (int)ROM_MASK, (int)PCE.ROM_CRC);
 
 	while (romFlags[IDX].CRC) {
 		if (PCE.ROM_CRC == romFlags[IDX].CRC)
