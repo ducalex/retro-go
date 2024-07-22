@@ -272,16 +272,12 @@ void gbc_main(void)
     // Load ROM
     if (rg_extension_match(app->romPath, "zip"))
     {
-#if RG_ZIP_SUPPORT
         void *data;
         size_t size;
         if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
             RG_PANIC("ROM file unzipping failed!");
         if (gnuboy_load_rom(data, size) < 0)
             RG_PANIC("ROM Loading failed!");
-#else
-        RG_PANIC("ZIP files aren't supported!");
-#endif
     }
     else if (gnuboy_load_rom_file(app->romPath) < 0)
     {

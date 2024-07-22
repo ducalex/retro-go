@@ -479,13 +479,14 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
     return true;
 }
 
-#if RG_ZIP_SUPPORT
 /**
  * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
  * I think that we should use miniz' ZIP API instead and bundle miniz with retro-go. But first I need
  * to do some testing to determine if the increased executable size is acceptable...
  */
+#if RG_ZIP_SUPPORT
 #include <rom/miniz.h>
+#endif
 
 #define ZIP_MAGIC 0x04034b50
 typedef struct __attribute__((packed))
@@ -506,6 +507,7 @@ typedef struct __attribute__((packed))
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len)
 {
+#if RG_ZIP_SUPPORT
     RG_ASSERT(data_out && data_len, "Bad param");
     CHECK_PATH(zip_path);
 
@@ -587,6 +589,8 @@ _fail:
     free(decomp);
     fclose(fp);
     return false;
-}
-
+#else
+    RG_LOGE("ZIP support hasn't been enabled!");
+    return false;
 #endif
+}
