@@ -521,8 +521,6 @@ void gui_load_preview(tab_t *tab)
 {
     listbox_item_t *item = gui_get_selected_item(tab);
     bool show_missing_cover = false;
-    char path[RG_PATH_MAX + 1];
-    size_t path_len;
     uint32_t order;
 
     gui_set_preview(tab, NULL);
@@ -559,6 +557,8 @@ void gui_load_preview(tab_t *tab)
 
     while (order && !tab->preview)
     {
+        char path[RG_PATH_MAX + 1];
+        size_t path_len = 0;
         int type = order & 0xF;
 
         order >>= 4;
@@ -595,8 +595,8 @@ void gui_load_preview(tab_t *tab)
         {
             RG_LOGD("Looking for %s", path);
             gui_set_preview(tab, rg_surface_load_image_file(path, 0));
-            if (!tab->preview && rg_storage_exists(path))
-                errors++;
+            // if (!tab->preview && rg_storage_exists(path))
+            //     errors++;
         }
 
         file->missing_cover |= (tab->preview ? 0 : 1) << type;
