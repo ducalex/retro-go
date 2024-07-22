@@ -168,7 +168,7 @@ static void crc_cache_init(void)
         fread(crc_cache, 8, 1, fp);
         if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
         {
-            RG_LOGI("Loaded CRC cache (entries: %d)", crc_cache->count);
+            RG_LOGI("Loaded CRC cache (entries: %d)", (int)crc_cache->count);
             fread(crc_cache->entries, crc_cache->count, 8, fp);
             crc_cache_dirty = false;
         }
@@ -244,12 +244,12 @@ static void crc_cache_update(retro_file_t *file)
             index = rand() % CRC_CACHE_MAX_ENTRIES;
 
         RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
-            key, file->checksum, crc_cache->count);
+            (int)key, (int)file->checksum, (int)crc_cache->count);
     }
     else
     {
         RG_LOGI("Updating %08X => %08X to cache (total: %d)",
-            key, file->checksum, crc_cache->count);
+            (int)key, (int)file->checksum, (int)crc_cache->count);
     }
 
     crc_cache->magic = CRC_CACHE_MAGIC;
@@ -546,7 +546,7 @@ static void show_file_info(retro_file_t *file)
     while (true) // We loop in case we need to update the CRC
     {
         if (file->checksum)
-            sprintf(filecrc, "%08X (%d)", file->checksum, file->app->crc_offset);
+            sprintf(filecrc, "%08X (%d)", (int)file->checksum, file->app->crc_offset);
 
         switch (rg_gui_dialog("File properties", options, -1))
         {

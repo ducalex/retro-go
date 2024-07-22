@@ -571,9 +571,9 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, (int)(file->checksum >> 28), (int)file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, (int)(file->checksum >> 28), (int)file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
             path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
         else if (type == 0x4) // Save state screenshot (png)
@@ -583,16 +583,15 @@ void gui_load_preview(tab_t *tab)
             if (savestates->lastused)
                 path_len = snprintf(path, RG_PATH_MAX, "%s", savestates->lastused->preview);
             else
-                path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
+                path_len = 0;
             free(savestates);
         }
-        else
-            continue;
 
-        if (path_len < RG_PATH_MAX && rg_storage_exists(path))
+        if (path_len > 0 && path_len < RG_PATH_MAX)
         {
+            RG_LOGD("Looking for %s", path);
             gui_set_preview(tab, rg_surface_load_image_file(path, 0));
-            if (!tab->preview)
+            if (!tab->preview && rg_storage_exists(path))
                 errors++;
         }
 
