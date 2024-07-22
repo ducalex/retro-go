@@ -88,7 +88,6 @@ static void set_display_mode(void)
 
 static CSystem *new_lynx(void)
 {
-    CSystem *lynx;
     if (rg_extension_match(app->romPath, "zip"))
     {
         void *data;
