@@ -44,12 +44,11 @@ void gui_init(bool cold_boot)
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
-        .surface      = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW),
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
-    gui_update_theme();
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
+    gui_update_theme();
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
