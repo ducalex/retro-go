@@ -1184,11 +1184,9 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     return success;
 }
 
-rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
+uint8_t rg_emu_get_last_used_slot(const char *romPath)
 {
-    rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
     uint8_t last_used_slot = 0xFF;
-
     char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
     FILE *fp = fopen(filename, "rb");
     if (fp)
@@ -1197,6 +1195,13 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
         fclose(fp);
     }
     free(filename);
+    return last_used_slot;
+}
+
+rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
+{
+    rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
+    uint8_t last_used_slot = rg_emu_get_last_used_slot(romPath);
 
     for (size_t i = 0; i < slots; i++)
     {
