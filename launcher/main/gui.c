@@ -575,7 +575,11 @@ void gui_load_preview(tab_t *tab)
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
             path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, (int)(file->checksum >> 28), (int)file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
+        {
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", app->paths.covers, file->name);
+            if (path_len < RG_PATH_MAX - 3) // Don't bother if we already have an overflow
+                strcpy(path + path_len - strlen(rg_extension(file->name)), "png");
+        }
         else if (type == 0x4) // Save state screenshot (png)
         {
             path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
