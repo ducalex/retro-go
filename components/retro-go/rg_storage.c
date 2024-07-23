@@ -503,6 +503,8 @@ typedef struct __attribute__((packed))
     uint16_t filename_size;
     uint16_t extra_field_size;
     uint8_t filename[226];
+    // uint8_t extra_field[];
+    // uint8_t compressed_data[];
 } zip_header_t;
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len)

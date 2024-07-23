@@ -1,3 +1,10 @@
+# Retro-Go 1.43 (2024-??-??)
+- All: Added ZIP support (large 4MB+ GBC roms not supported unfortunately)
+- Launcher: Added menu option to pre-compute all CRC32s (for cover art)
+- Launcher: Officially support name-based cover art (eg: `/covers/nes/game name.png`)
+- Launcher: Improved responsiveness when cover art/save preview is enabled
+
+
 # Retro-Go 1.42 (2024-06-05)
 - PCE: Fixed out-of-bounds VCE regs access (Crash in Raiden, probably others)
 - NES: Fixed panic in some games (Snow Brothers, Chip'n'Dale, probably others)
