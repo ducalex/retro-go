@@ -352,7 +352,7 @@ bool LoadROM(const char* filename)
    bool Tales = false;
    FILE *fp;
 
-   printf("Loading ROM: '%s'\n", filename ? filename : "(null)");
+   printf("Loading ROM: '%s'\n", filename ?: "(Memory.ROM)");
 
    Memory.ExtendedFormat = NOPE;
 
@@ -365,7 +365,6 @@ bool LoadROM(const char* filename)
 again:
    if (filename == NULL)
    {
-      printf("Using Memory.ROM as is.\n");
       TotalFileSize = Memory.ROM_Size;
    }
    else if ((fp = fopen(filename, "rb")))
@@ -471,7 +470,8 @@ again:
    }
 
    Memory.CalculatedSize = TotalFileSize & ~0x1FFF; /* round down to lower 0x2000 */
-   memset(Memory.ROM + Memory.CalculatedSize, 0, MAX_ROM_SIZE - Memory.CalculatedSize);
+   if (Memory.ROM_Size > Memory.CalculatedSize)
+      memset(Memory.ROM + Memory.CalculatedSize, 0, Memory.ROM_Size - Memory.CalculatedSize);
 
    if (Memory.CalculatedSize > 0x400000 &&
          !(Memory.ROM[0x7FD5] == 0x32 && ((Memory.ROM[0x7FD6] & 0xF0) == 0x40)) && /* exclude S-DD1 */
@@ -638,7 +638,6 @@ again:
          }
          Memory.LoROM = true;
          Memory.HiROM = false;
-         memset(&Memory.ROM[Memory.CalculatedSize], 0, MAX_ROM_SIZE - Memory.CalculatedSize);
       }
    }
 
