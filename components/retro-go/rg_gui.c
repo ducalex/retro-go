@@ -1365,7 +1365,6 @@ void rg_gui_options_menu(void)
     rg_gui_dialog("Options", options, 0);
 
     rg_settings_commit();
-    rg_system_save_time();
     rg_audio_set_mute(false);
 }
 
@@ -1620,7 +1619,6 @@ void rg_gui_game_menu(void)
     sel = rg_gui_dialog("Retro-Go", choices, 0);
 
     rg_settings_commit();
-    rg_system_save_time();
 
     if (sel == 3000)
     {
