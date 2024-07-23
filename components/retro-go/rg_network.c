@@ -14,14 +14,12 @@
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_http_client.h>
 #include <esp_system.h>
+#include <esp_sntp.h>
 #include <esp_wifi.h>
 #include <esp_event.h>
 #include <nvs_flash.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netdb.h>
 
 static rg_network_t network = {0};
 static rg_wifi_config_t wifi_config = {0};
@@ -79,12 +77,13 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
                 network.channel = wifidata.primary;
                 network.rssi = wifidata.rssi;
             }
+            network.state = RG_NETWORK_CONNECTED;
 
             RG_LOGI("Connected! IP: %s, RSSI: %d", network.ip_addr, network.rssi);
-            network.state = RG_NETWORK_CONNECTED;
-            if (rg_network_sync_time("pool.ntp.org", 0))
-                rg_system_save_time();
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
+
+            sntp_stop();
+            sntp_init();
         }
         else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
         {
@@ -212,58 +211,6 @@ rg_network_t rg_network_get_info(void)
 #endif
 }
 
-bool rg_network_sync_time(const char *host, int *out_delta)
-{
-#ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(host, "bad param");
-    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    struct hostent *server = gethostbyname(host);
-    struct sockaddr_in serv_addr = {};
-    struct timeval timeout = {2, 0};
-    struct timeval ntp_time = {0, 0};
-    struct timeval cur_time;
-
-    if (server == NULL)
-    {
-        RG_LOGE("Failed to resolve NTP server hostname");
-        return false;
-    }
-
-    size_t addr_length = RG_MIN(server->h_length, sizeof(serv_addr.sin_addr.s_addr));
-    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, addr_length);
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(123);
-
-    uint32_t ntp_packet[12] = {0x0000001B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // li, vn, mode.
-
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    connect(sockfd, (void *)&serv_addr, sizeof(serv_addr));
-    send(sockfd, &ntp_packet, sizeof(ntp_packet), 0);
-
-    if (recv(sockfd, &ntp_packet, sizeof(ntp_packet), 0) >= 0)
-    {
-        ntp_time.tv_sec = ntohl(ntp_packet[10]) - 2208988800UL; // DIFF_SEC_1900_1970;
-        ntp_time.tv_usec = (((int64_t)ntohl(ntp_packet[11]) * 1000000) >> 32);
-
-        gettimeofday(&cur_time, NULL);
-        settimeofday(&ntp_time, NULL);
-
-        int64_t prev_millis = ((((int64_t)cur_time.tv_sec * 1000000) + cur_time.tv_usec) / 1000);
-        int64_t now_millis = ((int64_t)ntp_time.tv_sec * 1000000 + ntp_time.tv_usec) / 1000;
-        int ntp_time_delta = (now_millis - prev_millis);
-
-        RG_LOGI("Received Time: %.24s, we were %dms %s\n", ctime(&ntp_time.tv_sec), abs((int)ntp_time_delta),
-                ntp_time_delta < 0 ? "ahead" : "behind");
-
-        if (out_delta)
-            *out_delta = ntp_time_delta;
-        return true;
-    }
-#endif
-    RG_LOGE("Failed to receive NTP time.\n");
-    return false;
-}
-
 void rg_network_deinit(void)
 {
 #ifdef RG_ENABLE_NETWORKING
@@ -299,6 +246,11 @@ bool rg_network_init(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     TRY(esp_wifi_init(&cfg));
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
+
+    // Setup SNTP client but don't query it yet
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, "pool.ntp.org");
+    // sntp_init();
 
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;

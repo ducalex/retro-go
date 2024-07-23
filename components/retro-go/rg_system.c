@@ -173,6 +173,7 @@ static void system_monitor_task(void *arg)
 {
     bool batteryLedState = false;
     int64_t nextLoopTime = 0;
+    time_t prevTime = time(NULL);
 
     rg_task_delay(2000);
 
@@ -236,6 +237,13 @@ static void system_monitor_task(void *arg)
                     RG_PANIC("Application terminated!"); // We're not in a nice state, don't normal exit
             }
         }
+
+        if (abs(prevTime - rtcValue) > 60)
+        {
+            RG_LOGI("System time suddenly changed %d seconds.", (int)(rtcValue - prevTime));
+            rg_system_save_time(); // Not sure if this is thread safe...
+        }
+        prevTime = rtcValue;
 
         if (nextLoopTime > rg_system_timer())
         {
