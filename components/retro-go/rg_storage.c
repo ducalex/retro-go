@@ -542,7 +542,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     // Zero terminate or truncate filename just in case
     header.filename[RG_MIN(header.filename_size, 225)] = 0;
 
-    RG_LOGI("Found file at %u, name: '%s', size: %u", header_pos, header.filename, header.uncompressed_size);
+    RG_LOGI("Found file at %d, name: '%s', size: %d", header_pos, header.filename, (int)header.uncompressed_size);
 
     size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
     size_t stream_remaining = header.compressed_size;
