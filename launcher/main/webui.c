@@ -18,11 +18,11 @@ static char *urldecode(const char *str)
 {
     char *new_string = strdup(str);
     char *ptr = new_string;
-    while (*ptr && *(ptr + 1) && *(ptr + 2))
+    while (ptr[0] && ptr[1] && ptr[2])
     {
-        if (*ptr == '%' && isxdigit(*(ptr + 1)) && isxdigit(*(ptr + 2)))
+        if (ptr[0] == '%' && isxdigit((unsigned char)ptr[1]) && isxdigit((unsigned char)ptr[2]))
         {
-            char hex[] = {*(ptr + 1), *(ptr + 2), 0};
+            char hex[] = {ptr[1], ptr[2], 0};
             *ptr = strtol(hex, NULL, 16);
             memmove(ptr + 1, ptr + 3, strlen(ptr + 3) + 1);
         }
