@@ -542,32 +542,44 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     // Zero terminate or truncate filename just in case
     header.filename[RG_MIN(header.filename_size, 225)] = 0;
 
-    RG_LOGI("Found file at %d, name: '%s'", header_pos, header.filename);
+    RG_LOGI("Found file at %u, name: '%s', size: %u", header_pos, header.filename, header.uncompressed_size);
 
     size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
-    size_t uncompressed_size = header.uncompressed_size;
-    void *uncompressed_stream = malloc((uncompressed_size + (data_align - 1)) & ~(data_align - 1));
-    size_t compressed_size = header.compressed_size;
-    void *compressed_stream = malloc(compressed_size);
-    tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
-    tinfl_init(decomp);
+    size_t stream_remaining = header.compressed_size;
+    size_t output_buffer_size = header.uncompressed_size;
+    size_t output_buffer_pos = 0;
+    size_t read_buffer_size = 0x8000;
 
-    if (!compressed_stream || !uncompressed_stream || !decomp)
+    uint8_t *output_buffer = malloc((output_buffer_size + (data_align - 1)) & ~(data_align - 1));
+    uint8_t *read_buffer = malloc(read_buffer_size);
+    tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
+
+    if (!read_buffer || !output_buffer || !decomp)
     {
         RG_LOGE("Out of memory");
         goto _fail;
     }
 
-    // TODO: decompress in chunk to reduce memory usage
-    if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(compressed_stream, compressed_size, 1, fp) != 1)
-    {
-        RG_LOGE("Read failure");
-        goto _fail;
-    }
+    tinfl_status status;
+    tinfl_init(decomp);
 
-    tinfl_status status =
-        tinfl_decompress(decomp, compressed_stream, &compressed_size, uncompressed_stream, uncompressed_stream,
-                         &uncompressed_size, TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF);
+    do
+    {
+        size_t input_size = RG_MIN(read_buffer_size, stream_remaining);
+        size_t output_size = output_buffer_size - output_buffer_pos;
+        if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(read_buffer, input_size, 1, fp) != 1)
+        {
+            RG_LOGE("Read error");
+            status = TINFL_STATUS_FAILED;
+            break;
+        }
+        stream_offset += input_size;
+        stream_remaining -= input_size;
+        status = tinfl_decompress(
+            decomp, read_buffer, &input_size, output_buffer, output_buffer + output_buffer_pos, &output_size,
+            TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF | (stream_remaining ? TINFL_FLAG_HAS_MORE_INPUT : 0));
+        output_buffer_pos += output_size;
+    } while (status == TINFL_STATUS_NEEDS_MORE_INPUT);
 
     if (status != TINFL_STATUS_DONE)
     {
@@ -575,17 +587,17 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
         goto _fail;
     }
 
-    free(compressed_stream);
+    free(read_buffer);
     free(decomp);
     fclose(fp);
 
-    *data_out = uncompressed_stream;
-    *data_len = uncompressed_size;
+    *data_out = output_buffer;
+    *data_len = output_buffer_size;
     return true;
 
 _fail:
-    free(uncompressed_stream);
-    free(compressed_stream);
+    free(output_buffer);
+    free(read_buffer);
     free(decomp);
     fclose(fp);
     return false;
