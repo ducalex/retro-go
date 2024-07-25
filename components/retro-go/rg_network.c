@@ -12,6 +12,7 @@
     }
 
 #ifdef RG_ENABLE_NETWORKING
+#include <esp_idf_version.h>
 #include <esp_http_client.h>
 #include <esp_system.h>
 #include <esp_sntp.h>
@@ -20,6 +21,13 @@
 #include <nvs_flash.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 1, 0)
+#define esp_sntp_init sntp_init
+#define esp_sntp_stop sntp_stop
+#define esp_sntp_setoperatingmode sntp_setoperatingmode
+#define esp_sntp_setservername sntp_setservername
+#endif
 
 static rg_network_t network = {0};
 static rg_wifi_config_t wifi_config = {0};
@@ -82,8 +90,8 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
             RG_LOGI("Connected! IP: %s, RSSI: %d", network.ip_addr, network.rssi);
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
 
-            sntp_stop();
-            sntp_init();
+            esp_sntp_stop();
+            esp_sntp_init();
         }
         else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
         {
@@ -248,9 +256,9 @@ bool rg_network_init(void)
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
     // Setup SNTP client but don't query it yet
-    sntp_setoperatingmode(SNTP_OPMODE_POLL);
-    sntp_setservername(0, "pool.ntp.org");
-    // sntp_init();
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    // esp_sntp_init();
 
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;
