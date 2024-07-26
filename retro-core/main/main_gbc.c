@@ -274,7 +274,7 @@ void gbc_main(void)
     {
         void *data;
         size_t size;
-        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_16KB))
             RG_PANIC("ROM file unzipping failed!");
         if (gnuboy_load_rom(data, size) < 0)
             RG_PANIC("ROM Loading failed!");

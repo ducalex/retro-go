@@ -216,7 +216,7 @@ void nes_main(void)
     {
         void *data;
         size_t size;
-        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_8KB))
             RG_PANIC("ROM file unzipping failed!");
         ret = nes_insertcart(rom_loadmem(data, size));
     }

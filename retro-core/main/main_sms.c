@@ -129,7 +129,7 @@ void sms_main(void)
     {
         void *data;
         size_t size;
-        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_16KB))
             RG_PANIC("ROM file unzipping failed!");
         if (!load_rom(data, RG_MAX(0x4000, size), size))
             RG_PANIC("ROM file loading failed!");

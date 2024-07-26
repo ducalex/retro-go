@@ -68,6 +68,15 @@ rg_stat_t rg_storage_stat(const char *path);
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags);
 int64_t rg_storage_get_free_space(const char *path);
 
-bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len);
-bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, bool atomic);
-bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len);
+enum
+{
+    RG_FILE_ALIGN_8KB  = (1 << 0),      // Will align/pad data_out to 8KB  (not applicable if RG_FILE_USER_BUFFER)
+    RG_FILE_ALIGN_16KB = (1 << 1),      // Will align/pad data_out to 16KB (not applicable if RG_FILE_USER_BUFFER)
+    RG_FILE_ALIGN_32KB = (1 << 2),      // Will align/pad data_out to 32KB (not applicable if RG_FILE_USER_BUFFER)
+    RG_FILE_ALIGN_64KB = (1 << 3),      // Will align/pad data_out to 64KB (not applicable if RG_FILE_USER_BUFFER)
+    RG_FILE_USER_BUFFER = (1 << 4),     // Will use *data_out and data_len provided by the user
+    RG_FILE_ATOMIC_WRITE = (1 << 5),    // Will write to a temp file before replacing the target
+};
+bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, uint32_t flags);
+bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, uint32_t flags);
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags);

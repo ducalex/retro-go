@@ -238,10 +238,10 @@ void app_main(void)
 
     if (rg_extension_match(app->romPath, "zip"))
     {
-        if (!rg_storage_unzip_file(app->romPath, NULL, &rom_data, &rom_size))
+        if (!rg_storage_unzip_file(app->romPath, NULL, &rom_data, &rom_size, RG_FILE_ALIGN_64KB))
             RG_PANIC("ROM file unzipping failed!");
     }
-    else if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size))
+    else if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size, 0))
     {
         RG_PANIC("ROM load failed!");
     }

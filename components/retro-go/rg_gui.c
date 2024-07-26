@@ -117,20 +117,15 @@ bool rg_gui_set_theme(const char *theme_name)
     if (theme_name && theme_name[0])
     {
         snprintf(pathbuf, RG_PATH_MAX, "%s/%s/theme.json", RG_BASE_PATH_THEMES, theme_name);
-        FILE *fp = fopen(pathbuf, "rb");
-        if (fp)
+        void *data;
+        size_t data_len;
+        if (rg_storage_read_file(pathbuf, &data, &data_len, 0))
         {
-            fseek(fp, 0, SEEK_END);
-            long length = ftell(fp);
-            fseek(fp, 0, SEEK_SET);
-            char *buffer = calloc(1, length + 1);
-            if (fread(buffer, 1, length, fp))
-                new_theme = cJSON_Parse(buffer);
-            free(buffer);
-            fclose(fp);
-            if (!new_theme)
-                RG_LOGE("Failed to load theme JSON from '%s'!\n", pathbuf);
+            new_theme = cJSON_Parse((char *)data);
+            free(data);
         }
+        if (!new_theme)
+            RG_LOGE("Failed to load theme JSON from '%s'!\n", pathbuf);
     }
 
     if (new_theme)

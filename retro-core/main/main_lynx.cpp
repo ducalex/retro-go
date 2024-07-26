@@ -92,7 +92,7 @@ static CSystem *new_lynx(void)
     {
         void *data;
         size_t size;
-        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size))
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, 0))
             RG_PANIC("ROM file unzipping failed!");
         CSystem *lynx = new CSystem((UBYTE*)data, size, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
         free(data);
