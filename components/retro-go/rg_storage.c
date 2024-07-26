@@ -610,9 +610,8 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
         size_t output_size = output_buffer_size - output_buffer_pos;
         if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(read_buffer, input_size, 1, fp) != 1)
         {
-            RG_LOGE("Read error");
-            status = TINFL_STATUS_FAILED;
-            break;
+            RG_LOGE("Read error: %d", errno);
+            goto _fail;
         }
         stream_offset += input_size;
         stream_remaining -= input_size;
