@@ -241,7 +241,7 @@ void app_main(void)
         if (!rg_storage_unzip_file(app->romPath, NULL, &rom_data, &rom_size, RG_FILE_ALIGN_64KB))
             RG_PANIC("ROM file unzipping failed!");
     }
-    else if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size, 0))
+    else if (!rg_storage_read_file(app->romPath, &rom_data, &rom_size, RG_FILE_ALIGN_64KB))
     {
         RG_PANIC("ROM load failed!");
     }
