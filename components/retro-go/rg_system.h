@@ -173,8 +173,8 @@ typedef struct
     int frameskip;
     int overclock;
     int tickTimeout;
+    int availableMemory;
     bool watchdog;
-    bool lowMemoryMode;
     bool isLauncher;
     // bool isOfficial;
     bool isRelease;

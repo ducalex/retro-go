@@ -111,7 +111,6 @@ static void update_memory_statistics(void)
 {
 #ifdef ESP_PLATFORM
     multi_heap_info_t heap_info;
-
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     statistics.freeMemoryInt = heap_info.total_free_bytes;
     statistics.freeBlockInt = heap_info.largest_free_block;
@@ -122,6 +121,9 @@ static void update_memory_statistics(void)
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
 
     statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
+#else
+    statistics.freeMemoryInt = statistics.freeBlockInt = statistics.totalMemoryInt = (1 << 28);
+    statistics.freeMemoryExt = statistics.freeBlockExt = statistics.totalMemoryExt = (1 << 28);
 #endif
 }
 
@@ -334,8 +336,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .frameskip = 1,
         .overclock = 0,
         .tickTimeout = 3000000,
+        .availableMemory = 0,
         .watchdog = true,
-        .lowMemoryMode = false,
     #if RG_BUILD_RELEASE
         .isRelease = true,
         .logLevel = RG_LOG_INFO,
@@ -440,11 +442,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = rg_queue_create(1, 0);
 #endif
 
-#ifdef ESP_PLATFORM
     update_memory_statistics();
     RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
             statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
-    if ((app.lowMemoryMode = (statistics.totalMemoryExt == 0)))
+    app.availableMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
+
+#ifdef ESP_PLATFORM
+    if (statistics.totalMemoryExt == 0)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
