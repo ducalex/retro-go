@@ -623,7 +623,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     } while (status == TINFL_STATUS_NEEDS_MORE_INPUT);
 
     // With user-provided buffer we might not reach TINFL_STATUS_DONE, but it doesn't mean we've failed
-    if (output_buffer_pos != output_buffer_size || status < TINFL_STATUS_DONE) // (status != TINFL_STATUS_DONE)
+    if (status < TINFL_STATUS_DONE) // (status != TINFL_STATUS_DONE)
     {
         RG_LOGE("Decompression failed! ret: %d", (int)status);
         goto _fail;
