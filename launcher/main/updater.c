@@ -12,15 +12,17 @@
 #define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
 #endif
 
+#define NAMELENGTH 64
+
 typedef struct
 {
-    char name[32];
+    char name[NAMELENGTH];
     char url[256];
 } asset_t;
 
 typedef struct
 {
-    char name[32];
+    char name[NAMELENGTH];
     char date[32];
     asset_t *assets;
     size_t assets_count;
@@ -170,7 +172,7 @@ void updater_show_dialog(void)
         char *name = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name"));
         char *date = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at"));
 
-        snprintf(releases[i].name, 32, "%s", name ?: "N/A");
+        snprintf(releases[i].name, NAMELENGTH, "%s", name ?: "N/A");
         snprintf(releases[i].date, 32, "%s", date ?: "N/A");
 
         cJSON *assets_json = cJSON_GetObjectItem(release_json, "assets");
@@ -186,7 +188,7 @@ void updater_show_dialog(void)
             if (name && url)
             {
                 asset_t *asset = &releases[i].assets[releases[i].assets_count++];
-                snprintf(asset->name, 32, "%s", name);
+                snprintf(asset->name, NAMELENGTH, "%s", name);
                 snprintf(asset->url, 256, "%s", url);
             }
         }
