@@ -338,6 +338,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .tickTimeout = 3000000,
         .availableMemory = 0,
         .watchdog = true,
+        .isLauncher = false,
     #if RG_BUILD_RELEASE
         .isRelease = true,
         .logLevel = RG_LOG_INFO,

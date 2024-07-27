@@ -74,7 +74,7 @@ enum
     RG_FILE_ALIGN_16KB = (1 << 1),      // Will align/pad data_out to 16KB (not applicable if RG_FILE_USER_BUFFER)
     RG_FILE_ALIGN_32KB = (1 << 2),      // Will align/pad data_out to 32KB (not applicable if RG_FILE_USER_BUFFER)
     RG_FILE_ALIGN_64KB = (1 << 3),      // Will align/pad data_out to 64KB (not applicable if RG_FILE_USER_BUFFER)
-    RG_FILE_USER_BUFFER = (1 << 4),     // Will use *data_out and data_len provided by the user
+    RG_FILE_USER_BUFFER = (1 << 4),     // Will use *data_out and *data_len provided by the user
     RG_FILE_ATOMIC_WRITE = (1 << 5),    // Will write to a temp file before replacing the target
 };
 bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, uint32_t flags);

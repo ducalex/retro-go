@@ -485,7 +485,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
 
 bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, uint32_t flags)
 {
-    RG_ASSERT(data_ptr, "Bad param");
+    RG_ASSERT(data_ptr || !data_len, "Bad param");
     CHECK_PATH(path);
 
     // TODO: If atomic is true we should write to a temp file and only replace the target on success
@@ -496,7 +496,7 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
         return false;
     }
 
-    if (!fwrite(data_ptr, data_len, 1, fp))
+    if (data_len && !fwrite(data_ptr, data_len, 1, fp))
     {
         RG_LOGE("Fwrite failed");
         fclose(fp);
