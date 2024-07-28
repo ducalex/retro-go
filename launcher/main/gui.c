@@ -577,7 +577,7 @@ void gui_load_preview(tab_t *tab)
         {
             path_len = snprintf(path, RG_PATH_MAX, "%s/%s", app->paths.covers, file->name);
             if (path_len < RG_PATH_MAX - 3) // Don't bother if we already have an overflow
-                strcpy(path + path_len - strlen(rg_extension(file->name)), "png");
+                strcpy(path + path_len - strlen(rg_extension(file->name) ?: ""), "png");
         }
         else if (type == 0x4) // Save state screenshot (png)
         {
