@@ -68,9 +68,9 @@ static void tab_refresh(book_t *book)
             {
                 listbox_item_t *listitem = &tab->listbox.items[items_count++];
                 const char *type = file->app ? file->app->short_name : "n/a";
-                snprintf(listitem->text, 128, "[%-3s] %.100s", type, file->name);
+                snprintf(listitem->text, sizeof(listitem->text), "[%-3s] %.40s", type, file->name);
                 listitem->arg = file;
-                listitem->id = i;
+                listitem->order = i;
             }
         }
     }

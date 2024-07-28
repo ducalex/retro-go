@@ -253,12 +253,12 @@ static int list_comp_text_desc(const void *a, const void *b)
 
 static int list_comp_id_asc(const void *a, const void *b)
 {
-    return ((listbox_item_t*)a)->id - ((listbox_item_t*)b)->id;
+    return ((listbox_item_t*)a)->order - ((listbox_item_t*)b)->order;
 }
 
 static int list_comp_id_desc(const void *a, const void *b)
 {
-    return ((listbox_item_t*)b)->id - ((listbox_item_t*)a)->id;
+    return ((listbox_item_t*)b)->order - ((listbox_item_t*)a)->order;
 }
 
 void gui_sort_list(tab_t *tab)

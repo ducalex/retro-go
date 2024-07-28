@@ -337,12 +337,12 @@ static void tab_refresh(tab_t *tab)
 
             if (file->type == 0xFF)
             {
-                snprintf(item->text, 128, "[%s]", file->name);
-                // snprintf(item->text, 128, "/%s/", file->name);
+                snprintf(item->text, sizeof(item->text), "[%.40s]", file->name);
+                // snprintf(item->text, sizeof(item->text), "/[%.40s]/", file->name);
             }
             else
             {
-                snprintf(item->text, 128, "%s", file->name);
+                snprintf(item->text, sizeof(item->text), "%s", file->name);
                 if ((ext = strrchr(item->text, '.')))
                     *ext = 0;
             }

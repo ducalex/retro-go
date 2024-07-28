@@ -63,9 +63,10 @@ typedef struct {
 } theme_t;
 
 typedef struct {
-    char text[128];
-    int enabled;
-    int id;
+    char text[92];
+    uint16_t order;
+    uint8_t enabled;
+    uint8_t unused;
     void *arg;
 } listbox_item_t;
 
@@ -83,11 +84,6 @@ typedef struct {
     size_t size;
     uint8_t data[];
 } binfile_t;
-
-typedef struct {
-    unsigned int id;
-    rg_image_t *img;
-} image_t;
 
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 
