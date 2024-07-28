@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import argparse
-import hashlib
 import subprocess
 import shutil
 import glob
-import time
 import math
 import sys
 import re
@@ -34,84 +32,6 @@ if os.path.exists("rg_config.py"):
 #     for file in glob(*/CMakeLists.txt):
 #       PROJECT_APPS[basename(dirname(file))] = [0, 0, 0, 0]
 
-
-class Symbol:
-    def __init__(self, address, name, source="??:?", inlined=None):
-        self.address = int(str(address), 0)
-        self.name = name
-        self.source = os.path.normpath(source)
-        self.inlined = inlined
-        self.hash = hashlib.sha1(bytes(self.source + self.name, "UTF-8")).hexdigest()
-
-    def __str__(self):
-        text = "0x%x: %s at %s" % (self.address, self.name, self.source)
-        if self.inlined:
-            text += "\ninlined by %s" % str(self.inlined)
-        return text.replace("\n", "\n  ")
-
-
-class CallBranch:
-    def __init__(self, name, parent=None):
-        self.name = name
-        self.parent = parent
-        self.run_time = 0;
-        self.children = dict()
-
-    def add_frame(self, caller, callee, num_calls, run_time):
-        if callee.hash not in self.children:
-            self.children[callee.hash] = [caller, callee, num_calls, run_time]
-        else:
-            self.children[callee.hash][2] += num_calls
-            self.children[callee.hash][3] += run_time
-        self.run_time += run_time
-
-
-def debug_print(text):
-    print("\033[0;33m%s\033[0m" % text)
-
-
-def find_symbol(elf_file, addr):
-    try:
-        if addr not in symbols_cache:
-            symbols_cache[addr] = Symbol(0, "??")
-            out = subprocess.check_output(["xtensa-esp32-elf-addr2line", "-ifCe", elf_file, addr], shell=True)
-            lines = out.decode().rstrip().splitlines()
-            if len(lines) > 2:
-                symbols_cache[addr] = Symbol(addr, lines[0], lines[1], Symbol(0, lines[2], lines[3]))
-            elif len(lines) == 2:
-                symbols_cache[addr] = Symbol(addr, lines[0], lines[1])
-    except:
-        pass
-    return symbols_cache[addr]
-symbols_cache = dict()
-
-
-def analyze_profile(frames):
-    flatten = True # False is currently not working correctly
-    tree = dict()
-
-    for caller, callee, num_calls, run_time in frames:
-        branch = '*' if flatten else caller.name + "@" + os.path.basename(caller.source)
-        if branch not in tree:
-            tree[branch] = CallBranch(branch, caller)
-        tree[branch].add_frame(caller, callee, num_calls, run_time)
-
-    tree_sorted = sorted(tree.values(), key=lambda x: x.run_time, reverse=True)
-
-    for branch in tree_sorted:
-        if branch.run_time < 100_000:
-            continue
-
-        debug_print("%-68s %dms" % (branch.name, branch.run_time / 1000))
-        children = sorted(branch.children.values(), key=lambda x: x[3], reverse=True)
-
-        for caller, callee, num_calls, run_time in children:
-            if run_time < 10_000:
-                continue
-            debug_print("    %-32s %-20s %-10d %dms"
-                % (callee.name, os.path.basename(callee.source), num_calls, run_time / 1000))
-
-        debug_print("")
 
 
 def run(cmd, cwd=None, check=True):
@@ -224,68 +144,12 @@ def flash_app(app, port, baudrate=1152000):
 
 def monitor_app(app, port, baudrate=115200):
     print(f"Starting monitor for app {app} on port {port}")
-    try:
-        import serial
-        mon = serial.Serial(port, baudrate=baudrate, timeout=0)
-        elf = os.path.join(app, "build", app + ".elf")
-    except:
-        exit("Failed to load the serial module. You can try running 'pip install pyserial'.")
-
-    mon.setDTR(False)
-    mon.setRTS(False)
-
-    # To do: detect ctrl+r ctrl+c etc
-
-    profile_frames = list()
-
-    line_bytes = b''
-    while 1:
-        if mon.in_waiting == 0:
-            sys.stdout.flush()
-            time.sleep(0.010)
-            continue
-
-        byte = mon.read()
-
-        if byte != b"\n":
-            sys.stdout.buffer.write(byte) # byte.decode()
-            line_bytes += byte
-        else:
-            line = line_bytes.decode(errors="ignore").rstrip()
-            line_bytes = b''
-
-            # check for debug data meant to be analyzed, not displayed
-            m = re.match(r"^RGD:([A-Z0-9]+):([A-Z0-9]+)\s*(.*)$", line)
-            if m:
-                rg_debug_ns  = m.group(1)
-                rg_debug_cmd = m.group(2)
-                rg_debug_arg = m.group(3)
-
-                sys.stdout.buffer.write(b"\r") # Clear the line
-
-                if rg_debug_ns == "PROF":
-                    if rg_debug_cmd == "BEGIN":
-                        profile_frames.clear()
-                    if rg_debug_cmd == "END":
-                        analyze_profile(profile_frames)
-                    if rg_debug_cmd == "DATA":
-                        m = re.match(r"([x0-9a-f]+)\s([x0-9a-f]+)\s(\d+)\s(\d+)", rg_debug_arg)
-                        if m:
-                            profile_frames.append([
-                                find_symbol(elf, m.group(1)),
-                                find_symbol(elf, m.group(2)),
-                                int(m.group(3)),
-                                int(m.group(4)),
-                            ])
-                    continue
-
-            sys.stdout.buffer.write(b"\n")
-
-            # check for symbol addresses
-            for addr in re.findall(r"0x4[0-9a-fA-F]{7}", line):
-                symbol = find_symbol(elf, addr)
-                if symbol and "??:" not in symbol.source:
-                    debug_print(symbol)
+    elf_file = os.path.join(os.getcwd(), app, "build", app + ".elf")
+    if os.path.exists(elf_file):
+        args = ["idf_monitor.py", "--port", port, elf_file]
+    else: # We must pass a file to idf_monitor.py but it doesn't have to be valid with -d
+        args = ["idf_monitor.py", "--port", port, "-d", sys.argv[0]]
+    run(args)
 
 
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
@@ -357,7 +221,7 @@ try:
 
     if command in ["monitor", "run", "profile"]:
         print("=== Step: Monitoring ===\n")
-        monitor_app(apps[0] if len(apps) else "dummy", args.port)
+        monitor_app(apps[0] if len(apps) else "none", args.port)
 
     print("All done!")
 
