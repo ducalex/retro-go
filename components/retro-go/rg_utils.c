@@ -62,12 +62,14 @@ const char *rg_extension(const char *filename)
 {
     if (!filename)
         return NULL;
-
-    const char *ptr = rg_basename(filename);
-    const char *ext = strrchr(ptr, '.');
-    if (!ext)
-        return ptr + strlen(ptr);
-    return ext + 1;
+    const char *ptr = filename + strlen(filename) - 1;
+    while (ptr > filename && *ptr != '/')
+    {
+        if (*ptr == '.')
+            return ptr + 1;
+        ptr--;
+    }
+    return NULL;
 }
 
 bool rg_extension_match(const char *filename, const char *extensions)
