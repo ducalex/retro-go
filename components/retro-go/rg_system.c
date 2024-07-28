@@ -240,9 +240,10 @@ static void system_monitor_task(void *arg)
             }
         }
 
-        if (abs(prevTime - rtcValue) > 60)
+        int seconds = (int)difftime(prevTime, rtcValue);
+        if (abs(seconds) > 60)
         {
-            RG_LOGI("System time suddenly changed %d seconds.", (int)(rtcValue - prevTime));
+            RG_LOGI("System time suddenly changed %d seconds.", seconds);
             rg_system_save_time(); // Not sure if this is thread safe...
         }
         prevTime = rtcValue;
