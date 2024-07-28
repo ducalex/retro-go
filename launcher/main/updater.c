@@ -185,7 +185,7 @@ void updater_show_dialog(void)
             cJSON *asset_json = cJSON_GetArrayItem(assets_json, j);
             char *name = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "name"));
             char *url = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "browser_download_url"));
-            if (name && url)
+            if (name && url && rg_extension_match(name, "fw img"))
             {
                 asset_t *asset = &releases[i].assets[releases[i].assets_count++];
                 snprintf(asset->name, NAMELENGTH, "%s", name);
