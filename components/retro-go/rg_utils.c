@@ -70,19 +70,33 @@ const char *rg_extension(const char *filename)
     return ext + 1;
 }
 
-bool rg_extension_match(const char *filename, const char *extension)
+bool rg_extension_match(const char *filename, const char *extensions)
 {
-    const char *fileext = rg_extension(filename);
-    if (!fileext || !extension)
+    const char *ext = rg_extension(filename);
+    if (!ext || !extensions)
         return false;
 
-    while (*fileext && *extension)
+    const char *haystack = extensions;
+    while (*haystack)
     {
-        if (toupper(*fileext++) != toupper(*extension++))
-            return false;
+        while (*haystack == ' ')
+            haystack++;
+
+        const char *needle = ext;
+        while (*needle && *haystack && tolower((unsigned char)*needle) == tolower((unsigned char)*haystack))
+        {
+            needle++;
+            haystack++;
+        }
+        if (*needle == 0 && (*haystack == 0 || *haystack == ' '))
+            return true;
+
+        // Fast forward to next extension
+        while (*haystack && *haystack != ' ')
+            haystack++;
     }
 
-    return *fileext == 0 && *extension == 0;
+    return false;
 }
 
 const char *rg_relpath(const char *path)

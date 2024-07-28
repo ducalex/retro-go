@@ -62,7 +62,7 @@ char *rg_strtoupper(char *str);
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *filename);
-bool rg_extension_match(const char *filename, const char *extension);
+bool rg_extension_match(const char *filename, const char *extensions);
 const char *rg_relpath(const char *path);
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t rg_hash(const char *buf, size_t len);

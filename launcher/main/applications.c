@@ -28,19 +28,16 @@ static int apps_count = 0;
 static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 {
     retro_app_t *app = (retro_app_t *)arg;
-    const char *ext = rg_extension(entry->basename);
     uint8_t is_valid = false;
     uint8_t type = 0x00;
-    char ext_buf[32];
 
     // Skip hidden files
     if (entry->basename[0] == '.')
         return RG_SCANDIR_SKIP;
 
-    if (entry->is_file && ext[0])
+    if (entry->is_file)
     {
-        snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
-        is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
+        is_valid = rg_extension_match(entry->basename, app->extensions);
         type = 0x00;
     }
     else if (entry->is_dir)
