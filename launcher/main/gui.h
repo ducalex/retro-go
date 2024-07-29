@@ -65,7 +65,7 @@ typedef struct {
 
 typedef struct {
     char text[92];
-    uint16_t order;
+    int16_t order;
     uint8_t enabled;
     uint8_t unused;
     void *arg;

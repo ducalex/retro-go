@@ -1215,7 +1215,6 @@ uint8_t rg_emu_get_last_used_slot(const char *romPath)
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 {
     rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
-    uint8_t last_used_slot = rg_emu_get_last_used_slot(romPath);
 
     for (size_t i = 0; i < slots; i++)
     {
@@ -1233,12 +1232,16 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
         {
             if (!result->latest || slot->mtime > result->latest->mtime)
                 result->latest = slot;
-            if (slot->id == last_used_slot)
-                result->lastused = slot;
             result->used++;
         }
         free(preview);
         free(file);
+    }
+    if (result->used)
+    {
+        uint8_t last_used_slot = rg_emu_get_last_used_slot(romPath);
+        if (last_used_slot < slots)
+            result->lastused = &result->slots[last_used_slot];
     }
     if (!result->lastused && result->latest)
         result->lastused = result->latest;

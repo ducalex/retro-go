@@ -74,6 +74,26 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     return RG_SCANDIR_CONTINUE;
 }
 
+static int scan_saves_cb(const rg_scandir_t *entry, void *arg)
+{
+    if (entry->is_file && rg_extension_match(entry->basename, "sav"))
+    {
+        retro_app_t *app = (retro_app_t *)arg;
+        for (size_t i = 0; i < app->files_count; i++)
+        {
+            retro_file_t *file = &app->files[i];
+            // Saves are the rom name with possibly `.sav` or `-0.sav` appended.
+            if (strncmp(entry->basename, file->name, strlen(file->name)) == 0)
+            {
+                // FIXME: Check if folder matches first
+                file->saves++;
+                break;
+            }
+        }
+    }
+    return RG_SCANDIR_CONTINUE;
+}
+
 static void application_init(retro_app_t *app)
 {
     RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
@@ -86,6 +106,8 @@ static void application_init(retro_app_t *app)
     rg_storage_mkdir(app->paths.roms);
 
     rg_storage_scandir(app->paths.roms, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
+    rg_storage_scandir(app->paths.saves, scan_saves_cb, app, RG_SCANDIR_RECURSIVE);
+    // rg_storage_scandir(app->paths.covers, scan_folder_cb3, app, RG_SCANDIR_RECURSIVE);
 
     app->use_crc_covers = rg_storage_exists(strcat(app->paths.covers, "/0"));
     app->paths.covers[strlen(app->paths.covers) - 2] = 0;
@@ -477,6 +499,7 @@ bool application_path_to_file(const char *path, retro_file_t *file)
             *file = (retro_file_t) {
                 .name = strdup(rg_basename(path)),
                 .folder = rg_unique_string(rg_dirname(path)),
+                .saves = 0xFF, // We don't know, but we want gui_load_preview to check if needed
                 .type = RETRO_TYPE_FILE,
                 .app = apps[i],
             };
@@ -579,7 +602,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     char *rom_path = strdup(get_file_path(file));
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
     rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
-    bool has_save = savestates->used > 0;
+    bool has_save = savestates->used > 0; // Don't rely on file->saves just yet
     bool has_sram = rg_storage_exists(sram_path);
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
@@ -613,6 +636,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         {
             remove(savestates->slots[slot].preview);
             remove(savestates->slots[slot].file);
+            // FIXME: We should update the last slot used here
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {

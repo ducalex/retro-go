@@ -576,7 +576,7 @@ void gui_load_preview(tab_t *tab)
             if (path_len < RG_PATH_MAX - 3) // Don't bother if we already have an overflow
                 strcpy(path + path_len - strlen(rg_extension(file->name) ?: ""), "png");
         }
-        else if (type == 0x4) // Save state screenshot (png)
+        else if (type == 0x4 && file->saves > 0) // Save state screenshot (png)
         {
             snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
             uint8_t last_used_slot = rg_emu_get_last_used_slot(path);
