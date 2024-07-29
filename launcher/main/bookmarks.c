@@ -15,7 +15,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     retro_file_t *file = (retro_file_t *)(item ? item->arg : NULL);
     // book_t *book = (book_t *)tab->arg;
 
-    if (event == TAB_INIT)
+    if (event == TAB_INIT || event == TAB_RESCAN)
     {
         //
     }

@@ -26,6 +26,7 @@ typedef enum {
     TAB_LEAVE,
     TAB_IDLE,
     TAB_REFRESH,
+    TAB_RESCAN,
 } gui_event_t;
 
 typedef enum {

@@ -79,7 +79,7 @@ static void application_init(retro_app_t *app)
     RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
 
     if (app->initialized)
-        app->files_count = 0;
+        return;
 
     rg_storage_mkdir(app->paths.covers);
     rg_storage_mkdir(app->paths.saves);
@@ -305,7 +305,7 @@ void crc_cache_prebuild(void)
     crc_cache_save();
 }
 
-static void tab_refresh(tab_t *tab)
+static void tab_refresh(tab_t *tab, const char *selected)
 {
     retro_app_t *app = (retro_app_t *)tab->arg;
 
@@ -365,6 +365,18 @@ static void tab_refresh(tab_t *tab)
         sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
         tab->listbox.cursor = 4;
     }
+    else if (selected)
+    {
+        for (int i = 0; i < tab->listbox.length; i++)
+        {
+            retro_file_t *file = tab->listbox.items[i].arg;
+            if (file && strcmp(file->name, selected) == 0) // file->folder == selected->folder
+            {
+                tab->listbox.cursor = i;
+                break;
+            }
+        }
+    }
 
     gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
 }
@@ -375,7 +387,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     retro_app_t *app = (retro_app_t *)tab->arg;
     retro_file_t *file = (retro_file_t *)(item ? item->arg : NULL);
 
-    if (event == TAB_INIT)
+    if (event == TAB_INIT || event == TAB_RESCAN)
     {
         retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
         if (selected && !rg_storage_exists(get_file_path(selected)))
@@ -385,25 +397,20 @@ static void event_handler(gui_event_t event, tab_t *tab)
         }
         tab->navpath = selected ? selected->folder : NULL;
 
-        application_init(app);
-        tab_refresh(tab);
-
-        if (selected)
+        if (event == TAB_RESCAN && app->initialized)
         {
-            for (int i = 0; i < tab->listbox.length; i++)
-            {
-                retro_file_t *file = tab->listbox.items[i].arg;
-                if (file && strcmp(file->name, selected->name) == 0)
-                {
-                    gui_scroll_list(tab, SCROLL_SET, i);
-                    break;
-                }
-            }
+            for (size_t i = 0; i < app->files_count; ++i)
+                free((char *)app->files[i].name);
+            app->files_count = 0;
+            app->initialized = false;
         }
+
+        application_init(app);
+        tab_refresh(tab, selected ? selected->name : NULL);
     }
     else if (event == TAB_REFRESH)
     {
-        tab_refresh(tab);
+        tab_refresh(tab, NULL);
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
@@ -427,7 +434,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             {
                 tab->navpath = rg_unique_string(get_file_path(file));
                 tab->listbox.cursor = 0;
-                tab_refresh(tab);
+                tab_refresh(tab, NULL);
             }
             else
             {
@@ -444,18 +451,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
             tab->navpath = rg_unique_string(rg_dirname(tab->navpath));
             tab->listbox.cursor = 0;
 
-            tab_refresh(tab);
-
-            // This seems bad but keep in mind that folders are sorted to the top of items[]
-            for (int i = 0; i < tab->listbox.length; ++i)
-            {
-                retro_file_t *item = tab->listbox.items[i].arg;
-                if (strcmp(item->name, from) == 0)
-                {
-                    tab->listbox.cursor = i;
-                    break;
-                }
-            }
+            tab_refresh(tab, from);
         }
     }
 }

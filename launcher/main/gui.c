@@ -105,13 +105,10 @@ tab_t *gui_get_tab(int index)
 
 void gui_invalidate(void)
 {
-    // This super lazy method will cause memory leaks, but it's better than nothing for now.
     for (size_t i = 0; i < gui.tabs_count; ++i)
     {
-        if (!gui.tabs[i]->initialized)
-            continue;
-        gui_event(TAB_INIT, gui.tabs[i]);
-        gui_event(TAB_REFRESH, gui.tabs[i]);
+        if (gui.tabs[i]->initialized)
+            gui_event(TAB_RESCAN, gui.tabs[i]);
     }
 }
 
