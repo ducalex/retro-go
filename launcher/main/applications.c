@@ -389,14 +389,6 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
     if (event == TAB_INIT || event == TAB_RESCAN)
     {
-        retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
-        if (selected && !rg_storage_exists(get_file_path(selected)))
-        {
-            RG_LOGE("Selected file no longer exists!");
-            selected = NULL;
-        }
-        tab->navpath = selected ? selected->folder : NULL;
-
         if (event == TAB_RESCAN && app->initialized)
         {
             for (size_t i = 0; i < app->files_count; ++i)
@@ -406,6 +398,23 @@ static void event_handler(gui_event_t event, tab_t *tab)
         }
 
         application_init(app);
+        tab->navpath = NULL;
+
+        retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
+        if (selected) // && !rg_storage_exists(get_file_path(selected)))
+        {
+            // rg_storage_exists can take a long time on large folders (200ms), this is much faster
+            for (size_t i = 0; i < app->files_count; ++i)
+            {
+                retro_file_t *file = &app->files[i];
+                if (selected->folder == file->folder && strcmp(selected->name, file->name) == 0)
+                {
+                    tab->navpath = file->folder;
+                    break;
+                }
+            }
+        }
+
         tab_refresh(tab, selected ? selected->name : NULL);
     }
     else if (event == TAB_REFRESH)
