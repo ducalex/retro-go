@@ -65,7 +65,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 
     app->files[app->files_count++] = (retro_file_t) {
         .name = strdup(entry->basename),
-        .folder = const_string(entry->dirname),
+        .folder = rg_unique_string(entry->dirname),
         .app = (void*)app,
         .type = type,
         .is_valid = true,
@@ -311,8 +311,8 @@ static void tab_refresh(tab_t *tab)
 
     memset(&tab->status, 0, sizeof(tab->status));
 
-    const char *basepath = const_string(app->paths.roms);
-    const char *folder = const_string(tab->navpath ?: basepath);
+    const char *basepath = rg_unique_string(app->paths.roms);
+    const char *folder = rg_unique_string(tab->navpath ?: basepath);
     size_t items_count = 0;
     char *ext = NULL;
 
@@ -425,7 +425,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         {
             if (file->type == 0xFF)
             {
-                tab->navpath = const_string(get_file_path(file));
+                tab->navpath = rg_unique_string(get_file_path(file));
                 tab->listbox.cursor = 0;
                 tab_refresh(tab);
             }
@@ -439,9 +439,9 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (tab->navpath)
         {
-            const char *from = rg_basename(const_string(tab->navpath));
+            const char *from = rg_basename(rg_unique_string(tab->navpath));
 
-            tab->navpath = const_string(rg_dirname(tab->navpath));
+            tab->navpath = rg_unique_string(rg_dirname(tab->navpath));
             tab->listbox.cursor = 0;
 
             tab_refresh(tab);
@@ -471,7 +471,7 @@ bool application_path_to_file(const char *path, retro_file_t *file)
         {
             *file = (retro_file_t) {
                 .name = strdup(rg_basename(path)),
-                .folder = const_string(rg_dirname(path)),
+                .folder = rg_unique_string(rg_dirname(path)),
                 .app = apps[i],
                 .is_valid = true,
             };

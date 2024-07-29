@@ -40,19 +40,13 @@
 #define PRINTF_BINARY_32 PRINTF_BINARY_16 " " PRINTF_BINARY_16
 #define PRINTF_BINVAL_32(i) PRINTF_BINVAL_16((i) >> 16), PRINTF_BINVAL_16(i)
 
-typedef struct
-{
-    uint16_t capacity;
-    uint16_t length;
-    // uint32_t hash;
-    char data[];
-} rg_str_t;
-
 /**
- * Const strings are unique strings that will be valid for the lifetime of the application.
- * Things like const_string("abc") == const_string("abc") are guaranteed to be true
+ * both functions give you an allocation of strlen(str) + 1 valid for the lifetime of the application
+ * they cannot be freed. unique avoids keeping multiple copies of an identical string (eg a path)
+ * Things like unique_string("abc") == unique_string("abc") are guaranteed to be true
 */
-const char *const_string(const char *str);
+const char *rg_const_string(const char *str);
+const char *rg_unique_string(const char *str);
 
 size_t strlcpy(char *dst, const char *src, size_t size);
 size_t strlcat(char *dst, const char *src, size_t size);
