@@ -8,6 +8,9 @@ import sys
 import re
 import os
 
+if not os.getenv("IDF_PATH"):
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
+
 TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
 for t in glob.glob("components/retro-go/targets/*/config.h"):
     TARGETS.append(os.path.basename(os.path.dirname(t)))
@@ -25,13 +28,16 @@ try:
 except:
     PROJECT_VER = "unknown"
 
+IDF_PY = "idf.py"
+ESPTOOL_PY = "esptool.py"
+PARTTOOL_PY = "parttool.py"
+IDF_MONITOR_PY = "idf_monitor.py"
+GEN_ESP32PART_PY = os.path.join(os.getenv("IDF_PATH"), "components", "partition_table", "gen_esp32part.py")
+MKFW_PY = os.path.join("tools", "mkfw.py")
+
 if os.path.exists("rg_config.py"):
     with open("rg_config.py", "rb") as f:
         exec(f.read())
-# else: something like
-#     for file in glob(*/CMakeLists.txt):
-#       PROJECT_APPS[basename(dirname(file))] = [0, 0, 0, 0]
-
 
 
 def run(cmd, cwd=None, check=True):
@@ -42,7 +48,7 @@ def run(cmd, cwd=None, check=True):
 def build_firmware(apps, device_type, fw_format="odroid-go"):
     print("Building firmware with: %s\n" % " ".join(apps))
     args = [
-        os.path.join("tools", "mkfw.py"),
+        MKFW_PY,
         ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
         ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
         PROJECT_ICON
@@ -80,12 +86,12 @@ def build_image(apps, device_type, img_format="esp32"):
     print("Generating partition table...")
     with open("partitions.csv", "w") as f:
         f.write("\n".join(table_csv))
-    run(["gen_esp32part.py", "partitions.csv", "partitions.bin"])
+    run([GEN_ESP32PART_PY, "partitions.csv", "partitions.bin"])
     with open("partitions.bin", "rb") as f:
         table_bin = f.read()
 
     print("Building bootloader...")
-    run(["idf.py", "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+    run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
     with open(os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin"), "rb") as f:
         bootloader_bin = f.read()
 
@@ -119,7 +125,7 @@ def clean_app(app):
 def build_app(app, device_type, with_profiling=False, no_networking=False, is_release=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
-    args = ["idf.py", "app"]
+    args = [IDF_PY, "app"]
     args.append(f"-DRG_BUILD_VERSION={PROJECT_VER}")
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
     args.append(f"-DRG_BUILD_TYPE={1 if is_release else 0}")
@@ -135,21 +141,20 @@ def flash_app(app, port, baudrate=1152000):
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
         print("Reading device's partition table...")
-        run(["esptool.py", "read_flash", "0x8000", "0x1000", "partitions.bin"], check=False)
-        run(["gen_esp32part.py", "partitions.bin"], check=False)
+        run([ESPTOOL_PY, "read_flash", "0x8000", "0x1000", "partitions.bin"], check=False)
+        run([GEN_ESP32PART_PY, "partitions.bin"], check=False)
     app_bin = os.path.join(app, "build", app + ".bin")
     print(f"Flashing '{app_bin}' to port {port}")
-    run(["parttool.py", "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
+    run([PARTTOOL_PY, "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
 
 
 def monitor_app(app, port, baudrate=115200):
     print(f"Starting monitor for app {app} on port {port}")
     elf_file = os.path.join(os.getcwd(), app, "build", app + ".elf")
     if os.path.exists(elf_file):
-        args = ["idf_monitor.py", "--port", port, elf_file]
+        run([IDF_MONITOR_PY, "--port", port, elf_file])
     else: # We must pass a file to idf_monitor.py but it doesn't have to be valid with -d
-        args = ["idf_monitor.py", "--port", port, "-d", sys.argv[0]]
-    run(args)
+        run([IDF_MONITOR_PY, "--port", port, "-d", sys.argv[0]])
 
 
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
@@ -178,16 +183,12 @@ command = args.command
 apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
 
 
-if not os.getenv("IDF_PATH"):
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-
 if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
     os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
 
 if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
         exec(f.read())
-
 
 try:
     if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
