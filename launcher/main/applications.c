@@ -28,8 +28,7 @@ static int apps_count = 0;
 static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 {
     retro_app_t *app = (retro_app_t *)arg;
-    uint8_t is_valid = false;
-    uint8_t type = 0x00;
+    uint8_t type = RETRO_TYPE_INVALID;
 
     // Skip hidden files
     if (entry->basename[0] == '.')
@@ -37,17 +36,16 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 
     if (entry->is_file)
     {
-        is_valid = rg_extension_match(entry->basename, app->extensions);
-        type = 0x00;
+        if (rg_extension_match(entry->basename, app->extensions))
+            type = RETRO_TYPE_FILE;
     }
     else if (entry->is_dir)
     {
         RG_LOGI("Found subdirectory '%s'", entry->path);
-        is_valid = true;
-        type = 0xFF;
+        type = RETRO_TYPE_FOLDER;
     }
 
-    if (!is_valid)
+    if (type == RETRO_TYPE_INVALID)
         return RG_SCANDIR_CONTINUE;
 
     if (app->files_count + 1 > app->files_capacity)
@@ -66,9 +64,11 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     app->files[app->files_count++] = (retro_file_t) {
         .name = strdup(entry->basename),
         .folder = rg_unique_string(entry->dirname),
-        .app = (void*)app,
+        .checksum = 0,
+        .missing_cover = 0,
+        .saves = 0,
         .type = type,
-        .is_valid = true,
+        .app = (void*)app,
     };
 
     return RG_SCANDIR_CONTINUE;
@@ -327,7 +327,7 @@ static void tab_refresh(tab_t *tab, const char *selected)
         {
             retro_file_t *file = &app->files[i];
 
-            if (!file->is_valid || !file->name)
+            if (file->type == RETRO_TYPE_INVALID || !file->name)
                 continue;
 
             if (file->folder != folder && strcmp(file->folder, folder) != 0)
@@ -335,7 +335,7 @@ static void tab_refresh(tab_t *tab, const char *selected)
 
             listbox_item_t *item = &tab->listbox.items[items_count++];
 
-            if (file->type == 0xFF)
+            if (file->type == RETRO_TYPE_FOLDER)
             {
                 snprintf(item->text, sizeof(item->text), "[%.40s]", file->name);
                 // snprintf(item->text, sizeof(item->text), "/[%.40s]/", file->name);
@@ -439,13 +439,13 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file)
         {
-            if (file->type == 0xFF)
+            if (file->type == RETRO_TYPE_FOLDER)
             {
                 tab->navpath = rg_unique_string(get_file_path(file));
                 tab->listbox.cursor = 0;
                 tab_refresh(tab, NULL);
             }
-            else
+            else if (file->type == RETRO_TYPE_FILE)
             {
                 application_show_file_menu(file, false);
             }
@@ -477,8 +477,8 @@ bool application_path_to_file(const char *path, retro_file_t *file)
             *file = (retro_file_t) {
                 .name = strdup(rg_basename(path)),
                 .folder = rg_unique_string(rg_dirname(path)),
+                .type = RETRO_TYPE_FILE,
                 .app = apps[i],
-                .is_valid = true,
             };
             return true;
         }
@@ -562,7 +562,7 @@ static void show_file_info(retro_file_t *file)
                 {
                     bookmark_remove(BOOK_TYPE_FAVORITE, file);
                     bookmark_remove(BOOK_TYPE_RECENT, file);
-                    file->is_valid = false;
+                    file->type = RETRO_TYPE_INVALID;
                     gui_event(TAB_REFRESH, gui_get_current_tab());
                     return;
                 }

@@ -64,7 +64,7 @@ static void tab_refresh(book_t *book)
         for (int i = 0; i < book->capacity; i++)
         {
             retro_file_t *file = &book->items[i];
-            if (file->is_valid)
+            if (file->type != RETRO_TYPE_INVALID)
             {
                 listbox_item_t *listitem = &tab->listbox.items[items_count++];
                 const char *type = file->app ? file->app->short_name : "n/a";
@@ -97,7 +97,7 @@ static void book_repack(book_t *book)
     for (size_t i = 0; i < book->capacity; i++)
     {
         retro_file_t *item = &book->items[i];
-        if (!item->is_valid)
+        if (item->type == RETRO_TYPE_INVALID)
             continue;
         if (book->count != i)
             book->items[book->count] = *item;
@@ -110,11 +110,11 @@ static void book_append(book_t *book, const retro_file_t *new_item)
     // Remove the oldest item if we need the space
     while (book->count >= book->capacity)
     {
-        book->items[0].is_valid = false;
+        book->items[0].type = RETRO_TYPE_INVALID;
         book_repack(book);
     }
     book->items[book->count] = *new_item;
-    book->items[book->count].is_valid = true;
+    book->items[book->count].type = RETRO_TYPE_FILE;
     book->count++;
 }
 
@@ -123,7 +123,7 @@ static retro_file_t *book_find(book_t *book, const retro_file_t *file)
     for (size_t i = 0; i < book->capacity; i++)
     {
         retro_file_t *entry = &book->items[i];
-        if (!entry->is_valid)
+        if (entry->type == RETRO_TYPE_INVALID)
             continue;
         if (file == NULL) // return first entry
             return entry;
@@ -173,7 +173,7 @@ static void book_save(book_t *book)
         for (size_t i = 0; i < book->capacity; i++)
         {
             retro_file_t *file = &book->items[i];
-            if (file->is_valid)
+            if (file->type != RETRO_TYPE_INVALID)
                 fprintf(fp, "%s/%s\n", file->folder, file->name);
         }
         fclose(fp);
@@ -214,7 +214,7 @@ retro_file_t *bookmark_find_by_app(book_type_t book_type, const retro_app_t *app
     // Find the last entry (most recent)
     for (int i = book->capacity - 1; i >= 0; --i)
     {
-        if (!book->items[i].is_valid)
+        if (book->items[i].type == RETRO_TYPE_INVALID)
             continue;
 
         if (app && book->items[i].app != app)
@@ -240,7 +240,7 @@ bool bookmark_add(book_type_t book_type, const retro_file_t *file)
     book_t *book = &books[book_type];
 
     for (retro_file_t *item; (item = book_find(book, file));)
-        item->is_valid = false;
+        item->type = RETRO_TYPE_INVALID;
 
     book_append(book, file);
     book_save(book);
@@ -258,7 +258,7 @@ bool bookmark_remove(book_type_t book_type, const retro_file_t *file)
 
     for (retro_file_t *item; (item = book_find(book, file));)
     {
-        item->is_valid = false;
+        item->type = RETRO_TYPE_INVALID;
         found++;
     }
 

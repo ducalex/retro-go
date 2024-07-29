@@ -7,14 +7,21 @@
 
 typedef struct retro_app_s retro_app_t;
 
+enum
+{
+    RETRO_TYPE_INVALID = 0,
+    RETRO_TYPE_FOLDER,
+    RETRO_TYPE_FILE,
+};
+
 typedef struct
 {
     const char *name;
     const char *folder;
     uint32_t checksum;
     uint16_t missing_cover;
+    uint8_t saves;
     uint8_t type;
-    uint8_t is_valid;
     retro_app_t *app;
 } retro_file_t;
 
