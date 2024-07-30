@@ -1,0 +1,10 @@
+*.a
+*.o
+*.so
+*.u
+*.z
+gpsp.gpe
+tags
+cscope.out
+pandora/linux
+tools/generate_cc_lut
