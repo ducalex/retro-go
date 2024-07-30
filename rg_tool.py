@@ -113,11 +113,6 @@ def build_image(apps, device_type, img_format="esp32", fatsize=0):
     return image_file
 
 
-def flash_image(image_file):
-    print("Flashing image file: %s\n" % image_file)
-    run([ESPTOOL_PY, "write_flash", "0x0", image_file], check=False)
-
-
 def clean_app(app):
     print("Cleaning up app '%s'..." % app)
     try:
@@ -156,6 +151,14 @@ def flash_app(app, port, baudrate=1152000):
     app_bin = os.path.join(app, "build", app + ".bin")
     print(f"Flashing '{app_bin}' to port {port}")
     run([PARTTOOL_PY, "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
+
+
+def flash_image(image_file, port, baudrate=1152000):
+    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_PORT", port)
+    print(f"Flashing image file '{image_file}' to {port}")
+    run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])
 
 
 def monitor_app(app, port, baudrate=115200):
@@ -229,7 +232,7 @@ try:
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
         # Should probably show a warning here and ask for confirmation...
-        flash_image(image_file)
+        flash_image(image_file, args.port, args.baud)
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
