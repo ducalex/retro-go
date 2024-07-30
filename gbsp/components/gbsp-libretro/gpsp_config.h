@@ -8,7 +8,7 @@
 
 /* Default ROM buffer size in megabytes (this is a maximum value!) */
 #ifndef ROM_BUFFER_SIZE
-#define ROM_BUFFER_SIZE 32
+#define ROM_BUFFER_SIZE 2
 #endif
 
 /* Cache sizes and their config knobs */

@@ -337,10 +337,10 @@ const u32 def_seq_cycles[16][2] =
 };
 
 
-u8 bios_rom[1024 * 16];
+EXT_RAM_ATTR u8 bios_rom[1024 * 16];
 
 // Up to 128kb, store SRAM, flash ROM, or EEPROM here.
-u8 gamepak_backup[1024 * 128];
+EXT_RAM_ATTR u8 gamepak_backup[1024 * 128];
 
 u32 dma_bus_val;
 dma_transfer_type dma[4];
@@ -374,7 +374,7 @@ u32 gamepak_sticky_bit[1024/32];
 // This is global so that it can be kept open for large ROMs to swap
 // pages from, so there's no slowdown with opening and closing the file
 // a lot.
-RFILE *gamepak_file_large = NULL;
+FILE *gamepak_file_large = NULL;
 
 // Writes to these respective locations should trigger an update
 // so the related subsystem may react to it.
@@ -1577,7 +1577,7 @@ static void load_game_config_over(gamepak_info_t *gpinfo)
 
      if (strcmp(gbaover[i].gamepak_title, gpinfo->gamepak_title))
         continue;
-     
+
      printf("gamepak title: %s\n", gbaover[i].gamepak_title);
      printf("gamepak code : %s\n", gbaover[i].gamepak_code);
      printf("gamepak maker: %s\n", gbaover[i].gamepak_maker);
@@ -2196,8 +2196,8 @@ u8 *load_gamepak_page(u32 physical_index)
   // Fill in the entry
   gamepak_blk_queue[entry].phy_rom = physical_index;
 
-  filestream_seek(gamepak_file_large, physical_index * (32 * 1024), SEEK_SET);
-  filestream_read(gamepak_file_large, swap_location, (32 * 1024));
+  fseek(gamepak_file_large, physical_index * (32 * 1024), SEEK_SET);
+  fread(swap_location, (32 * 1024), 1, gamepak_file_large);
 
   // Map it to the read handlers now
   map_rom_entry(read, physical_index, swap_location, gamepak_size >> 15);
@@ -2307,7 +2307,7 @@ void memory_term(void)
 {
   if (gamepak_file_large)
   {
-    filestream_close(gamepak_file_large);
+    fclose(gamepak_file_large);
     gamepak_file_large = NULL;
   }
 
@@ -2500,12 +2500,13 @@ unsigned memory_write_savestate(u8 *dst)
 static s32 load_gamepak_raw(const char *name)
 {
   unsigned i, j;
-  gamepak_file_large = filestream_open(name, RETRO_VFS_FILE_ACCESS_READ,
-                                       RETRO_VFS_FILE_ACCESS_HINT_NONE);
+  gamepak_file_large = fopen(name, "rb");
   if(gamepak_file_large)
   {
     // Round size to 32KB pages
-    gamepak_size = (u32)filestream_get_size(gamepak_file_large);
+    fseek(gamepak_file_large, 0, SEEK_END);
+    gamepak_size = (u32)ftell(gamepak_file_large);
+    fseek(gamepak_file_large, 0, SEEK_SET);
     gamepak_size = (gamepak_size + 0x7FFF) & ~0x7FFF;
 
     // Load stuff in 1MB chunks
@@ -2521,7 +2522,7 @@ static s32 load_gamepak_raw(const char *name)
     for (i = 0; i < ldblks; i++)
     {
       // Load 1MB chunk and map it
-      filestream_read(gamepak_file_large, gamepak_buffers[i], gamepak_buffer_blocksize);
+      fread(gamepak_buffers[i], gamepak_buffer_blocksize, 1, gamepak_file_large);
       for (j = 0; j < 32 && i*32 + j < rom_blocks; j++)
       {
         u32 phyn = i*32 + j;
@@ -2531,7 +2532,7 @@ static s32 load_gamepak_raw(const char *name)
         // Map it to the read handlers now
         map_rom_entry(read, phyn, blkptr, rom_blocks);
       }
-    } 
+    }
 
     return 0;
   }
@@ -2575,14 +2576,13 @@ u32 load_gamepak(const struct retro_game_info* info, const char *name,
 
 s32 load_bios(char *name)
 {
-  RFILE *fd = filestream_open(name, RETRO_VFS_FILE_ACCESS_READ,
-                              RETRO_VFS_FILE_ACCESS_HINT_NONE);
+  FILE *fd = fopen(name, "rb");
 
   if(!fd)
     return -1;
 
-  filestream_read(fd, bios_rom, 0x4000);
-  filestream_close(fd);
+  fread(bios_rom, 0x4000, 1, fd);
+  fclose(fd);
   return 0;
 }
 

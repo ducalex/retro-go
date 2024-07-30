@@ -157,6 +157,8 @@ typedef u32 fixed8_24;
 #define read_dmareg(regnum, dmachan) (eswap16(io_registers[(regnum) + (dmachan) * 6]))
 #define write_dmareg(regnum, dmachan, val) io_registers[(regnum) + (dmachan) * 6] = eswap16(val)
 
+#include <rg_system.h>
+#include <esp_attr.h>
 #include <unistd.h>
 #include <time.h>
 #include <stdlib.h>
