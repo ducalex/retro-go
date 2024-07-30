@@ -45,14 +45,9 @@ def run(cmd, cwd=None, check=True):
     return subprocess.run(cmd, shell=os.name == 'nt', cwd=cwd, check=check)
 
 
-def build_firmware(apps, device_type, fw_format="odroid-go"):
+def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
     print("Building firmware with: %s\n" % " ".join(apps))
-    args = [
-        MKFW_PY,
-        ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
-        ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
-        PROJECT_ICON
-    ]
+    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {PROJECT_VER}", PROJECT_ICON]
 
     if fw_format == "esplay":
         args.append("--esplay")
@@ -64,9 +59,8 @@ def build_firmware(apps, device_type, fw_format="odroid-go"):
     run(args)
 
 
-def build_image(apps, device_type, img_format="esp32", fatsize=0):
+def build_image(output_file, apps, img_format="esp32", fatsize=0):
     print("Building image with: %s\n" % " ".join(apps))
-    image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
     image_data = bytearray(b"\xFF" * 0x10000)
     table_ota = 0
     table_csv = [
@@ -106,11 +100,10 @@ def build_image(apps, device_type, img_format="esp32", fatsize=0):
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin
 
-    with open(image_file, "wb") as f:
+    with open(output_file, "wb") as f:
         f.write(image_data)
 
-    print("\nSaved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
-    return image_file
+    print("\nSaved image '%s' (%d bytes)\n" % (output_file, len(image_data)))
 
 
 def clean_app(app):
@@ -223,16 +216,18 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
+        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
-        image_file = build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
 
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
         # Should probably show a warning here and ask for confirmation...
-        flash_image(image_file, args.port, args.baud)
+        flash_image(img_file, args.port, args.baud)
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
