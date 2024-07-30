@@ -85,7 +85,7 @@ def build_image(apps, device_type, img_format="esp32", fatsize=0):
 
     if fatsize:
         # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
-        table_csv.append("vfs, data, fat, %d, %d" % (len(image_data), fatsize))
+        table_csv.append("vfs, data, fat, %d, %s" % (len(image_data), fatsize))
 
     print("Generating partition table...")
     with open("partitions.csv", "w") as f:
