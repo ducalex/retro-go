@@ -110,6 +110,12 @@ def build_image(apps, device_type, img_format="esp32", fatsize=0):
         f.write(image_data)
 
     print("\nSaved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
+    return image_file
+
+
+def flash_image(image_file):
+    print("Flashing image file: %s\n" % image_file)
+    run([ESPTOOL_PY, "write_flash", "0x0", image_file], check=False)
 
 
 def clean_app(app):
@@ -164,7 +170,7 @@ def monitor_app(app, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "build-img", "release", "build", "clean", "flash", "monitor", "run", "profile"],
+    "command", choices=["build-fw", "build-img", "release", "build", "clean", "flash", "monitor", "run", "profile", "install"],
 )
 parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
@@ -198,7 +204,7 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
         exec(f.read())
 
 try:
-    if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
+    if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
         print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
         apps.insert(0, "launcher")
 
@@ -207,7 +213,7 @@ try:
         for app in apps:
             clean_app(app)
 
-    if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
+    if command in ["build", "build-fw", "build-img", "release", "run", "profile", "install"]:
         print("=== Step: Building ===\n")
         for app in apps:
             build_app(app, args.target, command == "profile", args.no_networking, command == "release")
@@ -216,9 +222,14 @@ try:
         print("=== Step: Packing ===\n")
         build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
 
-    if command in ["build-img", "release"]:
+    if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
-        build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+        image_file = build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+
+    if command in ["install"]:
+        print("=== Step: Flashing entire image to device ===\n")
+        # Should probably show a warning here and ask for confirmation...
+        flash_image(image_file)
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
