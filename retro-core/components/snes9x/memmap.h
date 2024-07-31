@@ -43,6 +43,7 @@ void WriteProtectROM(void);
 void FixROMSpeed(void);
 void MapRAM(void);
 void MapExtraRAM(void);
+void ResetSpeedMap(void);
 
 void BSLoROMMap(void);
 void JumboLoROMMap(bool);
@@ -61,6 +62,7 @@ void SPC7110HiROMMap(void);
 void SPC7110Sram(uint8_t);
 void SetaDSPMap(void);
 void ApplyROMFixes(void);
+void ApplyROMPatches(void);
 void DSPMap(void);
 void CapcomProtectLoROMMap(void);
 
@@ -115,9 +117,9 @@ typedef struct
    uint8_t  SRAMSize;
    uint8_t**Map; // [MEMMAP_NUM_BLOCKS];
    SMapInfo*MapInfo;// [MEMMAP_NUM_BLOCKS];
-   char     ROMName     [ROM_NAME_LEN];
-   char     ROMId       [5];
-   char     CompanyId   [3];
+   char     ROMName     [ROM_NAME_LEN + 1];
+   char     ROMId       [4 + 1];
+   char     CompanyId   [2 + 1];
    uint8_t  ROMSpeed;
    uint8_t  ROMType;
    uint8_t  ROMSize;
@@ -130,13 +132,9 @@ typedef struct
    // char     ROMFilename [_MAX_PATH];
    uint8_t  ROMRegion;
    uint8_t  ExtendedFormat;
-   size_t   ROM_Size; // size of *ROM content
+   size_t   ROM_AllocSize; // size of *ROM content
+   size_t   ROM_Offset;
 } CMemory;
-
-void ResetSpeedMap(void);
-
-extern CMemory Memory;
-void S9xDeinterleaveMode2(void);
 
 uint8_t S9xGetByte(uint32_t Address);
 uint16_t S9xGetWord(uint32_t Address);
@@ -146,5 +144,7 @@ void S9xSetPCBase(uint32_t Address);
 uint8_t* S9xGetMemPointer(uint32_t Address);
 uint8_t* GetBasePointer(uint32_t Address);
 
+extern CMemory Memory;
 extern uint8_t OpenBus;
+
 #endif /* _memmap_h_ */

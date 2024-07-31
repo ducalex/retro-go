@@ -293,7 +293,7 @@ void snes_main(void)
 
     if (rg_extension_match(filename, "zip"))
     {
-        if (!rg_storage_unzip_file(filename, NULL, (void **)&Memory.ROM, &Memory.ROM_Size, RG_FILE_USER_BUFFER))
+        if (!rg_storage_unzip_file(filename, NULL, (void **)&Memory.ROM, &Memory.ROM_AllocSize, RG_FILE_USER_BUFFER))
             RG_PANIC("ROM file unzipping failed!");
         filename = NULL;
     }

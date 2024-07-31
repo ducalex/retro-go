@@ -9,7 +9,7 @@
 #include "port.h"
 #include "65c816.h"
 
-#define ROM_NAME_LEN 23
+#define ROM_NAME_LEN 22
 
 /* SNES screen width and height */
 #define SNES_WIDTH            256
