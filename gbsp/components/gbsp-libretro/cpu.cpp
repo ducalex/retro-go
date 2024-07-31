@@ -1460,7 +1460,7 @@ EXT_RAM_ATTR u8 vram[1024 * 96];
 u16 io_registers[512];
 #endif
 
-void execute_arm(u32 cycles)
+IRAM_ATTR void execute_arm(u32 cycles)
 {
   u32 opcode;
   u32 condition;

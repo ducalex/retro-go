@@ -22,6 +22,9 @@
 // - block memory needs psr swapping and user mode reg swapping
 
 #include "common.h"
+
+#ifdef HAVE_DYNAREC
+
 #if defined(VITA)
 #include <psp2/kernel/sysmem.h>
 #include <stdio.h>
@@ -43,7 +46,7 @@ u8* ram_translation_cache;
 u8 *rom_translation_ptr;
 u8 *ram_translation_ptr;
 int sceBlock;
-#elif defined(_3DS) 
+#elif defined(_3DS)
 u8* rom_translation_cache_ptr;
 u8* ram_translation_cache_ptr;
 u8 *rom_translation_ptr = rom_translation_cache;
@@ -3007,6 +3010,7 @@ if (ram_region) {                                                             \
   }                                                                           \
 }                                                                             \
 
+
 bool translate_block_arm(u32 pc, bool ram_region)
 {
   u32 opcode = 0;
@@ -3413,3 +3417,5 @@ void flush_dynarec_caches(void)
   flush_translation_cache_ram();
 }
 
+
+#endif

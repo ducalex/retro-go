@@ -148,12 +148,12 @@ void app_main(void)
             rg_display_submit(currentUpdate, 0);
 
         size_t frames_count = sound_read_samples((s16 *)mixbuffer, AUDIO_BUFFER_LENGTH);
+        // RG_TIMER_LAP("sound_read_samples");
 
         rg_system_tick(rg_system_timer() - start_time);
-        // RG_TIMER_LAP("ticked");
 
         rg_audio_submit(mixbuffer, frames_count);
-        // RG_TIMER_LAP("sound submit");
+        // RG_TIMER_LAP("rg_audio_submit");
 
         if (skip_next_frame == 0)
             skip_next_frame = app->frameskip;

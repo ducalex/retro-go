@@ -20,8 +20,8 @@
 #ifndef __GPSP_CHEATS_H__
 #define __GPSP_CHEATS_H__
 
-#define MAX_CHEATS       20
-#define MAX_CHEAT_CODES  64
+#define MAX_CHEATS       2
+#define MAX_CHEAT_CODES  4
 
 typedef enum {
    CheatNoError = 0,

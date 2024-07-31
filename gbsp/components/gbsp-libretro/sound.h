@@ -20,7 +20,7 @@
 #ifndef SOUND_H
 #define SOUND_H
 
-#define BUFFER_SIZE        (1 << 16)
+#define BUFFER_SIZE        (1 << 11)
 #define BUFFER_SIZE_MASK   (BUFFER_SIZE - 1)
 
 #define GBA_SOUND_FREQUENCY   (32768)
