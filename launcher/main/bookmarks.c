@@ -145,11 +145,14 @@ static void book_load(book_t *book)
     {
         book->count = 0;
 
-        while (fgets(line_buffer, 168, fp))
+        while (fgets(line_buffer, sizeof(line_buffer) - 1, fp))
         {
             size_t len = strlen(line_buffer);
-            if (line_buffer[len - 1] == '\n')
+            while (len && (line_buffer[len - 1] == '\n' || line_buffer[len - 1] == '\r'))
+            {
                 line_buffer[len - 1] = 0;
+                len--;
+            }
 
             if (application_path_to_file(line_buffer, &tmp_file))
                 book_append(book, &tmp_file);

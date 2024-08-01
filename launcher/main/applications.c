@@ -180,22 +180,18 @@ static void crc_cache_init(void)
         RG_LOGE("Failed to allocate crc_cache!");
         return;
     }
-    // File format: {magic:U32 count:U32} {{key:U32 crc:U32}, ...}
-    FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "rb");
-    if (fp)
+
+    void *data_ptr = crc_cache;
+    size_t data_len = sizeof(*crc_cache);
+    rg_storage_read_file(RG_BASE_PATH_CACHE "/crc32.bin", &data_ptr, &data_len, RG_FILE_USER_BUFFER);
+    if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
     {
-        fread(crc_cache, 8, 1, fp);
-        if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
-        {
-            RG_LOGI("Loaded CRC cache (entries: %d)", (int)crc_cache->count);
-            fread(crc_cache->entries, crc_cache->count, 8, fp);
-            crc_cache_dirty = false;
-        }
-        else
-        {
-            crc_cache->count = 0;
-        }
-        fclose(fp);
+        RG_LOGI("Loaded CRC cache (entries: %d)", (int)crc_cache->count);
+        crc_cache_dirty = false;
+    }
+    else
+    {
+        crc_cache->count = 0;
     }
 }
 
@@ -204,16 +200,9 @@ static void crc_cache_save(void)
     if (!crc_cache || !crc_cache_dirty)
         return;
 
-    RG_LOGI("Saving cache");
-
-    FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "wb");
-    if (fp)
-    {
-        size_t minsize = RG_MIN(8 + (crc_cache->count * sizeof(crc_cache->entries[0])), sizeof(*crc_cache));
-        fwrite(crc_cache, minsize, 1, fp);
-        fclose(fp);
-        crc_cache_dirty = false;
-    }
+    RG_LOGI("Saving CRC cache...");
+    size_t data_len = RG_MIN(8 + (crc_cache->count * sizeof(crc_cache->entries[0])), sizeof(*crc_cache));
+    crc_cache_dirty = !rg_storage_write_file(RG_BASE_PATH_CACHE"/crc32.bin", crc_cache, data_len, 0);
 }
 
 static uint32_t crc_cache_calc_key(retro_file_t *file)
