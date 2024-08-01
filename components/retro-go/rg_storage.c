@@ -433,7 +433,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     RG_ASSERT(data_out && data_len, "Bad param");
     CHECK_PATH(path);
 
-    size_t output_buffer_align = RG_MAX(0x1000, (flags & 0xF) * 0x2000);
+    size_t output_buffer_align = RG_MAX(0x400, (flags & 0xF) * 0x2000);
     size_t output_buffer_size;
     void *output_buffer;
     size_t file_size;
@@ -441,7 +441,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     FILE *fp = fopen(path, "rb");
     if (!fp)
     {
-        RG_LOGE("Fopen failed");
+        RG_LOGE("Fopen failed (%d): '%s'", errno, path);
         return false;
     }
 
@@ -462,14 +462,14 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
 
     if (!output_buffer)
     {
-        RG_LOGE("Memory allocation failed");
+        RG_LOGE("Memory allocation failed: '%s'", path);
         fclose(fp);
         return false;
     }
 
     if (!fread(output_buffer, output_buffer_size, 1, fp))
     {
-        RG_LOGE("File read failed");
+        RG_LOGE("File read failed (%d): '%s'", errno, path);
         fclose(fp);
         if (!(flags & RG_FILE_USER_BUFFER))
             free(output_buffer);
@@ -492,13 +492,13 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
     FILE *fp = fopen(path, "wb");
     if (!fp)
     {
-        RG_LOGE("Fopen failed");
+        RG_LOGE("Fopen failed (%d): '%s'", errno, path);
         return false;
     }
 
     if (data_len && !fwrite(data_ptr, data_len, 1, fp))
     {
-        RG_LOGE("Fwrite failed");
+        RG_LOGE("Fwrite failed (%d): '%s'", errno, path);
         fclose(fp);
         return false;
     }
@@ -547,7 +547,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     FILE *fp = fopen(zip_path, "rb");
     if (!fp)
     {
-        RG_LOGE("Fopen failed");
+        RG_LOGE("Fopen failed (%d): '%s'", errno, zip_path);
         return false;
     }
 
@@ -563,7 +563,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
 
     if (header.magic != ZIP_MAGIC)
     {
-        RG_LOGE("No valid header found!");
+        RG_LOGE("No valid header found: '%s'", zip_path);
         fclose(fp);
         return false;
     }
@@ -597,7 +597,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
 
     if (!read_buffer || !output_buffer || !decomp)
     {
-        RG_LOGE("Out of memory");
+        RG_LOGE("Memory allocation failed: '%s'", zip_path);
         goto _fail;
     }
 
@@ -610,7 +610,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
         size_t output_size = output_buffer_size - output_buffer_pos;
         if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(read_buffer, input_size, 1, fp) != 1)
         {
-            RG_LOGE("Read error: %d", errno);
+            RG_LOGE("Read error (%d): '%s'", errno, zip_path);
             goto _fail;
         }
         stream_offset += input_size;
@@ -624,7 +624,7 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     // With user-provided buffer we might not reach TINFL_STATUS_DONE, but it doesn't mean we've failed
     if (status < TINFL_STATUS_DONE || output_buffer_pos != output_buffer_size) // (status != TINFL_STATUS_DONE)
     {
-        RG_LOGE("Decompression failed! ret: %d", (int)status);
+        RG_LOGE("Decompression failed (%d): %s", (int)status, zip_path);
         goto _fail;
     }
 
