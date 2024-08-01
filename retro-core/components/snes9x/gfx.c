@@ -350,9 +350,6 @@ void S9xEndScreenRefresh(void)
       GFX.Pitch = GFX.Pitch2 = GFX.RealPitch;
       GFX.PPL = GFX.PPLx2 >> 1;
    }
-#ifdef LAGFIX
-   finishedFrame = true;
-#endif
 
    if (CPU.SRAMModified)
       CPU.SRAMModified = false;

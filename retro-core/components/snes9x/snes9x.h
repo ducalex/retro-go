@@ -224,10 +224,6 @@ extern SSettings Settings;
 extern SCPUState CPU;
 extern char String [513];
 
-#ifdef LAGFIX
-extern bool finishedFrame;
-#endif
-
 void S9xSetPause(uint32_t mask);
 void S9xClearPause(uint32_t mask);
 #endif
