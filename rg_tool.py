@@ -28,16 +28,20 @@ try:
 except:
     PROJECT_VER = "unknown"
 
-# esp-idf 4.4 and 5.1+ make powershell functions on Windows instead of adding these to the PATH...
-# doesn't really hurt to have them again even if they're in PATH, so let's always do it...
-os.environ["PATH"] += os.pathsep + os.path.join(os.getenv("IDF_PATH"), "components", "partition_table")
-os.environ["PATH"] += os.pathsep + os.path.join(os.getenv("IDF_PATH"), "components", "esptool_py", "esptool")
+IDF_PATH = os.getenv("IDF_PATH")
 
-IDF_PY = "idf.py"
-ESPTOOL_PY = "esptool.py"
-PARTTOOL_PY = "parttool.py"
-IDF_MONITOR_PY = "idf_monitor.py"
-GEN_ESP32PART_PY = "gen_esp32part.py"
+if os.name == 'nt':
+    IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
+    IDF_MONITOR_PY = os.path.join(IDF_PATH, "tools", "idf_monitor.py")
+    ESPTOOL_PY = os.path.join(IDF_PATH, "components", "esptool_py", "esptool", "esptool.py")
+    PARTTOOL_PY = os.path.join(IDF_PATH, "components", "partition_table", "parttool.py")
+    GEN_ESP32PART_PY = os.path.join(IDF_PATH, "components", "partition_table", "gen_esp32part.py")
+else:
+    IDF_PY = "idf.py"
+    IDF_MONITOR_PY = "idf_monitor.py"
+    ESPTOOL_PY = "esptool.py"
+    PARTTOOL_PY = "parttool.py"
+    GEN_ESP32PART_PY = "gen_esp32part.py"
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
 if os.path.exists("rg_config.py"):
@@ -47,7 +51,9 @@ if os.path.exists("rg_config.py"):
 
 def run(cmd, cwd=None, check=True):
     print(f"Running command: {' '.join(cmd)}")
-    return subprocess.run(cmd, shell=os.name == 'nt', cwd=cwd, check=check)
+    if os.name == 'nt' and cmd[0].endswith(".py"):
+        return subprocess.run(["python", *cmd], shell=True, cwd=cwd, check=check)
+    return subprocess.run(cmd, shell=False, cwd=cwd, check=check)
 
 
 def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
