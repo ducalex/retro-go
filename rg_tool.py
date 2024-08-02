@@ -28,11 +28,20 @@ try:
 except:
     PROJECT_VER = "unknown"
 
-IDF_PY = "idf.py"
-ESPTOOL_PY = "esptool.py"
-PARTTOOL_PY = "parttool.py"
-IDF_MONITOR_PY = "idf_monitor.py"
-GEN_ESP32PART_PY = os.path.join(os.getenv("IDF_PATH"), "components", "partition_table", "gen_esp32part.py")
+IDF_PATH = os.getenv("IDF_PATH")
+
+if os.name == 'nt':
+    IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
+    IDF_MONITOR_PY = os.path.join(IDF_PATH, "tools", "idf_monitor.py")
+    ESPTOOL_PY = os.path.join(IDF_PATH, "components", "esptool_py", "esptool", "esptool.py")
+    PARTTOOL_PY = os.path.join(IDF_PATH, "components", "partition_table", "parttool.py")
+    GEN_ESP32PART_PY = os.path.join(IDF_PATH, "components", "partition_table", "gen_esp32part.py")
+else:
+    IDF_PY = "idf.py"
+    IDF_MONITOR_PY = "idf_monitor.py"
+    ESPTOOL_PY = "esptool.py"
+    PARTTOOL_PY = "parttool.py"
+    GEN_ESP32PART_PY = "gen_esp32part.py"
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
 if os.path.exists("rg_config.py"):
@@ -42,17 +51,14 @@ if os.path.exists("rg_config.py"):
 
 def run(cmd, cwd=None, check=True):
     print(f"Running command: {' '.join(cmd)}")
-    return subprocess.run(cmd, shell=os.name == 'nt', cwd=cwd, check=check)
+    if os.name == 'nt' and cmd[0].endswith(".py"):
+        return subprocess.run(["python", *cmd], shell=True, cwd=cwd, check=check)
+    return subprocess.run(cmd, shell=False, cwd=cwd, check=check)
 
 
-def build_firmware(apps, device_type, fw_format="odroid-go"):
+def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
     print("Building firmware with: %s\n" % " ".join(apps))
-    args = [
-        MKFW_PY,
-        ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, device_type)).lower(),
-        ("%s %s" % (PROJECT_NAME, PROJECT_VER)),
-        PROJECT_ICON
-    ]
+    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {PROJECT_VER}", PROJECT_ICON]
 
     if fw_format == "esplay":
         args.append("--esplay")
@@ -64,9 +70,8 @@ def build_firmware(apps, device_type, fw_format="odroid-go"):
     run(args)
 
 
-def build_image(apps, device_type, img_format="esp32"):
+def build_image(output_file, apps, img_format="esp32", fatsize=0):
     print("Building image with: %s\n" % " ".join(apps))
-    image_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, device_type)).lower()
     image_data = bytearray(b"\xFF" * 0x10000)
     table_ota = 0
     table_csv = [
@@ -82,6 +87,10 @@ def build_image(apps, device_type, img_format="esp32"):
         table_csv.append("%s, app, ota_%d, %d, %d" % (app, table_ota, len(image_data), part_size))
         table_ota += 1
         image_data += data + b"\xFF" * (part_size - len(data))
+
+    if fatsize:
+        # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
+        table_csv.append("vfs, data, fat, %d, %s" % (len(image_data), fatsize))
 
     print("Generating partition table...")
     with open("partitions.csv", "w") as f:
@@ -102,10 +111,10 @@ def build_image(apps, device_type, img_format="esp32"):
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin
 
-    with open(image_file, "wb") as f:
+    with open(output_file, "wb") as f:
         f.write(image_data)
 
-    print("\nSaved image '%s' (%d bytes)\n" % (image_file, len(image_data)))
+    print("\nSaved image '%s' (%d bytes)\n" % (output_file, len(image_data)))
 
 
 def clean_app(app):
@@ -128,7 +137,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
     args = [IDF_PY, "app"]
     args.append(f"-DRG_BUILD_VERSION={PROJECT_VER}")
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
-    args.append(f"-DRG_BUILD_TYPE={1 if is_release else 0}")
+    args.append(f"-DRG_BUILD_RELEASE={1 if is_release else 0}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
     run(args, cwd=os.path.join(os.getcwd(), app))
@@ -148,6 +157,14 @@ def flash_app(app, port, baudrate=1152000):
     run([PARTTOOL_PY, "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
 
 
+def flash_image(image_file, port, baudrate=1152000):
+    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_PORT", port)
+    print(f"Flashing image file '{image_file}' to {port}")
+    run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])
+
+
 def monitor_app(app, port, baudrate=115200):
     print(f"Starting monitor for app {app} on port {port}")
     elf_file = os.path.join(os.getcwd(), app, "build", app + ".elf")
@@ -160,7 +177,7 @@ def monitor_app(app, port, baudrate=115200):
 parser = argparse.ArgumentParser(description="Retro-Go build tool")
 parser.add_argument(
 # To do: Learn to use subcommands instead...
-    "command", choices=["build-fw", "build-img", "release", "build", "clean", "flash", "monitor", "run", "profile"],
+    "command", choices=["build-fw", "build-img", "release", "build", "clean", "flash", "monitor", "run", "profile", "install"],
 )
 parser.add_argument(
     "apps", nargs="*", default="all", choices=["all"] + list(PROJECT_APPS.keys())
@@ -177,6 +194,9 @@ parser.add_argument(
 parser.add_argument(
     "--baud", default=DEFAULT_BAUD, help="Serial baudrate to use for flashing"
 )
+parser.add_argument(
+    "--fatsize", help="Add FAT storage partition of provided size (500K, 5M,...) to the built image."
+)
 args = parser.parse_args()
 
 command = args.command
@@ -191,7 +211,7 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
         exec(f.read())
 
 try:
-    if command in ["build-fw", "build-img", "release"] and "launcher" not in apps:
+    if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
         print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
         apps.insert(0, "launcher")
 
@@ -200,18 +220,25 @@ try:
         for app in apps:
             clean_app(app)
 
-    if command in ["build", "build-fw", "build-img", "release", "run", "profile"]:
+    if command in ["build", "build-fw", "build-img", "release", "run", "profile", "install"]:
         print("=== Step: Building ===\n")
         for app in apps:
             build_app(app, args.target, command == "profile", args.no_networking, command == "release")
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        build_firmware(apps, args.target, os.getenv("FW_FORMAT"))
+        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
 
-    if command in ["build-img", "release"]:
+    if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
-        build_image(apps, args.target, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")))
+        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+
+    if command in ["install"]:
+        print("=== Step: Flashing entire image to device ===\n")
+        # Should probably show a warning here and ask for confirmation...
+        flash_image(img_file, args.port, args.baud)
 
     if command in ["flash", "run", "profile"]:
         print("=== Step: Flashing ===\n")
