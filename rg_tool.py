@@ -8,7 +8,8 @@ import sys
 import re
 import os
 
-if not os.getenv("IDF_PATH"):
+IDF_PATH = os.getenv("IDF_PATH")
+if not IDF_PATH:
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
@@ -27,8 +28,6 @@ try:
     ).decode().rstrip()
 except:
     PROJECT_VER = "unknown"
-
-IDF_PATH = os.getenv("IDF_PATH")
 
 if os.name == 'nt':
     IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
