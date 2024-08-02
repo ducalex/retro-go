@@ -1,7 +1,7 @@
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.2 to 5.2 are supported.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.3 to 5.2 are supported.
 
 _Note: As of retro-go 1.35, I use 4.3. Version 4.1 was used for 1.20 to 1.34 versions._
 
