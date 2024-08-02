@@ -67,13 +67,13 @@ static bool driver_init(int device, int sample_rate)
         if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
+            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0) // mck_io_num isn't present in esp-idf <= 4.3
+                .mck_io_num = GPIO_NUM_NC, // must be initialized to prevent it from defaulting to (GPIO_NUM_)0, which would interfere with other uses of that pin
+            #endif
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,
                 .ws_io_num = RG_GPIO_SND_I2S_WS,
                 .data_out_num = RG_GPIO_SND_I2S_DATA,
                 .data_in_num = GPIO_NUM_NC
-            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0) // mck_io_num isn't present in esp-idf <= 4.3
-                .mck_io_num = GPIO_NUM_NC, // must be initialized to prevent it from defaulting to (GPIO_NUM_)0, which would interfere with other uses of that pin
-            #endif
             });
         }
         if (ret != ESP_OK)
