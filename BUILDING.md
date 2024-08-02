@@ -1,7 +1,7 @@
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.2 to 5.2 are supported.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.3 to 5.2 are supported.
 
 _Note: As of retro-go 1.35, I use 4.3. Version 4.1 was used for 1.20 to 1.34 versions._
 
@@ -24,21 +24,21 @@ There are generally two active git branches on retro-go:
 
 ## Build everything and generate .fw:
 - Generate a .fw file to be installed with odroid-go-firmware (SD Card):\
-    `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
+    `python rg_tool.py build-fw` or `python rg_tool.py release` (clean build)
 - Generate a .img to be flashed with esptool.py (Serial):\
-    `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
+    `python rg_tool.py build-img` or `python rg_tool.py release` (clean build)
 
 For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
-1. `./rg_tool.py build-fw launcher prboom-go`
+1. `python rg_tool.py build-fw launcher prboom-go`
 
 Note that the app named `retro-core` contains the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these emulators cannot be selected individually. The reason for the bundling is simply size, together they account for a mere 700KB instead of almost 3MB when they were built separately.
 
 
 ## Build, flash, and monitor individual apps for faster development:
 It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
-1. Flash: `./rg_tool.py --port=COM3 flash prboom-go`
-2. Monitor: `./rg_tool.py --port=COM3 monitor prboom-go`
-3. Flash then monitor: `./rg_tool.py --port=COM3 run prboom-go`
+1. Flash: `python rg_tool.py --port=COM3 flash prboom-go`
+2. Monitor: `python rg_tool.py --port=COM3 monitor prboom-go`
+3. Flash then monitor: `python rg_tool.py --port=COM3 run prboom-go`
 
 
 ## Environment variables
@@ -46,11 +46,6 @@ rg_tool.py supports a few environment variables if you want to avoid passing fla
 - `RG_TOOL_TARGET` represents --target
 - `RG_TOOL_BAUD` represents --baud
 - `RG_TOOL_PORT` represents --port
-
-
-## Windows
-Running `./rg_tool.py ...` on Windows might invoke the wrong Python interpreter (causing the build to fail)
-or even do nothing at all. In such cases you should use `python rg_tool.py ...` instead.
 
 
 ## Changing the launcher's images
