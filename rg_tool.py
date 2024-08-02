@@ -28,11 +28,16 @@ try:
 except:
     PROJECT_VER = "unknown"
 
+# esp-idf 4.4 and 5.1+ make powershell functions on Windows instead of adding these to the PATH...
+# doesn't really hurt to have them again even if they're in PATH, so let's always do it...
+os.environ["PATH"] += os.pathsep + os.path.join(os.getenv("IDF_PATH"), "components", "partition_table")
+os.environ["PATH"] += os.pathsep + os.path.join(os.getenv("IDF_PATH"), "components", "esptool_py", "esptool")
+
 IDF_PY = "idf.py"
 ESPTOOL_PY = "esptool.py"
 PARTTOOL_PY = "parttool.py"
 IDF_MONITOR_PY = "idf_monitor.py"
-GEN_ESP32PART_PY = os.path.join(os.getenv("IDF_PATH"), "components", "partition_table", "gen_esp32part.py")
+GEN_ESP32PART_PY = "gen_esp32part.py"
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
 if os.path.exists("rg_config.py"):
