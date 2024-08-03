@@ -74,6 +74,8 @@ static struct
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
+static bool exitCalled = false;
+static int ledValue = 0;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
@@ -179,7 +181,7 @@ static void system_monitor_task(void *arg)
 
     rg_task_delay(2000);
 
-    while (!app.exitCalled)
+    while (!exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
         rtcValue = time(NULL);
@@ -684,7 +686,7 @@ void rg_system_event(int event, void *arg)
 
 static void shutdown_cleanup(void)
 {
-    app.exitCalled = true;
+    exitCalled = true;
     rg_display_clear(C_BLACK);                // Let the user know that something is happening
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
@@ -886,15 +888,14 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 void rg_system_set_led(int value)
 {
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    if (app.ledValue != value)
-        gpio_set_level(RG_GPIO_LED, value);
+    gpio_set_level(RG_GPIO_LED, value);
 #endif
-    app.ledValue = value;
+    ledValue = value;
 }
 
 int rg_system_get_led(void)
 {
-    return app.ledValue;
+    return ledValue;
 }
 
 void rg_system_set_log_level(rg_log_level_t level)
