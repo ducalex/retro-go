@@ -887,7 +887,11 @@ void rg_system_set_led(int value)
 {
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
     if (app.ledValue != value)
+#ifndef RG_GPIO_LED_ACTIVE_LOW
         gpio_set_level(RG_GPIO_LED, value);
+#else
+        gpio_set_level(RG_GPIO_LED, !value);
+#endif
 #endif
     app.ledValue = value;
 }

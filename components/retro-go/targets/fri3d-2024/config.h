@@ -86,6 +86,7 @@
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_21
+#define RG_GPIO_LED_ACTIVE_LOW      // setting RG_GPIO_LED low turns on the LED, while high turns it off
 
 // Battery
 #define RG_BATTERY_DRIVER           1
