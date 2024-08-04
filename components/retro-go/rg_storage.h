@@ -59,8 +59,6 @@ void rg_storage_deinit(void);
 bool rg_storage_format(void);
 bool rg_storage_ready(void);
 void rg_storage_commit(void);
-void rg_storage_set_activity_led(bool enable);
-bool rg_storage_get_activity_led(void);
 bool rg_storage_delete(const char *path);
 bool rg_storage_exists(const char *path);
 bool rg_storage_mkdir(const char *dir);

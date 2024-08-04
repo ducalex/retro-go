@@ -99,6 +99,17 @@ typedef enum
 
 typedef enum
 {
+    RG_INDICATOR_PANIC = 0,
+    RG_INDICATOR_LOW_BATTERY,
+    RG_INDICATOR_CHARGING,
+    RG_INDICATOR_DISK_ACTIVITY,
+    RG_INDICATOR_NETWORK_ACTIVITY,
+    RG_INDICATOR_SYSTEM_ACTIVITY,
+    RG_INDICATOR_USER_ACTIVITY,
+} rg_indicator_t;
+
+typedef enum
+{
     /* Types and masks */
     RG_EVENT_TYPE_SYSTEM  = 0xF10000,
     RG_EVENT_TYPE_POWER   = 0xF20000,
@@ -165,6 +176,7 @@ typedef struct
     const char *bootArgs;
     uint32_t bootFlags;
     uint32_t bootType;
+    uint32_t indicatorsMask;
     float speed;
     int sampleRate;
     int tickRate;
@@ -213,8 +225,10 @@ void rg_system_restart(void) __attribute__((noreturn));
 void rg_system_exit(void) __attribute__((noreturn));
 void rg_system_switch_app(const char *part, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
 bool rg_system_have_app(const char *app);
-void rg_system_set_led(int value);
-int  rg_system_get_led(void);
+void rg_system_set_indicator(rg_indicator_t indicator, bool on);
+bool rg_system_get_indicator(rg_indicator_t indicator);
+void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
+bool rg_system_get_indicator_mask(rg_indicator_t indicator);
 void rg_system_set_overclock(int level);
 int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);

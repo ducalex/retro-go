@@ -75,7 +75,7 @@ static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
-static int ledValue = 0;
+static uint32_t indicators;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
@@ -84,6 +84,7 @@ static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
+static const char *SETTING_INDICATOR_MASK = "Indicators";
 
 #define logbuf_putc(buf, c) (buf)->console[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
@@ -173,9 +174,23 @@ static void update_statistics(void)
     update_memory_statistics();
 }
 
+static void update_indicators(void)
+{
+    uint32_t e_indicators = indicators & app.indicatorsMask;
+    rg_color_t ledColor = 0; // C_GREEN
+
+    if (e_indicators & (1 << RG_INDICATOR_LOW_BATTERY))
+        ledColor = C_RED;
+    else if (e_indicators)
+        ledColor = C_BLUE;
+
+#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
+    gpio_set_level(RG_GPIO_LED, ledColor != 0);
+#endif
+}
+
 static void system_monitor_task(void *arg)
 {
-    bool batteryLedState = false;
     int64_t nextLoopTime = 0;
     time_t prevTime = time(NULL);
 
@@ -187,15 +202,12 @@ static void system_monitor_task(void *arg)
         rtcValue = time(NULL);
 
         update_statistics();
+        // update_indicators(); // Implicitly called by rg_system_set_indicator below
 
         rg_battery_t battery = rg_input_read_battery();
-        if (battery.present)
-        {
-            if (battery.level <= 2)
-                rg_system_set_led((batteryLedState ^= 1));
-            else if (batteryLedState)
-                rg_system_set_led((batteryLedState = 0));
-        }
+        // TODO: The flashing should eventually be handled by update_indicators instead of here...
+        rg_system_set_indicator(RG_INDICATOR_LOW_BATTERY, (battery.present && battery.level <= 2.f &&
+                                                           !rg_system_get_indicator(RG_INDICATOR_LOW_BATTERY)));
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
@@ -296,6 +308,7 @@ static void platform_init(void)
     #endif
     #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_LED, 0);
     #endif
 #elif defined(RG_TARGET_SDL2)
     // freopen("stdout.txt", "w", stdout);
@@ -333,6 +346,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .bootArgs = NULL,
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
+        .indicatorsMask = 0xFFFFFFFF,
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
@@ -354,7 +368,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     // Do this very early, may be needed to enable serial console
     platform_init();
-    rg_system_set_led(0);
 
 #ifdef ESP_PLATFORM
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
@@ -425,13 +438,12 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
     app.isLauncher = strcmp(app.name, "launcher") == 0; // Might be overriden after init
+    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
     rg_display_init();
     rg_gui_init();
-    rg_audio_init(sampleRate);
-
-    rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
+    rg_audio_init(sampleRate);
 
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
@@ -885,17 +897,28 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     return true;
 }
 
-void rg_system_set_led(int value)
+void rg_system_set_indicator(rg_indicator_t indicator, bool on)
 {
-#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    gpio_set_level(RG_GPIO_LED, value);
-#endif
-    ledValue = value;
+    indicators &= ~(1 << indicator);
+    indicators |= (on << indicator);
+    update_indicators();
 }
 
-int rg_system_get_led(void)
+bool rg_system_get_indicator(rg_indicator_t indicator)
 {
-    return ledValue;
+    return indicators & (1 << indicator);
+}
+
+void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on)
+{
+    app.indicatorsMask &= ~(1 << indicator);
+    app.indicatorsMask |= (on << indicator);
+    rg_settings_set_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
+}
+
+bool rg_system_get_indicator_mask(rg_indicator_t indicator)
+{
+    return app.indicatorsMask & (1 << indicator);
 }
 
 void rg_system_set_log_level(rg_log_level_t level)
@@ -1119,7 +1142,7 @@ bool rg_emu_save_state(uint8_t slot)
 
     RG_LOGI("Saving state to '%s'.\n", filename);
 
-    rg_system_set_led(1);
+    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 1);
     rg_gui_draw_hourglass();
 
     if (!rg_storage_mkdir(rg_dirname(filename)))
@@ -1161,7 +1184,7 @@ bool rg_emu_save_state(uint8_t slot)
     free(filename);
 
     rg_storage_commit();
-    rg_system_set_led(0);
+    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 0);
 
     return success;
 }

@@ -30,15 +30,12 @@
 #endif
 
 static bool disk_mounted = false;
-static bool disk_led = true;
 #if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static sdmmc_card_t *card_handle = NULL;
 #endif
 #if defined(RG_STORAGE_FLASH_PARTITION)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
 #endif
-
-static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
 
 #define CHECK_PATH(path)          \
     if (!(path && path[0]))       \
@@ -47,24 +44,10 @@ static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
         return false;             \
     }
 
-void rg_storage_set_activity_led(bool enable)
-{
-    rg_settings_set_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, enable);
-    disk_led = enable;
-}
-
-bool rg_storage_get_activity_led(void)
-{
-    return rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, disk_led);
-}
-
 #if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    bool use_led = (disk_led && !rg_system_get_led());
-
-    if (use_led)
-        rg_system_set_led(1);
+    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 1);
 
     esp_err_t ret = SDCARD_DO_TRANSACTION(slot, cmdinfo);
     if (ret == ESP_ERR_NO_MEM)
@@ -72,9 +55,7 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         // free some memory and try again?
     }
 
-    if (use_led)
-        rg_system_set_led(0);
-
+    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 0);
     return ret;
 }
 #endif
