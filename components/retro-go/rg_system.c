@@ -176,12 +176,12 @@ static void update_statistics(void)
 
 static void update_indicators(void)
 {
-    uint32_t e_indicators = indicators & app.indicatorsMask;
+    uint32_t visibleIndicators = indicators & app.indicatorsMask;
     rg_color_t ledColor = 0; // C_GREEN
 
-    if (e_indicators & (1 << RG_INDICATOR_LOW_BATTERY))
+    if (visibleIndicators & (1 << RG_INDICATOR_LOW_BATTERY))
         ledColor = C_RED;
-    else if (e_indicators)
+    else if (visibleIndicators)
         ledColor = C_BLUE;
 
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
