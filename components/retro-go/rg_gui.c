@@ -1211,9 +1211,9 @@ static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t e
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_storage_set_activity_led(!rg_storage_get_activity_led());
+        rg_system_set_indicator_mask(RG_INDICATOR_DISK_ACTIVITY, !rg_system_get_indicator_mask(RG_INDICATOR_DISK_ACTIVITY));
     }
-    strcpy(option->value, rg_storage_get_activity_led() ? "On " : "Off");
+    strcpy(option->value, rg_system_get_indicator_mask(RG_INDICATOR_DISK_ACTIVITY) ? "On " : "Off");
     return RG_DIALOG_VOID;
 }
 
