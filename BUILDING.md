@@ -23,7 +23,7 @@ There are generally two active git branches on retro-go:
 
 
 ## Build everything and generate .fw:
-- Generate a .fw file to be installed with odroid-go-firmware (SD Card):\
+- Generate a .fw file to be installed with odroid-go-firmware or odroid-go-multi-firmware from SD Card:\
     `./rg_tool.py build-fw` or `./rg_tool.py release` (clean build)
 - Generate a .img to be flashed with esptool.py (Serial):\
     `./rg_tool.py build-img` or `./rg_tool.py release` (clean build)
