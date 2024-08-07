@@ -113,7 +113,7 @@ static cJSON *fetch_json(const char *url)
         goto cleanup_buffer;
 
     if (!(json = cJSON_Parse(buffer)))
-        RG_LOGI("Fould not parse JSON that was received.");
+        RG_LOGI("Could not parse JSON received from releases URL '%s'.", RG_PROJECT_RELEASES_URL);
 
 cleanup_buffer:
     free(buffer);
