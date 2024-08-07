@@ -102,22 +102,24 @@ static cJSON *fetch_json(const char *url)
     cJSON *json = NULL;
 
     if (!(req = rg_network_http_open(url, NULL)))
-        goto cleanup;
+        goto cleanup_nothing;
 
     size_t buffer_length = RG_MAX(256 * 1024, req->content_length);
 
     if (!(buffer = calloc(1, buffer_length + 1)))
-        goto cleanup;
+        goto cleanup_http_open;
 
     if (rg_network_http_read(req, buffer, buffer_length) < 16)
-        goto cleanup;
+        goto cleanup_buffer;
 
     if (!(json = cJSON_Parse(buffer)))
-        goto cleanup;
+        RG_LOGI("Fould not parse JSON that was received.");
 
-cleanup:
-    rg_network_http_close(req);
+cleanup_buffer:
     free(buffer);
+cleanup_http_open:
+    rg_network_http_close(req);
+cleanup_nothing:
     return json;
 }
 
