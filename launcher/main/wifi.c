@@ -92,7 +92,7 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
 {
     if (event == RG_DIALOG_ENTER)
     {
-        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go", true))
+        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", true))
         {
             rg_network_wifi_stop();
             rg_network_wifi_set_config(&(const rg_wifi_config_t){
