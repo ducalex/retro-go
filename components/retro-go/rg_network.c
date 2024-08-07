@@ -281,8 +281,19 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
     RG_ASSERT(url, "bad param");
 #ifdef RG_ENABLE_NETWORKING
+    size_t write_content_length = 0; // use 0 for read-only connections and use the actual length for writes such as POST requests
     esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
+
+    if (cfg && cfg->post_data)
+    {
+        write_content_length = strlen(cfg->post_data);
+        esp_http_client_set_method(http_client, HTTP_METHOD_POST);
+        // Some POSTs can take quite a while. For instance, retro-go's HTTP API's "list"
+        // does around ~20 files per second. So this should support ~600 files per folder:
+        esp_http_client_set_timeout_ms(http_client, 30 * 1000);
+    }
+
     rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
 
     if (!http_client || !req)
@@ -292,9 +303,15 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
     }
 
 try_again:
-    if (esp_http_client_open(http_client, 0) != ESP_OK)
+    if (esp_http_client_open(http_client, write_content_length) != ESP_OK)
     {
         RG_LOGE("Error opening connection");
+        goto fail;
+    }
+
+    if (write_content_length && !(esp_http_client_write(http_client, cfg->post_data, write_content_length)))
+    {
+        RG_LOGE("POST data write failed");
         goto fail;
     }
 

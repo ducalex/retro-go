@@ -40,7 +40,7 @@ rg_network_t rg_network_get_info(void);
 
 typedef struct
 {
-
+    char *post_data; // if post_data is provided, the http client will do a POST request with that data
 } rg_http_cfg_t;
 
 typedef struct
