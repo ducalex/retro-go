@@ -79,9 +79,11 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         int sel = rg_gui_dialog("Select saved AP", options, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0));
         if (sel != RG_DIALOG_CANCELLED)
         {
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, true);
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
+            rg_network_wifi_stop();
             rg_network_wifi_load_config(sel);
-            wifi_toggle(wifi_enable);
+            wifi_toggle(true);
         }
         gui_redraw();
     }
@@ -101,7 +103,6 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
                 .channel = 6,
                 .ap_mode = true,
             });
-            rg_network_wifi_start();
             wifi_toggle(true);
         }
     }
