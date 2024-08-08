@@ -254,10 +254,10 @@ bool rg_network_init(void)
     TRY(esp_wifi_init(&cfg));
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
-    // Setup SNTP client but don't query it yet
+    // Setup SNTP client
     esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
     esp_sntp_setservername(0, "pool.ntp.org");
-    // esp_sntp_init();
+    // esp_sntp_init(); // don't query it yet (do it when IP_EVENT_STA_GOT_IP)
 
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;
@@ -280,8 +280,19 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
     RG_ASSERT(url, "bad param");
 #ifdef RG_ENABLE_NETWORKING
+    size_t write_content_length = 0; // use 0 for read-only connections and use the actual length for writes such as POST requests
     esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
+
+    if (cfg && cfg->post_data)
+    {
+        write_content_length = strlen(cfg->post_data);
+        esp_http_client_set_method(http_client, HTTP_METHOD_POST);
+        // Some POSTs can take quite a while. For instance, retro-go's HTTP API's "list"
+        // does around ~20 files per second. So this should support ~600 files per folder:
+        esp_http_client_set_timeout_ms(http_client, 30 * 1000);
+    }
+
     rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
 
     if (!http_client || !req)
@@ -291,9 +302,15 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
     }
 
 try_again:
-    if (esp_http_client_open(http_client, 0) != ESP_OK)
+    if (esp_http_client_open(http_client, write_content_length) != ESP_OK)
     {
         RG_LOGE("Error opening connection");
+        goto fail;
+    }
+
+    if (write_content_length && !(esp_http_client_write(http_client, cfg->post_data, write_content_length)))
+    {
+        RG_LOGE("POST data write failed");
         goto fail;
     }
 
@@ -305,6 +322,7 @@ try_again:
 
     req->status_code = esp_http_client_get_status_code(http_client);
     req->content_length = esp_http_client_get_content_length(http_client);
+    RG_LOGI("HTTP request got status code: %d and content length: %d", req->status_code, req->content_length);
     req->client = (void *)http_client;
 
     if (req->status_code == 301 || req->status_code == 302)
