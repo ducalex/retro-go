@@ -1645,7 +1645,7 @@ void rg_gui_game_menu(void)
     switch (sel)
     {
         case 1000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) rg_emu_save_state(slot); break;
-        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) {rg_emu_save_state(slot); rg_system_exit();} break;
+        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
         case 3001: if ((slot = rg_gui_savestate_menu("Load", 0, 0)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
