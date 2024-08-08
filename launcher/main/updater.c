@@ -102,18 +102,27 @@ static cJSON *fetch_json(const char *url)
     cJSON *json = NULL;
 
     if (!(req = rg_network_http_open(url, NULL)))
+    {
+        RG_LOGW("Could not open releases URL '%s', aborting update check.", url);
         goto cleanup;
+    }
 
     size_t buffer_length = RG_MAX(256 * 1024, req->content_length);
 
     if (!(buffer = calloc(1, buffer_length + 1)))
+    {
+        RG_LOGE("Out of memory, aborting update check!");
         goto cleanup;
+    }
 
     if (rg_network_http_read(req, buffer, buffer_length) < 16)
+    {
+        RG_LOGW("Read from releases URL '%s' returned (almost) no bytes, aborting update check.", url);
         goto cleanup;
+    }
 
     if (!(json = cJSON_Parse(buffer)))
-        goto cleanup;
+        RG_LOGW("Could not parse JSON received from releases URL '%s'.", url);
 
 cleanup:
     rg_network_http_close(req);
