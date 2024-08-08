@@ -40,7 +40,7 @@ static void wifi_toggle_interactive(bool enable)
 {
     rg_network_state_t target_state = enable ? RG_NETWORK_CONNECTED : RG_NETWORK_DISCONNECTED;
     int64_t timeout = rg_system_timer() + 20 * 1000000;
-    rg_gui_draw_dialog(enable ? "Connecting..." : "Disconnecting...", NULL, 0);
+    rg_gui_draw_message(enable ? "Connecting..." : "Disconnecting...");
     wifi_toggle(enable);
     do // Always loop at least once, in case we're in a transition
     {

@@ -270,8 +270,6 @@ static void crc_cache_update(retro_file_t *file)
 
 void crc_cache_prebuild(void)
 {
-    char status_msg[40];
-
     if (!crc_cache)
         return;
 
@@ -289,8 +287,7 @@ void crc_cache_prebuild(void)
         {
             retro_file_t *file = &app->files[j];
 
-            snprintf(status_msg, sizeof(status_msg), "Scanning %s %d/%d", app->short_name, j, app->files_count);
-            rg_gui_draw_dialog(status_msg, NULL, 0);
+            rg_gui_draw_message("Scanning %s %d/%d", app->short_name, j, app->files_count);
 
             // Give up on any button press to improve responsiveness
             if (rg_input_read_gamepad())

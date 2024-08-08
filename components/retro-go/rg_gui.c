@@ -721,8 +721,9 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         else
             color = gui.style.item_disabled;
 
-        fg = (i == sel) ? gui.style.box_background : color;
-        bg = (i == sel) ? color : gui.style.box_background;
+        bool highlight = (options[i].flags & RG_DIALOG_FLAG_MODE_MASK) != RG_DIALOG_FLAG_SKIP && i == sel;
+        fg = highlight ? gui.style.box_background : color;
+        bg = highlight ? color : gui.style.box_background;
 
         if (y + row_height[i] >= box_y + box_height)
             break;
@@ -780,6 +781,22 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
         rg_gui_draw_rect(x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
     }
+}
+
+void rg_gui_draw_message(const char *format, ...)
+{
+    RG_ASSERT(format, "Bad param");
+    char buffer[512];
+    va_list va;
+    va_start(va, format);
+    vsnprintf(buffer, sizeof(buffer), format, va);
+    va_end(va);
+    const rg_gui_option_t options[] = {
+        {0, buffer, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
+        RG_DIALOG_END,
+    };
+    // FIXME: Should rg_display_force_redraw() be called? Before? After? Both?
+    rg_gui_draw_dialog(NULL, options, 0);
 }
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)

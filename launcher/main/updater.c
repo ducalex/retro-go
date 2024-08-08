@@ -40,7 +40,7 @@ static bool download_file(const char *url, const char *filename)
     int len;
 
     RG_LOGI("Downloading: '%s' to '%s'", url, filename);
-    rg_gui_draw_dialog("Connecting...", NULL, 0);
+    rg_gui_draw_message("Connecting...");
 
     if (!(req = rg_network_http_open(url, NULL)))
     {
@@ -63,15 +63,14 @@ static bool download_file(const char *url, const char *filename)
         return false;
     }
 
-    rg_gui_draw_dialog("Receiving file...", NULL, 0);
+    rg_gui_draw_message("Receiving file...");
     int content_length = req->content_length;
 
     while ((len = rg_network_http_read(req, buffer, 16 * 1024)) > 0)
     {
         received += len;
         written += fwrite(buffer, 1, len, fp);
-        sprintf(buffer, "Received %d / %d", received, content_length);
-        rg_gui_draw_dialog(buffer, NULL, 0);
+        rg_gui_draw_message("Received %d / %d", received, content_length);
         if (received != written)
             break; // No point in continuing
     }

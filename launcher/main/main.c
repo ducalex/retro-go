@@ -240,7 +240,7 @@ static void retro_loop(void)
         // It's also risky to let the user do file accesses at the same time (thread safety, SPI, etc)...
         if (gui.http_lock)
         {
-            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            rg_gui_draw_message("HTTP Server Busy...");
             redraw_pending = true;
             rg_task_delay(100);
             continue;
