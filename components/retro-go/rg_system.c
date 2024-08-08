@@ -184,6 +184,10 @@ static void update_indicators(void)
     else if (visibleIndicators)
         ledColor = C_BLUE;
 
+#ifdef RG_GPIO_LED_ACTIVE_LOW
+    ledColor = !ledColor;
+#endif
+
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
     gpio_set_level(RG_GPIO_LED, ledColor != 0);
 #endif
