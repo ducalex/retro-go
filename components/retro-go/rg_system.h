@@ -249,8 +249,10 @@ void rg_system_load_time(void);
 void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
-// typedef void rg_task_t;
-bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
+typedef struct rg_task_s rg_task_t;
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
+rg_task_t *rg_task_find(const char *name);
+bool rg_task_stop(rg_task_t *task);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.

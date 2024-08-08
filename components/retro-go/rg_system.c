@@ -41,17 +41,18 @@ typedef struct
     int64_t busyTime, updateTime;
 } counters_t;
 
-typedef struct
+struct rg_task_s
 {
     void (*func)(void *arg);
     void *arg;
+    // rg_queue_t *queue;
 #ifdef ESP_PLATFORM
     TaskHandle_t handle;
 #else
     SDL_threadID handle;
 #endif
     char name[16];
-} rg_task_t;
+};
 
 #ifdef RG_ENABLE_PROFILING
 typedef struct
@@ -369,7 +370,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // Do this very early, may be needed to enable serial console
     platform_init();
 
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     const esp_app_desc_t *esp_app = esp_ota_get_app_description();
     snprintf(app.name, sizeof(app.name), "%s", esp_app->project_name);
     snprintf(app.version, sizeof(app.version), "%s", esp_app->version);
@@ -380,13 +381,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.bootType = RG_RST_PANIC;
     else if (r_reason == ESP_RST_SW)
         app.bootType = RG_RST_RESTART;
-    tasks[0] = (rg_task_t){NULL, NULL, xTaskGetCurrentTaskHandle(), "main"};
-#else
+    tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
+#elif defined(RG_TARGET_SDL2)
     SDL_version version;
     SDL_GetVersion(&version);
     snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", version.major,
              version.minor, version.patch, __VERSION__);
-    tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
+    tasks[0] = (rg_task_t){.handle = SDL_ThreadID(), .name = "main"};
 #endif
 
     printf("\n========================================================\n");
@@ -487,8 +488,10 @@ static void task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = xTaskGetCurrentTaskHandle();
+    // task->queue = rg_queue_create(1, sizeof(void *));
     (task->func)(task->arg);
-    task->func = NULL;
+    // rg_queue_free(task->queue);
+    memset(task, 0, sizeof(rg_task_t));
     vTaskDelete(NULL);
 }
 #else
@@ -496,13 +499,15 @@ static int task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = SDL_ThreadID();
+    // task->queue = rg_queue_create(1, sizeof(void *));
     (task->func)(task->arg);
-    task->func = NULL;
+    // rg_queue_free(task->queue);
+    memset(task, 0, sizeof(rg_task_t));
     return 0;
 }
 #endif
 
-bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity)
 {
     RG_ASSERT(name && taskFunc, "bad param");
     rg_task_t *task = NULL;
@@ -517,34 +522,45 @@ bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, 
     RG_ASSERT(task, "Out of task slots");
 
     task->func = taskFunc;
-    task->arg = data;
+    task->arg = arg;
     task->handle = 0;
     strncpy(task->name, name, 16);
 
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     TaskHandle_t handle = NULL;
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
     if (xTaskCreatePinnedToCore(task_wrapper, name, stackSize, task, priority, &handle, affinity) == pdPASS)
-        return true;
-#else
+        return task;
+#elif defined(RG_TARGET_SDL2)
     SDL_Thread *thread = SDL_CreateThread(task_wrapper, name, task);
     SDL_DetachThread(thread);
     if (thread)
-        return true;
+        return task;
 #endif
 
     RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, (int)stackSize);
-    task->func = NULL;
+    memset(task, 0, sizeof(rg_task_t));
 
-    return false;
+    return NULL;
+}
+
+rg_task_t *rg_task_find(const char *name)
+{
+    RG_ASSERT(name, "bad param");
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if (strncmp(tasks[i].name, name, 16) == 0)
+            return &tasks[i];
+    }
+    return NULL;
 }
 
 void rg_task_delay(uint32_t ms)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     vTaskDelay(pdMS_TO_TICKS(ms));
-#else
+#elif defined(RG_TARGET_SDL2)
     SDL_PumpEvents();
     SDL_Delay(ms);
 #endif
@@ -552,9 +568,9 @@ void rg_task_delay(uint32_t ms)
 
 void rg_task_yield(void)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     vPortYield();
-#else
+#elif defined(RG_TARGET_SDL2)
     SDL_PumpEvents();
 #endif
 }
@@ -682,9 +698,9 @@ void rg_system_tick(int busyTime)
 
 IRAM_ATTR int64_t rg_system_timer(void)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     return esp_timer_get_time();
-#else
+#elif defined(RG_TARGET_SDL2)
     return (SDL_GetPerformanceCounter() * 1000000.f) / SDL_GetPerformanceFrequency();
 #endif
 }
