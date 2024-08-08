@@ -36,12 +36,29 @@ static void webui_toggle(bool enable)
     webui_enable = enable;
 }
 
+static void wifi_toggle_interactive(bool enable)
+{
+    rg_network_state_t target_state = enable ? RG_NETWORK_CONNECTED : RG_NETWORK_DISCONNECTED;
+    int64_t timeout = rg_system_timer() + 20 * 1000000;
+    rg_gui_draw_dialog(enable ? "Connecting..." : "Disconnecting...", NULL, 0);
+    wifi_toggle(enable);
+    do // Always loop at least once, in case we're in a transition
+    {
+        rg_task_delay(100);
+        if (rg_system_timer() > timeout)
+            break;
+        if (rg_input_read_gamepad())
+            break;
+    } while (rg_network_get_info().state != target_state);
+}
+
 static rg_gui_event_t wifi_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
-        wifi_toggle(!wifi_enable);
+        wifi_toggle_interactive(!wifi_enable);
         rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, wifi_enable);
+        return RG_DIALOG_REDRAW;
     }
     strcpy(option->value, wifi_enable ? "On " : "Off");
     return RG_DIALOG_VOID;
@@ -83,9 +100,9 @@ static rg_gui_event_t wifi_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
             rg_network_wifi_stop();
             rg_network_wifi_load_config(sel);
-            wifi_toggle(true);
+            wifi_toggle_interactive(true);
         }
-        gui_redraw();
+        return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }
@@ -103,21 +120,37 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
                 .channel = 6,
                 .ap_mode = true,
             });
-            wifi_toggle(true);
+            wifi_toggle_interactive(true);
         }
+        return RG_DIALOG_REDRAW;
     }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    rg_network_t info = rg_network_get_info();
+    if (info.state != RG_NETWORK_CONNECTED)
+        strcpy(option->value, "Not connected");
+    else if (option->arg == 1)
+        strcpy(option->value, info.name);
+    else if (option->arg == 2)
+        strcpy(option->value, info.ip_addr);
     return RG_DIALOG_VOID;
 }
 
 void wifi_show_dialog(void)
 {
     const rg_gui_option_t options[] = {
-        {0, "Wi-Fi             ", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_switch_cb},
-        {0, "Wi-Fi select      ", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_select_cb},
+        {0, "Wi-Fi       ", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_switch_cb},
+        {0, "Wi-Fi select", "-",  RG_DIALOG_FLAG_NORMAL, &wifi_select_cb},
         {0, "Wi-Fi Access Point", NULL, RG_DIALOG_FLAG_NORMAL, &wifi_access_point_cb},
         RG_DIALOG_SEPARATOR,
         {0, "File server" ,  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
         {0, "Time sync  " , "On", RG_DIALOG_FLAG_DISABLED, NULL},
+        RG_DIALOG_SEPARATOR,
+        {1, "Network   " ,  "-", RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb},
+        {2, "IP address" ,  "-", RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb},
         RG_DIALOG_END,
     };
     gui_redraw(); // clear main menu

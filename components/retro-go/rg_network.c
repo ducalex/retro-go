@@ -205,7 +205,6 @@ void rg_network_wifi_stop(void)
 #ifdef RG_ENABLE_NETWORKING
     RG_ASSERT(initialized, "Please call rg_network_init() first");
     esp_wifi_stop();
-    rg_task_delay(100);
     memset(network.name, 0, sizeof(network.name));
 #endif
 }
