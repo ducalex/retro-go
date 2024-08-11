@@ -30,20 +30,20 @@ static const rg_audio_sink_t sinks[] = {
     // {rg_audio_driver_bt_a2dp, 0, "Bluetooth"},
 };
 
-#define ACQUIRE_DEVICE(timeout)                                  \
-    ({                                                           \
-        bool lock = rg_queue_receive(audio.lock, NULL, timeout); \
-        if (!lock)                                               \
-            RG_LOGE("Failed to acquire lock!\n");                \
-        lock;                                                    \
+#define ACQUIRE_DEVICE(timeout)                         \
+    ({                                                  \
+        bool lock = rg_mutex_take(audio.lock, timeout); \
+        if (!lock)                                      \
+            RG_LOGE("Failed to acquire lock!\n");       \
+        lock;                                           \
     })
-#define RELEASE_DEVICE() rg_queue_send(audio.lock, NULL, 0)
+#define RELEASE_DEVICE() rg_mutex_give(audio.lock)
 
 static struct
 {
     const rg_audio_sink_t *sink;
     const rg_audio_driver_t *driver;
-    rg_queue_t *lock;
+    rg_mutex_t *lock;
     int sampleRate;
     int filter;
     int volume;
@@ -69,7 +69,7 @@ void rg_audio_init(int sampleRate)
 
     if (!audio.lock)
     {
-        audio.lock = rg_queue_create(1, 0);
+        audio.lock = rg_mutex_create();
         RELEASE_DEVICE();
     }
     ACQUIRE_DEVICE(1000);

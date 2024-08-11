@@ -252,7 +252,6 @@ void rg_system_save_time(void);
 typedef struct rg_task_s rg_task_t;
 rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
 rg_task_t *rg_task_find(const char *name);
-bool rg_task_stop(rg_task_t *task);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.
@@ -271,6 +270,12 @@ bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
 bool rg_queue_is_empty(rg_queue_t *queue);
 bool rg_queue_is_full(rg_queue_t *queue);
 size_t rg_queue_messages_waiting(rg_queue_t *queue);
+
+#define rg_mutex_t rg_queue_t
+#define rg_mutex_create() rg_queue_create(1, 0)
+#define rg_mutex_free(mutex) rg_queue_free(mutex)
+#define rg_mutex_give(mutex) rg_queue_send(mutex, NULL, 0)
+#define rg_mutex_take(mutex, timeoutMS) rg_queue_receive(mutex, NULL, timeoutMS)
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

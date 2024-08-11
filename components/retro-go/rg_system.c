@@ -66,7 +66,7 @@ static struct
 {
     int64_t time_started;
     int32_t total_frames;
-    rg_queue_t *lock;
+    rg_mutex_t *lock;
     profile_frame_t frames[512];
 } *profile;
 #endif
@@ -456,7 +456,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
-    profile->lock = rg_queue_create(1, 0);
+    profile->lock = rg_mutex_create();
 #endif
 
     update_memory_statistics();
@@ -1309,8 +1309,8 @@ float rg_emu_get_speed(void)
 // We also need to add multi-core support. Currently it's not an issue
 // because all our profiled code runs on the same core.
 
-#define LOCK_PROFILE()   rg_queue_receive(profile->lock, NULL, 10000)
-#define UNLOCK_PROFILE() rg_queue_send(lock, NULL, 0)
+#define LOCK_PROFILE()   rg_mutex_take(profile->lock, 10000)
+#define UNLOCK_PROFILE() rg_mutex_give(lock)
 
 NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
 {
