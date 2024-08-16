@@ -461,9 +461,9 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 
 bool rg_display_sync(bool block)
 {
-    while (block && !rg_queue_is_empty(display_task_queue))
+    while (block && rg_queue_messages_waiting(display_task_queue))
         continue; // Wait until display queue is done
-    return rg_queue_is_empty(display_task_queue);
+    return rg_queue_messages_waiting(display_task_queue) == 0;
 }
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)

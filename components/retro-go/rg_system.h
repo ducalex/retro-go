@@ -265,11 +265,9 @@ rg_queue_t *rg_queue_create(size_t length, size_t itemSize);
 void rg_queue_free(rg_queue_t *queue);
 bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS);
 bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS);
-bool rg_queue_receive_from_isr(rg_queue_t *queue, void *out, void *xTaskWokenByReceive);
 bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
-bool rg_queue_is_empty(rg_queue_t *queue);
-bool rg_queue_is_full(rg_queue_t *queue);
 size_t rg_queue_messages_waiting(rg_queue_t *queue);
+size_t rg_queue_spaces_available(rg_queue_t *queue);
 
 #define rg_mutex_t rg_queue_t
 #define rg_mutex_create() rg_queue_create(1, 0)
