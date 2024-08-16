@@ -41,6 +41,7 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 #endif
 
 #include <freertos/FreeRTOS.h>
+#include <freertos/queue.h>
 #include <driver/timer.h>
 #include <driver/ledc.h>
 #include <inttypes.h>
@@ -85,7 +86,7 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 // Global variables shared with interrupt handler:
 int underflows = 0;
 int overflows = 0;
-rg_queue_t * sampleQueue;
+QueueHandle_t sampleQueue;
 
 // Global variables used for approximating rolling average of samples in sampleQueue:
 float averageSamplesNeeded = 0;
@@ -143,7 +144,7 @@ static bool IRAM_ATTR buzzer_interrupt_handler(void *args)
 
     BaseType_t xTaskWokenByReceive = pdFALSE;
     int16_t sample_int16;
-    if (rg_queue_receive_from_isr(sampleQueue, (void *) &sample_int16, &xTaskWokenByReceive)) {
+    if (xQueueReceiveFromISR(sampleQueue, (void *) &sample_int16, &xTaskWokenByReceive) == pdPASS) {
         int32_t sample = sample_int16;
         sample = sample + 32768; // so now it's between 0 and 64k so needs 32 bits signed
         sample = sample >> clipbits;
@@ -161,7 +162,7 @@ void rg_buzzer_statistics(void *args)
 	int cacheSamples = (int) args;
     while (sampleQueue)
     {
-        RG_LOGD("underflows %d, overflows %d, averageSamplesNeeded: %.6f, sampleQueue: [0,%d,%d]", underflows, overflows, averageSamplesNeeded, rg_queue_messages_waiting(sampleQueue), cacheSamples*2);
+        RG_LOGD("underflows %d, overflows %d, averageSamplesNeeded: %.6f, sampleQueue: [0,%d,%d]", underflows, overflows, averageSamplesNeeded, uxQueueMessagesWaiting(sampleQueue), cacheSamples*2);
         rg_task_delay(500);
     }
 }
@@ -178,7 +179,7 @@ static bool buzzer_init(int device, int sampleRate)
     precompute_sine_wave(sampleRate);
 #endif
 
-    sampleQueue = rg_queue_create(cacheSamples*2, sizeof(int16_t*));
+    sampleQueue = xQueueCreate(cacheSamples*2, sizeof(int16_t*));
     if (!sampleQueue) {
         RG_LOGE("could not create sampleQueue");
         return false;
@@ -298,7 +299,7 @@ static bool buzzer_deinit(void)
     RG_LOGD("timer_disable_intr result: %d", result);
     result = timer_deinit(GENERAL_PURPOSE_TIMER_GROUP, GENERAL_PURPOSE_TIMER);
 
-    rg_queue_free(sampleQueue);
+    vQueueDelete(sampleQueue);
     sampleQueue = NULL;  // this stops rg_buzzer_statistics
 
 #ifdef PLAY_SINE_AS_TEST
@@ -326,7 +327,7 @@ static bool buzzer_submit(const rg_audio_frame_t *frames, size_t count)
             sinePosition = 0;
 #endif
 
-        if (!rg_queue_send(sampleQueue, (void*)&left, 0))
+        if (xQueueSend(sampleQueue, (void*)&left, 0) != pdPASS)
             overflows++;
     }
 
@@ -338,7 +339,7 @@ static bool buzzer_submit(const rg_audio_frame_t *frames, size_t count)
 
     // Keep an average of the samples needed (or too much) and use it to tweak uSleepTime for the next frame
     int cacheSamples = (sampleRate/1000)*MS_OF_CACHED_SAMPLES;
-    int samplesNeeded = cacheSamples - rg_queue_messages_waiting(sampleQueue);
+    int samplesNeeded = cacheSamples - uxQueueMessagesWaiting(sampleQueue);
     averageSamplesNeeded = approxRollingAverage(averageSamplesNeeded, samplesNeeded);
 
     return true;
