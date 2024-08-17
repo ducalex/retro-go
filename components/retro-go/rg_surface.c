@@ -226,7 +226,7 @@ bool rg_surface_fill(rg_surface_t *dest, const rg_rect_t *rect, rg_color_t color
 
 rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32_t flags)
 {
-    RG_ASSERT(data && data_len >= 16, "bad param");
+    RG_ASSERT_ARG(data && data_len >= 16);
     const uint16_t *data16 = (const uint16_t *)data;
 
     if (memcmp(data, "\x89PNG", 4) == 0)
@@ -261,7 +261,7 @@ rg_surface_t *rg_surface_load_image(const uint8_t *data, size_t data_len, uint32
 
 rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags)
 {
-    RG_ASSERT(filename, "bad param");
+    RG_ASSERT_ARG(filename);
 
     size_t data_len;
     void *data;

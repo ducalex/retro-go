@@ -468,7 +468,7 @@ bool rg_display_sync(bool block)
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
-    RG_ASSERT(buffer, "Bad param");
+    RG_ASSERT_ARG(buffer);
 
     // Offsets can be negative to indicate N pixels from the end
     if (left < 0)

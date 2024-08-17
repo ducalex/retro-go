@@ -294,6 +294,7 @@ float rg_emu_get_speed(void);
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(__func__, x)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
+#define RG_ASSERT_ARG(cond) while (!(cond)) { RG_PANIC("Invalid function argument"); }
 
 #ifndef RG_LOG_TAG
 #define RG_LOG_TAG __func__

@@ -30,7 +30,7 @@ typedef struct
 
 static bool download_file(const char *url, const char *filename)
 {
-    RG_ASSERT(url && filename, "bad param");
+    RG_ASSERT_ARG(url && filename);
 
     rg_http_req_t *req = NULL;
     FILE *fp = NULL;
@@ -91,7 +91,7 @@ static bool download_file(const char *url, const char *filename)
 
 static cJSON *fetch_json(const char *url)
 {
-    RG_ASSERT(url, "bad param");
+    RG_ASSERT_ARG(url);
 
     RG_LOGI("Fetching: '%s'", url);
     rg_gui_draw_hourglass();

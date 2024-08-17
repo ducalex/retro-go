@@ -785,7 +785,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 
 void rg_gui_draw_message(const char *format, ...)
 {
-    RG_ASSERT(format, "Bad param");
+    RG_ASSERT_ARG(format);
+
     char buffer[512];
     va_list va;
     va_start(va, format);
@@ -1025,7 +1026,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
 
 void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
 {
-    RG_ASSERT(map, "Bad param");
+    RG_ASSERT_ARG(map);
 
     int width = map->columns * 16 + 16;
     int height = map->rows * 16 + 16;

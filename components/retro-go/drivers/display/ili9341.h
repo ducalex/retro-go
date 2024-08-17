@@ -174,7 +174,7 @@ static void lcd_set_window(int left, int top, int width, int height)
 
 static inline uint16_t *lcd_get_buffer(size_t length)
 {
-    // RG_ASSERT(length < LCD_BUFFER_LENGTH, "Invalid length");
+    // RG_ASSERT_ARG(length < LCD_BUFFER_LENGTH);
     return spi_take_buffer();
 }
 

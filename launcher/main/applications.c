@@ -118,14 +118,14 @@ static void application_init(retro_app_t *app)
 static const char *get_file_path(retro_file_t *file)
 {
     static char buffer[RG_PATH_MAX + 1];
-    RG_ASSERT(file, "Bad param");
+    RG_ASSERT_ARG(file);
     snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
     return buffer;
 }
 
 static void application_start(retro_file_t *file, int load_state)
 {
-    RG_ASSERT(file, "Unable to find file...");
+    RG_ASSERT_ARG(file);
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
@@ -475,7 +475,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
 bool application_path_to_file(const char *path, retro_file_t *file)
 {
-    RG_ASSERT(path && file, "Bad param");
+    RG_ASSERT_ARG(path && file);
 
     for (int i = 0; i < apps_count; ++i)
     {
@@ -654,7 +654,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 
 static void application(const char *desc, const char *name, const char *exts, const char *part, uint16_t crc_offset)
 {
-    RG_ASSERT(desc && name && exts && part, "Bad param");
+    RG_ASSERT_ARG(desc && name && exts && part);
 
     if (!rg_system_have_app(part))
     {

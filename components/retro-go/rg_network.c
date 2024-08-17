@@ -151,7 +151,7 @@ bool rg_network_wifi_load_config(int slot)
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 {
 #ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(config, "bad param");
+    RG_ASSERT_ARG(config != NULL);
     wifi_config = *config;
     return true;
 #else
@@ -278,7 +278,7 @@ fail:
 
 rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
-    RG_ASSERT(url, "bad param");
+    RG_ASSERT_ARG(url != NULL);
 #ifdef RG_ENABLE_NETWORKING
     esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
@@ -329,7 +329,7 @@ fail:
 
 int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len)
 {
-    RG_ASSERT(req && buffer, "bad param");
+    RG_ASSERT_ARG(req && buffer);
 #ifdef RG_ENABLE_NETWORKING
     // if (req->content_length >= 0 && req->received_bytes >= req->content_length)
     //     return 0;

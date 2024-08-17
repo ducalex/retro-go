@@ -509,7 +509,7 @@ static int task_wrapper(void *arg)
 
 rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity)
 {
-    RG_ASSERT(name && taskFunc, "bad param");
+    RG_ASSERT_ARG(name && taskFunc);
     rg_task_t *task = NULL;
 
     for (size_t i = 1; i < RG_COUNT(tasks); ++i)
@@ -547,7 +547,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
 
 rg_task_t *rg_task_find(const char *name)
 {
-    RG_ASSERT(name, "bad param");
+    RG_ASSERT_ARG(name != NULL);
     for (size_t i = 0; i < RG_COUNT(tasks); ++i)
     {
         if (strncmp(tasks[i].name, name, 16) == 0)

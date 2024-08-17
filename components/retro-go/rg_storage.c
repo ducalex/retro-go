@@ -411,7 +411,7 @@ int64_t rg_storage_get_free_space(const char *path)
 
 bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, uint32_t flags)
 {
-    RG_ASSERT(data_out && data_len, "Bad param");
+    RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(path);
 
     size_t output_buffer_align = RG_MAX(0x400, (flags & 0xF) * 0x2000);
@@ -466,7 +466,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
 
 bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, uint32_t flags)
 {
-    RG_ASSERT(data_ptr || !data_len, "Bad param");
+    RG_ASSERT_ARG(data_ptr || !data_len);
     CHECK_PATH(path);
 
     // TODO: If atomic is true we should write to a temp file and only replace the target on success
@@ -519,7 +519,7 @@ typedef struct __attribute__((packed))
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
 {
 #if RG_ZIP_SUPPORT
-    RG_ASSERT(data_out && data_len, "Bad param");
+    RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(zip_path);
 
     zip_header_t header = {0};
