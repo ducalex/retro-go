@@ -21,6 +21,7 @@
 #include <driver/gpio.h>
 #else
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mutex.h>
 #endif
 
 #define RG_STRUCT_MAGIC 0x12345678
@@ -663,7 +664,7 @@ rg_mutex_t *rg_mutex_create(void)
 #if defined(ESP_PLATFORM)
     return (rg_mutex_t *)xSemaphoreCreateMutex();
 #elif defined(RG_TARGET_SDL2)
-    return (rg_mutex_t *)SDL2_CreateMutex();
+    return (rg_mutex_t *)SDL_CreateMutex();
 #endif
 }
 
@@ -673,7 +674,7 @@ void rg_mutex_free(rg_mutex_t *mutex)
 #if defined(ESP_PLATFORM)
     vSemaphoreDelete((QueueHandle_t)mutex);
 #elif defined(RG_TARGET_SDL2)
-    SDL2_DestroyMutex((SDL2_Mutex *)mutex);
+    SDL_DestroyMutex((SDL_mutex *)mutex);
 #endif
 }
 
@@ -683,7 +684,7 @@ bool rg_mutex_give(rg_mutex_t *mutex)
 #if defined(ESP_PLATFORM)
     return xSemaphoreGive((QueueHandle_t)mutex) == pdPASS;
 #elif defined(RG_TARGET_SDL2)
-    return SDL_UnlockMutex((SDL2_Mutex *)mutex) == 0;
+    return SDL_UnlockMutex((SDL_mutex *)mutex) == 0;
 #endif
 }
 
@@ -694,7 +695,7 @@ bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS)
     int timeout = timeoutMS >= 0 ? pdMS_TO_TICKS(timeoutMS) : portMAX_DELAY;
     return xSemaphoreTake((QueueHandle_t)mutex, timeout) == pdPASS;
 #elif defined(RG_TARGET_SDL2)
-    return SDL_LockMutex((SDL2_Mutex *)mutex) == 0;
+    return SDL_LockMutex((SDL_mutex *)mutex) == 0;
 #endif
 }
 
