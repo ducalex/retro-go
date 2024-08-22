@@ -48,9 +48,6 @@
 const char *rg_const_string(const char *str);
 const char *rg_unique_string(const char *str);
 
-size_t strlcpy(char *dst, const char *src, size_t size);
-size_t strlcat(char *dst, const char *src, size_t size);
-
 char *rg_strtolower(char *str);
 char *rg_strtoupper(char *str);
 const char *rg_dirname(const char *path);

@@ -669,9 +669,6 @@ static void application(const char *desc, const char *name, const char *exts, co
     snprintf(app->short_name, sizeof(app->short_name), "%s", name);
     snprintf(app->partition, sizeof(app->partition), "%s", part);
     snprintf(app->extensions, sizeof(app->extensions), " %s ", exts);
-    rg_strtolower(app->partition);
-    rg_strtolower(app->short_name);
-    rg_strtolower(app->extensions);
     snprintf(app->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", app->short_name);
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);
