@@ -5,14 +5,16 @@
 #include <SDL2/SDL.h>
 
 static SDL_AudioDeviceID audioDevice;
+static int sampleRate;
 
-static bool driver_init(int device, int sampleRate)
+static bool driver_init(int device, int _sampleRate)
 {
     SDL_AudioSpec desired = {
         .freq = sampleRate,
         .format = AUDIO_S16,
         .channels = 2,
     };
+    sampleRate = _sampleRate;
     audioDevice = SDL_OpenAudioDevice(NULL, 0, &desired, NULL, 0);
     return audioDevice != 0;
 }
@@ -29,7 +31,7 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
     SDL_PauseAudioDevice(audioDevice, 0);
     // This is ugly, but we must emulate how it works on the ESP32, where the audio does the pacing!
     static int64_t frame_start = 0;
-    int64_t frame_end = frame_start + (uint32_t)(count * (1000000.f / audio.sampleRate)) - 500;
+    int64_t frame_end = frame_start + (uint32_t)(count * (1000000.f / sampleRate)) - 500;
     if (frame_end > rg_system_timer())
         rg_usleep((frame_end - rg_system_timer()));
     frame_start = rg_system_timer();

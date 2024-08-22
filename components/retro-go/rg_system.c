@@ -317,8 +317,8 @@ static void platform_init(void)
         gpio_set_level(RG_GPIO_LED, 0);
     #endif
 #elif defined(RG_TARGET_SDL2)
-    // freopen("stdout.txt", "w", stdout);
-    // freopen("stderr.txt", "w", stderr);
+    freopen("stdout.txt", "w", stdout);
+    freopen("stderr.txt", "w", stderr);
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
         RG_PANIC("SDL Init failed!");
@@ -527,7 +527,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
     task->func = taskFunc;
     task->arg = arg;
     task->handle = 0;
-    strncpy(task->name, name, 16);
+    strncpy(task->name, name, 15);
 
 #if defined(ESP_PLATFORM)
     TaskHandle_t handle = NULL;

@@ -57,12 +57,8 @@ static inline void lcd_send_buffer(uint16_t *buffer, size_t length)
 
 static void lcd_sync(void)
 {
-    SDL_Event user_event;
-    user_event.type = SDL_USEREVENT;
-    user_event.user.code = 2;
-    user_event.user.data1 = NULL;
-    user_event.user.data2 = NULL;
-    SDL_PushEvent(&user_event);
+    SDL_BlitSurface(canvas, NULL, surface, NULL);
+    SDL_UpdateWindowSurface(window);
 }
 
 const rg_display_driver_t rg_display_driver_sdl2 = {

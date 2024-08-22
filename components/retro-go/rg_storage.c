@@ -24,6 +24,9 @@
 #include <windows.h>
 #define access _access
 #define mkdir(A, B) mkdir(A)
+#if defined(__MINGW32__)
+#include <dirent.h>
+#endif
 #else
 #include <dirent.h>
 #include <unistd.h>
