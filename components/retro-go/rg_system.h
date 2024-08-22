@@ -269,11 +269,11 @@ bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
 size_t rg_queue_messages_waiting(rg_queue_t *queue);
 size_t rg_queue_spaces_available(rg_queue_t *queue);
 
-#define rg_mutex_t rg_queue_t
-#define rg_mutex_create() rg_queue_create(1, 0)
-#define rg_mutex_free(mutex) rg_queue_free(mutex)
-#define rg_mutex_give(mutex) rg_queue_send(mutex, NULL, 0)
-#define rg_mutex_take(mutex, timeoutMS) rg_queue_receive(mutex, NULL, timeoutMS)
+typedef void rg_mutex_t;
+rg_mutex_t *rg_mutex_create(void);
+void rg_mutex_free(rg_mutex_t *mutex);
+bool rg_mutex_give(rg_mutex_t *mutex);
+bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

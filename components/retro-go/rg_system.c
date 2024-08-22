@@ -11,6 +11,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
 #include <esp_ota_ops.h>
@@ -612,6 +613,46 @@ size_t rg_queue_messages_waiting(rg_queue_t *queue)
 size_t rg_queue_spaces_available(rg_queue_t *queue)
 {
     return uxQueueSpacesAvailable((QueueHandle_t)queue);
+}
+
+rg_mutex_t *rg_mutex_create(void)
+{
+#if defined(ESP_PLATFORM)
+    return (rg_mutex_t *)xSemaphoreCreateMutex();
+#elif defined(RG_TARGET_SDL2)
+    return (rg_mutex_t *)SDL2_CreateMutex();
+#endif
+}
+
+void rg_mutex_free(rg_mutex_t *mutex)
+{
+    if (!mutex) return;
+#if defined(ESP_PLATFORM)
+    vSemaphoreDelete((QueueHandle_t)mutex);
+#elif defined(RG_TARGET_SDL2)
+    SDL2_DestroyMutex((SDL2_Mutex *)mutex);
+#endif
+}
+
+bool rg_mutex_give(rg_mutex_t *mutex)
+{
+    RG_ASSERT_ARG(mutex);
+#if defined(ESP_PLATFORM)
+    return xSemaphoreGive((QueueHandle_t)mutex) == pdPASS;
+#elif defined(RG_TARGET_SDL2)
+    return SDL_UnlockMutex((SDL2_Mutex *)mutex) == 0;
+#endif
+}
+
+bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS)
+{
+    RG_ASSERT_ARG(mutex);
+#if defined(ESP_PLATFORM)
+    int timeout = timeoutMS >= 0 ? pdMS_TO_TICKS(timeoutMS) : portMAX_DELAY;
+    return xSemaphoreTake((QueueHandle_t)mutex, timeout) == pdPASS;
+#elif defined(RG_TARGET_SDL2)
+    return SDL_LockMutex((SDL2_Mutex *)mutex) == 0;
+#endif
 }
 
 void rg_system_load_time(void)
