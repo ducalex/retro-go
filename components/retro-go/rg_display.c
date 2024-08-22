@@ -7,7 +7,7 @@
 #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 // static rg_display_driver_t driver;
-static rg_queue_t *display_task_queue;
+static rg_task_t *display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
 static rg_surface_t *osd;
@@ -299,17 +299,12 @@ static bool load_border_file(const char *filename)
 IRAM_ATTR
 static void display_task(void *arg)
 {
-    display_task_queue = rg_queue_create(1, sizeof(rg_surface_t *));
+    rg_task_msg_t msg;
 
-    while (1)
+    while (rg_task_peek(&msg))
     {
-        const rg_surface_t *update;
-
-        rg_queue_peek(display_task_queue, &update, -1);
-        // rg_queue_receive(display_task_queue, &update, -1);
-
         // Received a shutdown request!
-        if (update == (void *)-1)
+        if (msg.type == RG_TASK_MSG_STOP)
             break;
 
         if (display.changed)
@@ -325,15 +320,12 @@ static void display_task(void *arg)
             display.changed = false;
         }
 
-        write_update(update);
+        write_update(msg.dataPtr);
 
-        rg_queue_receive(display_task_queue, &update, -1);
+        rg_task_receive(&msg);
 
         lcd_sync();
     }
-
-    rg_queue_free(display_task_queue);
-    display_task_queue = NULL;
 }
 
 void rg_display_force_redraw(void)
@@ -453,7 +445,7 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
         display.changed = true;
     }
 
-    rg_queue_send(display_task_queue, &update, 1000);
+    rg_task_send(display_task_queue, &(rg_task_msg_t){.dataPtr = update});
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
@@ -461,9 +453,9 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
 
 bool rg_display_sync(bool block)
 {
-    while (block && rg_queue_messages_waiting(display_task_queue))
-        continue; // Wait until display queue is done
-    return rg_queue_messages_waiting(display_task_queue) == 0;
+    while (block && rg_task_messages_waiting(display_task_queue))
+        continue; // We should probably yield?
+    return !rg_task_messages_waiting(display_task_queue);
 }
 
 void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
@@ -551,12 +543,7 @@ void rg_display_clear(uint16_t color_le)
 
 void rg_display_deinit(void)
 {
-    void *stop = (void *)-1;
-    rg_queue_send(display_task_queue, &stop, 1000);
-    // display_task_queue has len == 1. When xQueueSend returns, we know that the only
-    // thing in it is our quit request which won't touch the LCD or SPI anymore
-    // while (display_task_queue)
-    //     rg_task_yield();
+    rg_task_send(display_task_queue, &(rg_task_msg_t){.type = RG_TASK_MSG_STOP});
     lcd_deinit();
     RG_LOGI("Display terminated.\n");
 }
@@ -585,7 +572,7 @@ void rg_display_init(void)
         .changed = true,
     };
     lcd_init();
-    rg_task_create("rg_display", &display_task, NULL, 4 * 1024, RG_TASK_PRIORITY_6, 1);
+    display_task_queue = rg_task_create("rg_display", &display_task, NULL, 4 * 1024, RG_TASK_PRIORITY_6, 1);
     if (config.border_file)
         load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");

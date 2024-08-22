@@ -46,10 +46,13 @@ struct rg_task_s
 {
     void (*func)(void *arg);
     void *arg;
-    // rg_queue_t *queue;
+    // bool blocked;
 #ifdef ESP_PLATFORM
+    QueueHandle_t queue;
     TaskHandle_t handle;
 #else
+    rg_task_msg_t msg;
+    int msgWaiting;
     SDL_threadID handle;
 #endif
     char name[16];
@@ -489,9 +492,9 @@ static void task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = xTaskGetCurrentTaskHandle();
-    // task->queue = rg_queue_create(1, sizeof(void *));
+    task->queue = xQueueCreate(1, sizeof(rg_task_msg_t));
     (task->func)(task->arg);
-    // rg_queue_free(task->queue);
+    vQueueDelete(task->queue);
     memset(task, 0, sizeof(rg_task_t));
     vTaskDelete(NULL);
 }
@@ -500,9 +503,7 @@ static int task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = SDL_ThreadID();
-    // task->queue = rg_queue_create(1, sizeof(void *));
     (task->func)(task->arg);
-    // rg_queue_free(task->queue);
     memset(task, 0, sizeof(rg_task_t));
     return 0;
 }
@@ -517,7 +518,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
     {
         if (tasks[i].func)
             continue;
-        task = &tasks[i];
+        task = memset(&tasks[i], 0, sizeof(rg_task_t));
         break;
     }
     RG_ASSERT(task, "Out of task slots");
@@ -548,7 +549,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
 
 rg_task_t *rg_task_find(const char *name)
 {
-    RG_ASSERT_ARG(name != NULL);
+    RG_ASSERT_ARG(name);
     for (size_t i = 0; i < RG_COUNT(tasks); ++i)
     {
         if (strncmp(tasks[i].name, name, 16) == 0)
@@ -556,6 +557,87 @@ rg_task_t *rg_task_find(const char *name)
     }
     return NULL;
 }
+
+rg_task_t *rg_task_current(void)
+{
+#if defined(ESP_PLATFORM)
+    TaskHandle_t handle = xTaskGetCurrentTaskHandle();
+#elif defined(RG_TARGET_SDL2)
+    SDL_threadID handle = SDL_ThreadID();
+#endif
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if (tasks[i].handle == handle)
+            return &tasks[i];
+    }
+    return NULL;
+}
+
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg)
+{
+    RG_ASSERT_ARG(task && msg);
+#if defined(ESP_PLATFORM)
+    return xQueueSend(task->queue, msg, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting > 0)
+        continue;
+    task->msg = *msg;
+    task->msgWaiting = 1;
+    return true;
+#endif
+}
+
+bool rg_task_peek(rg_task_msg_t *out)
+{
+    rg_task_t *task = rg_task_current();
+    bool success = false;
+    if (!task || !out)
+        return false;
+    // task->blocked = true;
+#if defined(ESP_PLATFORM)
+    success = xQueuePeek(task->queue, out, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting < 1)
+        continue;
+    *out = task->msg;
+#endif
+    // task->blocked = false;
+    return success;
+}
+
+bool rg_task_receive(rg_task_msg_t *out)
+{
+    rg_task_t *task = rg_task_current();
+    bool success = false;
+    if (!task || !out)
+        return false;
+    // task->blocked = true;
+#if defined(ESP_PLATFORM)
+    success = xQueueReceive(task->queue, out, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting < 1)
+        continue;
+    *out = task->msg;
+    task->msgWaiting = 0;
+#endif
+    // task->blocked = false;
+    return success;
+}
+
+size_t rg_task_messages_waiting(rg_task_t *task)
+{
+    if (!task) task = rg_task_current();
+#if defined(ESP_PLATFORM)
+    return uxQueueMessagesWaiting(task->queue);
+#elif defined(RG_TARGET_SDL2)
+    return task->msgWaiting;
+#endif
+}
+
+// bool rg_task_is_blocked(rg_task_t *task)
+// {
+//     return task->blocked;
+// }
 
 void rg_task_delay(uint32_t ms)
 {
@@ -574,45 +656,6 @@ void rg_task_yield(void)
 #elif defined(RG_TARGET_SDL2)
     SDL_PumpEvents();
 #endif
-}
-
-rg_queue_t *rg_queue_create(size_t length, size_t itemSize)
-{
-    return (rg_queue_t *)xQueueCreate(length, itemSize);
-}
-
-void rg_queue_free(rg_queue_t *queue)
-{
-    if (queue)
-        vQueueDelete((QueueHandle_t)queue);
-}
-
-bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS)
-{
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueSend((QueueHandle_t)queue, item, ticks) == pdTRUE;
-}
-
-bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
-{
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
-}
-
-bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
-{
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueuePeek((QueueHandle_t)queue, out, ticks) == pdTRUE;
-}
-
-size_t rg_queue_messages_waiting(rg_queue_t *queue)
-{
-    return uxQueueMessagesWaiting((QueueHandle_t)queue);
-}
-
-size_t rg_queue_spaces_available(rg_queue_t *queue)
-{
-    return uxQueueSpacesAvailable((QueueHandle_t)queue);
 }
 
 rg_mutex_t *rg_mutex_create(void)

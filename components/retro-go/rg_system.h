@@ -250,24 +250,29 @@ void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
 typedef struct rg_task_s rg_task_t;
+typedef struct
+{
+    int type; // Negative values are reserved
+    union
+    {
+        const void *dataPtr;
+        uint32_t dataInt;
+    };
+} rg_task_msg_t;
+#define RG_TASK_MSG_STOP -1
 rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
 rg_task_t *rg_task_find(const char *name);
+rg_task_t *rg_task_current(void);
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg);
+bool rg_task_peek(rg_task_msg_t *out);
+bool rg_task_receive(rg_task_msg_t *out);
+bool rg_task_is_blocked(rg_task_t *task);
+size_t rg_task_messages_waiting(rg_task_t *task);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.
 void rg_task_delay(uint32_t ms);
 void rg_task_yield(void);
-
-// Wrapper for FreeRTOS queues, which are essentially inter-task communication primitives
-// Retro-Go uses them for locks and message passing. Not sure how we could easily replicate in SDL2 yet...
-typedef void rg_queue_t;
-rg_queue_t *rg_queue_create(size_t length, size_t itemSize);
-void rg_queue_free(rg_queue_t *queue);
-bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS);
-bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS);
-bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
-size_t rg_queue_messages_waiting(rg_queue_t *queue);
-size_t rg_queue_spaces_available(rg_queue_t *queue);
 
 typedef void rg_mutex_t;
 rg_mutex_t *rg_mutex_create(void);
