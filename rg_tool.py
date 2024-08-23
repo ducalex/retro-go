@@ -134,6 +134,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     args = [IDF_PY, "app"]
+    args.append(f"-DRG_BUILD_APP={app}")
     args.append(f"-DRG_BUILD_VERSION={PROJECT_VER}")
     args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
     args.append(f"-DRG_BUILD_RELEASE={1 if is_release else 0}")
@@ -145,7 +146,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
 
 def flash_app(app, port, baudrate=1152000):
     os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
         print("Reading device's partition table...")
@@ -158,7 +159,7 @@ def flash_app(app, port, baudrate=1152000):
 
 def flash_image(image_file, port, baudrate=1152000):
     os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     print(f"Flashing image file '{image_file}' to {port}")
     run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])
