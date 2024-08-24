@@ -2,15 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-/* Gwenesis Emulator */
-#include "m68k.h"
-#include "z80inst.h"
-#include "ym2612.h"
-#include "gwenesis_bus.h"
-#include "gwenesis_io.h"
-#include "gwenesis_vdp.h"
-#include "gwenesis_savestate.h"
-#include "gwenesis_sn76489.h"
+#include <gwenesis.h>
 
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)

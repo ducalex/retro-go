@@ -1,0 +1,8 @@
+#include "src/cpus/M68K/m68k.h"
+#include "src/sound/z80inst.h"
+#include "src/sound/ym2612.h"
+#include "src/bus/gwenesis_bus.h"
+#include "src/io/gwenesis_io.h"
+#include "src/vdp/gwenesis_vdp.h"
+#include "src/savestate/gwenesis_savestate.h"
+#include "src/sound/gwenesis_sn76489.h"
