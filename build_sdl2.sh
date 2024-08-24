@@ -4,7 +4,8 @@
 # Required: SDL2
 
 CC="gcc"
-CFLAGS="-no-pie -DRG_TARGET_SDL2 -DRETRO_GO -DCJSON_HIDE_SYMBOLS -DSDL_MAIN_HANDLED=1 -Dapp_main=SDL_Main $(sdl2-config --cflags)"
+# BUILD_INFO="RG:$(git describe) / SDL:$(sdl2-config --version)"
+CFLAGS="-no-pie -DRG_TARGET_SDL2 -DRETRO_GO -DCJSON_HIDE_SYMBOLS -DSDL_MAIN_HANDLED=1 -DRG_BUILD_INFO=\"SDL2\" -Dapp_main=SDL_Main $(sdl2-config --cflags)"
 INCLUDES="-Icomponents/retro-go -Icomponents/retro-go/libs/cJSON -Icomponents/retro-go/libs/lodepng"
 SRCFILES="components/retro-go/*.c components/retro-go/drivers/audio/*.c components/retro-go/fonts/*.c
 		  components/retro-go/libs/cJSON/*.c components/retro-go/libs/lodepng/*.c"
@@ -26,6 +27,7 @@ $CC $CFLAGS $INCLUDES \
 	-Iretro-core/components/nofrendo \
 	-Iretro-core/components/pce-go \
 	-Iretro-core/components/snes9x \
+	-Iretro-core/components/snes9x/src \
 	-Iretro-core/components/smsplus \
 	-Iretro-core/main \
 	$SRCFILES \
@@ -38,7 +40,7 @@ $CC $CFLAGS $INCLUDES \
 	retro-core/components/nofrendo/nes/*.c \
 	retro-core/components/nofrendo/*.c \
 	retro-core/components/pce-go/*.c \
-	retro-core/components/snes9x/*.c \
+	retro-core/components/snes9x/src/*.c \
 	retro-core/components/smsplus/*.c \
 	retro-core/components/smsplus/cpu/*.c \
 	retro-core/components/smsplus/sound/*.c \

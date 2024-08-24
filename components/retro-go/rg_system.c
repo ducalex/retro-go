@@ -345,9 +345,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     app = (rg_app_t){
         .name = RG_PROJECT_APP,
-        .version = RG_PROJECT_VERSION,
+        .version = RG_PROJECT_VER,
         .buildDate = RG_BUILD_DATE,
-        .buildTool = RG_BUILD_TOOL,
+        .buildInfo = RG_BUILD_INFO,
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
@@ -376,11 +376,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     platform_init();
 
 #if defined(ESP_PLATFORM)
-    const esp_app_desc_t *esp_app = esp_ota_get_app_description();
-    snprintf(app.name, sizeof(app.name), "%s", esp_app->project_name);
-    snprintf(app.version, sizeof(app.version), "%s", esp_app->version);
-    snprintf(app.buildDate, sizeof(app.buildDate), "%s %s", esp_app->date, esp_app->time);
-    snprintf(app.buildTool, sizeof(app.buildTool), "%s", esp_app->idf_ver);
     esp_reset_reason_t r_reason = esp_reset_reason();
     if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
         app.bootType = RG_RST_PANIC;
@@ -388,10 +383,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.bootType = RG_RST_RESTART;
     tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
 #elif defined(RG_TARGET_SDL2)
-    SDL_version version;
-    SDL_GetVersion(&version);
-    snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", version.major,
-             version.minor, version.patch, __VERSION__);
     tasks[0] = (rg_task_t){.handle = SDL_ThreadID(), .name = "main"};
 #endif
 
@@ -443,7 +434,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
-    app.isLauncher = strcmp(app.name, "launcher") == 0; // Might be overriden after init
+    app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
     rg_display_init();
@@ -963,7 +954,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
     fprintf(fp, "Version: %s\n", app.version);
     fprintf(fp, "Build date: %s\n", app.buildDate);
-    fprintf(fp, "Toolchain: %s\n", app.buildTool);
+    fprintf(fp, "Build info: %s\n", app.buildInfo);
     fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
     fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
     fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);

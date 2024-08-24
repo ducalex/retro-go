@@ -165,7 +165,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 void updater_show_dialog(void)
 {
-    cJSON *releases_json = fetch_json(RG_PROJECT_RELEASES_URL);
+    cJSON *releases_json = fetch_json(RG_PROJECT_GITHUB_RELEASES);
     if (!releases_json)
     {
         rg_gui_alert("Connection failed", "Make sure that you are online!");

@@ -3,7 +3,6 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
 
 macro(rg_setup_compile_options)
     set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")
-    message("Target: ${RG_TARGET}")
 
     component_compile_options(
         -D${RG_TARGET}

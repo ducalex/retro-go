@@ -168,10 +168,10 @@ typedef struct
 
 typedef struct
 {
-    char name[32];
-    char version[32];
-    char buildDate[32];
-    char buildTool[32];
+    const char *name;
+    const char *version;
+    const char *buildDate;
+    const char *buildInfo;
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;

@@ -1,8 +1,6 @@
 set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 
-message(STATUS "ESP-IDF version: ${IDF_VER}")
-
 if (IDF_VERSION_MAJOR EQUAL 5)
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client")
 else() # esp-idf 4.1 - 4.4
@@ -36,19 +34,25 @@ if(RG_ENABLE_PROFILING)
     component_compile_options(-DRG_ENABLE_PROFILING)
 endif()
 
-if(RG_BUILD_VERSION)
-    component_compile_options(-DRG_BUILD_VERSION="${RG_BUILD_VERSION}")
+if(RG_PROJECT_VER)
+    component_compile_options(-DRG_PROJECT_VER="${RG_PROJECT_VER}")
 endif()
 
 if(RG_BUILD_RELEASE)
     component_compile_options(-DRG_BUILD_RELEASE=1)
 endif()
 
-set(RG_TARGET "RG_TARGET_${RG_BUILD_TARGET}")
-string(TIMESTAMP RG_TIME "%s")
+if(RG_BUILD_TARGET)
+    component_compile_options(-D${RG_BUILD_TARGET})
+endif()
 
-message(STATUS "Target: ${RG_TARGET}")
-message(STATUS "Time: ${RG_TIME}")
+set(RG_BUILD_INFO "${RG_BUILD_TARGET}-${RG_BUILD_RELEASE} GIT:${PROJECT_VER} SDK:${IDF_VER}")
+string(TIMESTAMP RG_BUILD_TIME "%s")
 
-component_compile_options(-DRG_BUILD_TIME=${RG_TIME})
-component_compile_options(-D${RG_TARGET})
+component_compile_options(-DRG_PROJECT_APP="${RG_PROJECT_APP}")
+component_compile_options(-DRG_BUILD_INFO="${RG_BUILD_INFO}")
+component_compile_options(-DRG_BUILD_TIME=${RG_BUILD_TIME})
+
+message(STATUS "RG_PROJECT_APP: ${RG_PROJECT_APP}")
+message(STATUS "RG_PROJECT_VER: ${RG_PROJECT_VER}")
+message(STATUS "RG_BUILD_INFO: ${RG_BUILD_INFO}")
