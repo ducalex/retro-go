@@ -1,22 +1,9 @@
-#include <rg_system.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+#include "shared.h"
+
+#include <snes9x.h>
 #include <math.h>
 
-#include "../components/snes9x/snes9x.h"
-#include "../components/snes9x/soundux.h"
-#include "../components/snes9x/memmap.h"
-#include "../components/snes9x/apu.h"
-#include "../components/snes9x/display.h"
-#include "../components/snes9x/gfx.h"
-#include "../components/snes9x/cpuexec.h"
-#include "../components/snes9x/srtc.h"
-#include "../components/snes9x/save.h"
-
 #include "keymap_snes.h"
-#include "shared.h"
 
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
