@@ -1,7 +1,6 @@
 #include "shared.h"
 
 #include <nofrendo.h>
-#include <nes/nes.h>
 
 static int overscan = true;
 static int autocrop = 0;

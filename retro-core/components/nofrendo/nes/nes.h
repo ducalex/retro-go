@@ -40,7 +40,7 @@ typedef uint64_t uint64;
 
 typedef struct nes_s nes_t;
 
-#include <nofrendo.h>
+#include "config.h"
 #include "apu.h"
 #include "cpu.h"
 #include "ppu.h"

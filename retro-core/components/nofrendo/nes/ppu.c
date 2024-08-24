@@ -751,23 +751,23 @@ static void draw_box(uint8 *bmp, int x, int y, int height)
    vid = NES_SCREEN_GETPTR(bmp, x, y);
 
    for (i = 0; i < 10; i++)
-      *vid++ = NES_GUI_GRAY;
+      *vid++ = PPU_GUI_GRAY;
    vid += (NES_SCREEN_PITCH - 10);
    for (i = 0; i < height; i++)
    {
-      vid[0] = vid[9] = NES_GUI_GRAY;
+      vid[0] = vid[9] = PPU_GUI_GRAY;
       vid += NES_SCREEN_PITCH;
    }
    for (i = 0; i < 10; i++)
-      *vid++ = NES_GUI_GRAY;
+      *vid++ = PPU_GUI_GRAY;
 }
 
 static void draw_deadsprite(uint8 *bmp, int x, int y, int height)
 {
    int i, j, index;
    uint8 *vid;
-   uint8 colbuf[8] = { NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK,
-                       NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_BLACK, NES_GUI_DKGRAY };
+   uint8 colbuf[8] = { PPU_GUI_BLACK, PPU_GUI_BLACK, PPU_GUI_BLACK, PPU_GUI_BLACK,
+                       PPU_GUI_BLACK, PPU_GUI_BLACK, PPU_GUI_BLACK, PPU_GUI_DKGRAY };
 
    vid = NES_SCREEN_GETPTR(bmp, x, y);
 
