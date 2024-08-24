@@ -34,14 +34,7 @@ static uint16_t XPal[80];
 static uint16_t XPal0;
 static uint16_t *XBuf;
 
-#include "MSX.h"
-#include "Console.h"
-#include "EMULib.h"
-#include "Sound.h"
-#include "Record.h"
-#include "Touch.h"
-#include "CommonMux.h"
-#include "msxfix.h"
+#include <fmsx.h>
 
 static Image NormScreen;
 const char *Title = "fMSX 6.0";
