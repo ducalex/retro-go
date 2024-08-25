@@ -17,51 +17,44 @@
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
-#ifdef RG_GAMEPAD_ADC_MAP
-static rg_keymap_adc_t keymap_adc[] = RG_GAMEPAD_ADC_MAP;
-#endif
-#ifdef RG_GAMEPAD_GPIO_MAP
-static rg_keymap_gpio_t keymap_gpio[] = RG_GAMEPAD_GPIO_MAP;
-#endif
-#ifdef RG_GAMEPAD_I2C_MAP
-static rg_keymap_i2c_t keymap_i2c[] = RG_GAMEPAD_I2C_MAP;
-#endif
 #ifdef RG_GAMEPAD_KBD_MAP
 static rg_keymap_kbd_t keymap_kbd[] = RG_GAMEPAD_KBD_MAP;
-#endif
-#ifdef RG_GAMEPAD_SERIAL_MAP
-static rg_keymap_serial_t keymap_serial[] = RG_GAMEPAD_SERIAL_MAP;
 #endif
 #ifdef RG_GAMEPAD_VIRT_MAP
 static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
 #endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
-static uint32_t gamepad_mapped = 0;
 static rg_battery_t battery_state = {0};
 
-#define UPDATE_GLOBAL_MAP(keymap)                 \
-    for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
-        gamepad_mapped |= keymap[i].key;          \
+static const rg_input_driver_t *input_drivers[4];
+static size_t input_drivers_count = 0;
 
-#ifdef ESP_PLATFORM
-static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
+extern const rg_input_driver_t RG_DRIVER_INPUT_ADC;
+extern const rg_input_driver_t RG_DRIVER_INPUT_GPIO;
+extern const rg_input_driver_t RG_DRIVER_INPUT_I2C;
+
+#define GPIO &RG_DRIVER_INPUT_GPIO, 0
+#define ADC1 &RG_DRIVER_INPUT_ADC, ADC_UNIT_1
+#define ADC2 &RG_DRIVER_INPUT_ADC, ADC_UNIT_2
+#define I2C  &RG_DRIVER_INPUT_I2C, 0x20
+
+static const rg_keymap_desc_t keymap_config[] = RG_GAMEPAD_MAP;
+static rg_keymap_t keymap[RG_COUNT(keymap_config) + 8];
+static size_t keymap_count;
+
+static size_t register_driver(const rg_input_driver_t *driver)
 {
-    if (unit == ADC_UNIT_1)
+    for (size_t i = 0; i < input_drivers_count; ++i)
     {
-        return adc1_get_raw(channel);
+        if (input_drivers[i] == driver)
+            return i;
     }
-    else if (unit == ADC_UNIT_2)
-    {
-        int adc_raw_value = -1;
-        if (adc2_get_raw(channel, ADC_WIDTH_MAX - 1, &adc_raw_value) != ESP_OK)
-            RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
-        return adc_raw_value;
-    }
-    RG_LOGE("Invalid ADC unit %d", (int)unit);
-    return -1;
+    RG_LOGI("Initializing input driver: %s...", driver->name);
+    driver->init();
+    input_drivers[input_drivers_count++] = driver;
+    return input_drivers_count - 1;
 }
-#endif
 
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
@@ -72,18 +65,16 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
     {
-        int value = adc_get_raw(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL);
-        if (value < 0)
+        int value;
+        if (!RG_DRIVER_INPUT_ADC.read(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11, 0, 0, &value))
             return false;
         raw_value += esp_adc_cal_raw_to_voltage(value, &adc_chars);
     }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
-    uint8_t data[5];
-    if (!rg_i2c_read(0x20, -1, &data, 5))
+    if (!RG_DRIVER_INPUT_I2C.read(0x20, 0xFF, 24, 0, 0, &raw_value))
         return false;
-    raw_value = data[4];
-    charging = data[4] == 255;
+    charging = raw_value == 255;
 #else
     return false;
 #endif
@@ -102,42 +93,23 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 
 bool rg_input_read_gamepad_raw(uint32_t *out)
 {
+    int values[input_drivers_count][16];
     uint32_t state = 0;
 
-#if defined(RG_GAMEPAD_ADC_MAP)
-    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
+    for (size_t i = 0; i < input_drivers_count; ++i)
     {
-        const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        int value = adc_get_raw(mapping->unit, mapping->channel);
+        if (!input_drivers[i]->read_inputs(0, 16, &values[i]))
+            memset(values[i], 0xAF, sizeof(values[i]));
+    }
+
+    for (size_t i = 0; i < keymap_count; ++i)
+    {
+        rg_keymap_t *mapping = &keymap[i];
+        int value = values[mapping->driver_index][mapping->input_index];
         if (value >= mapping->min && value <= mapping->max)
             state |= mapping->key;
     }
-#endif
 
-#if defined(RG_GAMEPAD_GPIO_MAP)
-    for (size_t i = 0; i < RG_COUNT(keymap_gpio); ++i)
-    {
-        const rg_keymap_gpio_t *mapping = &keymap_gpio[i];
-        if (gpio_get_level(mapping->num) == mapping->level)
-            state |= mapping->key;
-    }
-#endif
-
-#if defined(RG_GAMEPAD_I2C_MAP)
-    uint32_t buttons = 0;
-    uint8_t data[5];
-#if defined(RG_TARGET_QTPY_GAMER)
-    buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
-#else
-    if (rg_i2c_read(0x20, -1, &data, 5))
-        buttons = ~((data[2] << 8) | data[1]);
-#endif
-    for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
-    {
-        if ((buttons & keymap_i2c[i].src) == keymap_i2c[i].src)
-            state |= keymap_i2c[i].key;
-    }
-#endif
 
 #if defined(RG_GAMEPAD_KBD_MAP)
 #ifdef RG_TARGET_SDL2
@@ -154,27 +126,6 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 #else
 #warning "not implemented"
 #endif
-#endif
-
-#if defined(RG_GAMEPAD_SERIAL_MAP)
-    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
-    rg_usleep(5);
-    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 1);
-    rg_usleep(1);
-    uint32_t buttons = 0;
-    for (int i = 0; i < 16; i++)
-    {
-        buttons |= gpio_get_level(RG_GPIO_GAMEPAD_DATA) << (15 - i);
-        gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 0);
-        rg_usleep(1);
-        gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
-        rg_usleep(1);
-    }
-    for (size_t i = 0; i < RG_COUNT(keymap_serial); ++i)
-    {
-        if ((buttons & keymap_serial[i].src) == keymap_serial[i].src)
-            state |= keymap_serial[i].src;
-    }
 #endif
 
 #if defined(RG_GAMEPAD_VIRT_MAP)
@@ -247,75 +198,27 @@ void rg_input_init(void)
 {
     RG_ASSERT(!input_task_running, "Input already initialized!");
 
-#if defined(RG_GAMEPAD_ADC_MAP)
-    RG_LOGI("Initializing ADC gamepad driver...");
-    adc1_config_width(ADC_WIDTH_MAX - 1);
-    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
+    for (size_t i = 0; i < RG_COUNT(keymap_config); ++i)
     {
-        const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        if (mapping->unit == ADC_UNIT_1)
-            adc1_config_channel_atten(mapping->channel, mapping->atten);
-        else if (mapping->unit == ADC_UNIT_2)
-            adc2_config_channel_atten(mapping->channel, mapping->atten);
-        else
-            RG_LOGE("Invalid ADC unit %d!", (int)mapping->unit);
+        const rg_keymap_desc_t *map = &keymap_config[i];
+        size_t driver_index = register_driver(map->driver);
+        size_t input_index;
+        if (map->driver->add_input(map->port, map->channel, map->arg1, map->arg2, map->arg3, &input_index))
+        {
+            keymap[keymap_count++] = (rg_keymap_t){
+                .key = map->key,
+                .driver_index = driver_index,
+                .input_index = input_index,
+                .min = map->min,
+                .max = map->max,
+            };
+        }
     }
-    UPDATE_GLOBAL_MAP(keymap_adc);
-#endif
-
-#if defined(RG_GAMEPAD_GPIO_MAP)
-    RG_LOGI("Initializing GPIO gamepad driver...");
-    for (size_t i = 0; i < RG_COUNT(keymap_gpio); ++i)
-    {
-        const rg_keymap_gpio_t *mapping = &keymap_gpio[i];
-        gpio_set_direction(mapping->num, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(mapping->num, mapping->pull);
-    }
-    UPDATE_GLOBAL_MAP(keymap_gpio);
-#endif
-
-#if defined(RG_GAMEPAD_I2C_MAP)
-    RG_LOGI("Initializing I2C gamepad driver...");
-    rg_i2c_init();
-#if defined(RG_TARGET_QTPY_GAMER)
-    rg_i2c_gpio_init();
-#endif
-    UPDATE_GLOBAL_MAP(keymap_i2c);
-#endif
-
-#if defined(RG_GAMEPAD_KBD_MAP)
-    RG_LOGI("Initializing KBD gamepad driver...");
-    UPDATE_GLOBAL_MAP(keymap_kbd);
-#endif
-
-#if defined(RG_GAMEPAD_SERIAL_MAP)
-    RG_LOGI("Initializing SERIAL gamepad driver...");
-    gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
-    gpio_set_direction(RG_GPIO_GAMEPAD_LATCH, GPIO_MODE_OUTPUT);
-    gpio_set_direction(RG_GPIO_GAMEPAD_DATA, GPIO_MODE_INPUT);
-    gpio_set_level(RG_GPIO_GAMEPAD_LATCH, 0);
-    gpio_set_level(RG_GPIO_GAMEPAD_CLOCK, 1);
-    UPDATE_GLOBAL_MAP(keymap_serial);
-#endif
 
 
 #if RG_BATTERY_DRIVER == 1 /* ADC */
-    RG_LOGI("Initializing ADC battery driver...");
-    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
-    {
-        adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
-        adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
-    }
-    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
-    {
-        adc2_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-        esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
-    }
-    else
-    {
-        RG_LOGE("Only ADC1 and ADC2 are supported for ADC battery driver!");
-    }
+    register_driver(&RG_DRIVER_INPUT_ADC);
+    esp_adc_cal_characterize(RG_BATTERY_ADC_UNIT, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.
@@ -333,7 +236,9 @@ void rg_input_deinit(void)
     input_task_running = false;
     // while (gamepad_state != -1)
     //     rg_task_yield();
-    RG_LOGI("Input terminated.\n");
+    while (input_drivers_count > 0)
+        input_drivers[--input_drivers_count]->deinit();
+    RG_LOGI("Input terminated.");
 }
 
 uint32_t rg_input_read_gamepad(void)
@@ -391,8 +296,11 @@ const char *rg_input_get_key_name(rg_key_t key)
 
 const char *rg_input_get_key_mapping(rg_key_t key)
 {
-    if ((gamepad_mapped & key) == key)
-        return "PHYSICAL";
+    for (size_t i = 0; i < keymap_count; ++i)
+    {
+        if (keymap[i].key == key)
+            return input_drivers[keymap[i].driver_index]->name;
+    }
     return NULL;
 }
 

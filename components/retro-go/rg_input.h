@@ -25,31 +25,35 @@ typedef enum
     RG_KEY_NONE    = 0,
 } rg_key_t;
 
-// #define RG_GAMEPAD_ADC_MAP {{}, ...} to use ADC driver
 typedef struct
 {
-    rg_key_t key;
-    int unit;   // adc_unit_t
-    int channel;// adc_channel_t
-    int atten;  // adc_atten_t
-    int min, max;
-} rg_keymap_adc_t;
+    const char *name;
+    void (*init)(void);
+    void (*deinit)(void);
+    bool (*add_input)(int port, int channel, int arg1, int arg2, void *arg3, size_t *index);
+    bool (*read_inputs)(int index, int count, int *values_out);
+    bool (*read)(int port, int channel, int arg1, int arg2, void *arg3, int *value_out);
+} rg_input_driver_t;
 
-// #define RG_GAMEPAD_GPIO_MAP {{}, ...} to use GPIO driver
 typedef struct
 {
     rg_key_t key;
-    int num;    // gpio_num_t
-    int pull;   // gpio_pull_mode_t
-    int level;  // 0-1
-} rg_keymap_gpio_t;
+    int16_t min, max;
+    int16_t driver_index;
+    int16_t input_index;
+} rg_keymap_t;
 
-// #define RG_GAMEPAD_I2C_MAP {{}, ...} to use I2C driver
 typedef struct
 {
     rg_key_t key;
-    uint32_t src;
-} rg_keymap_i2c_t;
+    int16_t min, max;
+    rg_input_driver_t *driver;
+    int port;
+    int channel;
+    int arg1;
+    int arg2;
+    void *arg3;
+} rg_keymap_desc_t;
 
 // #define RG_GAMEPAD_KBD_MAP {{}, ...} for Keyboard driver
 typedef struct

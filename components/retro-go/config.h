@@ -128,3 +128,7 @@
 #else
 #define RG_ZIP_SUPPORT 0
 #endif
+
+#ifndef RG_GAMEPAD_MAP
+#define RG_GAMEPAD_MAP {}
+#endif

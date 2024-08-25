@@ -1,4 +1,4 @@
-set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
+set(COMPONENT_SRCDIRS ". drivers/audio drivers/input fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 
 if (IDF_VERSION_MAJOR EQUAL 5)
