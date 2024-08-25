@@ -32,10 +32,6 @@
 #define RG_PROJECT_WEBSITE "https://github.com/ducalex/retro-go"
 #endif
 
-#ifndef RG_PROJECT_GITHUB_RELEASES
-#define RG_PROJECT_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases"
-#endif
-
 #ifndef RG_PROJECT_CREDITS
 #define RG_PROJECT_CREDITS \
     "Retro-Go: ducalex\n"
@@ -85,6 +81,18 @@
 #ifndef RG_APP_UPDATER
 #define RG_APP_UPDATER RG_APP_FACTORY
 // #define RG_APP_UPDATER "updater"
+#endif
+
+#ifndef RG_UPDATER_GITHUB_RELEASES
+#define RG_UPDATER_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases"
+#endif
+
+#ifndef RG_UPDATER_DOWNLOAD_LOCATION
+#if defined(RG_TARGET_ODROID_GO)
+#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
+#else
+#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
+#endif
 #endif
 
 #ifndef RG_PATH_MAX

@@ -6,11 +6,8 @@
 #include <string.h>
 #include <cJSON.h>
 
-#if defined(RG_TARGET_ODROID_GO)
-#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
-#else
-#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
-#endif
+#define GITHUB_RELEASES RG_UPDATER_GITHUB_RELEASES
+#define DOWNLOAD_LOCATION RG_UPDATER_DOWNLOAD_LOCATION
 
 #define NAMELENGTH 64
 
@@ -165,7 +162,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 void updater_show_dialog(void)
 {
-    cJSON *releases_json = fetch_json(RG_PROJECT_GITHUB_RELEASES);
+    cJSON *releases_json = fetch_json(GITHUB_RELEASES);
     if (!releases_json)
     {
         rg_gui_alert("Connection failed", "Make sure that you are online!");
