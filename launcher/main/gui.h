@@ -66,8 +66,8 @@ typedef struct {
 typedef struct {
     char text[92];
     int16_t order;
-    uint8_t enabled;
-    uint8_t unused;
+    uint8_t group;
+    uint8_t unused; // icon, enabled
     void *arg;
 } listbox_item_t;
 

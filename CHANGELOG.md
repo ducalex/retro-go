@@ -3,6 +3,7 @@
 - Launcher: Added menu option to pre-compute all CRC32s (for cover art)
 - Launcher: Officially support name-based cover art (eg: `/covers/nes/game name.png`)
 - Launcher: Improved responsiveness when cover art/save preview is enabled
+- Launcher: Added network status/details in wifi dialog
 
 
 # Retro-Go 1.42 (2024-06-05)

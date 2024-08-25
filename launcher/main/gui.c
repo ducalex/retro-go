@@ -236,35 +236,32 @@ listbox_item_t *gui_get_selected_item(tab_t *tab)
     return NULL;
 }
 
-static int list_comp_text_asc(const void *a, const void *b)
+static int list_comp_text_asc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return strcasecmp(((listbox_item_t*)a)->text, ((listbox_item_t*)b)->text);
+    return a->group == b->group ? strcasecmp(a->text, b->text) : ((int)a->group - b->group);
 }
 
-static int list_comp_text_desc(const void *a, const void *b)
+static int list_comp_text_desc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return strcasecmp(((listbox_item_t*)b)->text, ((listbox_item_t*)a)->text);
+    return a->group == b->group ? strcasecmp(b->text, a->text) : ((int)a->group - b->group);
 }
 
-static int list_comp_id_asc(const void *a, const void *b)
+static int list_comp_id_asc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return ((listbox_item_t*)a)->order - ((listbox_item_t*)b)->order;
+    return a->group == b->group ? ((int)a->order - b->order) : ((int)a->group - b->group);
 }
 
-static int list_comp_id_desc(const void *a, const void *b)
+static int list_comp_id_desc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return ((listbox_item_t*)b)->order - ((listbox_item_t*)a)->order;
+    return a->group == b->group ? ((int)b->order - a->order) : ((int)a->group - b->group);
 }
 
 void gui_sort_list(tab_t *tab)
 {
     void *comp[] = {&list_comp_id_asc, &list_comp_id_desc, &list_comp_text_asc, &list_comp_text_desc};
-    int sort_mode = tab->listbox.sort_mode - 1;
+    size_t sort_mode = tab->listbox.sort_mode - 1;
 
-    if (!tab->listbox.length)
-        return;
-
-    if (sort_mode < 0 || sort_mode > 3)
+    if (!tab->listbox.length || sort_mode > RG_COUNT(comp) - 1)
         return;
 
     qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), comp[sort_mode]);

@@ -341,21 +341,22 @@ static void tab_refresh(tab_t *tab, const char *selected)
             if (file->folder != folder && strcmp(file->folder, folder) != 0)
                 continue;
 
-            listbox_item_t *item = &tab->listbox.items[items_count++];
-
             if (file->type == RETRO_TYPE_FOLDER)
             {
+                listbox_item_t *item = &tab->listbox.items[items_count++];
                 snprintf(item->text, sizeof(item->text), "[%.40s]", file->name);
-                // snprintf(item->text, sizeof(item->text), "/[%.40s]/", file->name);
+                item->group = 1;
+                item->arg = file;
             }
-            else
+            else if (file->type == RETRO_TYPE_FILE)
             {
+                listbox_item_t *item = &tab->listbox.items[items_count++];
                 snprintf(item->text, sizeof(item->text), "%s", file->name);
                 if ((ext = strrchr(item->text, '.')))
                     *ext = 0;
+                item->group = 2;
+                item->arg = file;
             }
-
-            item->arg = file;
         }
     }
 
