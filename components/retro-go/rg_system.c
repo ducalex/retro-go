@@ -846,7 +846,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
@@ -854,14 +854,20 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
+#elif defined(RG_TARGET_SDL2)
+    // RG_PANIC("Not implemented");
 #endif
     rg_system_restart();
 }
 
 bool rg_system_have_app(const char *app)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
+#elif defined(RG_TARGET_SDL2)
+    char exe[strlen(app) + 5];
+    sprintf(exe, "%s.exe", app);
+    return rg_storage_stat(app).is_file || rg_storage_stat(exe).is_file;
 #else
     return true;
 #endif

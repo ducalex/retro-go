@@ -688,6 +688,7 @@ void applications_init(void)
     application("Super Nintendo", "snes", "smc sfc zip", "retro-core", 0);
     application("Nintendo Gameboy", "gb", "gb gbc zip", "retro-core", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb zip", "retro-core", 0);
+    // application("Nintendo Gameboy Advance", "gba", "gba zip", "gbsp", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
     // application("Sega SG-1000", "sg1", "sms sg sg1", "retro-core", 0);
     application("Sega Master System", "sms", "sms sg zip", "retro-core", 0);
@@ -702,7 +703,7 @@ void applications_init(void)
     application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 
     // Special app to bootstrap native esp32 binaries from the SD card
-    application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
+    // application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
     crc_cache_init();
 }
