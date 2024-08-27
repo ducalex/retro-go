@@ -1,4 +1,4 @@
-FROM espressif/idf:release-v4.3
+FROM espressif/idf:release-v5.0
 
 WORKDIR /app
 
