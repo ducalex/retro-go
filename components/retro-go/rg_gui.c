@@ -1225,13 +1225,28 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t disk_activity_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t led_indicator_opt_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        rg_system_set_indicator_mask(RG_INDICATOR_DISK_ACTIVITY, !rg_system_get_indicator_mask(RG_INDICATOR_DISK_ACTIVITY));
+        rg_system_set_indicator_mask(option->arg, !rg_system_get_indicator_mask(option->arg));
     }
-    strcpy(option->value, rg_system_get_indicator_mask(RG_INDICATOR_DISK_ACTIVITY) ? "On " : "Off");
+    strcpy(option->value, rg_system_get_indicator_mask(option->arg) ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t led_indicator_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {RG_INDICATOR_SYSTEM_ACTIVITY, "System activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_DISK_ACTIVITY, "Disk activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_LOW_BATTERY, "Low battery", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            RG_DIALOG_END,
+        };
+        rg_gui_dialog("LED options", options, 0);
+    }
     return RG_DIALOG_VOID;
 }
 
@@ -1349,13 +1364,13 @@ void rg_gui_options_menu(void)
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
-#ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
-        *opt++ = (rg_gui_option_t){0, "Disk LED  ", "-", RG_DIALOG_FLAG_NORMAL, &disk_activity_cb};
-#endif
         *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
         *opt++ = (rg_gui_option_t){0, "Theme     ", "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
         *opt++ = (rg_gui_option_t){0, "Show clock", "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
         *opt++ = (rg_gui_option_t){0, "Timezone  ", "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
+#ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
+        *opt++ = (rg_gui_option_t){0, "LED options", NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
+#endif
     }
     // App settings that are shown only inside a game
     else
