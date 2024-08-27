@@ -8,8 +8,8 @@ ADD . /app
 
 # Apply patches
 RUN cd /opt/esp/idf && \
-	patch --ignore-whitespace -p1 -i "/app/tools/patches/panic-hook (esp-idf 4.x).diff" && \
-	patch --ignore-whitespace -p1 -i "/app/tools/patches/sdcard-fix (esp-idf 4.x).diff"
+	patch --ignore-whitespace -p1 -i "/app/tools/patches/panic-hook (esp-idf 5).diff" && \
+	patch --ignore-whitespace -p1 -i "/app/tools/patches/sdcard-fix (esp-idf 5).diff"
 
 # Build
 SHELL ["/bin/bash", "-c"]
