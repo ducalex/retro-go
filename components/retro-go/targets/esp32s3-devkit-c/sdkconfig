@@ -167,3 +167,10 @@ CONFIG_ESP_TLS_SKIP_SERVER_CERT_VERIFY=y
 # SPI Flash driver
 #
 CONFIG_SPI_FLASH_ENABLE_ENCRYPTED_READ_WRITE=n
+
+
+#
+# Silence deprecations because I have no intention of fixing them right now
+#
+CONFIG_ADC_SUPPRESS_DEPRECATE_WARN=y
+CONFIG_I2S_SUPPRESS_DEPRECATE_WARN=y

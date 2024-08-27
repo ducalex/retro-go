@@ -185,3 +185,8 @@ CONFIG_ESP_WIFI_ENTERPRISE_SUPPORT=n
 CONFIG_LWIP_IPV6=n
 
 
+#
+# Silence deprecations because I have no intention of fixing them right now
+#
+CONFIG_ADC_SUPPRESS_DEPRECATE_WARN=y
+CONFIG_I2S_SUPPRESS_DEPRECATE_WARN=y
