@@ -5,6 +5,7 @@ macro(rg_setup_compile_options)
     component_compile_options(
         -D${RG_BUILD_TARGET}=1
         -DRETRO_GO=1
+        -fjump-tables -ftree-switch-conversion
         ${ARGV}
     )
 
