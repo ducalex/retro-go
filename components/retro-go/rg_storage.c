@@ -497,7 +497,7 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
  * to do some testing to determine if the increased executable size is acceptable...
  */
 #if RG_ZIP_SUPPORT
-#include <rom/miniz.h>
+#include <miniz.h>
 #endif
 
 #define ZIP_MAGIC 0x04034b50
