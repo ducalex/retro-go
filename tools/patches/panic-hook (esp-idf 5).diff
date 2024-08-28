@@ -1,0 +1,24 @@
+diff --git a/components/esp_system/panic.c b/components/esp_system/panic.c
+index f320c28dca..665aea98a3 100644
+--- a/components/esp_system/panic.c
++++ b/components/esp_system/panic.c
+@@ -66,6 +66,11 @@ static wdt_hal_context_t rtc_wdt_ctx = {.inst = WDT_RWDT, .rwdt_dev = &RTCCNTL};
+
+ #if !CONFIG_ESP_SYSTEM_PANIC_SILENT_REBOOT
+
++void __attribute__((weak)) esp_panic_putchar_hook(char c)
++{
++    // nothing
++}
++
+ #if CONFIG_ESP_CONSOLE_UART
+ static uart_hal_context_t s_panic_uart = { .dev = CONFIG_ESP_CONSOLE_UART_NUM == 0 ? &UART0 :&UART1 };
+
+@@ -118,6 +123,7 @@ void panic_print_char(const char c)
+ #if CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG || CONFIG_ESP_CONSOLE_SECONDARY_USB_SERIAL_JTAG
+     panic_print_char_usb_serial_jtag(c);
+ #endif
++    esp_panic_putchar_hook(c);
+ }
+
+ void panic_print_str(const char *str)
