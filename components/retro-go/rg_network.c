@@ -110,23 +110,13 @@ bool rg_network_wifi_load_config(int slot)
 #ifdef RG_ENABLE_NETWORKING
     char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
 
-    if (slot < -1 || slot > 999)
+    if (slot < 0 || slot > 9)
         return false;
 
-    if (slot == -1)
-    {
-        snprintf(key_ssid, 16, "%s", SETTING_WIFI_SSID);
-        snprintf(key_password, 16, "%s", SETTING_WIFI_PASSWORD);
-        snprintf(key_channel, 16, "%s", SETTING_WIFI_CHANNEL);
-        snprintf(key_mode, 16, "%s", SETTING_WIFI_MODE);
-    }
-    else
-    {
-        snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
-        snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
-        snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
-        snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
-    }
+    snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
+    snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
+    snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
+    snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
 
     RG_LOGI("Looking for '%s' (slot %d)\n", key_ssid, slot);
     rg_wifi_config_t config = {0};
@@ -138,6 +128,16 @@ bool rg_network_wifi_load_config(int slot)
         memccpy(config.password, ptr, 0, 64), free(ptr);
     config.channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
     config.ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
+
+    if (!config.ssid[0] && slot == 0)
+    {
+        if ((ptr = rg_settings_get_string(NS_WIFI, SETTING_WIFI_SSID, NULL)))
+            memccpy(config.ssid, ptr, 0, 32), free(ptr);
+        if ((ptr = rg_settings_get_string(NS_WIFI, SETTING_WIFI_PASSWORD, NULL)))
+            memccpy(config.password, ptr, 0, 64), free(ptr);
+        config.channel = rg_settings_get_number(NS_WIFI, SETTING_WIFI_CHANNEL, 0);
+        config.ap_mode = rg_settings_get_number(NS_WIFI, SETTING_WIFI_MODE, 0);
+    }
 
     if (!config.ssid[0])
         return false;
@@ -262,10 +262,9 @@ bool rg_network_init(void)
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;
 
-    // We try loading the specified slot (if any), and fallback to no slot
+    // We try loading the specified slot (if any)
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0);
-    if (!rg_network_wifi_load_config(slot) && slot != -1)
-        rg_network_wifi_load_config(-1);
+    rg_network_wifi_load_config(slot);
 
     initialized = true;
     return true;
