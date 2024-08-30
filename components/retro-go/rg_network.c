@@ -11,6 +11,13 @@
         goto fail;                       \
     }
 
+#define SETTING_WIFI_ENABLE   "Enable"
+#define SETTING_WIFI_SLOT     "Slot"
+#define SETTING_WIFI_SSID     "ssid"
+#define SETTING_WIFI_PASSWORD "password"
+#define SETTING_WIFI_CHANNEL  "channel"
+#define SETTING_WIFI_MODE     "mode"
+
 #ifdef RG_ENABLE_NETWORKING
 #include <esp_idf_version.h>
 #include <esp_http_client.h>
@@ -32,12 +39,6 @@
 static rg_network_t network = {0};
 static rg_wifi_config_t wifi_config = {0};
 static bool initialized = false;
-
-static const char *SETTING_WIFI_SSID = "ssid";
-static const char *SETTING_WIFI_PASSWORD = "password";
-static const char *SETTING_WIFI_CHANNEL = "channel";
-static const char *SETTING_WIFI_MODE = "mode";
-static const char *SETTING_WIFI_SLOT = "slot";
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -105,22 +106,21 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
 }
 #endif
 
-bool rg_network_wifi_load_config(int slot)
+bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out)
 {
-#ifdef RG_ENABLE_NETWORKING
-    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
-
-    if (slot < 0 || slot > 9)
+    if (slot < 0 || slot > 99)
         return false;
+
+    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
+    rg_wifi_config_t config = {0};
+    char *ptr;
 
     snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
     snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
     snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
     snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
 
-    RG_LOGI("Looking for '%s' (slot %d)\n", key_ssid, slot);
-    rg_wifi_config_t config = {0};
-    char *ptr;
+    RG_LOGD("Looking for '%s' (slot %d)\n", key_ssid, slot);
 
     if ((ptr = rg_settings_get_string(NS_WIFI, key_ssid, NULL)))
         memccpy(config.ssid, ptr, 0, 32), free(ptr);
@@ -142,17 +142,17 @@ bool rg_network_wifi_load_config(int slot)
     if (!config.ssid[0])
         return false;
 
-    return rg_network_wifi_set_config(&config);
-#else
-    return false;
-#endif
+    *out = config;
+    return true;
 }
 
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 {
 #ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT_ARG(config != NULL);
-    wifi_config = *config;
+    if (config)
+        memcpy(&wifi_config, config, sizeof(wifi_config));
+    else
+        memset(&wifi_config, 0, sizeof(wifi_config));
     return true;
 #else
     return false;
@@ -234,6 +234,8 @@ bool rg_network_init(void)
     if (initialized)
         return true;
 
+    initialized = true;
+
     // Init event loop first
     esp_err_t err;
     TRY(esp_event_loop_create_default());
@@ -262,11 +264,14 @@ bool rg_network_init(void)
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;
 
-    // We try loading the specified slot (if any)
+    // Load the user's chosen config profile, if any
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0);
-    rg_network_wifi_load_config(slot);
+    rg_network_wifi_read_config(slot, &wifi_config);
 
-    initialized = true;
+    // Auto-start?
+    if (rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false))
+        rg_network_wifi_start();
+
     return true;
 fail:
 #else

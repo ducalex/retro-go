@@ -21,7 +21,6 @@ retro_gui_t gui;
 #define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
-#define SETTING_WIFI_ENABLE     "Enable"
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
 {

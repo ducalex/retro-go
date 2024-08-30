@@ -36,10 +36,11 @@ static struct
     bool initialized;
 } gui;
 
-static const char *SETTING_FONTTYPE = "FontType";
-static const char *SETTING_CLOCK = "Clock";
-static const char *SETTING_THEME = "Theme";
-
+#define SETTING_FONTTYPE    "FontType"
+#define SETTING_CLOCK       "Clock"
+#define SETTING_THEME       "Theme"
+#define SETTING_WIFI_ENABLE "Enable"
+#define SETTING_WIFI_SLOT   "Slot"
 
 static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
 {
@@ -1349,6 +1350,135 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
+#ifdef RG_ENABLE_NETWORKING
+static void wifi_toggle_interactive(bool enable, int slot)
+{
+    rg_network_state_t target_state = enable ? RG_NETWORK_CONNECTED : RG_NETWORK_DISCONNECTED;
+    int64_t timeout = rg_system_timer() + 20 * 1000000;
+    rg_gui_draw_message(enable ? "Connecting..." : "Disconnecting...");
+    rg_network_wifi_stop();
+    if (enable)
+    {
+        rg_wifi_config_t config = {0};
+        rg_network_wifi_read_config(slot, &config);
+        rg_network_wifi_set_config(&config);
+        if (slot == 9000)
+        {
+            const rg_wifi_config_t config = {
+                .ssid = "retro-go",
+                .password = "retro-go",
+                .channel = 6,
+                .ap_mode = true,
+            };
+            rg_network_wifi_set_config(&config);
+        }
+        if (!rg_network_wifi_start())
+            return;
+    }
+    do // Always loop at least once, in case we're in a transition
+    {
+        rg_task_delay(100);
+        if (rg_system_timer() > timeout)
+            break;
+        if (rg_input_read_gamepad())
+            break;
+    } while (rg_network_get_info().state != target_state);
+}
+
+static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    rg_network_t info = rg_network_get_info();
+    if (info.state != RG_NETWORK_CONNECTED)
+        strcpy(option->value, "Not connected");
+    else if (option->arg == 0x10)
+        strcpy(option->value, info.name);
+    else if (option->arg == 0x11)
+        strcpy(option->value, info.ip_addr);
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1);
+    char labels[5][40] = {0};
+    for (size_t i = 0; i < 5; i++)
+    {
+        rg_wifi_config_t config;
+        strncpy(labels[i], rg_network_wifi_read_config(i, &config) ? config.ssid : "(empty)", 32);
+    }
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {0, "0", labels[0], RG_DIALOG_FLAG_NORMAL, NULL},
+            {1, "1", labels[1], RG_DIALOG_FLAG_NORMAL, NULL},
+            {2, "2", labels[2], RG_DIALOG_FLAG_NORMAL, NULL},
+            {3, "3", labels[3], RG_DIALOG_FLAG_NORMAL, NULL},
+            {4, "4", labels[4], RG_DIALOG_FLAG_NORMAL, NULL},
+            RG_DIALOG_END,
+        };
+        int sel = rg_gui_dialog("Wi-Fi Profile", options, slot);
+        if (sel != RG_DIALOG_CANCELLED)
+        {
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, 1);
+            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
+            wifi_toggle_interactive(true, sel);
+        }
+        return RG_DIALOG_REDRAW;
+    }
+    if (slot >= 0 && slot < RG_COUNT(labels))
+        sprintf(option->value, "%d - %s", slot, labels[slot]);
+    else
+        strcpy(option->value, "none");
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", true))
+        {
+            wifi_toggle_interactive(true, 9000);
+        }
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_enable_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    bool enabled = rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false);
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
+    {
+        enabled = !enabled;
+        rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, enabled);
+        wifi_toggle_interactive(enabled, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1));
+        return RG_DIALOG_REDRAW;
+    }
+    strcpy(option->value, enabled ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_gui_option_t options[] = {
+            {0x00, "Wi-Fi enable ",      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
+            {0x01, "Wi-Fi profile",      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb },
+            RG_DIALOG_SEPARATOR,
+            {0x02, "Wi-Fi access point", NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
+            RG_DIALOG_SEPARATOR,
+            {0x10, "Network   ",         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            {0x11, "IP address",         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            RG_DIALOG_END,
+        };
+        rg_gui_dialog("Wifi Options", options, 0);
+    }
+    return RG_DIALOG_VOID;
+}
+#endif
+
 void rg_gui_options_menu(void)
 {
     const rg_app_t *app = rg_system_get_app();
@@ -1370,6 +1500,9 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, "Timezone  ", "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
 #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
         *opt++ = (rg_gui_option_t){0, "LED options", NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
+#endif
+#ifdef RG_ENABLE_NETWORKING
+        *opt++ = (rg_gui_option_t){0, "Wi-Fi options", NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb};
 #endif
     }
     // App settings that are shown only inside a game

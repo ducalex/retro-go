@@ -12,11 +12,12 @@
 #include "applications.h"
 #include "bookmarks.h"
 #include "gui.h"
-#include "wifi.h"
 #include "webui.h"
 #include "updater.h"
 
 static rg_app_t *app;
+
+#define SETTING_WEBUI "HTTPFileServer"
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -160,16 +161,6 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
 }
 
 #ifdef RG_ENABLE_NETWORKING
-static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        wifi_show_dialog();
-        return RG_DIALOG_REDRAW;
-    }
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (rg_network_get_info().state != RG_NETWORK_CONNECTED)
@@ -182,6 +173,21 @@ static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
         updater_show_dialog();
         return RG_DIALOG_REDRAW;
     }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    bool enabled = rg_settings_get_number(NS_APP, SETTING_WEBUI, 0);
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
+    {
+        enabled = !enabled;
+        webui_stop();
+        if (enabled)
+            webui_start();
+        rg_settings_set_number(NS_APP, SETTING_WEBUI, enabled);
+    }
+    strcpy(option->value, enabled ? "On " : "Off");
     return RG_DIALOG_VOID;
 }
 #endif
@@ -227,7 +233,9 @@ static void retro_loop(void)
     bookmarks_init();
 
 #ifdef RG_ENABLE_NETWORKING
-    wifi_init();
+    rg_network_init();
+    if (rg_settings_get_number(NS_APP, SETTING_WEBUI, true))
+        webui_start();
 #endif
 
     if (!gui_get_current_tab())
@@ -424,11 +432,11 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
+        #ifdef RG_ENABLE_NETWORKING
+        {0, "File server" ,  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+        #endif
         {0, "Startup app ", "...", 1, &startup_app_cb},
         {0, "Launcher options", NULL,  1, &launcher_options_cb},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
-    #endif
         RG_DIALOG_END,
     };
 
