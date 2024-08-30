@@ -4,7 +4,6 @@
 - Launcher: Officially support name-based cover art (eg: `/covers/nes/game name.png`)
 - Launcher: Improved responsiveness when cover art/save preview is enabled
 - Launcher: Added network status/details in wifi dialog
-- Releases are now built with esp-idf 5.0
 
 
 # Retro-Go 1.42 (2024-06-05)
