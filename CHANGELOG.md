@@ -1,4 +1,4 @@
-# Retro-Go 1.43 (2024-??-??)
+# Retro-Go 1.43 (2024-09-02)
 - All: Added ZIP support (large 4MB+ GBC roms not supported unfortunately)
 - Launcher: Added menu option to pre-compute all CRC32s (for cover art)
 - Launcher: Officially support name-based cover art (eg: `/covers/nes/game name.png`)
