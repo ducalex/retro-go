@@ -1,7 +1,6 @@
 #include "shared.h"
 
 #include <nofrendo.h>
-#include <nes/nes.h>
 
 static int overscan = true;
 static int autocrop = 0;
@@ -206,13 +205,25 @@ void nes_main(void)
     updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     currentUpdate = updates[0];
 
-    nes = nes_init(SYS_DETECT, app->sampleRate, true);
+    nes = nes_init(SYS_DETECT, app->sampleRate, true, RG_BASE_PATH_BIOS "/fds_bios.bin");
     if (!nes)
-    {
         RG_PANIC("Init failed.");
+
+    int ret = -1;
+
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_8KB))
+            RG_PANIC("ROM file unzipping failed!");
+        ret = nes_insertcart(rom_loadmem(data, size));
+    }
+    else
+    {
+        ret = nes_loadfile(app->romPath);
     }
 
-    int ret = nes_insertcart(app->romPath, RG_BASE_PATH_BIOS "/fds_bios.bin");
     if (ret == -1)
         RG_PANIC("ROM load failed.");
     else if (ret == -2)
@@ -225,7 +236,7 @@ void nes_main(void)
     app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
-    nsfPlayer = nes->cart->mapper_number == 31;
+    nsfPlayer = nes->cart->type == ROM_TYPE_NSF;
 
     ppu_setopt(PPU_LIMIT_SPRITES, rg_settings_get_number(NS_APP, SETTING_SPRITELIMIT, 1));
 

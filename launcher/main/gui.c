@@ -1,7 +1,5 @@
 #include <rg_system.h>
-#include <stdio.h>
 #include <string.h>
-#include <dirent.h>
 #include <stdlib.h>
 
 #include "applications.h"
@@ -23,7 +21,6 @@ retro_gui_t gui;
 #define SETTING_SCROLL_MODE     "ScrollMode"
 #define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
-#define SETTING_WIFI_ENABLE     "Enable"
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
 {
@@ -44,12 +41,11 @@ void gui_init(bool cold_boot)
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
         .width        = rg_display_get_info()->screen.width,
         .height       = rg_display_get_info()->screen.height,
-        .surface      = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW),
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
-    gui_update_theme();
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
+    gui_update_theme();
 }
 
 void gui_event(gui_event_t event, tab_t *tab)
@@ -60,7 +56,7 @@ void gui_event(gui_event_t event, tab_t *tab)
 
 tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_handler)
 {
-    RG_ASSERT(name && desc, "Bad param");
+    RG_ASSERT_ARG(name && desc);
 
     tab_t *tab = calloc(1, sizeof(tab_t));
 
@@ -106,13 +102,10 @@ tab_t *gui_get_tab(int index)
 
 void gui_invalidate(void)
 {
-    // This super lazy method will cause memory leaks, but it's better than nothing for now.
     for (size_t i = 0; i < gui.tabs_count; ++i)
     {
-        if (!gui.tabs[i]->initialized)
-            continue;
-        gui_event(TAB_INIT, gui.tabs[i]);
-        gui_event(TAB_REFRESH, gui.tabs[i]);
+        if (gui.tabs[i]->initialized)
+            gui_event(TAB_RESCAN, gui.tabs[i]);
     }
 }
 
@@ -242,35 +235,32 @@ listbox_item_t *gui_get_selected_item(tab_t *tab)
     return NULL;
 }
 
-static int list_comp_text_asc(const void *a, const void *b)
+static int list_comp_text_asc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return strcasecmp(((listbox_item_t*)a)->text, ((listbox_item_t*)b)->text);
+    return a->group == b->group ? strcasecmp(a->text, b->text) : ((int)a->group - b->group);
 }
 
-static int list_comp_text_desc(const void *a, const void *b)
+static int list_comp_text_desc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return strcasecmp(((listbox_item_t*)b)->text, ((listbox_item_t*)a)->text);
+    return a->group == b->group ? strcasecmp(b->text, a->text) : ((int)a->group - b->group);
 }
 
-static int list_comp_id_asc(const void *a, const void *b)
+static int list_comp_id_asc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return ((listbox_item_t*)a)->id - ((listbox_item_t*)b)->id;
+    return a->group == b->group ? ((int)a->order - b->order) : ((int)a->group - b->group);
 }
 
-static int list_comp_id_desc(const void *a, const void *b)
+static int list_comp_id_desc(const listbox_item_t *a, const listbox_item_t *b)
 {
-    return ((listbox_item_t*)b)->id - ((listbox_item_t*)a)->id;
+    return a->group == b->group ? ((int)b->order - a->order) : ((int)a->group - b->group);
 }
 
 void gui_sort_list(tab_t *tab)
 {
     void *comp[] = {&list_comp_id_asc, &list_comp_id_desc, &list_comp_text_asc, &list_comp_text_desc};
-    int sort_mode = tab->listbox.sort_mode - 1;
+    size_t sort_mode = tab->listbox.sort_mode - 1;
 
-    if (!tab->listbox.length)
-        return;
-
-    if (sort_mode < 0 || sort_mode > 3)
+    if (!tab->listbox.length || sort_mode > RG_COUNT(comp) - 1)
         return;
 
     qsort((void*)tab->listbox.items, tab->listbox.length, sizeof(listbox_item_t), comp[sort_mode]);
@@ -521,8 +511,6 @@ void gui_load_preview(tab_t *tab)
 {
     listbox_item_t *item = gui_get_selected_item(tab);
     bool show_missing_cover = false;
-    char path[RG_PATH_MAX + 1];
-    size_t path_len;
     uint32_t order;
 
     gui_set_preview(tab, NULL);
@@ -559,6 +547,8 @@ void gui_load_preview(tab_t *tab)
 
     while (order && !tab->preview)
     {
+        char path[RG_PATH_MAX + 1];
+        size_t path_len = 0;
         int type = order & 0xF;
 
         order >>= 4;
@@ -571,29 +561,33 @@ void gui_load_preview(tab_t *tab)
             continue;
 
         if (type == 0x1 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (old format)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.art", app->paths.covers, (int)(file->checksum >> 28), (int)file->checksum);
         else if (type == 0x2 && app->use_crc_covers && application_get_file_crc32(file)) // Game cover (png)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, file->checksum >> 28, file->checksum);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%X/%08X.png", app->paths.covers, (int)(file->checksum >> 28), (int)file->checksum);
         else if (type == 0x3) // Game cover (based on filename)
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%s.png", app->paths.covers, file->name);
-        else if (type == 0x4) // Save state screenshot (png)
         {
-            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
-            rg_emu_states_t *savestates = rg_emu_get_states(path, 4);
-            if (savestates->lastused)
-                path_len = snprintf(path, RG_PATH_MAX, "%s", savestates->lastused->preview);
-            else
-                path_len = snprintf(path, RG_PATH_MAX, "%s", "/lazy/invalid/path");
-            free(savestates);
+            path_len = snprintf(path, RG_PATH_MAX, "%s/%s", app->paths.covers, file->name);
+            if (path_len < RG_PATH_MAX - 3) // Don't bother if we already have an overflow
+                strcpy(path + path_len - strlen(rg_extension(file->name) ?: ""), "png");
         }
-        else
-            continue;
-
-        if (path_len < RG_PATH_MAX && rg_storage_exists(path))
+        else if (type == 0x4 && file->saves > 0) // Save state screenshot (png)
         {
+            snprintf(path, RG_PATH_MAX, "%s/%s", file->folder, file->name);
+            uint8_t last_used_slot = rg_emu_get_last_used_slot(path);
+            if (last_used_slot != 0xFF)
+            {
+                char *preview = rg_emu_get_path(RG_PATH_SCREENSHOT + last_used_slot, path);
+                path_len = snprintf(path, RG_PATH_MAX, "%s", preview);
+                free(preview);
+            }
+        }
+
+        if (path_len > 0 && path_len < RG_PATH_MAX)
+        {
+            RG_LOGD("Looking for %s", path);
             gui_set_preview(tab, rg_surface_load_image_file(path, 0));
-            if (!tab->preview)
-                errors++;
+            // if (!tab->preview && rg_storage_exists(path))
+            //     errors++;
         }
 
         file->missing_cover |= (tab->preview ? 0 : 1) << type;

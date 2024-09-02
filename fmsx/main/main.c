@@ -6,7 +6,7 @@
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
-static rg_queue_t *audioQueue;
+static rg_task_t *audioQueue;
 static rg_app_t *app;
 
 static int JoyState, LastKey, InMenu, InKeyboard;
@@ -34,14 +34,7 @@ static uint16_t XPal[80];
 static uint16_t XPal0;
 static uint16_t *XBuf;
 
-#include "MSX.h"
-#include "Console.h"
-#include "EMULib.h"
-#include "Sound.h"
-#include "Record.h"
-#include "Touch.h"
-#include "CommonMux.h"
-#include "msxfix.h"
+#include <fmsx.h>
 
 static Image NormScreen;
 const char *Title = "fMSX 6.0";
@@ -343,7 +336,7 @@ void PlayAllSound(int uSec)
 {
     int64_t start = rg_system_timer();
     unsigned int samples = 2 * uSec * AUDIO_SAMPLE_RATE / 1000000;
-    rg_queue_send(audioQueue, &samples, 100);
+    rg_task_send(audioQueue, &(rg_task_msg_t){.dataInt = samples});
     FrameStartTime += rg_system_timer() - start;
 }
 
@@ -419,12 +412,11 @@ static rg_gui_event_t fmsx_menu_cb(rg_gui_option_t *option, rg_gui_event_t event
 static void audioTask(void *arg)
 {
     RG_LOGI("task started");
-    while (true)
+    rg_task_msg_t msg;
+    while (rg_task_peek(&msg))
     {
-        unsigned int samples;
-        rg_queue_peek(audioQueue, &samples, -1);
-        RenderAndPlayAudio(samples);
-        rg_queue_receive(audioQueue, &samples, -1);
+        RenderAndPlayAudio(msg.dataInt);
+        rg_task_receive(&msg);
     }
 }
 
@@ -484,14 +476,13 @@ void app_main(void)
     };
     int argc = RG_COUNT(argv) - 3;
 
-    if (strcasecmp(rg_extension(app->romPath), "dsk") == 0)
+    if (rg_extension_match(app->romPath, "dsk"))
     {
         argv[argc++] = "-diska";
     }
     argv[argc++] = app->romPath;
 
-    audioQueue = rg_queue_create(1, sizeof(unsigned int));
-    rg_task_create("audioTask", &audioTask, NULL, 4096, RG_TASK_PRIORITY_2, 1);
+    audioQueue = rg_task_create("audioTask", &audioTask, NULL, 4096, RG_TASK_PRIORITY_2, 1);
 
     RG_LOGI("fMSX start");
     fmsx_main(argc, (char **)argv);

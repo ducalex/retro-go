@@ -16,10 +16,50 @@
 #include "targets/esplay-s3/config.h"
 #elif defined(RG_TARGET_ESP32S3_DEVKIT_C)
 #include "targets/esp32s3-devkit-c/config.h"
+#elif defined(RG_TARGET_FRI3D_2024)
+#include "targets/fri3d-2024/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
 #define RG_TARGET_ODROID_GO
+#endif
+
+#ifndef RG_PROJECT_NAME
+#define RG_PROJECT_NAME "Retro-Go"
+#endif
+
+#ifndef RG_PROJECT_WEBSITE
+#define RG_PROJECT_WEBSITE "https://github.com/ducalex/retro-go"
+#endif
+
+#ifndef RG_PROJECT_CREDITS
+#define RG_PROJECT_CREDITS \
+    "Retro-Go: ducalex\n"
+    // TODO: Decide which additional credits should be included here?
+    // Maybe the main author for each emulator? Or should that credit be only when seeing `about` inside said app?
+    // What about libraries and fonts (lodepng, etc)?
+    // What about targets/ports? Should we have a RG_TARGET_AUTHOR to append here?
+#endif
+
+#ifndef RG_PROJECT_APP
+#define RG_PROJECT_APP "unknown"
+#endif
+
+#ifndef RG_PROJECT_VER
+#define RG_PROJECT_VER "unknown"
+#endif
+
+#ifndef RG_BUILD_INFO
+#define RG_BUILD_INFO "(none)"
+#endif
+
+#ifndef RG_BUILD_TIME
+// 2020-01-31 00:00:00, first retro-go commit :)
+#define RG_BUILD_TIME 1580446800
+#endif
+
+#ifndef RG_BUILD_DATE
+#define RG_BUILD_DATE __DATE__ " " __TIME__
 #endif
 
 // #ifndef RG_ENABLE_NETPLAY
@@ -38,54 +78,25 @@
 #define RG_APP_FACTORY NULL
 #endif
 
+#ifndef RG_APP_UPDATER
+#define RG_APP_UPDATER RG_APP_FACTORY
+// #define RG_APP_UPDATER "updater"
+#endif
+
+#ifndef RG_UPDATER_GITHUB_RELEASES
+#define RG_UPDATER_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases"
+#endif
+
+#ifndef RG_UPDATER_DOWNLOAD_LOCATION
+#if defined(RG_TARGET_ODROID_GO)
+#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
+#else
+#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
+#endif
+#endif
+
 #ifndef RG_PATH_MAX
 #define RG_PATH_MAX 255
-#endif
-
-#ifndef RG_PROJECT_NAME
-#define RG_PROJECT_NAME "Retro-Go"
-#endif
-
-#ifndef RG_PROJECT_APP
-#define RG_PROJECT_APP "unknown"
-#endif
-
-#ifndef RG_PROJECT_VERSION
-#define RG_PROJECT_VERSION RG_BUILD_VERSION
-#endif
-
-#ifndef RG_PROJECT_CREDITS
-#define RG_PROJECT_CREDITS \
-    "Retro-Go: ducalex\n"
-    // TODO: Decide which additional credits should be included here?
-    // Maybe the main author for each emulator? Or should that credit be only when seeing `about` inside said app?
-    // What about libraries and fonts (lodepng, etc)?
-    // What about targets/ports? Should we have a RG_TARGET_AUTHOR to append here?
-#endif
-
-#ifndef RG_PROJECT_WEBSITE
-#define RG_PROJECT_WEBSITE "https://github.com/ducalex/retro-go"
-#endif
-
-#ifndef RG_PROJECT_RELEASES_URL
-#define RG_PROJECT_RELEASES_URL "https://api.github.com/repos/ducalex/retro-go/releases"
-#endif
-
-#ifndef RG_BUILD_VERSION
-#define RG_BUILD_VERSION "unknown"
-#endif
-
-#ifndef RG_BUILD_TIME
-// 2020-01-31 00:00:00, first retro-go commit :)
-#define RG_BUILD_TIME 1580446800
-#endif
-
-#ifndef RG_BUILD_DATE
-#define RG_BUILD_DATE __DATE__ " " __TIME__
-#endif
-
-#ifndef RG_BUILD_TOOL
-#define RG_BUILD_TOOL "unknown"
 #endif
 
 #ifndef RG_RECOVERY_BTN
@@ -108,10 +119,20 @@
 #define RG_BATTERY_UPDATE_THRESHOLD_VOLT 0.010f
 #endif
 
-#ifndef RG_GPIO_LED
-#define RG_GPIO_LED (-1)
-#endif
-
 #ifndef RG_LOG_COLORS
 #define RG_LOG_COLORS (1)
+#endif
+
+#ifndef RG_TICK_RATE
+#ifdef ESP_PLATFORM
+#define RG_TICK_RATE CONFIG_FREERTOS_HZ
+#else
+#define RG_TICK_RATE 1000
+#endif
+#endif
+
+#ifdef ESP_PLATFORM
+#define RG_ZIP_SUPPORT 1
+#else
+#define RG_ZIP_SUPPORT 0
 #endif

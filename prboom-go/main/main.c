@@ -45,18 +45,15 @@
 #include <esp_heap_caps.h>
 #endif
 
-// 22050 reduces perf by almost 15% but 11025 sounds awful on the G32...
-#ifdef RG_TARGET_MRGC_G32
 #define AUDIO_SAMPLE_RATE 22050
-#else
-#define AUDIO_SAMPLE_RATE 11025
-#endif
 
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
 
 static rg_surface_t *update;
 static rg_app_t *app;
+
+static const char *doom_argv[10];
 
 // Expected variables by doom
 int snd_card = 1, mus_card = 1;
@@ -251,7 +248,7 @@ int I_StartSound(int sfxid, int channel, int vol, int sep, int pitch, int priori
 
     channel_t *chan = &channels[slot];
     chan->sfx = sfx[sfxid];
-    chan->factor = (float)chan->sfx->samplerate / AUDIO_SAMPLE_RATE;
+    chan->factor = (float)chan->sfx->samplerate / snd_samplerate;
     chan->pos = 0;
 
     return slot;
@@ -281,18 +278,24 @@ static void soundTask(void *arg)
 {
     while (1)
     {
-        int16_t *audioBuffer = (int16_t *)mixbuffer;
-        int16_t *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
-        int16_t stream[2];
+        bool haveMusic = snd_MusicVolume > 0 && musicPlaying;
+        bool haveSFX = snd_SfxVolume > 0 && I_AnySoundStillPlaying();
 
-        while (audioBuffer < audioBufferEnd)
+        if (haveMusic)
         {
-            int totalSample = 0;
-            int totalSources = 0;
-            int sample;
+            music_player->render(mixbuffer, AUDIO_BUFFER_LENGTH);
+        }
 
-            if (snd_SfxVolume > 0)
+        if (haveSFX)
+        {
+            int16_t *audioBuffer = (int16_t *)mixbuffer;
+            int16_t *audioBufferEnd = audioBuffer + AUDIO_BUFFER_LENGTH * 2;
+            while (audioBuffer < audioBufferEnd)
             {
+                int totalSample = 0;
+                int totalSources = 0;
+                int sample;
+
                 for (int i = 0; i < NUM_MIX_CHANNELS; i++)
                 {
                     channel_t *chan = &channels[i];
@@ -314,30 +317,29 @@ static void soundTask(void *arg)
 
                 totalSample <<= 7;
                 totalSample /= (16 - snd_SfxVolume);
-            }
 
-            if (musicPlaying && snd_MusicVolume > 0)
-            {
-                music_player->render(&stream, 1); // It returns 2 (stereo) 16bits values per sample
-                sample = stream[0]; // [0] and [1] are the same value
-                if (sample > 0)
+                if (haveMusic)
                 {
-                    totalSample += sample / (16 - snd_MusicVolume);
-                    if (totalSources == 0)
-                        totalSources = 1;
+                    totalSample += *audioBuffer;
+                    totalSources += (totalSources == 0);
                 }
+
+                if (totalSources > 0)
+                    totalSample /= totalSources;
+
+                if (totalSample > 32767)
+                    totalSample = 32767;
+                else if (totalSample < -32768)
+                    totalSample = -32768;
+
+                *audioBuffer++ = totalSample;
+                *audioBuffer++ = totalSample;
             }
+        }
 
-            if (totalSources > 0)
-                totalSample /= totalSources;
-
-            if (totalSample > 32767)
-                totalSample = 32767;
-            else if (totalSample < -32768)
-                totalSample = -32768;
-
-            *audioBuffer++ = totalSample;
-            *audioBuffer++ = totalSample;
+        if (!haveMusic && !haveSFX)
+        {
+            memset(mixbuffer, 0, sizeof(mixbuffer));
         }
 
         rg_audio_submit(mixbuffer, AUDIO_BUFFER_LENGTH);
@@ -512,10 +514,14 @@ static void event_handler(int event, void *arg)
 
 bool is_iwad(const char *path)
 {
-    FILE *fp = fopen(path, "rb");
-    bool valid = fp && fgetc(fp) == 'I' && fgetc(fp) == 'W';
-    fclose(fp);
-    return valid;
+    char header[16] = {0};
+    void *data = &header;
+    size_t data_len = 16;
+    if (rg_extension_match(path, "zip"))
+        rg_storage_unzip_file(path, NULL, &data, &data_len, RG_FILE_USER_BUFFER);
+    else
+        rg_storage_read_file(path, &data, &data_len, RG_FILE_USER_BUFFER);
+    return header[0] == 'I' && header[1] == 'W';
 }
 
 void app_main()
@@ -541,19 +547,13 @@ void app_main()
 
     update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
 
-    const char *save = RG_BASE_PATH_SAVES "/doom";
     const char *iwad = NULL;
     const char *pwad = NULL;
-    FILE *fp;
 
-    if ((fp = fopen(app->romPath, "rb")))
-    {
-        if (fgetc(fp) == 'P')
-            pwad = app->romPath;
-        else
-            iwad = app->romPath;
-        fclose(fp);
-    }
+    if (is_iwad(app->romPath))
+        iwad = app->romPath;
+    else
+        pwad = app->romPath;
 
     if (!iwad)
     {
@@ -561,16 +561,16 @@ void app_main()
         rg_gui_draw_hourglass(); // Redraw hourglass to indicate loading...
     }
 
-    if (pwad)
-    {
-        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad, "-file", pwad};
-        myargc = 7;
-    }
-    else
-    {
-        myargv = (const char *[]){"doom", "-save", save, "-iwad", iwad};
-        myargc = 5;
-    }
+    myargv = doom_argv;
+    myargc = pwad ? 7 : 5;
+    doom_argv[0] = "doom";
+    doom_argv[1] = "-save";
+    doom_argv[2] = RG_BASE_PATH_SAVES "/doom";
+    doom_argv[3] = "-iwad";
+    doom_argv[4] = iwad;
+    doom_argv[5] = "-file";
+    doom_argv[6] = pwad;
+    doom_argv[myargc] = 0;
 
 #ifdef ESP_PLATFORM
     // Some things might be nice to place in internal RAM, but I do not have time to find such

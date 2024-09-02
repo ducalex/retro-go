@@ -1,6 +1,7 @@
 #include "rg_system.h"
 #include "rg_utils.h"
 
+#include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -57,16 +58,47 @@ const char *rg_basename(const char *path)
     return name ? name + 1 : path;
 }
 
-const char *rg_extension(const char *path)
+const char *rg_extension(const char *filename)
 {
-    if (!path)
+    if (!filename)
         return NULL;
+    const char *ptr = filename + strlen(filename) - 1;
+    while (ptr > filename && *ptr != '/')
+    {
+        if (*ptr == '.')
+            return ptr + 1;
+        ptr--;
+    }
+    return NULL;
+}
 
-    const char *ptr = rg_basename(path);
-    const char *ext = strrchr(ptr, '.');
-    if (!ext)
-        return ptr + strlen(ptr);
-    return ext + 1;
+bool rg_extension_match(const char *filename, const char *extensions)
+{
+    const char *ext = rg_extension(filename);
+    if (!ext || !extensions)
+        return false;
+
+    const char *haystack = extensions;
+    while (*haystack)
+    {
+        while (*haystack == ' ')
+            haystack++;
+
+        const char *needle = ext;
+        while (*needle && *haystack && tolower((unsigned char)*needle) == tolower((unsigned char)*haystack))
+        {
+            needle++;
+            haystack++;
+        }
+        if (*needle == 0 && (*haystack == 0 || *haystack == ' '))
+            return true;
+
+        // Fast forward to next extension
+        while (*haystack && *haystack != ' ')
+            haystack++;
+    }
+
+    return false;
 }
 
 const char *rg_relpath(const char *path)
@@ -162,9 +194,16 @@ IRAM_ATTR uint32_t rg_hash(const char *data, size_t len)
     return hash;
 }
 
-const char *const_string(const char *str)
+typedef struct
 {
-    static const rg_str_t **strings = NULL;
+    uint16_t length;
+    uint16_t unused;
+    char data[];
+} unique_string_t;
+
+const char *rg_unique_string(const char *str)
+{
+    static const unique_string_t **strings = NULL;
     static size_t strings_count = 0;
 
     if (!str)
@@ -180,13 +219,12 @@ const char *const_string(const char *str)
             return strings[i]->data;
     }
 
-    rg_str_t *obj = malloc(sizeof(rg_str_t) + len + 1);
+    unique_string_t *obj = malloc(sizeof(unique_string_t) + len + 1);
 
-    strings = realloc(strings, (strings_count + 1) * sizeof(char *));
+    strings = realloc(strings, (strings_count + 1) * sizeof(unique_string_t *));
     RG_ASSERT(strings && obj, "alloc failed");
 
     memcpy(obj->data, str, len + 1);
-    obj->capacity = len;
     obj->length = len;
 
     strings[strings_count++] = obj;
@@ -250,10 +288,9 @@ void *rg_alloc(size_t size, uint32_t caps)
 void rg_usleep(uint32_t us)
 {
     int64_t goal = rg_system_timer() + us;
-    int64_t ms = us / 1000;
-    // We yield only if we have more than tick time (anywhere from 0 to 10ms)
-    if (ms >= 10)
-        rg_task_delay(ms);
+    // Only yield if it's for more than one tick duration, otherwise the delay will overshoot
+    if (us >= 1000000 / RG_TICK_RATE)
+        rg_task_delay(us / 1000);
     // Then we busy wait, which is fine as it's a short delay
     while (rg_system_timer() < goal)
         continue;

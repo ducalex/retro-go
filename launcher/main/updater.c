@@ -6,75 +6,89 @@
 #include <string.h>
 #include <cJSON.h>
 
-#if defined(RG_TARGET_MRGC_G32)
-#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
-#else
-#define DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
-#endif
+#define GITHUB_RELEASES RG_UPDATER_GITHUB_RELEASES
+#define DOWNLOAD_LOCATION RG_UPDATER_DOWNLOAD_LOCATION
+
+#define NAMELENGTH 64
 
 typedef struct
 {
-    char name[32];
+    char name[NAMELENGTH];
     char url[256];
 } asset_t;
 
 typedef struct
 {
-    char name[32];
+    char name[NAMELENGTH];
     char date[32];
     asset_t *assets;
     size_t assets_count;
 } release_t;
 
-static int download_file(const char *url, const char *filename)
+static bool download_file(const char *url, const char *filename)
 {
-    RG_ASSERT(url && filename, "bad param");
+    RG_ASSERT_ARG(url && filename);
 
     rg_http_req_t *req = NULL;
     FILE *fp = NULL;
     void *buffer = NULL;
     int received = 0;
+    int written = 0;
     int len;
-    int ret = -1;
 
     RG_LOGI("Downloading: '%s' to '%s'", url, filename);
-    rg_gui_draw_dialog("Connecting...", NULL, 0);
+    rg_gui_draw_message("Connecting...");
 
     if (!(req = rg_network_http_open(url, NULL)))
-        goto cleanup;
-
-    if (!(fp = fopen(filename, "wb")))
-        goto cleanup;
+    {
+        rg_gui_alert("Download failed!", "Connection failed!");
+        return false;
+    }
 
     if (!(buffer = malloc(16 * 1024)))
-        goto cleanup;
+    {
+        rg_network_http_close(req);
+        rg_gui_alert("Download failed!", "Out of memory!");
+        return false;
+    }
 
-    rg_gui_draw_dialog("Receiving...", NULL, 0);
+    if (!(fp = fopen(filename, "wb")))
+    {
+        rg_network_http_close(req);
+        free(buffer);
+        rg_gui_alert("Download failed!", "File open failed!");
+        return false;
+    }
+
+    rg_gui_draw_message("Receiving file...");
+    int content_length = req->content_length;
 
     while ((len = rg_network_http_read(req, buffer, 16 * 1024)) > 0)
     {
         received += len;
-        fwrite(buffer, 1, len, fp);
-        sprintf(buffer, "Received %d / %d", received, req->content_length);
-        rg_gui_draw_dialog(buffer, NULL, 0);
+        written += fwrite(buffer, 1, len, fp);
+        rg_gui_draw_message("Received %d / %d", received, content_length);
+        if (received != written)
+            break; // No point in continuing
     }
 
-    if (req->content_length == received)
-        ret = 0;
-    else if (req->content_length == -1)
-        ret = 0;
-
-cleanup:
     rg_network_http_close(req);
     free(buffer);
     fclose(fp);
 
-    return ret;
+    if (received != written || (received != content_length && content_length != -1))
+    {
+        rg_storage_delete(filename);
+        rg_gui_alert("Download failed!", "Read/write error!");
+        return false;
+    }
+
+    return true;
 }
 
 static cJSON *fetch_json(const char *url)
 {
-    RG_ASSERT(url, "bad param");
+    RG_ASSERT_ARG(url);
 
     RG_LOGI("Fetching: '%s'", url);
     rg_gui_draw_hourglass();
@@ -84,18 +98,27 @@ static cJSON *fetch_json(const char *url)
     cJSON *json = NULL;
 
     if (!(req = rg_network_http_open(url, NULL)))
+    {
+        RG_LOGW("Could not open releases URL '%s', aborting update check.", url);
         goto cleanup;
+    }
 
     size_t buffer_length = RG_MAX(256 * 1024, req->content_length);
 
     if (!(buffer = calloc(1, buffer_length + 1)))
+    {
+        RG_LOGE("Out of memory, aborting update check!");
         goto cleanup;
+    }
 
     if (rg_network_http_read(req, buffer, buffer_length) < 16)
+    {
+        RG_LOGW("Read from releases URL '%s' returned (almost) no bytes, aborting update check.", url);
         goto cleanup;
+    }
 
     if (!(json = cJSON_Parse(buffer)))
-        goto cleanup;
+        RG_LOGW("Could not parse JSON received from releases URL '%s'.", url);
 
 cleanup:
     rg_network_http_close(req);
@@ -124,14 +147,12 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
         {
             char dest_path[RG_PATH_MAX];
             snprintf(dest_path, RG_PATH_MAX, "%s/%s", DOWNLOAD_LOCATION, release->assets[sel].name);
-
-            int ret = download_file(release->assets[sel].url, dest_path);
             gui_redraw();
-
-            if (ret != 0)
-                rg_gui_alert("Download failed!", "...");
-            else if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
-                rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0);
+            if (download_file(release->assets[sel].url, dest_path))
+            {
+                if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
+                    rg_system_switch_app(RG_APP_UPDATER, NULL, dest_path, 0);
+            }
         }
         gui_redraw();
     }
@@ -141,7 +162,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 void updater_show_dialog(void)
 {
-    cJSON *releases_json = fetch_json(RG_PROJECT_RELEASES_URL);
+    cJSON *releases_json = fetch_json(GITHUB_RELEASES);
     if (!releases_json)
     {
         rg_gui_alert("Connection failed", "Make sure that you are online!");
@@ -156,7 +177,7 @@ void updater_show_dialog(void)
         char *name = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name"));
         char *date = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at"));
 
-        snprintf(releases[i].name, 32, "%s", name ?: "N/A");
+        snprintf(releases[i].name, NAMELENGTH, "%s", name ?: "N/A");
         snprintf(releases[i].date, 32, "%s", date ?: "N/A");
 
         cJSON *assets_json = cJSON_GetObjectItem(release_json, "assets");
@@ -169,10 +190,10 @@ void updater_show_dialog(void)
             cJSON *asset_json = cJSON_GetArrayItem(assets_json, j);
             char *name = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "name"));
             char *url = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "browser_download_url"));
-            if (name && url)
+            if (name && url && rg_extension_match(name, "fw img"))
             {
                 asset_t *asset = &releases[i].assets[releases[i].assets_count++];
-                snprintf(asset->name, 32, "%s", name);
+                snprintf(asset->name, NAMELENGTH, "%s", name);
                 snprintf(asset->url, 256, "%s", url);
             }
         }

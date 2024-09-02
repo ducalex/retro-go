@@ -117,14 +117,12 @@ int lss_printf(LSS_FILE *fp, const char *str)
 }
 #endif
 
+CSystem::CSystem(const UBYTE* filedata, ULONG filesize, long displayformat, long samplerate)
+{
+   Init(filedata, filesize, displayformat, samplerate);
+}
 
 CSystem::CSystem(const char* filename, long displayformat, long samplerate)
- : mCart(NULL),
-   mRam(NULL),
-   mCpu(NULL),
-   mMikie(NULL),
-   mSusie(NULL),
-   mEEPROM(NULL)
 {
    UBYTE *filedata = NULL;
    ULONG filesize = 0;
@@ -150,6 +148,13 @@ CSystem::CSystem(const char* filename, long displayformat, long samplerate)
       log_printf("-> fopen failed!\n");
    }
 
+   Init(filedata, filesize, displayformat, samplerate);
+
+   free(filedata);
+}
+
+void CSystem::Init(const UBYTE* filedata, ULONG filesize, long displayformat, long samplerate)
+{
    // Now try and determine the filetype we have opened
    if (!filedata || filesize < 16) {
       mFileType = HANDY_FILETYPE_ILLEGAL;
@@ -188,9 +193,6 @@ CSystem::CSystem(const char* filename, long displayformat, long samplerate)
    mBiosVectors[3] = 0xFF;
    mBiosVectors[4] = 0x80;
    mBiosVectors[5] = 0xFF;
-
-   // Regain some memory before initializing the rest
-   free(filedata);
 
    mRamPointer = mRam->GetRamPointer();
    mMemMapReg = 0x00;

@@ -11,27 +11,34 @@
         goto fail;                       \
     }
 
+#define SETTING_WIFI_ENABLE   "Enable"
+#define SETTING_WIFI_SLOT     "Slot"
+#define SETTING_WIFI_SSID     "ssid"
+#define SETTING_WIFI_PASSWORD "password"
+#define SETTING_WIFI_CHANNEL  "channel"
+#define SETTING_WIFI_MODE     "mode"
+
 #ifdef RG_ENABLE_NETWORKING
+#include <esp_idf_version.h>
 #include <esp_http_client.h>
 #include <esp_system.h>
+#include <esp_sntp.h>
 #include <esp_wifi.h>
 #include <esp_event.h>
 #include <nvs_flash.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netdb.h>
+
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 1, 0)
+#define esp_sntp_init sntp_init
+#define esp_sntp_stop sntp_stop
+#define esp_sntp_setoperatingmode sntp_setoperatingmode
+#define esp_sntp_setservername sntp_setservername
+#endif
 
 static rg_network_t network = {0};
 static rg_wifi_config_t wifi_config = {0};
 static bool initialized = false;
-
-static const char *SETTING_WIFI_SSID = "ssid";
-static const char *SETTING_WIFI_PASSWORD = "password";
-static const char *SETTING_WIFI_CHANNEL = "channel";
-static const char *SETTING_WIFI_MODE = "mode";
-static const char *SETTING_WIFI_SLOT = "slot";
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -57,8 +64,8 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
         }
         else if (event_id == WIFI_EVENT_AP_START)
         {
-            tcpip_adapter_ip_info_t ip_info;
-            if (tcpip_adapter_get_ip_info(TCPIP_ADAPTER_IF_AP, &ip_info) == ESP_OK)
+            esp_netif_ip_info_t ip_info;
+            if (esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info) == ESP_OK)
                 snprintf(network.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
 
             RG_LOGI("Access point started! IP: %s\n", network.ip_addr);
@@ -79,12 +86,19 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
                 network.channel = wifidata.primary;
                 network.rssi = wifidata.rssi;
             }
+            network.state = RG_NETWORK_CONNECTED;
 
             RG_LOGI("Connected! IP: %s, RSSI: %d", network.ip_addr, network.rssi);
-            network.state = RG_NETWORK_CONNECTED;
-            if (rg_network_sync_time("pool.ntp.org", 0))
-                rg_system_save_time();
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
+
+            esp_sntp_stop();
+            esp_sntp_init();
+        }
+        else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
+        {
+            ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
+            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip));
+            RG_LOGI("Access point assigned IP to client: %s", network.ip_addr);
         }
     }
 
@@ -92,32 +106,21 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
 }
 #endif
 
-bool rg_network_wifi_load_config(int slot)
+bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out)
 {
-#ifdef RG_ENABLE_NETWORKING
-    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
-
-    if (slot < -1 || slot > 999)
+    if (slot < 0 || slot > 99)
         return false;
 
-    if (slot == -1)
-    {
-        snprintf(key_ssid, 16, "%s", SETTING_WIFI_SSID);
-        snprintf(key_password, 16, "%s", SETTING_WIFI_PASSWORD);
-        snprintf(key_channel, 16, "%s", SETTING_WIFI_CHANNEL);
-        snprintf(key_mode, 16, "%s", SETTING_WIFI_MODE);
-    }
-    else
-    {
-        snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
-        snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
-        snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
-        snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
-    }
-
-    RG_LOGI("Looking for '%s' (slot %d)\n", key_ssid, slot);
+    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
     rg_wifi_config_t config = {0};
     char *ptr;
+
+    snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
+    snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
+    snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
+    snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
+
+    RG_LOGD("Looking for '%s' (slot %d)\n", key_ssid, slot);
 
     if ((ptr = rg_settings_get_string(NS_WIFI, key_ssid, NULL)))
         memccpy(config.ssid, ptr, 0, 32), free(ptr);
@@ -126,20 +129,30 @@ bool rg_network_wifi_load_config(int slot)
     config.channel = rg_settings_get_number(NS_WIFI, key_channel, 0);
     config.ap_mode = rg_settings_get_number(NS_WIFI, key_mode, 0);
 
+    if (!config.ssid[0] && slot == 0)
+    {
+        if ((ptr = rg_settings_get_string(NS_WIFI, SETTING_WIFI_SSID, NULL)))
+            memccpy(config.ssid, ptr, 0, 32), free(ptr);
+        if ((ptr = rg_settings_get_string(NS_WIFI, SETTING_WIFI_PASSWORD, NULL)))
+            memccpy(config.password, ptr, 0, 64), free(ptr);
+        config.channel = rg_settings_get_number(NS_WIFI, SETTING_WIFI_CHANNEL, 0);
+        config.ap_mode = rg_settings_get_number(NS_WIFI, SETTING_WIFI_MODE, 0);
+    }
+
     if (!config.ssid[0])
         return false;
 
-    return rg_network_wifi_set_config(&config);
-#else
-    return false;
-#endif
+    *out = config;
+    return true;
 }
 
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 {
 #ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(config, "bad param");
-    wifi_config = *config;
+    if (config)
+        memcpy(&wifi_config, config, sizeof(wifi_config));
+    else
+        memset(&wifi_config, 0, sizeof(wifi_config));
     return true;
 #else
     return false;
@@ -192,7 +205,6 @@ void rg_network_wifi_stop(void)
 #ifdef RG_ENABLE_NETWORKING
     RG_ASSERT(initialized, "Please call rg_network_init() first");
     esp_wifi_stop();
-    rg_task_delay(100);
     memset(network.name, 0, sizeof(network.name));
 #endif
 }
@@ -206,64 +218,12 @@ rg_network_t rg_network_get_info(void)
 #endif
 }
 
-bool rg_network_sync_time(const char *host, int *out_delta)
-{
-#ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(host, "bad param");
-    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-    struct hostent *server = gethostbyname(host);
-    struct sockaddr_in serv_addr = {};
-    struct timeval timeout = {2, 0};
-    struct timeval ntp_time = {0, 0};
-    struct timeval cur_time;
-
-    if (server == NULL)
-    {
-        RG_LOGE("Failed to resolve NTP server hostname");
-        return false;
-    }
-
-    size_t addr_length = RG_MIN(server->h_length, sizeof(serv_addr.sin_addr.s_addr));
-    memcpy(&serv_addr.sin_addr.s_addr, server->h_addr, addr_length);
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_port = htons(123);
-
-    uint32_t ntp_packet[12] = {0x0000001B, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}; // li, vn, mode.
-
-    setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    connect(sockfd, (void *)&serv_addr, sizeof(serv_addr));
-    send(sockfd, &ntp_packet, sizeof(ntp_packet), 0);
-
-    if (recv(sockfd, &ntp_packet, sizeof(ntp_packet), 0) >= 0)
-    {
-        ntp_time.tv_sec = ntohl(ntp_packet[10]) - 2208988800UL; // DIFF_SEC_1900_1970;
-        ntp_time.tv_usec = (((int64_t)ntohl(ntp_packet[11]) * 1000000) >> 32);
-
-        gettimeofday(&cur_time, NULL);
-        settimeofday(&ntp_time, NULL);
-
-        int64_t prev_millis = ((((int64_t)cur_time.tv_sec * 1000000) + cur_time.tv_usec) / 1000);
-        int64_t now_millis = ((int64_t)ntp_time.tv_sec * 1000000 + ntp_time.tv_usec) / 1000;
-        int ntp_time_delta = (now_millis - prev_millis);
-
-        RG_LOGI("Received Time: %.24s, we were %dms %s\n", ctime(&ntp_time.tv_sec), abs((int)ntp_time_delta),
-                ntp_time_delta < 0 ? "ahead" : "behind");
-
-        if (out_delta)
-            *out_delta = ntp_time_delta;
-        return true;
-    }
-#endif
-    RG_LOGE("Failed to receive NTP time.\n");
-    return false;
-}
-
 void rg_network_deinit(void)
 {
 #ifdef RG_ENABLE_NETWORKING
     esp_wifi_stop();
     esp_wifi_deinit();
-    esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler);
+    esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
 #endif
 }
@@ -274,11 +234,13 @@ bool rg_network_init(void)
     if (initialized)
         return true;
 
+    initialized = true;
+
     // Init event loop first
     esp_err_t err;
     TRY(esp_event_loop_create_default());
     TRY(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
-    TRY(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &network_event_handler, NULL));
+    TRY(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
 
     // Then TCP stack
     esp_netif_init();
@@ -294,15 +256,22 @@ bool rg_network_init(void)
     TRY(esp_wifi_init(&cfg));
     TRY(esp_wifi_set_storage(WIFI_STORAGE_RAM));
 
+    // Setup SNTP client but don't query it yet
+    esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    esp_sntp_setservername(0, "pool.ntp.org");
+    // esp_sntp_init();
+
     // Tell rg_network_get_info() that we're enabled but not yet connected
     network.state = RG_NETWORK_DISCONNECTED;
 
-    // We try loading the specified slot (if any), and fallback to no slot
+    // Load the user's chosen config profile, if any
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0);
-    if (!rg_network_wifi_load_config(slot) && slot != -1)
-        rg_network_wifi_load_config(-1);
+    rg_network_wifi_read_config(slot, &wifi_config);
 
-    initialized = true;
+    // Auto-start?
+    if (rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false))
+        rg_network_wifi_start();
+
     return true;
 fail:
 #else
@@ -313,7 +282,7 @@ fail:
 
 rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
-    RG_ASSERT(url, "bad param");
+    RG_ASSERT_ARG(url != NULL);
 #ifdef RG_ENABLE_NETWORKING
     esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
     esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
@@ -364,7 +333,7 @@ fail:
 
 int rg_network_http_read(rg_http_req_t *req, void *buffer, size_t buffer_len)
 {
-    RG_ASSERT(req && buffer, "bad param");
+    RG_ASSERT_ARG(req && buffer);
 #ifdef RG_ENABLE_NETWORKING
     // if (req->content_length >= 0 && req->received_bytes >= req->content_length)
     //     return 0;

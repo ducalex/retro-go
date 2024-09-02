@@ -9,7 +9,7 @@
 #include "bookmarks.h"
 #include "gui.h"
 
-#define CRC_CACHE_MAGIC 0x21112222
+#define CRC_CACHE_MAGIC 0x21112223
 #define CRC_CACHE_MAX_ENTRIES 8192
 static struct __attribute__((__packed__))
 {
@@ -28,29 +28,24 @@ static int apps_count = 0;
 static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 {
     retro_app_t *app = (retro_app_t *)arg;
-    const char *ext = rg_extension(entry->basename);
-    uint8_t is_valid = false;
-    uint8_t type = 0x00;
-    char ext_buf[32];
+    uint8_t type = RETRO_TYPE_INVALID;
 
     // Skip hidden files
     if (entry->basename[0] == '.')
         return RG_SCANDIR_SKIP;
 
-    if (entry->is_file && ext[0])
+    if (entry->is_file)
     {
-        snprintf(ext_buf, sizeof(ext_buf), " %s ", ext);
-        is_valid = strstr(app->extensions, rg_strtolower(ext_buf)) != NULL;
-        type = 0x00;
+        if (rg_extension_match(entry->basename, app->extensions))
+            type = RETRO_TYPE_FILE;
     }
     else if (entry->is_dir)
     {
         RG_LOGI("Found subdirectory '%s'", entry->path);
-        is_valid = true;
-        type = 0xFF;
+        type = RETRO_TYPE_FOLDER;
     }
 
-    if (!is_valid)
+    if (type == RETRO_TYPE_INVALID)
         return RG_SCANDIR_CONTINUE;
 
     if (app->files_count + 1 > app->files_capacity)
@@ -68,12 +63,34 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 
     app->files[app->files_count++] = (retro_file_t) {
         .name = strdup(entry->basename),
-        .folder = const_string(entry->dirname),
-        .app = (void*)app,
+        .folder = rg_unique_string(entry->dirname),
+        .checksum = 0,
+        .missing_cover = 0,
+        .saves = 0,
         .type = type,
-        .is_valid = true,
+        .app = (void*)app,
     };
 
+    return RG_SCANDIR_CONTINUE;
+}
+
+static int scan_saves_cb(const rg_scandir_t *entry, void *arg)
+{
+    if (entry->is_file && rg_extension_match(entry->basename, "sav"))
+    {
+        retro_app_t *app = (retro_app_t *)arg;
+        for (size_t i = 0; i < app->files_count; i++)
+        {
+            retro_file_t *file = &app->files[i];
+            // Saves are the rom name with possibly `.sav` or `-0.sav` appended.
+            if (strncmp(entry->basename, file->name, strlen(file->name)) == 0)
+            {
+                // FIXME: Check if folder matches first
+                file->saves++;
+                break;
+            }
+        }
+    }
     return RG_SCANDIR_CONTINUE;
 }
 
@@ -82,13 +99,15 @@ static void application_init(retro_app_t *app)
     RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
 
     if (app->initialized)
-        app->files_count = 0;
+        return;
 
     rg_storage_mkdir(app->paths.covers);
     rg_storage_mkdir(app->paths.saves);
     rg_storage_mkdir(app->paths.roms);
 
     rg_storage_scandir(app->paths.roms, scan_folder_cb, app, RG_SCANDIR_RECURSIVE);
+    rg_storage_scandir(app->paths.saves, scan_saves_cb, app, RG_SCANDIR_RECURSIVE);
+    // rg_storage_scandir(app->paths.covers, scan_folder_cb3, app, RG_SCANDIR_RECURSIVE);
 
     app->use_crc_covers = rg_storage_exists(strcat(app->paths.covers, "/0"));
     app->paths.covers[strlen(app->paths.covers) - 2] = 0;
@@ -99,14 +118,14 @@ static void application_init(retro_app_t *app)
 static const char *get_file_path(retro_file_t *file)
 {
     static char buffer[RG_PATH_MAX + 1];
-    RG_ASSERT(file, "Bad param");
+    RG_ASSERT_ARG(file);
     snprintf(buffer, RG_PATH_MAX, "%s/%s", file->folder, file->name);
     return buffer;
 }
 
 static void application_start(retro_file_t *file, int load_state)
 {
-    RG_ASSERT(file, "Unable to find file...");
+    RG_ASSERT_ARG(file);
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
@@ -120,6 +139,39 @@ static void application_start(retro_file_t *file, int load_state)
     rg_system_switch_app(part, name, path, flags);
 }
 
+static uint32_t crc_read_file(retro_file_t *file, bool interactive)
+{
+    uint8_t buffer[0x800];
+    uint32_t crc_tmp = 0;
+    bool done = false;
+    int count = -1;
+    FILE *fp;
+
+    if (file == NULL)
+        return 0;
+
+    if ((fp = fopen(get_file_path(file), "rb")))
+    {
+        fseek(fp, file->app->crc_offset, SEEK_SET);
+
+        while (count != 0)
+        {
+            // Give up on any button press to improve responsiveness
+            if (interactive && (gui.joystick = rg_input_read_gamepad()))
+                break;
+
+            count = fread(buffer, 1, sizeof(buffer), fp);
+            crc_tmp = rg_crc32(crc_tmp, buffer, count);
+        }
+
+        done = feof(fp);
+
+        fclose(fp);
+    }
+
+    return done ? crc_tmp : 0;
+}
+
 static void crc_cache_init(void)
 {
     crc_cache = calloc(1, sizeof(*crc_cache));
@@ -128,46 +180,19 @@ static void crc_cache_init(void)
         RG_LOGE("Failed to allocate crc_cache!");
         return;
     }
-    // File format: {magic:U32 count:U32} {{key:U32 crc:U32}, ...}
-    FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "rb");
-    if (fp)
+
+    void *data_ptr = crc_cache;
+    size_t data_len = sizeof(*crc_cache);
+    rg_storage_read_file(RG_BASE_PATH_CACHE "/crc32.bin", &data_ptr, &data_len, RG_FILE_USER_BUFFER);
+    if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
     {
-        fread(crc_cache, 8, 1, fp);
-        if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
-        {
-            RG_LOGI("Loaded CRC cache (entries: %d)", crc_cache->count);
-            fread(crc_cache->entries, crc_cache->count, 8, fp);
-            crc_cache_dirty = false;
-        }
-        else
-        {
-            crc_cache->count = 0;
-        }
-        fclose(fp);
+        RG_LOGI("Loaded CRC cache (entries: %d)", (int)crc_cache->count);
+        crc_cache_dirty = false;
     }
-}
-
-static uint32_t crc_cache_calc_key(retro_file_t *file)
-{
-    // return ((uint64_t)rg_crc32(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
-    // This should be reasonably unique
-    return rg_crc32(0, (void *)file->name, strlen(file->name));
-}
-
-static uint32_t crc_cache_lookup(retro_file_t *file)
-{
-    uint32_t key = crc_cache_calc_key(file);
-
-    if (!crc_cache)
-        return 0;
-
-    for (int i = 0; i < crc_cache->count; i++)
+    else
     {
-        if (crc_cache->entries[i].key == key)
-            return crc_cache->entries[i].crc;
+        crc_cache->count = 0;
     }
-
-    return 0;
 }
 
 static void crc_cache_save(void)
@@ -175,119 +200,127 @@ static void crc_cache_save(void)
     if (!crc_cache || !crc_cache_dirty)
         return;
 
-    RG_LOGI("Saving cache");
+    RG_LOGI("Saving CRC cache...");
+    size_t data_len = RG_MIN(8 + (crc_cache->count * sizeof(crc_cache->entries[0])), sizeof(*crc_cache));
+    crc_cache_dirty = !rg_storage_write_file(RG_BASE_PATH_CACHE"/crc32.bin", crc_cache, data_len, 0);
+}
 
-    FILE *fp = fopen(RG_BASE_PATH_CACHE"/crc32.bin", "wb");
-    if (fp)
+static uint32_t crc_cache_calc_key(retro_file_t *file)
+{
+    // return ((uint64_t)rg_crc32(0, (void *)file->name, strlen(file->name)) << 33 | file->size);
+    // This should be reasonably unique
+    const char *path = get_file_path(file);
+    return rg_crc32(0, (const uint8_t *)path, strlen(path));
+}
+
+static int crc_cache_find(retro_file_t *file)
+{
+    if (!crc_cache)
+        return -1;
+
+    uint32_t key = crc_cache_calc_key(file);
+
+    for (int i = 0; i < crc_cache->count; i++)
     {
-        size_t minsize = RG_MIN(8 + (crc_cache->count * sizeof(crc_cache->entries[0])), sizeof(*crc_cache));
-        fwrite(crc_cache, minsize, 1, fp);
-        fclose(fp);
-        crc_cache_dirty = false;
+        if (crc_cache->entries[i].key == key)
+            return i;
     }
+
+    return -1;
+}
+
+static uint32_t crc_cache_lookup(retro_file_t *file)
+{
+    int index = crc_cache_find(file);
+    if (index != -1)
+        return crc_cache->entries[index].crc;
+    return 0;
 }
 
 static void crc_cache_update(retro_file_t *file)
 {
-    uint32_t key = crc_cache_calc_key(file);
-    size_t index = 0;
-
     if (!crc_cache)
         return;
 
-    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
-        index = crc_cache->count++;
+    uint32_t key = crc_cache_calc_key(file);
+    int index = crc_cache_find(file);
+    if (index == -1)
+    {
+        if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+            index = crc_cache->count++;
+        else
+            index = rand() % CRC_CACHE_MAX_ENTRIES;
+
+        RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
+            (int)key, (int)file->checksum, (int)crc_cache->count);
+    }
     else
-        index = rand() % CRC_CACHE_MAX_ENTRIES;
+    {
+        RG_LOGI("Updating %08X => %08X to cache (total: %d)",
+            (int)key, (int)file->checksum, (int)crc_cache->count);
+    }
 
     crc_cache->magic = CRC_CACHE_MAGIC;
     crc_cache->entries[index].key = key;
     crc_cache->entries[index].crc = file->checksum;
     crc_cache_dirty = true;
 
-    RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
-        key, file->checksum, crc_cache->count);
-
     // crc_cache_save();
 }
 
-void crc_cache_idle_task(tab_t *tab)
+void crc_cache_prebuild(void)
 {
-    // FIXME: Disabled for now because it interferes with the webserver...
-    return;
-
     if (!crc_cache)
         return;
 
-    if (crc_cache->count < CRC_CACHE_MAX_ENTRIES)
+    for (int i = 0; i < apps_count; i++)
     {
-        int start_offset = 0;
-        int remaining = 100;
+        retro_app_t *app = apps[i];
 
-        // Find the currently focused app, if any
-        for (int i = 0; i < apps_count; i++)
+        if (!app->available)
+            continue;
+
+        if (!app->initialized)
+            application_init(app);
+
+        for (int j = 0; j < app->files_count; j++)
         {
-            if (tab && tab->arg == apps[i])
-            {
-                start_offset = i;
+            retro_file_t *file = &app->files[j];
+
+            rg_gui_draw_message("Scanning %s %d/%d", app->short_name, j, app->files_count);
+
+            // Give up on any button press to improve responsiveness
+            if (rg_input_read_gamepad())
                 break;
-            }
-        }
 
-        for (int i = 0; i < apps_count && remaining > 0; i++)
-        {
-            retro_app_t *app = apps[(start_offset + i) % apps_count];
-            int processed = 0;
-
-            if (!app->available || app->crc_scan_done)
+            if (file->checksum)
                 continue;
 
-            gui_set_status(tab, "BUILDING CACHE...", "SCANNING");
-            gui_redraw(); // gui_draw_status(tab);
+            if ((file->checksum = crc_cache_lookup(file)))
+                continue;
 
-            if (!app->initialized)
-                application_init(app);
-
-            if ((gui.joystick |= rg_input_read_gamepad()))
-                remaining = -1;
-
-            for (int j = 0; j < app->files_count && remaining > 0; j++)
-            {
-                retro_file_t *file = &app->files[j];
-
-                if (file->checksum == 0)
-                    file->checksum = crc_cache_lookup(file);
-
-                if (file->checksum == 0 && application_get_file_crc32(file))
-                {
-                    processed++;
-                    remaining--;
-                }
-
-                // Give up on any button press to improve responsiveness
-                if ((gui.joystick |= rg_input_read_gamepad()))
-                    remaining = -1;
-            }
-
-            if (processed == 0 && remaining != -1)
-                app->crc_scan_done = true;
-
-            gui_set_status(tab, "", "");
-            gui_redraw(); // gui_draw_status(tab);
+            if ((file->checksum = crc_read_file(file, true)))
+                crc_cache_update(file);
         }
+
+        if (rg_input_read_gamepad())
+            break;
+
+        crc_cache_save();
+        gui_redraw();
     }
 
     crc_cache_save();
 }
 
-static void tab_refresh(tab_t *tab)
+static void tab_refresh(tab_t *tab, const char *selected)
 {
     retro_app_t *app = (retro_app_t *)tab->arg;
 
     memset(&tab->status, 0, sizeof(tab->status));
 
-    const char *basepath = const_string(app->paths.roms);
-    const char *folder = const_string(tab->navpath ?: basepath);
+    const char *basepath = rg_unique_string(app->paths.roms);
+    const char *folder = rg_unique_string(tab->navpath ?: basepath);
     size_t items_count = 0;
     char *ext = NULL;
 
@@ -302,27 +335,28 @@ static void tab_refresh(tab_t *tab)
         {
             retro_file_t *file = &app->files[i];
 
-            if (!file->is_valid || !file->name)
+            if (file->type == RETRO_TYPE_INVALID || !file->name)
                 continue;
 
             if (file->folder != folder && strcmp(file->folder, folder) != 0)
                 continue;
 
-            listbox_item_t *item = &tab->listbox.items[items_count++];
-
-            if (file->type == 0xFF)
+            if (file->type == RETRO_TYPE_FOLDER)
             {
-                snprintf(item->text, 128, "[%s]", file->name);
-                // snprintf(item->text, 128, "/%s/", file->name);
+                listbox_item_t *item = &tab->listbox.items[items_count++];
+                snprintf(item->text, sizeof(item->text), "[%.40s]", file->name);
+                item->group = 1;
+                item->arg = file;
             }
-            else
+            else if (file->type == RETRO_TYPE_FILE)
             {
-                snprintf(item->text, 128, "%s", file->name);
+                listbox_item_t *item = &tab->listbox.items[items_count++];
+                snprintf(item->text, sizeof(item->text), "%s", file->name);
                 if ((ext = strrchr(item->text, '.')))
                     *ext = 0;
+                item->group = 2;
+                item->arg = file;
             }
-
-            item->arg = file;
         }
     }
 
@@ -340,6 +374,18 @@ static void tab_refresh(tab_t *tab)
         sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
         tab->listbox.cursor = 4;
     }
+    else if (selected)
+    {
+        for (int i = 0; i < tab->listbox.length; i++)
+        {
+            retro_file_t *file = tab->listbox.items[i].arg;
+            if (file && strcmp(file->name, selected) == 0) // file->folder == selected->folder
+            {
+                tab->listbox.cursor = i;
+                break;
+            }
+        }
+    }
 
     gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
 }
@@ -350,35 +396,39 @@ static void event_handler(gui_event_t event, tab_t *tab)
     retro_app_t *app = (retro_app_t *)tab->arg;
     retro_file_t *file = (retro_file_t *)(item ? item->arg : NULL);
 
-    if (event == TAB_INIT)
+    if (event == TAB_INIT || event == TAB_RESCAN)
     {
-        retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
-        if (selected && !rg_storage_exists(get_file_path(selected)))
+        if (event == TAB_RESCAN && app->initialized)
         {
-            RG_LOGE("Selected file no longer exists!");
-            selected = NULL;
+            for (size_t i = 0; i < app->files_count; ++i)
+                free((char *)app->files[i].name);
+            app->files_count = 0;
+            app->initialized = false;
         }
-        tab->navpath = selected ? selected->folder : NULL;
 
         application_init(app);
-        tab_refresh(tab);
+        tab->navpath = NULL;
 
-        if (selected)
+        retro_file_t *selected = bookmark_find_by_app(BOOK_TYPE_RECENT, app);
+        if (selected) // && !rg_storage_exists(get_file_path(selected)))
         {
-            for (int i = 0; i < tab->listbox.length; i++)
+            // rg_storage_exists can take a long time on large folders (200ms), this is much faster
+            for (size_t i = 0; i < app->files_count; ++i)
             {
-                retro_file_t *file = tab->listbox.items[i].arg;
-                if (file && strcmp(file->name, selected->name) == 0)
+                retro_file_t *file = &app->files[i];
+                if (selected->folder == file->folder && strcmp(selected->name, file->name) == 0)
                 {
-                    gui_scroll_list(tab, SCROLL_SET, i);
+                    tab->navpath = file->folder;
                     break;
                 }
             }
         }
+
+        tab_refresh(tab, selected ? selected->name : NULL);
     }
     else if (event == TAB_REFRESH)
     {
-        tab_refresh(tab);
+        tab_refresh(tab, NULL);
     }
     else if (event == TAB_ENTER || event == TAB_SCROLL)
     {
@@ -393,20 +443,18 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (file && !tab->preview && gui.browse && gui.idle_counter == 1)
             gui_load_preview(tab);
-        else if ((gui.idle_counter % 100) == 0)
-            crc_cache_idle_task(tab);
     }
     else if (event == TAB_ACTION)
     {
         if (file)
         {
-            if (file->type == 0xFF)
+            if (file->type == RETRO_TYPE_FOLDER)
             {
-                tab->navpath = const_string(get_file_path(file));
+                tab->navpath = rg_unique_string(get_file_path(file));
                 tab->listbox.cursor = 0;
-                tab_refresh(tab);
+                tab_refresh(tab, NULL);
             }
-            else
+            else if (file->type == RETRO_TYPE_FILE)
             {
                 application_show_file_menu(file, false);
             }
@@ -416,30 +464,19 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (tab->navpath)
         {
-            const char *from = rg_basename(const_string(tab->navpath));
+            const char *from = rg_basename(rg_unique_string(tab->navpath));
 
-            tab->navpath = const_string(rg_dirname(tab->navpath));
+            tab->navpath = rg_unique_string(rg_dirname(tab->navpath));
             tab->listbox.cursor = 0;
 
-            tab_refresh(tab);
-
-            // This seems bad but keep in mind that folders are sorted to the top of items[]
-            for (int i = 0; i < tab->listbox.length; ++i)
-            {
-                retro_file_t *item = tab->listbox.items[i].arg;
-                if (strcmp(item->name, from) == 0)
-                {
-                    tab->listbox.cursor = i;
-                    break;
-                }
-            }
+            tab_refresh(tab, from);
         }
     }
 }
 
 bool application_path_to_file(const char *path, retro_file_t *file)
 {
-    RG_ASSERT(path && file, "Bad param");
+    RG_ASSERT_ARG(path && file);
 
     for (int i = 0; i < apps_count; ++i)
     {
@@ -448,9 +485,10 @@ bool application_path_to_file(const char *path, retro_file_t *file)
         {
             *file = (retro_file_t) {
                 .name = strdup(rg_basename(path)),
-                .folder = const_string(rg_dirname(path)),
+                .folder = rg_unique_string(rg_dirname(path)),
+                .saves = 0xFF, // We don't know, but we want gui_load_preview to check if needed
+                .type = RETRO_TYPE_FILE,
                 .app = apps[i],
-                .is_valid = true,
             };
             return true;
         }
@@ -461,10 +499,7 @@ bool application_path_to_file(const char *path, retro_file_t *file)
 
 bool application_get_file_crc32(retro_file_t *file)
 {
-    uint8_t buffer[0x800];
     uint32_t crc_tmp = 0;
-    int count = -1;
-    FILE *fp;
 
     if (file == NULL)
         return false;
@@ -482,27 +517,10 @@ bool application_get_file_crc32(retro_file_t *file)
         gui_set_status(tab, NULL, "CRC32...");
         gui_redraw(); // gui_draw_status(tab);
 
-        if ((fp = fopen(get_file_path(file), "rb")))
+        if ((crc_tmp = crc_read_file(file, true)))
         {
-            fseek(fp, file->app->crc_offset, SEEK_SET);
-
-            while (count != 0)
-            {
-                // Give up on any button press to improve responsiveness
-                if ((gui.joystick = rg_input_read_gamepad()))
-                    break;
-
-                count = fread(buffer, 1, sizeof(buffer), fp);
-                crc_tmp = rg_crc32(crc_tmp, buffer, count);
-            }
-
-            if (feof(fp))
-            {
-                file->checksum = crc_tmp;
-                crc_cache_update(file);
-            }
-
-            fclose(fp);
+            file->checksum = crc_tmp;
+            crc_cache_update(file);
         }
 
         gui_set_status(tab, NULL, "");
@@ -540,7 +558,7 @@ static void show_file_info(retro_file_t *file)
     while (true) // We loop in case we need to update the CRC
     {
         if (file->checksum)
-            sprintf(filecrc, "%08X (%d)", file->checksum, file->app->crc_offset);
+            sprintf(filecrc, "%08X (%d)", (int)file->checksum, file->app->crc_offset);
 
         switch (rg_gui_dialog("File properties", options, -1))
         {
@@ -554,7 +572,7 @@ static void show_file_info(retro_file_t *file)
                 {
                     bookmark_remove(BOOK_TYPE_FAVORITE, file);
                     bookmark_remove(BOOK_TYPE_RECENT, file);
-                    file->is_valid = false;
+                    file->type = RETRO_TYPE_INVALID;
                     gui_event(TAB_REFRESH, gui_get_current_tab());
                     return;
                 }
@@ -568,10 +586,10 @@ static void show_file_info(retro_file_t *file)
 
 void application_show_file_menu(retro_file_t *file, bool advanced)
 {
-    const char *rom_path = get_file_path(file);
+    char *rom_path = strdup(get_file_path(file));
     char *sram_path = rg_emu_get_path(RG_PATH_SAVE_SRAM, rom_path);
     rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
-    bool has_save = savestates->used > 0;
+    bool has_save = savestates->used > 0; // Don't rely on file->saves just yet
     bool has_sram = rg_storage_exists(sram_path);
     bool is_fav = bookmark_exists(BOOK_TYPE_FAVORITE, file);
     int slot = -1;
@@ -605,6 +623,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         {
             remove(savestates->slots[slot].preview);
             remove(savestates->slots[slot].file);
+            // FIXME: We should update the last slot used here
         }
         if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
         {
@@ -627,6 +646,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
     }
 
+    free(rom_path);
     free(sram_path);
     free(savestates);
 
@@ -635,7 +655,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
 
 static void application(const char *desc, const char *name, const char *exts, const char *part, uint16_t crc_offset)
 {
-    RG_ASSERT(desc && name && exts && part, "Bad param");
+    RG_ASSERT_ARG(desc && name && exts && part);
 
     if (!rg_system_have_app(part))
     {
@@ -650,9 +670,6 @@ static void application(const char *desc, const char *name, const char *exts, co
     snprintf(app->short_name, sizeof(app->short_name), "%s", name);
     snprintf(app->partition, sizeof(app->partition), "%s", part);
     snprintf(app->extensions, sizeof(app->extensions), " %s ", exts);
-    rg_strtolower(app->partition);
-    rg_strtolower(app->short_name);
-    rg_strtolower(app->extensions);
     snprintf(app->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", app->short_name);
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);
@@ -666,25 +683,27 @@ static void application(const char *desc, const char *name, const char *exts, co
 
 void applications_init(void)
 {
-    application("Nintendo Entertainment System", "nes", "nes fc fds nsf", "retro-core", 16);
-    application("Super Nintendo", "snes", "smc sfc", "retro-core", 0);
-    application("Nintendo Gameboy", "gb", "gb gbc", "retro-core", 0);
-    application("Nintendo Gameboy Color", "gbc", "gbc gb", "retro-core", 0);
+    bool big_memory = rg_system_get_app()->availableMemory >= 0x600000;
+    application("Nintendo Entertainment System", "nes", "nes fc fds nsf zip", "retro-core", 16);
+    application("Super Nintendo", "snes", "smc sfc zip", "retro-core", 0);
+    application("Nintendo Gameboy", "gb", "gb gbc zip", "retro-core", 0);
+    application("Nintendo Gameboy Color", "gbc", "gbc gb zip", "retro-core", 0);
+    // application("Nintendo Gameboy Advance", "gba", "gba zip", "gbsp", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
     // application("Sega SG-1000", "sg1", "sms sg sg1", "retro-core", 0);
-    application("Sega Master System", "sms", "sms sg", "retro-core", 0);
-    application("Sega Game Gear", "gg", "gg", "retro-core", 0);
-    application("Sega Mega Drive", "md", "md gen bin", "gwenesis", 0);
-    application("Coleco ColecoVision", "col", "col rom", "retro-core", 0);
-    application("NEC PC Engine", "pce", "pce", "retro-core", 0);
-    application("Atari Lynx", "lnx", "lnx", "retro-core", 64);
+    application("Sega Master System", "sms", "sms sg zip", "retro-core", 0);
+    application("Sega Game Gear", "gg", "gg zip", "retro-core", 0);
+    application("Sega Mega Drive", "md", "md gen bin zip", "gwenesis", 0);
+    application("Coleco ColecoVision", "col", "col rom zip", "retro-core", 0);
+    application("NEC PC Engine", "pce", "pce zip", "retro-core", 0);
+    application("Atari Lynx", "lnx", "lnx zip", "retro-core", 64);
     // application("Atari 2600", "a26", "a26", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
-    application("DOOM", "doom", "wad", "prboom-go", 0);
+    application("DOOM", "doom", big_memory ? "wad zip" : "wad", "prboom-go", 0);
     application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 
     // Special app to bootstrap native esp32 binaries from the SD card
-    application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
+    // application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
     crc_cache_init();
 }

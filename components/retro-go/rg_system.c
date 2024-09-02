@@ -11,6 +11,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
 #include <freertos/task.h>
+#include <freertos/semphr.h>
 #include <esp_heap_caps.h>
 #include <esp_partition.h>
 #include <esp_ota_ops.h>
@@ -20,6 +21,7 @@
 #include <driver/gpio.h>
 #else
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_mutex.h>
 #endif
 
 #define RG_STRUCT_MAGIC 0x12345678
@@ -41,17 +43,21 @@ typedef struct
     int64_t busyTime, updateTime;
 } counters_t;
 
-typedef struct
+struct rg_task_s
 {
     void (*func)(void *arg);
     void *arg;
+    // bool blocked;
 #ifdef ESP_PLATFORM
+    QueueHandle_t queue;
     TaskHandle_t handle;
 #else
+    rg_task_msg_t msg;
+    int msgWaiting;
     SDL_threadID handle;
 #endif
     char name[16];
-} rg_task_t;
+};
 
 #ifdef RG_ENABLE_PROFILING
 typedef struct
@@ -65,7 +71,7 @@ static struct
 {
     int64_t time_started;
     int32_t total_frames;
-    rg_queue_t *lock;
+    rg_mutex_t *lock;
     profile_frame_t frames[512];
 } *profile;
 #endif
@@ -74,6 +80,8 @@ static struct
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
+static bool exitCalled = false;
+static uint32_t indicators;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
@@ -82,6 +90,7 @@ static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
+static const char *SETTING_INDICATOR_MASK = "Indicators";
 
 #define logbuf_putc(buf, c) (buf)->console[(buf)->cursor++] = c, (buf)->cursor %= RG_LOGBUF_SIZE;
 #define logbuf_puts(buf, str) for (const char *ptr = str; *ptr; ptr++) logbuf_putc(buf, *ptr);
@@ -111,7 +120,6 @@ static void update_memory_statistics(void)
 {
 #ifdef ESP_PLATFORM
     multi_heap_info_t heap_info;
-
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
     statistics.freeMemoryInt = heap_info.total_free_bytes;
     statistics.freeBlockInt = heap_info.largest_free_block;
@@ -122,6 +130,9 @@ static void update_memory_statistics(void)
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
 
     statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
+#else
+    statistics.freeMemoryInt = statistics.freeBlockInt = statistics.totalMemoryInt = (1 << 28);
+    statistics.freeMemoryExt = statistics.freeBlockExt = statistics.totalMemoryExt = (1 << 28);
 #endif
 }
 
@@ -169,28 +180,40 @@ static void update_statistics(void)
     update_memory_statistics();
 }
 
+static void update_indicators(void)
+{
+    uint32_t visibleIndicators = indicators & app.indicatorsMask;
+    rg_color_t ledColor = 0; // C_GREEN
+
+    if (visibleIndicators & (1 << RG_INDICATOR_LOW_BATTERY))
+        ledColor = C_RED;
+    else if (visibleIndicators)
+        ledColor = C_BLUE;
+
+#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
+    gpio_set_level(RG_GPIO_LED, ledColor != 0);
+#endif
+}
+
 static void system_monitor_task(void *arg)
 {
-    bool batteryLedState = false;
     int64_t nextLoopTime = 0;
+    time_t prevTime = time(NULL);
 
     rg_task_delay(2000);
 
-    while (!app.exitCalled)
+    while (!exitCalled)
     {
         nextLoopTime = rg_system_timer() + 1000000;
         rtcValue = time(NULL);
 
         update_statistics();
+        // update_indicators(); // Implicitly called by rg_system_set_indicator below
 
         rg_battery_t battery = rg_input_read_battery();
-        if (battery.present)
-        {
-            if (battery.level < 2)
-                rg_system_set_led((batteryLedState ^= 1));
-            else if (batteryLedState)
-                rg_system_set_led((batteryLedState = 0));
-        }
+        // TODO: The flashing should eventually be handled by update_indicators instead of here...
+        rg_system_set_indicator(RG_INDICATOR_LOW_BATTERY, (battery.present && battery.level <= 2.f &&
+                                                           !rg_system_get_indicator(RG_INDICATOR_LOW_BATTERY)));
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
@@ -237,6 +260,14 @@ static void system_monitor_task(void *arg)
             }
         }
 
+        int seconds = (int)difftime(prevTime, rtcValue);
+        if (abs(seconds) > 60)
+        {
+            RG_LOGI("System time suddenly changed %d seconds.", seconds);
+            rg_system_save_time(); // Not sure if this is thread safe...
+        }
+        prevTime = rtcValue;
+
         if (nextLoopTime > rg_system_timer())
         {
             rg_task_delay((nextLoopTime - rg_system_timer()) / 1000 + 1);
@@ -281,11 +312,13 @@ static void platform_init(void)
         gpio_reset_pin(GPIO_NUM_14);
         gpio_reset_pin(GPIO_NUM_15);
     #endif
-    if (RG_GPIO_LED != GPIO_NUM_NC)
+    #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_LED, 0);
+    #endif
 #elif defined(RG_TARGET_SDL2)
-    // freopen("stdout.txt", "w", stdout);
-    // freopen("stderr.txt", "w", stderr);
+    freopen("stdout.txt", "w", stdout);
+    freopen("stderr.txt", "w", stderr);
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
         RG_PANIC("SDL Init failed!");
@@ -312,21 +345,23 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     app = (rg_app_t){
         .name = RG_PROJECT_APP,
-        .version = RG_PROJECT_VERSION,
+        .version = RG_PROJECT_VER,
         .buildDate = RG_BUILD_DATE,
-        .buildTool = RG_BUILD_TOOL,
+        .buildInfo = RG_BUILD_INFO,
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
         .bootType = RG_RST_POWERON,
+        .indicatorsMask = 0xFFFFFFFF,
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
         .frameskip = 1,
         .overclock = 0,
         .tickTimeout = 3000000,
+        .availableMemory = 0,
         .watchdog = true,
-        .lowMemoryMode = false,
+        .isLauncher = false,
     #if RG_BUILD_RELEASE
         .isRelease = true,
         .logLevel = RG_LOG_INFO,
@@ -339,26 +374,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     // Do this very early, may be needed to enable serial console
     platform_init();
-    rg_system_set_led(0);
 
-#ifdef ESP_PLATFORM
-    const esp_app_desc_t *esp_app = esp_ota_get_app_description();
-    snprintf(app.name, sizeof(app.name), "%s", esp_app->project_name);
-    snprintf(app.version, sizeof(app.version), "%s", esp_app->version);
-    snprintf(app.buildDate, sizeof(app.buildDate), "%s %s", esp_app->date, esp_app->time);
-    snprintf(app.buildTool, sizeof(app.buildTool), "%s", esp_app->idf_ver);
+#if defined(ESP_PLATFORM)
     esp_reset_reason_t r_reason = esp_reset_reason();
     if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
         app.bootType = RG_RST_PANIC;
     else if (r_reason == ESP_RST_SW)
         app.bootType = RG_RST_RESTART;
-    tasks[0] = (rg_task_t){NULL, NULL, xTaskGetCurrentTaskHandle(), "main"};
-#else
-    SDL_version version;
-    SDL_GetVersion(&version);
-    snprintf(app.buildTool, sizeof(app.buildTool), "SDL2 %d.%d.%d / CC %s", version.major,
-             version.minor, version.patch, __VERSION__);
-    tasks[0] = (rg_task_t){NULL, NULL, SDL_ThreadID(), "main"};
+    tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
+#elif defined(RG_TARGET_SDL2)
+    tasks[0] = (rg_task_t){.handle = SDL_ThreadID(), .name = "main"};
 #endif
 
     printf("\n========================================================\n");
@@ -409,14 +434,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
-    app.isLauncher = strcmp(app.name, "launcher") == 0; // Might be overriden after init
+    app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
+    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
     rg_display_init();
     rg_gui_init();
-    rg_audio_init(sampleRate);
-
-    rg_storage_set_activity_led(rg_storage_get_activity_led());
     rg_gui_draw_hourglass();
+    rg_audio_init(sampleRate);
 
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
@@ -428,14 +452,16 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 #ifdef RG_ENABLE_PROFILING
     RG_LOGI("Profiling has been enabled at compile time!\n");
     profile = rg_alloc(sizeof(*profile), MEM_SLOW);
-    profile->lock = rg_queue_create(1, 0);
+    profile->lock = rg_mutex_create();
 #endif
 
-#ifdef ESP_PLATFORM
     update_memory_statistics();
     RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
             statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
-    if ((app.lowMemoryMode = (statistics.totalMemoryExt == 0)))
+    app.availableMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
+
+#ifdef ESP_PLATFORM
+    if (statistics.totalMemoryExt == 0)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
@@ -458,8 +484,10 @@ static void task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = xTaskGetCurrentTaskHandle();
+    task->queue = xQueueCreate(1, sizeof(rg_task_msg_t));
     (task->func)(task->arg);
-    task->func = NULL;
+    vQueueDelete(task->queue);
+    memset(task, 0, sizeof(rg_task_t));
     vTaskDelete(NULL);
 }
 #else
@@ -468,54 +496,146 @@ static int task_wrapper(void *arg)
     rg_task_t *task = arg;
     task->handle = SDL_ThreadID();
     (task->func)(task->arg);
-    task->func = NULL;
+    memset(task, 0, sizeof(rg_task_t));
     return 0;
 }
 #endif
 
-bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity)
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity)
 {
-    RG_ASSERT(name && taskFunc, "bad param");
+    RG_ASSERT_ARG(name && taskFunc);
     rg_task_t *task = NULL;
 
     for (size_t i = 1; i < RG_COUNT(tasks); ++i)
     {
         if (tasks[i].func)
             continue;
-        task = &tasks[i];
+        task = memset(&tasks[i], 0, sizeof(rg_task_t));
         break;
     }
     RG_ASSERT(task, "Out of task slots");
 
     task->func = taskFunc;
-    task->arg = data;
+    task->arg = arg;
     task->handle = 0;
-    strncpy(task->name, name, 16);
+    strncpy(task->name, name, 15);
 
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     TaskHandle_t handle = NULL;
     if (affinity < 0)
         affinity = tskNO_AFFINITY;
     if (xTaskCreatePinnedToCore(task_wrapper, name, stackSize, task, priority, &handle, affinity) == pdPASS)
-        return true;
-#else
+        return task;
+#elif defined(RG_TARGET_SDL2)
     SDL_Thread *thread = SDL_CreateThread(task_wrapper, name, task);
     SDL_DetachThread(thread);
     if (thread)
-        return true;
+        return task;
 #endif
 
     RG_LOGE("Task creation failed: name='%s', fn='%p', stack=%d\n", name, taskFunc, (int)stackSize);
-    task->func = NULL;
+    memset(task, 0, sizeof(rg_task_t));
 
-    return false;
+    return NULL;
 }
 
-void rg_task_delay(int ms)
+rg_task_t *rg_task_find(const char *name)
 {
-#ifdef ESP_PLATFORM
+    RG_ASSERT_ARG(name);
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if (strncmp(tasks[i].name, name, 16) == 0)
+            return &tasks[i];
+    }
+    return NULL;
+}
+
+rg_task_t *rg_task_current(void)
+{
+#if defined(ESP_PLATFORM)
+    TaskHandle_t handle = xTaskGetCurrentTaskHandle();
+#elif defined(RG_TARGET_SDL2)
+    SDL_threadID handle = SDL_ThreadID();
+#endif
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+    {
+        if (tasks[i].handle == handle)
+            return &tasks[i];
+    }
+    return NULL;
+}
+
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg)
+{
+    RG_ASSERT_ARG(task && msg);
+#if defined(ESP_PLATFORM)
+    return xQueueSend(task->queue, msg, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting > 0)
+        continue;
+    task->msg = *msg;
+    task->msgWaiting = 1;
+    return true;
+#endif
+}
+
+bool rg_task_peek(rg_task_msg_t *out)
+{
+    rg_task_t *task = rg_task_current();
+    bool success = false;
+    if (!task || !out)
+        return false;
+    // task->blocked = true;
+#if defined(ESP_PLATFORM)
+    success = xQueuePeek(task->queue, out, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting < 1)
+        continue;
+    *out = task->msg;
+#endif
+    // task->blocked = false;
+    return success;
+}
+
+bool rg_task_receive(rg_task_msg_t *out)
+{
+    rg_task_t *task = rg_task_current();
+    bool success = false;
+    if (!task || !out)
+        return false;
+    // task->blocked = true;
+#if defined(ESP_PLATFORM)
+    success = xQueueReceive(task->queue, out, portMAX_DELAY) == pdTRUE;
+#elif defined(RG_TARGET_SDL2)
+    while (task->msgWaiting < 1)
+        continue;
+    *out = task->msg;
+    task->msgWaiting = 0;
+#endif
+    // task->blocked = false;
+    return success;
+}
+
+size_t rg_task_messages_waiting(rg_task_t *task)
+{
+    if (!task) task = rg_task_current();
+#if defined(ESP_PLATFORM)
+    return uxQueueMessagesWaiting(task->queue);
+#elif defined(RG_TARGET_SDL2)
+    return task->msgWaiting;
+#endif
+}
+
+// bool rg_task_is_blocked(rg_task_t *task)
+// {
+//     return task->blocked;
+// }
+
+void rg_task_delay(uint32_t ms)
+{
+#if defined(ESP_PLATFORM)
     vTaskDelay(pdMS_TO_TICKS(ms));
-#else
+#elif defined(RG_TARGET_SDL2)
     SDL_PumpEvents();
     SDL_Delay(ms);
 #endif
@@ -523,56 +643,56 @@ void rg_task_delay(int ms)
 
 void rg_task_yield(void)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     vPortYield();
-#else
+#elif defined(RG_TARGET_SDL2)
     SDL_PumpEvents();
 #endif
 }
 
-rg_queue_t *rg_queue_create(size_t length, size_t itemSize)
+rg_mutex_t *rg_mutex_create(void)
 {
-    return (rg_queue_t *)xQueueCreate(length, itemSize);
+#if defined(ESP_PLATFORM)
+    return (rg_mutex_t *)xSemaphoreCreateMutex();
+#elif defined(RG_TARGET_SDL2)
+    return (rg_mutex_t *)SDL_CreateMutex();
+#endif
 }
 
-void rg_queue_free(rg_queue_t *queue)
+void rg_mutex_free(rg_mutex_t *mutex)
 {
-    if (queue)
-        vQueueDelete((QueueHandle_t)queue);
+    if (!mutex) return;
+#if defined(ESP_PLATFORM)
+    vSemaphoreDelete((QueueHandle_t)mutex);
+#elif defined(RG_TARGET_SDL2)
+    SDL_DestroyMutex((SDL_mutex *)mutex);
+#endif
 }
 
-bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS)
+bool rg_mutex_give(rg_mutex_t *mutex)
 {
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueSend((QueueHandle_t)queue, item, ticks) == pdTRUE;
+    RG_ASSERT_ARG(mutex);
+#if defined(ESP_PLATFORM)
+    return xSemaphoreGive((QueueHandle_t)mutex) == pdPASS;
+#elif defined(RG_TARGET_SDL2)
+    return SDL_UnlockMutex((SDL_mutex *)mutex) == 0;
+#endif
 }
 
-bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS)
+bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS)
 {
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueueReceive((QueueHandle_t)queue, out, ticks) == pdTRUE;
-}
-
-bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS)
-{
-    int ticks = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
-    return xQueuePeek((QueueHandle_t)queue, out, ticks) == pdTRUE;
-}
-
-bool rg_queue_is_empty(rg_queue_t *queue)
-{
-    return uxQueueMessagesWaiting((QueueHandle_t)queue) == 0;
-}
-
-bool rg_queue_is_full(rg_queue_t *queue)
-{
-    return uxQueueSpacesAvailable((QueueHandle_t)queue) == 0;
+    RG_ASSERT_ARG(mutex);
+#if defined(ESP_PLATFORM)
+    int timeout = timeoutMS >= 0 ? pdMS_TO_TICKS(timeoutMS) : portMAX_DELAY;
+    return xSemaphoreTake((QueueHandle_t)mutex, timeout) == pdPASS;
+#elif defined(RG_TARGET_SDL2)
+    return SDL_LockMutex((SDL_mutex *)mutex) == 0;
+#endif
 }
 
 void rg_system_load_time(void)
 {
     time_t time_sec = RG_MAX(rtcValue, RG_BUILD_TIME);
-    FILE *fp;
 #if 0
     if (rg_i2c_read(0x68, 0x00, data, sizeof(data)))
     {
@@ -580,10 +700,10 @@ void rg_system_load_time(void)
     }
     else
 #endif
-    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "rb")))
+    void *data_ptr = (void *)&time_sec;
+    size_t data_len = sizeof(time_sec);
+    if (rg_storage_read_file(RG_BASE_PATH_CACHE "/clock.bin", &data_ptr, &data_len, RG_FILE_USER_BUFFER))
     {
-        fread(&time_sec, sizeof(time_sec), 1, fp);
-        fclose(fp);
         RG_LOGI("Time loaded from storage\n");
     }
 #ifdef ESP_PLATFORM
@@ -596,12 +716,9 @@ void rg_system_load_time(void)
 void rg_system_save_time(void)
 {
     time_t time_sec = time(NULL);
-    FILE *fp;
     // We always save to storage in case the RTC disappears.
-    if ((fp = fopen(RG_BASE_PATH_CACHE "/clock.bin", "wb")))
+    if (rg_storage_write_file(RG_BASE_PATH_CACHE "/clock.bin", (void *)&time_sec, sizeof(time_sec), 0))
     {
-        fwrite(&time_sec, sizeof(time_sec), 1, fp);
-        fclose(fp);
         RG_LOGI("System time saved to storage.\n");
     }
 #if 0
@@ -647,9 +764,9 @@ void rg_system_tick(int busyTime)
 
 IRAM_ATTR int64_t rg_system_timer(void)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     return esp_timer_get_time();
-#else
+#elif defined(RG_TARGET_SDL2)
     return (SDL_GetPerformanceCounter() * 1000000.f) / SDL_GetPerformanceFrequency();
 #endif
 }
@@ -663,7 +780,7 @@ void rg_system_event(int event, void *arg)
 
 static void shutdown_cleanup(void)
 {
-    app.exitCalled = true;
+    exitCalled = true;
     rg_display_clear(C_BLACK);                // Let the user know that something is happening
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
@@ -729,7 +846,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
@@ -737,14 +854,20 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
         RG_PANIC("Unable to set boot app!");
     }
+#elif defined(RG_TARGET_SDL2)
+    // RG_PANIC("Not implemented");
 #endif
     rg_system_restart();
 }
 
 bool rg_system_have_app(const char *app)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM)
     return esp_partition_find_first(ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, app) != NULL;
+#elif defined(RG_TARGET_SDL2)
+    char exe[strlen(app) + 5];
+    sprintf(exe, "%s.exe", app);
+    return rg_storage_stat(app).is_file || rg_storage_stat(exe).is_file;
 #else
     return true;
 #endif
@@ -837,7 +960,7 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     fprintf(fp, "Application: %s (%s)\n", app.name, app.configNs);
     fprintf(fp, "Version: %s\n", app.version);
     fprintf(fp, "Build date: %s\n", app.buildDate);
-    fprintf(fp, "Toolchain: %s\n", app.buildTool);
+    fprintf(fp, "Build info: %s\n", app.buildInfo);
     fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
     fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
     fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
@@ -862,18 +985,28 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     return true;
 }
 
-void rg_system_set_led(int value)
+void rg_system_set_indicator(rg_indicator_t indicator, bool on)
 {
-#ifdef ESP_PLATFORM
-    if (RG_GPIO_LED > -1 && app.ledValue != value)
-        gpio_set_level(RG_GPIO_LED, value);
-#endif
-    app.ledValue = value;
+    indicators &= ~(1 << indicator);
+    indicators |= (on << indicator);
+    update_indicators();
 }
 
-int rg_system_get_led(void)
+bool rg_system_get_indicator(rg_indicator_t indicator)
 {
-    return app.ledValue;
+    return indicators & (1 << indicator);
+}
+
+void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on)
+{
+    app.indicatorsMask &= ~(1 << indicator);
+    app.indicatorsMask |= (on << indicator);
+    rg_settings_set_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
+}
+
+bool rg_system_get_indicator_mask(rg_indicator_t indicator)
+{
+    return app.indicatorsMask & (1 << indicator);
 }
 
 void rg_system_set_log_level(rg_log_level_t level)
@@ -1029,13 +1162,8 @@ static void emu_update_save_slot(uint8_t slot)
     if (slot != last_written)
     {
         char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
-        FILE *fp = fopen(filename, "wb");
-        if (fp)
-        {
-            fwrite(&slot, 1, 1, fp);
-            fclose(fp);
+        if (rg_storage_write_file(filename, (void *)&last_written, sizeof(last_written), 0))
             last_written = slot;
-        }
         free(filename);
     }
     app.saveSlot = slot;
@@ -1102,7 +1230,7 @@ bool rg_emu_save_state(uint8_t slot)
 
     RG_LOGI("Saving state to '%s'.\n", filename);
 
-    rg_system_set_led(1);
+    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 1);
     rg_gui_draw_hourglass();
 
     if (!rg_storage_mkdir(rg_dirname(filename)))
@@ -1144,7 +1272,7 @@ bool rg_emu_save_state(uint8_t slot)
     free(filename);
 
     rg_storage_commit();
-    rg_system_set_led(0);
+    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 0);
 
     return success;
 }
@@ -1173,19 +1301,20 @@ bool rg_emu_screenshot(const char *filename, int width, int height)
     return success;
 }
 
+uint8_t rg_emu_get_last_used_slot(const char *romPath)
+{
+    uint8_t last_used_slot = 0xFF;
+    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
+    void *data_ptr = (void *)&last_used_slot;
+    size_t data_len = sizeof(last_used_slot);
+    rg_storage_read_file(filename, &data_ptr, &data_len, RG_FILE_USER_BUFFER);
+    free(filename);
+    return last_used_slot;
+}
+
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 {
     rg_emu_states_t *result = calloc(1, sizeof(rg_emu_states_t) + sizeof(rg_emu_slot_t) * slots);
-    uint8_t last_used_slot = 0xFF;
-
-    char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, romPath);
-    FILE *fp = fopen(filename, "rb");
-    if (fp)
-    {
-        fread(&last_used_slot, 1, 1, fp);
-        fclose(fp);
-    }
-    free(filename);
 
     for (size_t i = 0; i < slots; i++)
     {
@@ -1203,12 +1332,16 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
         {
             if (!result->latest || slot->mtime > result->latest->mtime)
                 result->latest = slot;
-            if (slot->id == last_used_slot)
-                result->lastused = slot;
             result->used++;
         }
         free(preview);
         free(file);
+    }
+    if (result->used)
+    {
+        uint8_t last_used_slot = rg_emu_get_last_used_slot(romPath);
+        if (last_used_slot < slots)
+            result->lastused = &result->slots[last_used_slot];
     }
     if (!result->lastused && result->latest)
         result->lastused = result->latest;
@@ -1248,8 +1381,8 @@ float rg_emu_get_speed(void)
 // We also need to add multi-core support. Currently it's not an issue
 // because all our profiled code runs on the same core.
 
-#define LOCK_PROFILE()   rg_queue_receive(profile->lock, NULL, 10000)
-#define UNLOCK_PROFILE() rg_queue_send(lock, NULL, 0)
+#define LOCK_PROFILE()   rg_mutex_take(profile->lock, 10000)
+#define UNLOCK_PROFILE() rg_mutex_give(lock)
 
 NO_PROFILE static inline profile_frame_t *find_frame(void *this_fn, void *call_site)
 {

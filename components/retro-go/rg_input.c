@@ -17,8 +17,8 @@
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
-#ifdef RG_GAMEPAD_ADC1_MAP
-static rg_keymap_adc1_t keymap_adc1[] = RG_GAMEPAD_ADC1_MAP;
+#ifdef RG_GAMEPAD_ADC_MAP
+static rg_keymap_adc_t keymap_adc[] = RG_GAMEPAD_ADC_MAP;
 #endif
 #ifdef RG_GAMEPAD_GPIO_MAP
 static rg_keymap_gpio_t keymap_gpio[] = RG_GAMEPAD_GPIO_MAP;
@@ -44,15 +44,39 @@ static rg_battery_t battery_state = {0};
     for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
         gamepad_mapped |= keymap[i].key;          \
 
+#ifdef ESP_PLATFORM
+static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
+{
+    if (unit == ADC_UNIT_1)
+    {
+        return adc1_get_raw(channel);
+    }
+    else if (unit == ADC_UNIT_2)
+    {
+        int adc_raw_value = -1;
+        if (adc2_get_raw(channel, ADC_WIDTH_MAX - 1, &adc_raw_value) != ESP_OK)
+            RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
+        return adc_raw_value;
+    }
+    RG_LOGE("Invalid ADC unit %d", (int)unit);
+    return -1;
+}
+#endif
+
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
     uint32_t raw_value = 0;
     bool present = true;
     bool charging = false;
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
+#if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
-        raw_value += esp_adc_cal_raw_to_voltage(adc1_get_raw(RG_BATTERY_ADC_CHANNEL), &adc_chars);
+    {
+        int value = adc_get_raw(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL);
+        if (value < 0)
+            return false;
+        raw_value += esp_adc_cal_raw_to_voltage(value, &adc_chars);
+    }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
     uint8_t data[5];
@@ -63,6 +87,7 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 #else
     return false;
 #endif
+
     if (!out)
         return true;
 
@@ -79,12 +104,12 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 {
     uint32_t state = 0;
 
-#if defined(RG_GAMEPAD_ADC1_MAP)
-    for (size_t i = 0; i < RG_COUNT(keymap_adc1); ++i)
+#if defined(RG_GAMEPAD_ADC_MAP)
+    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
-        int value = adc1_get_raw(mapping->channel);
-        if (value > mapping->min && value < mapping->max)
+        const rg_keymap_adc_t *mapping = &keymap_adc[i];
+        int value = adc_get_raw(mapping->unit, mapping->channel);
+        if (value >= mapping->min && value <= mapping->max)
             state |= mapping->key;
     }
 #endif
@@ -118,9 +143,9 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 #ifdef RG_TARGET_SDL2
     int numkeys = 0;
     const uint8_t *keys = SDL_GetKeyboardState(&numkeys);
-    for (size_t i = 0; i < RG_COUNT(keymap); ++i)
+    for (size_t i = 0; i < RG_COUNT(keymap_kbd); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
+        const rg_keymap_kbd_t *mapping = &keymap_kbd[i];
         if (mapping->src < 0 || mapping->src >= numkeys)
             continue;
         if (keys[mapping->src])
@@ -208,7 +233,7 @@ static void input_task(void *arg)
                     temp.volts = battery_state.volts;
             }
             battery_state = temp;
-            next_battery_update = rg_system_timer() + 2 * 1000000;
+            next_battery_update = rg_system_timer() + 2 * 1000000; // update every 2 seconds
         }
 
         rg_task_delay(10);
@@ -222,15 +247,20 @@ void rg_input_init(void)
 {
     RG_ASSERT(!input_task_running, "Input already initialized!");
 
-#if defined(RG_GAMEPAD_ADC1_MAP)
-    RG_LOGI("Initializing ADC1 gamepad driver...");
+#if defined(RG_GAMEPAD_ADC_MAP)
+    RG_LOGI("Initializing ADC gamepad driver...");
     adc1_config_width(ADC_WIDTH_MAX - 1);
-    for (size_t i = 0; i < RG_COUNT(keymap_adc1); ++i)
+    for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
-        const rg_keymap_adc1_t *mapping = &keymap_adc1[i];
-        adc1_config_channel_atten(mapping->channel, mapping->atten);
+        const rg_keymap_adc_t *mapping = &keymap_adc[i];
+        if (mapping->unit == ADC_UNIT_1)
+            adc1_config_channel_atten(mapping->channel, mapping->atten);
+        else if (mapping->unit == ADC_UNIT_2)
+            adc2_config_channel_atten(mapping->channel, mapping->atten);
+        else
+            RG_LOGE("Invalid ADC unit %d!", (int)mapping->unit);
     }
-    UPDATE_GLOBAL_MAP(keymap_adc1);
+    UPDATE_GLOBAL_MAP(keymap_adc);
 #endif
 
 #if defined(RG_GAMEPAD_GPIO_MAP)
@@ -269,11 +299,23 @@ void rg_input_init(void)
 #endif
 
 
-#if RG_BATTERY_DRIVER == 1 /* ADC1 */
-    RG_LOGI("Initializing ADC1 battery driver...");
-    adc1_config_width(ADC_WIDTH_MAX - 1);
-    adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-    esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+#if RG_BATTERY_DRIVER == 1 /* ADC */
+    RG_LOGI("Initializing ADC battery driver...");
+    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+    {
+        adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
+        adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+    }
+    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+    {
+        adc2_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
+        esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+    }
+    else
+    {
+        RG_LOGE("Only ADC1 and ADC2 are supported for ADC battery driver!");
+    }
 #endif
 
     // The first read returns bogus data in some drivers, waste it.

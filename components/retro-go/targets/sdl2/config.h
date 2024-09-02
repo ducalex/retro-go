@@ -2,9 +2,6 @@
 #define RG_TARGET_NAME             "SDL2"
 
 // Storage
-#define RG_STORAGE_DRIVER           0       // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             0       // Used by SDSPI and SDMMC
-#define RG_STORAGE_SPEED            0       // Used by SDSPI and SDMMC
 #define RG_STORAGE_ROOT             "./sd"  // Storage mount point
 
 // Audio
@@ -16,6 +13,7 @@
 #define RG_SCREEN_DRIVER            99   // 0 = ILI9341
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -53,5 +51,6 @@
 #define __VERSION__ "TinyC"
 #endif
 
+#undef app_main
 #define app_main(...) main(int argc, char **argv)
 // #define rg_system_init(a, b, c) rg_system_init(argc, argv, a, b, c)

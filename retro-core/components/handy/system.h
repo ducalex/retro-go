@@ -179,7 +179,11 @@ class CSystem;
 
 class CSystem : public CSystemBase
 {
+   private:
+      void Init(const UBYTE* filedata, ULONG filesize, long displayformat, long samplerate);
+
    public:
+      CSystem(const UBYTE* filedata, ULONG filesize, long displayformat, long samplerate);
       CSystem(const char* gamefile, long displayformat, long samplerate);
       ~CSystem();
 

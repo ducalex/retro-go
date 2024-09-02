@@ -7,15 +7,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if RG_STORAGE_DRIVER == 1
+#if defined(RG_STORAGE_SDSPI_HOST)
 #include <driver/sdspi_host.h>
-#include <esp_vfs_fat.h>
 #define SDCARD_DO_TRANSACTION sdspi_host_do_transaction
-#elif RG_STORAGE_DRIVER == 2
+#elif defined(RG_STORAGE_SDMMC_HOST)
 #include <driver/sdmmc_host.h>
-#include <esp_vfs_fat.h>
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
-#elif RG_STORAGE_DRIVER == 4
+#endif
+
+#ifdef ESP_PLATFORM
 #include <esp_vfs_fat.h>
 #endif
 
@@ -24,15 +24,21 @@
 #include <windows.h>
 #define access _access
 #define mkdir(A, B) mkdir(A)
+#if defined(__MINGW32__)
+#include <dirent.h>
+#endif
 #else
 #include <dirent.h>
 #include <unistd.h>
 #endif
 
 static bool disk_mounted = false;
-static bool disk_led = true;
-
-static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
+static sdmmc_card_t *card_handle = NULL;
+#endif
+#if defined(RG_STORAGE_FLASH_PARTITION)
+static wl_handle_t wl_handle = WL_INVALID_HANDLE;
+#endif
 
 #define CHECK_PATH(path)          \
     if (!(path && path[0]))       \
@@ -41,24 +47,10 @@ static const char *SETTING_DISK_ACTIVITY = "DiskActivity";
         return false;             \
     }
 
-void rg_storage_set_activity_led(bool enable)
-{
-    rg_settings_set_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, enable);
-    disk_led = enable;
-}
-
-bool rg_storage_get_activity_led(void)
-{
-    return rg_settings_get_number(NS_GLOBAL, SETTING_DISK_ACTIVITY, disk_led);
-}
-
-#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    bool use_led = (disk_led && !rg_system_get_led());
-
-    if (use_led)
-        rg_system_set_led(1);
+    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 1);
 
     esp_err_t ret = SDCARD_DO_TRANSACTION(slot, cmdinfo);
     if (ret == ESP_ERR_NO_MEM)
@@ -66,9 +58,7 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         // free some memory and try again?
     }
 
-    if (use_led)
-        rg_system_set_led(0);
-
+    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 0);
     return ret;
 }
 #endif
@@ -78,20 +68,23 @@ void rg_storage_init(void)
     RG_ASSERT(!disk_mounted, "Storage already initialized!");
     int error_code = -1;
 
-#if RG_STORAGE_DRIVER == 1 // SDSPI
+#if defined(RG_STORAGE_SDSPI_HOST)
+
+    RG_LOGI("Looking for SD Card using SDSPI...");
 
     sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = RG_STORAGE_HOST;
-    host_config.max_freq_khz = RG_STORAGE_SPEED;
+    host_config.slot = RG_STORAGE_SDSPI_HOST;
+    host_config.max_freq_khz = RG_STORAGE_SDSPI_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
     sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.host_id = RG_STORAGE_HOST;
+    slot_config.host_id = RG_STORAGE_SDSPI_HOST;
     slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
 
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files = 4,
+        .allocation_unit_size = 0,
     };
 
     spi_bus_config_t bus_cfg = {
@@ -102,25 +95,27 @@ void rg_storage_init(void)
         .quadhd_io_num = -1,
     };
 
-    esp_err_t err = spi_bus_initialize(RG_STORAGE_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
+    esp_err_t err = spi_bus_initialize(RG_STORAGE_SDSPI_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK) // check but do not abort, let esp_vfs_fat_sdspi_mount decide
         RG_LOGW("SPI bus init failed (0x%x)", err);
 
-    err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+    err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     }
     error_code = (int)err;
 
-#elif RG_STORAGE_DRIVER == 2 // SDMMC
+#elif defined(RG_STORAGE_SDMMC_HOST)
+
+    RG_LOGI("Looking for SD Card using SDMMC...");
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
     host_config.flags = SDMMC_HOST_FLAG_1BIT;
-    host_config.slot = RG_STORAGE_HOST;
-    host_config.max_freq_khz = RG_STORAGE_SPEED;
+    host_config.slot = RG_STORAGE_SDMMC_HOST;
+    host_config.max_freq_khz = RG_STORAGE_SDMMC_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
@@ -136,47 +131,55 @@ void rg_storage_init(void)
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
         .max_files = 4,
+        .allocation_unit_size = 0,
     };
 
-    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+    esp_err_t err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
     {
         RG_LOGW("SD Card mounting failed (0x%x), retrying at lower speed...\n", err);
         host_config.max_freq_khz = SDMMC_FREQ_PROBING;
-        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, NULL);
+        err = esp_vfs_fat_sdmmc_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     }
     error_code = (int)err;
 
-#elif RG_STORAGE_DRIVER == 3 // USB OTG
+#elif defined(RG_STORAGE_USBOTG_HOST)
 
     #warning "USB OTG isn't available on your SOC"
+    RG_LOGI("Looking for USB mass storage...");
     error_code = -1;
 
-#elif RG_STORAGE_DRIVER == 4 // SPI Flash
+#elif !defined(RG_STORAGE_FLASH_PARTITION)
 
-    esp_vfs_fat_mount_config_t mount_config = {
-        .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
-        .max_files = 16, // must be initialized, otherwise it will use an uninitialized ("random") value, which can trigger ESP_ERR_NO_MEM if it's a big one
-        .allocation_unit_size = 0 // "Setting this field to 0 will result in allocation unit set to the sector size." - in other words: the default value, which is fine
-    };
-
-    wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
-    esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, "storage", &mount_config, &s_wl_handle);
-    error_code = (int)err;
-
-#else // Host (stdlib)
-
+    RG_LOGI("Using host (stdlib) for storage.");
     // Maybe we should just check if RG_STORAGE_ROOT exists?
     error_code = 0;
+
+#endif
+
+#if defined(RG_STORAGE_FLASH_PARTITION)
+
+    if (error_code) // only if no previous storage was successfully mounted already
+    {
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
+
+        esp_vfs_fat_mount_config_t mount_config = {
+            .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+            .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
+        };
+
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
+        error_code = (int)err;
+    }
 
 #endif
 
     disk_mounted = !error_code;
 
     if (disk_mounted)
-        RG_LOGI("Storage mounted at %s. driver=%d", RG_STORAGE_ROOT, RG_STORAGE_DRIVER);
+        RG_LOGI("Storage mounted at %s.", RG_STORAGE_ROOT);
     else
-        RG_LOGE("Storage mounting failed! driver=%d, err=0x%x", RG_STORAGE_DRIVER, error_code);
+        RG_LOGE("Storage mounting failed! err=0x%x", error_code);
 }
 
 void rg_storage_deinit(void)
@@ -188,10 +191,22 @@ void rg_storage_deinit(void)
 
     int error_code = 0;
 
-#if RG_STORAGE_DRIVER == 1 || RG_STORAGE_DRIVER == 2
-    esp_err_t err = esp_vfs_fat_sdmmc_unmount();
-    if (err != ESP_OK)
-        error_code = err;
+#if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
+    if (card_handle != NULL)
+    {
+        esp_err_t err = esp_vfs_fat_sdcard_unmount(RG_STORAGE_ROOT, card_handle);
+        card_handle = NULL; // NULL it regardless of success, nothing we can do on errors...
+        error_code = (int)err;
+    }
+#endif
+
+#if defined(RG_STORAGE_FLASH_PARTITION)
+    if (wl_handle != WL_INVALID_HANDLE)
+    {
+        esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);
+        wl_handle = WL_INVALID_HANDLE;
+        error_code = (int)err;
+    }
 #endif
 
     if (error_code)
@@ -379,4 +394,241 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
     free(result);
 
     return true;
+}
+
+int64_t rg_storage_get_free_space(const char *path)
+{
+    // Here we should translate the provided VFS path to the matching filesystem driver and drive
+    // But we don't. Instead we just assume it's drive 0 of the fatfs driver. Yay laziness.
+#ifdef ESP_PLATFORM
+    DWORD nclst;
+    FATFS *fatfs;
+    if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
+    {
+        return (int64_t)nclst * fatfs->csize * fatfs->ssize;
+    }
+#endif
+
+    return -1;
+}
+
+bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, uint32_t flags)
+{
+    RG_ASSERT_ARG(data_out && data_len);
+    CHECK_PATH(path);
+
+    size_t output_buffer_align = RG_MAX(0x400, (flags & 0xF) * 0x2000);
+    size_t output_buffer_size;
+    void *output_buffer;
+    size_t file_size;
+
+    FILE *fp = fopen(path, "rb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed (%d): '%s'", errno, path);
+        return false;
+    }
+
+    fseek(fp, 0, SEEK_END);
+    file_size = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    if (flags & RG_FILE_USER_BUFFER)
+    {
+        output_buffer_size = RG_MIN(*data_len, file_size);
+        output_buffer = *data_out;
+    }
+    else
+    {
+        output_buffer_size = file_size;
+        output_buffer = malloc((output_buffer_size + (output_buffer_align - 1)) & ~(output_buffer_align - 1));
+    }
+
+    if (!output_buffer)
+    {
+        RG_LOGE("Memory allocation failed: '%s'", path);
+        fclose(fp);
+        return false;
+    }
+
+    if (!fread(output_buffer, output_buffer_size, 1, fp))
+    {
+        RG_LOGE("File read failed (%d): '%s'", errno, path);
+        fclose(fp);
+        if (!(flags & RG_FILE_USER_BUFFER))
+            free(output_buffer);
+        return false;
+    }
+
+    fclose(fp);
+
+    *data_out = output_buffer;
+    *data_len = output_buffer_size;
+    return true;
+}
+
+bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_len, uint32_t flags)
+{
+    RG_ASSERT_ARG(data_ptr || !data_len);
+    CHECK_PATH(path);
+
+    // TODO: If atomic is true we should write to a temp file and only replace the target on success
+    FILE *fp = fopen(path, "wb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed (%d): '%s'", errno, path);
+        return false;
+    }
+
+    if (data_len && !fwrite(data_ptr, data_len, 1, fp))
+    {
+        RG_LOGE("Fwrite failed (%d): '%s'", errno, path);
+        fclose(fp);
+        return false;
+    }
+
+    fclose(fp);
+    return true;
+}
+
+/**
+ * This is a minimal UNZIP implementation that utilizes only the miniz primitives found in ESP32's ROM.
+ * I think that we should use miniz' ZIP API instead and bundle miniz with retro-go. But first I need
+ * to do some testing to determine if the increased executable size is acceptable...
+ */
+#if RG_ZIP_SUPPORT
+#include <rom/miniz.h>
+#endif
+
+#define ZIP_MAGIC 0x04034b50
+typedef struct __attribute__((packed))
+{
+    uint32_t magic;
+    uint16_t version;
+    uint16_t flags;
+    uint16_t compression;
+    uint16_t modified_time;
+    uint16_t modified_date;
+    uint32_t checksum;
+    uint32_t compressed_size;
+    uint32_t uncompressed_size;
+    uint16_t filename_size;
+    uint16_t extra_field_size;
+    uint8_t filename[226];
+    // uint8_t extra_field[];
+    // uint8_t compressed_data[];
+} zip_header_t;
+
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
+{
+#if RG_ZIP_SUPPORT
+    RG_ASSERT_ARG(data_out && data_len);
+    CHECK_PATH(zip_path);
+
+    zip_header_t header = {0};
+    int header_pos = 0;
+
+    FILE *fp = fopen(zip_path, "rb");
+    if (!fp)
+    {
+        RG_LOGE("Fopen failed (%d): '%s'", errno, zip_path);
+        return false;
+    }
+
+    // Very inefficient, we should read a block at a time and search it for a header. But I'm lazy.
+    // Thankfully the header is usually found on the very first read :)
+    for (header_pos = 0; !feof(fp) && header_pos < 0x10000; ++header_pos)
+    {
+        fseek(fp, header_pos, SEEK_SET);
+        fread(&header, sizeof(header), 1, fp);
+        if (header.magic == ZIP_MAGIC)
+            break;
+    }
+
+    if (header.magic != ZIP_MAGIC)
+    {
+        RG_LOGE("No valid header found: '%s'", zip_path);
+        fclose(fp);
+        return false;
+    }
+
+    // Zero terminate or truncate filename just in case
+    header.filename[RG_MIN(header.filename_size, 225)] = 0;
+
+    RG_LOGI("Found file at %d, name: '%s', size: %d", header_pos, header.filename, (int)header.uncompressed_size);
+
+    size_t stream_offset = header_pos + 30 + header.filename_size + header.extra_field_size;
+    size_t stream_remaining = header.compressed_size;
+    size_t output_buffer_align = RG_MAX(0x1000, (flags & 0xF) * 0x2000);
+    size_t output_buffer_size;
+    size_t output_buffer_pos = 0;
+    uint8_t *output_buffer = NULL;
+
+    if (flags & RG_FILE_USER_BUFFER)
+    {
+        output_buffer_size = RG_MIN(*data_len, header.uncompressed_size);
+        output_buffer = *data_out;
+    }
+    else
+    {
+        output_buffer_size = header.uncompressed_size;
+        output_buffer = malloc((output_buffer_size + (output_buffer_align - 1)) & ~(output_buffer_align - 1));
+    }
+
+    size_t read_buffer_size = 0x8000;
+    uint8_t *read_buffer = malloc(read_buffer_size);
+    tinfl_decompressor *decomp = malloc(sizeof(tinfl_decompressor));
+
+    if (!read_buffer || !output_buffer || !decomp)
+    {
+        RG_LOGE("Memory allocation failed: '%s'", zip_path);
+        goto _fail;
+    }
+
+    tinfl_status status;
+    tinfl_init(decomp);
+
+    do
+    {
+        size_t input_size = RG_MIN(read_buffer_size, stream_remaining);
+        size_t output_size = output_buffer_size - output_buffer_pos;
+        if (fseek(fp, stream_offset, SEEK_SET) != 0 || fread(read_buffer, input_size, 1, fp) != 1)
+        {
+            RG_LOGE("Read error (%d): '%s'", errno, zip_path);
+            goto _fail;
+        }
+        stream_offset += input_size;
+        stream_remaining -= input_size;
+        status = tinfl_decompress(
+            decomp, read_buffer, &input_size, output_buffer, output_buffer + output_buffer_pos, &output_size,
+            TINFL_FLAG_USING_NON_WRAPPING_OUTPUT_BUF | (stream_remaining ? TINFL_FLAG_HAS_MORE_INPUT : 0));
+        output_buffer_pos += output_size;
+    } while (status == TINFL_STATUS_NEEDS_MORE_INPUT);
+
+    // With user-provided buffer we might not reach TINFL_STATUS_DONE, but it doesn't mean we've failed
+    if (status < TINFL_STATUS_DONE || output_buffer_pos != output_buffer_size) // (status != TINFL_STATUS_DONE)
+    {
+        RG_LOGE("Decompression failed (%d): %s", (int)status, zip_path);
+        goto _fail;
+    }
+
+    free(read_buffer);
+    free(decomp);
+    fclose(fp);
+
+    *data_out = output_buffer;
+    *data_len = output_buffer_size;
+    return true;
+
+_fail:
+    if (!(flags & RG_FILE_USER_BUFFER))
+        free(output_buffer);
+    free(read_buffer);
+    free(decomp);
+    fclose(fp);
+    return false;
+#else
+    RG_LOGE("ZIP support hasn't been enabled!");
+    return false;
+#endif
 }

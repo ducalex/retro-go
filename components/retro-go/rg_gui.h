@@ -82,7 +82,7 @@ struct rg_gui_option_s
 #define RG_DIALOG_FLAG_HIDDEN    0x03
 
 #define RG_DIALOG_FLAG_TYPE_MASK 0xF0
-#define RG_DIALOG_FLAG_MESSAGE   0x11
+#define RG_DIALOG_FLAG_MESSAGE   0x12
 #define RG_DIALOG_FLAG_SEPARATOR 0x22
 
 #define RG_DIALOG_SEPARATOR   {0, "----------", NULL, RG_DIALOG_FLAG_SKIP, NULL}
@@ -112,6 +112,7 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
 void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor);
+void rg_gui_draw_message(const char *format, ...);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);

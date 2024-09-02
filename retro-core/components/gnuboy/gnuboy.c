@@ -11,6 +11,9 @@
 // Set in the far future for VBA-M support
 #define RTC_BASE 1893456000
 
+#define BANK_SIZE 0x4000
+
+
 // Note: Eventually we'll just pass a gb_host_t to init...
 // But for now assume it's been configured before we were alled!
 int gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback)
@@ -123,32 +126,56 @@ void gnuboy_set_pad(int pad)
 }
 
 
-int gnuboy_load_bios(const char *file)
+int gnuboy_load_bios(const byte *data, size_t size)
 {
-	MESSAGE_INFO("Loading BIOS file: '%s'\n", file);
+	if (size > 0x900)
+	{
+		MESSAGE_ERROR("Invalid BIOS size.\n");
+		return -1;
+	}
 
-	if (!(hw.bios = malloc(0x900)))
+	if (hw.bios == NULL)
+		hw.bios = malloc(0x900);
+
+	if (!hw.bios)
 	{
 		MESSAGE_ERROR("Mem alloc failed.\n");
 		return -2;
 	}
 
+	memcpy(hw.bios, data, size);
+
+	return 0;
+}
+
+
+void gnuboy_free_bios(void)
+{
+	free(hw.bios);
+	hw.bios = NULL;
+}
+
+
+int gnuboy_load_bios_file(const char *file)
+{
+	MESSAGE_INFO("Loading BIOS file: '%s'\n", file);
+	byte buffer[0x900];
+
 	FILE *fp = fopen(file, "rb");
-	if (!fp || fread(hw.bios, 1, 0x900, fp) < 0x100)
+	if (!fp || fread(buffer, 1, 0x900, fp) < 0x100)
 	{
 		MESSAGE_ERROR("File read failed.\n");
-		free(hw.bios);
-		hw.bios = NULL;
+		fclose(fp);
+		return -1;
 	}
 	fclose(fp);
 
-	return hw.bios ? 0 : -1;
+	return gnuboy_load_bios(buffer, sizeof(buffer));
 }
 
 
 void gnuboy_load_bank(int bank)
 {
-	const size_t BANK_SIZE = 0x4000;
 	const size_t OFFSET = bank * BANK_SIZE;
 
 	if (!cart.rombanks[bank])
@@ -181,7 +208,7 @@ void gnuboy_load_bank(int bank)
 }
 
 
-int gnuboy_load_rom(const char *file)
+int gnuboy_load_rom(const byte *data, size_t size)
 {
 	// Memory Bank Controller names
 	const char *mbc_names[16] = {
@@ -194,24 +221,11 @@ int gnuboy_load_rom(const char *file)
 		"DMG", "CGB", "SGB", "AGB", "???"
 	};
 
-	MESSAGE_INFO("Loading file: '%s'\n", file);
-
-	byte header[0x200];
-
-	cart.romFile = fopen(file, "rb");
-	if (cart.romFile == NULL)
-	{
-		MESSAGE_ERROR("ROM fopen failed");
+	// We need at least the header
+	if (size < 0x200)
 		return -1;
-	}
 
-	if (fread(&header, 0x200, 1, cart.romFile) != 1)
-	{
-		MESSAGE_ERROR("ROM fread failed");
-		fclose(cart.romFile);
-		return -1;
-	}
-
+	const byte *header = data;
 	int type = header[0x0147];
 	int romsize = header[0x0148];
 	int ramsize = header[0x0149];
@@ -281,17 +295,18 @@ int gnuboy_load_rom(const char *file)
 	}
 
 	cart.rambanks = calloc(cart.ramsize, 0x2000);
-	if (!cart.rambanks)
+	cart.rombanks = calloc(cart.romsize, sizeof(byte *));
+
+	if (!cart.rambanks || !cart.rombanks)
 	{
-		MESSAGE_ERROR("SRAM alloc failed");
+		MESSAGE_ERROR("Memory allocation failed.");
 		return -3;
 	}
 
-	cart.rombanks = calloc(cart.romsize, sizeof(uint8_t *));
-	if (!cart.rombanks)
+	for (size_t pos = 0; size - pos >= BANK_SIZE; pos += BANK_SIZE)
 	{
-		MESSAGE_ERROR("ROMBANKS alloc failed");
-		return -4;
+		// FIXME: We need a way to tag this as non-freeable...
+		cart.rombanks[pos / BANK_SIZE] = (byte *)(data + pos);
 	}
 
 	// Detect colorization palette that the real GBC would be using
@@ -370,23 +385,6 @@ int gnuboy_load_rom(const char *file)
 	MESSAGE_INFO("Cart loaded: name='%s', hw=%s, mbc=%s, romsize=%dK, ramsize=%dK, colorize=%d\n",
 		cart.name, hw_types[hw.hwtype], mbc_names[cart.mbc], cart.romsize * 16, cart.ramsize * 8, cart.colorize);
 
-	// Gameboy color games can be very large so we preload a maximum of 128 banks for faster boot
-	// Also 4/8MB games do not fully fit anyway, we need to leave room for our bank manager's swapping.
-
-	int preload = cart.romsize < 128 ? cart.romsize : 128;
-
-	if (cart.romsize > 64 && (strncmp(cart.name, "RAYMAN", 6) == 0 || strncmp(cart.name, "NONAME", 6) == 0))
-	{
-		MESSAGE_INFO("Special preloading for Rayman 1/2\n");
-		preload = cart.romsize - 40;
-	}
-
-	MESSAGE_INFO("Preloading the first %d banks\n", preload);
-	for (int i = 0; i < preload; i++)
-	{
-		gnuboy_load_bank(i);
-	}
-
 	// Apply game-specific hacks
 	if (memcmp(cart.name, "SIREN GB2 ", 10) == 0 || memcmp(cart.name, "DONKEY KONG", 12) == 0)
 	{
@@ -407,15 +405,64 @@ int gnuboy_load_rom(const char *file)
 }
 
 
+int gnuboy_load_rom_file(const char *file)
+{
+	MESSAGE_INFO("Loading file: '%s'\n", file);
+
+	byte header[0x200];
+
+	cart.romFile = fopen(file, "rb");
+	if (cart.romFile == NULL)
+	{
+		MESSAGE_ERROR("ROM fopen failed\n");
+		return -1;
+	}
+
+	if (fread(&header, 0x200, 1, cart.romFile) != 1)
+	{
+		MESSAGE_ERROR("ROM fread failed\n");
+		fclose(cart.romFile);
+		cart.romFile = NULL;
+		return -1;
+	}
+
+	int ret = gnuboy_load_rom(header, 0x200);
+	if (ret != 0)
+	{
+		MESSAGE_ERROR("ROM setup failed\n");
+		return ret;
+	}
+
+	// Gameboy color games can be very large so we preload a maximum of 128 banks for faster boot
+	// Also 4/8MB games do not fully fit anyway, we need to leave room for our bank manager's swapping.
+
+	int preload = cart.romsize < 128 ? cart.romsize : 128;
+
+	if (cart.romsize > 64 && (strncmp(cart.name, "RAYMAN", 6) == 0 || strncmp(cart.name, "NONAME", 6) == 0))
+	{
+		MESSAGE_INFO("Special preloading for Rayman 1/2\n");
+		preload = cart.romsize - 40;
+	}
+
+	MESSAGE_INFO("Preloading the first %d banks\n", preload);
+	for (int i = 0; i < preload; i++)
+	{
+		gnuboy_load_bank(i);
+	}
+
+	return 0;
+}
+
+
 void gnuboy_free_rom(void)
 {
-	for (int i = 0; i < cart.romsize; i++)
+	// If cart.romFile isn't NULL it indicates that we haven't allocated those buffers, don't free them.
+	if (cart.romFile && cart.rombanks)
 	{
-		if (cart.rombanks[i]) {
+		for (int i = 0; i < cart.romsize; i++)
 			free(cart.rombanks[i]);
-			cart.rombanks[i] = NULL;
-		}
 	}
+
 	free(cart.rombanks);
 	cart.rombanks = NULL;
 

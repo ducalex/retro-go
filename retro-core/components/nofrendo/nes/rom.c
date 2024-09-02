@@ -27,42 +27,39 @@
 
 static rom_t rom;
 
-#ifdef USE_SRAM_FILE
-
 /* Save battery-backed RAM */
-static void rom_savesram(void)
+void rom_savesram(const char *filename)
 {
-   char fn[sizeof(rom.filename)+8];
-   FILE *fp;
-
-   if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
+   if (!rom.battery || rom.prg_ram_banks < 1)
    {
-      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "wb")))
-      {
-         fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
-         fclose(fp);
-         MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", fn);
-      }
+      MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
+      return;
+   }
+   FILE *fp = fopen(filename, "wb");
+   if (fp)
+   {
+      fwrite(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
+      fclose(fp);
+      MESSAGE_INFO("ROM: Wrote battery RAM to %s.\n", filename);
    }
 }
 
 /* Load battery-backed RAM from disk */
-static void rom_loadsram(void)
+void rom_loadsram(const char *filename)
 {
-   char fn[sizeof(rom.filename)+8];
-   FILE *fp;
-
-   if ((rom.flags & ROM_FLAG_BATTERY) && rom.prg_ram_banks > 0)
+   if (!rom.battery || rom.prg_ram_banks < 1)
    {
-      if ((fp = fopen(strcat(strcpy(fn, rom.filename), ".sav"), "rb")))
-      {
-         fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
-         fclose(fp);
-         MESSAGE_INFO("ROM: Read battery RAM from %s.\n", fn);
-      }
+      MESSAGE_ERROR("ROM: Game has no battery-backed SRAM!\n");
+      return;
+   }
+   FILE *fp = fopen(filename, "rb");
+   if (fp)
+   {
+      fread(rom.prg_ram, ROM_PRG_BANK_SIZE, rom.prg_ram_banks, fp);
+      fclose(fp);
+      MESSAGE_INFO("ROM: Read battery RAM from %s.\n", filename);
    }
 }
-#endif
 
 /* Load a ROM from a memory buffer */
 rom_t *rom_loadmem(uint8 *data, size_t size)
@@ -71,10 +68,12 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       return NULL;
 
    rom = (rom_t) {
+      .type = ROM_TYPE_INVALID,
+      .mapper_number = 0,
+      .mirroring = PPU_MIRROR_HORI,
+      .system = SYS_UNKNOWN,
       .data_ptr = data,
       .data_len = size,
-      .system = SYS_UNKNOWN,
-      .mirroring = PPU_MIRROR_HORI,
    };
 
    if (!memcmp(data, ROM_NES_MAGIC, 4))
@@ -83,37 +82,31 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
 
       MESSAGE_INFO("ROM: Found iNES file of size %d.\n", (int)size);
 
-      rom.prg_rom = data + sizeof(inesheader_t);
-
-      if (header->rom_type & ROM_FLAG_TRAINER)
-      {
-         MESSAGE_INFO("ROM: Trainer found and skipped.\n");
-         rom.prg_rom += 0x200;
-      }
-
-      rom.checksum = CRC32(0, rom.prg_rom, size - (rom.prg_rom - data));
+      rom.type = ROM_TYPE_INES;
+      rom.mapper_number = ((header->mapper_hinybble & 0xF0) | (header->rom_type >> 4));
+      // https://wiki.nesdev.com/w/index.php/INES
+      // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
+      // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
+      // of the mapper number or simply refuse to load the ROM.
+      if (header->reserved2 != 0)
+         rom.mapper_number &= 0x0F;
+      rom.battery = (header->rom_type & ROM_FLAG_BATTERY);
+      rom.fourscreen = (header->rom_type & ROM_FLAG_FOURSCREEN);
+      rom.vertical = (header->rom_type & ROM_FLAG_VERTICAL);
+      rom.trainer = (header->rom_type & ROM_FLAG_TRAINER) ? data + 0x10 : NULL;
       rom.prg_rom_banks = header->prg_banks * 2;
       rom.chr_rom_banks = header->chr_banks;
       rom.prg_ram_banks = 1; // 8KB. Not specified by iNES
       rom.chr_ram_banks = 1; // 8KB. Not specified by iNES
-      rom.flags = header->rom_type;
-      rom.mapper_number = header->rom_type >> 4;
 
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
-
-      if (header->reserved2 == 0)
-      {
-         // https://wiki.nesdev.com/w/index.php/INES
-         // A general rule of thumb: if the last 4 bytes are not all zero, and the header is
-         // not marked for NES 2.0 format, an emulator should either mask off the upper 4 bits
-         // of the mapper number or simply refuse to load the ROM.
-         rom.mapper_number |= (header->mapper_hinybble & 0xF0);
-      }
-
-      if (rom.flags & ROM_FLAG_FOURSCREEN)
+      if (rom.fourscreen)
          rom.mirroring = PPU_MIRROR_FOUR;
-      else if (rom.flags & ROM_FLAG_VERTICAL)
+      else if (rom.vertical)
          rom.mirroring = PPU_MIRROR_VERT;
+
+      size_t data_offset = rom.trainer ? 0x210 : 0x010;
+
+      rom.checksum = CRC32(0, rom.data_ptr + data_offset, rom.data_len - data_offset);
 
       const db_game_t *entry = games_database;
       while (entry->crc && entry->crc != rom.checksum)
@@ -166,88 +159,72 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
          MESSAGE_INFO("ROM: Game not found in database.\n");
       }
 
-      rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
-      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
-
-      if (!rom.prg_ram || !rom.chr_ram)
+      size_t expected_size = data_offset + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE) + (rom.chr_rom_banks * ROM_CHR_BANK_SIZE);
+      if (size < expected_size)
       {
-         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
-         return NULL;
+         MESSAGE_ERROR("ROM: Expected rom size to be at least %d bytes, got %d.\n", expected_size, size);
+         // return NULL;
       }
 
+      rom.prg_rom = data + data_offset;
       if (rom.chr_rom_banks > 0)
-      {
-         rom.chr_rom = rom.prg_rom + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
-      }
-
-      MESSAGE_INFO("ROM: Mapper: %d, PRG:%dK, CHR:%dK, Flags: %c%c%c%c\n",
-                  rom.mapper_number,
-                  rom.prg_rom_banks * 8, rom.chr_rom_banks * 8,
-                  (rom.flags & ROM_FLAG_VERTICAL) ? 'V' : 'H',
-                  (rom.flags & ROM_FLAG_BATTERY) ? 'B' : '-',
-                  (rom.flags & ROM_FLAG_TRAINER) ? 'T' : '-',
-                  (rom.flags & ROM_FLAG_FOURSCREEN) ? '4' : '-');
-
-      strcpy(rom.filename, "filename.nes");
-      return &rom;
+         rom.chr_rom = data + data_offset + (rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
    }
    else if (!memcmp(data, ROM_FDS_MAGIC, 4) || !memcmp(data, ROM_FDS_RAW_MAGIC, 15))
    {
       MESSAGE_INFO("ROM: Found FDS file of size %d.\n", (int)size);
 
-      rom.flags = ROM_FLAG_FDS_DISK|ROM_FLAG_BATTERY;
+      rom.type = ROM_TYPE_FDS;
+      rom.mapper_number = 20;
+      rom.system = SYS_FAMICOM;
+      rom.battery = true;
       rom.prg_ram_banks = 4; // The FDS adapter contains 32KB to store game program
       rom.chr_ram_banks = 1; // The FDS adapter contains 8KB
       rom.prg_rom_banks = 1; // This will contain the FDS BIOS
       rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
-      rom.mapper_number = 20;
-      rom.system = SYS_FAMICOM;
-
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
-
-      rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
-      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
-      // We do it this way because only rom.prg_ram is freed in rom_free
-      rom.prg_rom = rom.prg_ram + (rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
-
-      if (!rom.prg_ram || !rom.chr_ram || !rom.prg_rom)
-      {
-         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
-         return NULL;
-      }
-
-      strcpy(rom.filename, "filename.fds");
-      return &rom;
    }
    else if (!memcmp(data, ROM_NSF_MAGIC, 5))
    {
       MESSAGE_INFO("ROM: Found NSF file of size %d.\n", (int)size);
 
+      rom.type = ROM_TYPE_NSF;
+      rom.mapper_number = 31;
       rom.prg_ram_banks = 1; // Some songs may need it. I store a bootstrap program there at the moment
       rom.chr_ram_banks = 1; // Not used but some code might assume it will be present...
       rom.prg_rom_banks = 4; // This is actually PRG-RAM but some of our code assumes PRG-ROM to be present...
       rom.checksum = CRC32(0, rom.data_ptr, rom.data_len);
-      rom.mapper_number = 31;
-
-      MESSAGE_INFO("ROM: CRC32:  %08X\n", (unsigned)rom.checksum);
-
-      rom.prg_ram = malloc((rom.prg_ram_banks + rom.prg_rom_banks) * ROM_PRG_BANK_SIZE);
-      rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
-      // We do it this way because only rom.prg_ram is freed in rom_free
-      rom.prg_rom = rom.prg_ram + (rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
-
-      if (!rom.prg_ram || !rom.chr_ram || !rom.prg_rom)
-      {
-         MESSAGE_ERROR("ROM: Memory allocation failed!\n");
-         return NULL;
-      }
-
-      strcpy(rom.filename, "filename.nsf");
-      return &rom;
+   }
+   else
+   {
+      MESSAGE_ERROR("ROM: File is not a valid NES image!\n");
+      return NULL;
    }
 
-   MESSAGE_ERROR("ROM: File is not a valid NES image!\n");
-   return NULL;
+   MESSAGE_INFO("ROM: CRC32:  %08X\n", rom.checksum);
+   MESSAGE_INFO("ROM: Mapper: %d, PRG:%dK, CHR:%dK, Flags: %c%c%c%c\n",
+               rom.mapper_number,
+               rom.prg_rom_banks * 8, rom.chr_rom_banks * 8,
+               (rom.vertical) ? 'V' : 'H',
+               (rom.battery) ? 'B' : '-',
+               (rom.trainer) ? 'T' : '-',
+               (rom.fourscreen) ? '4' : '-');
+
+   rom.prg_ram = malloc(rom.prg_ram_banks * ROM_PRG_BANK_SIZE);
+   rom.chr_ram = malloc(rom.chr_ram_banks * ROM_CHR_BANK_SIZE);
+   if (!rom.prg_rom)
+   {
+      rom.prg_rom = malloc(rom.prg_rom_banks * ROM_PRG_BANK_SIZE);
+      rom.free_prg_rom = true;
+   }
+
+   if (!rom.prg_ram || !rom.chr_ram || !rom.prg_rom)
+   {
+      MESSAGE_ERROR("ROM: Memory allocation failed!\n");
+      rom_free();
+      return NULL;
+   }
+
+   return &rom;
 }
 
 /* Load a ROM from file */
@@ -255,77 +232,75 @@ rom_t *rom_loadfile(const char *filename)
 {
    uint8 *data = NULL;
    long size = 0;
+   FILE *fp;
 
    if (!filename)
       return NULL;
 
-   FILE *fp = fopen(filename, "rb");
-   if (!fp)
+   if ((fp = fopen(filename, "rb")))
    {
-      MESSAGE_ERROR("ROM: Unable to open file '%s'\n", filename);
+      MESSAGE_INFO("ROM: Loading file '%s'\n", filename);
+
+      fseek(fp, 0, SEEK_END);
+      size = ftell(fp);
+      fseek(fp, 0, SEEK_SET);
+
+      if (size < 16 || size > 0x200000)
+      {
+         MESSAGE_ERROR("ROM: File size error\n");
+      }
+      else if ((data = malloc(size)) == NULL)
+      {
+         MESSAGE_ERROR("ROM: Memory allocation failed\n");
+      }
+      else if (fread(data, size, 1, fp) != 1)
+      {
+         MESSAGE_ERROR("ROM: Read error\n");
+         free(data);
+         data = NULL;
+      }
+      fclose(fp);
+   }
+
+   // Just in case. Will ne a NO-OP if nothing is loaded
+   rom_free();
+
+   if (rom_loadmem(data, size) == NULL)
+   {
+      MESSAGE_ERROR("ROM: Load error\n");
+      free(data);
       return NULL;
    }
 
-   MESSAGE_INFO("ROM: Loading file '%s'\n", filename);
-
-   fseek(fp, 0, SEEK_END);
-   size = ftell(fp);
-   fseek(fp, 0, SEEK_SET);
-
-   if (size < 16 || size > 0x200000)
+   if (rom.system == SYS_UNKNOWN)
    {
-      MESSAGE_ERROR("ROM: File size error\n");
+      if (strstr(filename, "(E)")
+         || strstr(filename, "(Europe)")
+         || strstr(filename, "(A)")
+         || strstr(filename, "(Australia)"))
+         rom.system = SYS_NES_PAL;
    }
-   else if ((data = malloc(size)) == NULL)
-   {
-      MESSAGE_ERROR("ROM: Memory allocation failed\n");
-   }
-   else if (fread(data, size, 1, fp) != 1)
-   {
-      MESSAGE_ERROR("ROM: Read error\n");
-   }
-   else if (rom_loadmem(data, size) == NULL)
-   {
-      MESSAGE_ERROR("ROM: Load error\n");
-   }
-   else
-   {
-      fclose(fp);
-      if (rom.system == SYS_UNKNOWN)
-      {
-         if (strstr(filename, "(E)")
-            || strstr(filename, "(Europe)")
-            || strstr(filename, "(A)")
-            || strstr(filename, "(Australia)"))
-            rom.system = SYS_NES_PAL;
-      }
-      rom.flags |= ROM_FLAG_FREE_DATA;
-      // This is fine, rom_loadmem zeroes `rom`.
-      strncpy(rom.filename, filename, sizeof(rom.filename) - 1);
-      #ifdef USE_SRAM_FILE
-         rom_loadsram();
-      #endif
-      return &rom;
-   }
-
-   fclose(fp);
-   free(data);
-   return NULL;
+   rom.free_data_ptr = true;
+   rom.filename = strdup(filename);
+   return &rom;
 }
 
 /* Free a ROM */
 void rom_free(void)
 {
-#ifdef USE_SRAM_FILE
-   rom_savesram();
-#endif
-   if (rom.flags & ROM_FLAG_FREE_DATA)
+   if (rom.type != ROM_TYPE_INVALID)
    {
-      free(rom.data_ptr);
-      rom.data_ptr = NULL;
+      if (rom.free_data_ptr)
+         free(rom.data_ptr);
+      if (rom.free_prg_rom)
+         free(rom.prg_rom);
+      if (rom.free_chr_rom)
+         free(rom.chr_rom);
+      if (rom.free_trainer)
+         free(rom.trainer);
+      free(rom.prg_ram);
+      free(rom.chr_ram);
+      free(rom.filename);
    }
-   free(rom.prg_ram);
-   rom.prg_ram = NULL;
-   free(rom.chr_ram);
-   rom.chr_ram = NULL;
+   memset(&rom, 0, sizeof(rom_t));
 }

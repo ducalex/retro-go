@@ -52,7 +52,7 @@
 
 #define CART_INC_COUNTER() {if(!mStrobe) mCounter = (mCounter + 1) & 0x07ff;}
 
-CCart::CCart(UBYTE *gamedata,ULONG gamesize)
+CCart::CCart(const UBYTE *gamedata,ULONG gamesize)
 {
    TRACE_CART1("CCart() called with %s",gamefile);
 

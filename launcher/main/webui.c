@@ -18,11 +18,11 @@ static char *urldecode(const char *str)
 {
     char *new_string = strdup(str);
     char *ptr = new_string;
-    while (*ptr && *(ptr + 1) && *(ptr + 2))
+    while (ptr[0] && ptr[1] && ptr[2])
     {
-        if (*ptr == '%' && isxdigit(*(ptr + 1)) && isxdigit(*(ptr + 2)))
+        if (ptr[0] == '%' && isxdigit((unsigned char)ptr[1]) && isxdigit((unsigned char)ptr[2]))
         {
-            char hex[] = {*(ptr + 1), *(ptr + 2), 0};
+            char hex[] = {ptr[1], ptr[2], 0};
             *ptr = strtol(hex, NULL, 16);
             memmove(ptr + 1, ptr + 3, strlen(ptr + 3) + 1);
         }
@@ -159,7 +159,6 @@ _done:
 static esp_err_t http_download_handler(httpd_req_t *req)
 {
     char *filename = urldecode(req->uri);
-    const char *ext = rg_extension(filename);
     FILE *fp;
 
     RG_LOGI("Serving file: %s", filename);
@@ -168,11 +167,11 @@ static esp_err_t http_download_handler(httpd_req_t *req)
 
     if ((fp = fopen(filename, "rb")))
     {
-        if (strcmp(ext, "json") == 0 || strcmp(ext, "log") == 0 || strcmp(ext, "txt") == 0)
+        if (rg_extension_match(filename, "json log txt"))
             httpd_resp_set_type(req, "text/plain");
-        else if (strcmp(ext, "png") == 0)
+        else if (rg_extension_match(filename, "png") == 0)
             httpd_resp_set_type(req, "image/png");
-        else if (strcmp(ext, "jpg") == 0)
+        else if (rg_extension_match(filename, "jpg") == 0)
             httpd_resp_set_type(req, "image/jpg");
         else
             httpd_resp_set_type(req, "application/binary");

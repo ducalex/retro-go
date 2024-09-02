@@ -24,26 +24,9 @@
 
 #pragma once
 
-#define APP_STRING  "Nofrendo"
-#define APP_VERSION "3.0"
-
-/* Configuration */
-
-/* Uncomment to enable debugging messages */
-// #define NOFRENDO_DEBUG
-
-/* Uncomment to enable live dissassembler */
-// #define NES6502_DISASM
-
-/* Uncomment to save/load a game's SRAM to disk */
-// #define USE_SRAM_FILE
-
-/* Uncomment on big-endian machines */
-// #define IS_BIG_ENDIAN
-
-/* End configuration */
-
 #include <stdbool.h>
+// #include "config.h"
+#include "nes/nes.h"
 
 typedef enum
 {
@@ -55,19 +38,6 @@ typedef enum
     NES_PALETTE_SMOOTH,
     NES_PALETTE_COUNT,
 } nespal_t;
-
-enum
-{
-    // Start at 192 because it's unlikely that a pixel will have both BG_TRANS|SP_PIXEL
-    NES_GUI_BLACK = 192,
-    NES_GUI_DKGRAY,
-    NES_GUI_GRAY,
-    NES_GUI_LTGRAY,
-    NES_GUI_WHITE,
-    NES_GUI_RED,
-    NES_GUI_GREEN,
-    NES_GUI_BLUE,
-};
 
 int nofrendo_init(int system, int sample_rate, bool stereo, void *blit, void *vsync, void *input);
 int nofrendo_start(const char *filename, const char *savefile);

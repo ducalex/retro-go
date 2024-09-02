@@ -57,7 +57,7 @@ static void map_write(uint32 address, uint8 value)
 
 static void map_init(rom_t *cart)
 {
-    fourscreen = cart->flags & ROM_FLAG_FOURSCREEN;
+    fourscreen = cart->fourscreen;
 }
 
 

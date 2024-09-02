@@ -73,6 +73,19 @@
 typedef void (*ppu_latchfunc_t)(uint32 address, uint8 value);
 typedef uint8 (*ppu_vreadfunc_t)(uint32 address, uint8 value);
 
+enum
+{
+   // Start at 192 because it's unlikely that a pixel will have both BG_TRANS|SP_PIXEL
+   PPU_GUI_BLACK = 192,
+   PPU_GUI_DKGRAY,
+   PPU_GUI_GRAY,
+   PPU_GUI_LTGRAY,
+   PPU_GUI_WHITE,
+   PPU_GUI_RED,
+   PPU_GUI_GREEN,
+   PPU_GUI_BLUE,
+};
+
 typedef enum
 {
    PPU_DRAW_SPRITES,

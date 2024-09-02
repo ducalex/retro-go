@@ -1,11 +1,13 @@
 // Target definition
 #define RG_TARGET_NAME             "RETRO-ESP32"
 
-// Storage and Settings
-#define RG_STORAGE_DRIVER           1                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             SPI2_HOST           // Used by SDSPI and SDMMC
-#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT  // Used by SDSPI and SDMMC
-#define RG_STORAGE_ROOT             "/sd"               // Storage mount point
+// Storage
+#define RG_STORAGE_ROOT             "/sd"
+#define RG_STORAGE_SDSPI_HOST       SPI2_HOST
+#define RG_STORAGE_SDSPI_SPEED      SDMMC_FREQ_DEFAULT
+// #define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
+// #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
+// #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        3   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -15,6 +17,7 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -44,11 +47,11 @@
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
-#define RG_GAMEPAD_ADC1_MAP {\
-    {RG_KEY_UP,    ADC1_CHANNEL_7, ADC_ATTEN_DB_11, 2048, 4096},\
-    {RG_KEY_DOWN,  ADC1_CHANNEL_7, ADC_ATTEN_DB_11, 1024, 2048},\
-    {RG_KEY_LEFT,  ADC1_CHANNEL_6, ADC_ATTEN_DB_11, 2048, 4096},\
-    {RG_KEY_RIGHT, ADC1_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2048},\
+#define RG_GAMEPAD_ADC_MAP {\
+    {RG_KEY_UP,    ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 2048, 4096},\
+    {RG_KEY_DOWN,  ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 1024, 2047},\
+    {RG_KEY_LEFT,  ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 2048, 4096},\
+    {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2047},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_SELECT, GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
@@ -63,7 +66,8 @@
 
 // Battery
 #define RG_BATTERY_DRIVER           1
-#define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_0
+#define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
+#define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 

@@ -63,6 +63,19 @@ typedef struct
 
 typedef struct
 {
+    const char *name;                                               // Driver name
+    bool (*init)(void);                                             // Init the display
+    bool (*deinit)(void);                                           // Deinit the display
+    bool (*sync)(void);                                             // Pause until all data has been flushed
+    bool (*set_backlight)(float percent);                           // Set backlight 0.0 - 1.0
+    bool (*set_window)(int left, int top, int width, int height);   // Set draw window
+    uint16_t *(*get_buffer)(size_t length);                         // Get a DMA-capable buffer to write pixels to and send via send_buffer
+    bool (*send_buffer)(uint16_t *buffer, size_t length);           // Send data to display (buffer MUST be acquired via get_buffer)
+    // bool (*write)(int left, int top, int width, int height, int pitch, const uint16_t data);
+} rg_display_driver_t;
+
+typedef struct
+{
     struct
     {
         int real_width, real_height; // Real physical resolution

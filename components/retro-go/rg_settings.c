@@ -8,22 +8,7 @@
 static cJSON *config_root = NULL;
 
 
-static FILE *open_config_file(const char *name, const char *mode)
-{
-    char pathbuf[RG_PATH_MAX];
-    snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
-    RG_LOGI("Opening %s for %s", pathbuf, mode);
-    FILE *fp = fopen(pathbuf, mode);
-    if (!fp)
-    {
-        rg_storage_mkdir(rg_dirname(pathbuf));
-        rg_storage_delete(pathbuf);
-        fp = fopen(pathbuf, mode);
-    }
-    return fp;
-}
-
-static cJSON *json_root(const char *name, bool mode)
+static cJSON *json_root(const char *name, bool set_dirty)
 {
     if (!config_root)
         return NULL;
@@ -45,25 +30,21 @@ static cJSON *json_root(const char *name, bool mode)
         branch = cJSON_AddObjectToObject(config_root, name);
         cJSON_AddStringToObject(branch, "namespace", name);
         cJSON_AddNumberToObject(branch, "changed", 0);
-        FILE *fp = open_config_file(name, "rb");
-        if (fp)
+
+        void *data; size_t data_len;
+        char pathbuf[RG_PATH_MAX];
+        snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
+        if (rg_storage_read_file(pathbuf, &data, &data_len, 0))
         {
-            fseek(fp, 0, SEEK_END);
-            long length = ftell(fp);
-            fseek(fp, 0, SEEK_SET);
-            char *buffer = calloc(1, length + 1);
-            if (fread(buffer, 1, length, fp))
+            cJSON *values = cJSON_Parse((char *)data);
+            if (values)
             {
-                cJSON *values = cJSON_Parse(buffer);
-                if (!values)
-                {
-                    RG_LOGE("Parse failed in config file '%s'", name);
-                    values = cJSON_CreateObject();
-                }
+                RG_LOGI("Config file loaded: '%s'", pathbuf);
                 cJSON_AddItemToObject(branch, "values", values);
             }
-            free(buffer);
-            fclose(fp);
+            else
+                RG_LOGE("Config file parsing failed: '%s'", pathbuf);
+            free(data);
         }
     }
 
@@ -74,7 +55,7 @@ static cJSON *json_root(const char *name, bool mode)
         root = cJSON_AddObjectToObject(branch, "values");
     }
 
-    if (mode)
+    if (set_dirty)
     {
         cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 1);
     }
@@ -117,12 +98,14 @@ void rg_settings_commit(void)
         if (!buffer)
             continue;
 
-        FILE *fp = open_config_file(name, "wb");
-        if (fp)
+        size_t buffer_len = strlen(buffer) + 1;
+
+        char pathbuf[RG_PATH_MAX];
+        snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
+        if (rg_storage_write_file(pathbuf, buffer, buffer_len, 0) ||
+            (rg_storage_mkdir(rg_dirname(pathbuf)) && rg_storage_write_file(pathbuf, buffer, buffer_len, 0)))
         {
-            if (fputs(buffer, fp) >= 0)
-                cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 0);
-            fclose(fp);
+            cJSON_SetNumberHelper(cJSON_GetObjectItem(branch, "changed"), 0);
         }
 
         cJSON_free(buffer);

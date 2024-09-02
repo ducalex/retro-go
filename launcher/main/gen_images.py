@@ -7,7 +7,7 @@ os.chdir(sys.path[0])
 output = '#include "gui.h"\n\n'
 refs = ""
 
-for file in glob.glob("images/*.png"):
+for file in sorted(glob.glob("images/*.png")):
     with open(file, "rb") as f:
         data = f.read()
         size = len(data)

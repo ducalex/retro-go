@@ -8,7 +8,8 @@ import sys
 import re
 import os
 
-if not os.getenv("IDF_PATH"):
+IDF_PATH = os.getenv("IDF_PATH")
+if not IDF_PATH:
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
@@ -27,8 +28,6 @@ try:
     ).decode().rstrip()
 except:
     PROJECT_VER = "unknown"
-
-IDF_PATH = os.getenv("IDF_PATH")
 
 if os.name == 'nt':
     IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
@@ -135,8 +134,9 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     args = [IDF_PY, "app"]
-    args.append(f"-DRG_BUILD_VERSION={PROJECT_VER}")
-    args.append(f"-DRG_BUILD_TARGET={re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
+    args.append(f"-DRG_PROJECT_APP={app}")
+    args.append(f"-DRG_PROJECT_VER={PROJECT_VER}")
+    args.append(f"-DRG_BUILD_TARGET=RG_TARGET_{re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
     args.append(f"-DRG_BUILD_RELEASE={1 if is_release else 0}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
@@ -146,7 +146,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
 
 def flash_app(app, port, baudrate=1152000):
     os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
         print("Reading device's partition table...")
@@ -159,7 +159,7 @@ def flash_app(app, port, baudrate=1152000):
 
 def flash_image(image_file, port, baudrate=1152000):
     os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
-    os.putenv("ESPTOOL_BAUD", baudrate)
+    os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     print(f"Flashing image file '{image_file}' to {port}")
     run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])

@@ -26,6 +26,7 @@ typedef enum {
     TAB_LEAVE,
     TAB_IDLE,
     TAB_REFRESH,
+    TAB_RESCAN,
 } gui_event_t;
 
 typedef enum {
@@ -63,9 +64,10 @@ typedef struct {
 } theme_t;
 
 typedef struct {
-    char text[128];
-    int enabled;
-    int id;
+    char text[92];
+    int16_t order;
+    uint8_t group;
+    uint8_t unused; // icon, enabled
     void *arg;
 } listbox_item_t;
 
@@ -83,11 +85,6 @@ typedef struct {
     size_t size;
     uint8_t data[];
 } binfile_t;
-
-typedef struct {
-    unsigned int id;
-    rg_image_t *img;
-} image_t;
 
 typedef void (*gui_event_handler_t)(gui_event_t event, void *arg);
 

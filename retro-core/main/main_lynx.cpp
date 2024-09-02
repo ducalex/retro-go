@@ -86,6 +86,21 @@ static void set_display_mode(void)
     updates[1]->height = height;
 }
 
+static CSystem *new_lynx(void)
+{
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, 0))
+            RG_PANIC("ROM file unzipping failed!");
+        CSystem *lynx = new CSystem((UBYTE*)data, size, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+        free(data);
+        return lynx;
+    }
+    return new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+}
+
 
 static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -159,7 +174,7 @@ static bool reset_handler(bool hard)
 {
     // This isn't nice but lynx->Reset() crashes...
     delete lynx;
-    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+    lynx = new_lynx();
     return true;
 }
 
@@ -190,7 +205,7 @@ extern "C" void lynx_main(void)
     app->tickRate = 60;
 
     // Init emulator
-    lynx = new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+    lynx = new_lynx();
 
     if (lynx->mFileType == HANDY_FILETYPE_ILLEGAL)
     {

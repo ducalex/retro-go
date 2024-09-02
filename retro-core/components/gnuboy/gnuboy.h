@@ -101,9 +101,11 @@ typedef void (gb_video_cb_t)(void *buffer);
 typedef void (gb_audio_cb_t)(void *buffer, size_t length);
 
 int  gnuboy_init(int samplerate, gb_audio_fmt_t audio_fmt, gb_video_fmt_t video_fmt, gb_video_cb_t *video_callback, gb_audio_cb_t *audio_callback);
-int  gnuboy_load_bios(const char *file);
+int  gnuboy_load_bios(const byte *data, size_t size);
+int  gnuboy_load_bios_file(const char *file);
 void gnuboy_free_bios(void);
-int  gnuboy_load_rom(const char *file);
+int  gnuboy_load_rom(const byte *data, size_t size);
+int  gnuboy_load_rom_file(const char *file);
 void gnuboy_free_rom(void);
 void gnuboy_reset(bool hard);
 void gnuboy_run(bool draw);

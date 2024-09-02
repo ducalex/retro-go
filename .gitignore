@@ -3,17 +3,20 @@ __pycache__/
 .vscode/
 build/
 
+# ESP32 build
+/partitions.bin
+/partitions.csv
+/sdkconfig.old
+/sdkconfig
 /*/sdkconfig.old
 /*/sdkconfig
-/*.exe
 /*.fw
 /*.img
 /*.zip
 
-/partitions.bin
-/partitions.csv
-
+# SDL2 build
 /sd
 /stderr.txt
 /stdout.txt
 /gmon.out
+/*.exe

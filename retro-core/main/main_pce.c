@@ -217,7 +217,21 @@ void pce_main(void)
     emulationPaused = true;
     rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
 
-    InitPCE(app->sampleRate, true, app->romPath);
+    InitPCE(app->sampleRate, true);
+
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_8KB))
+            RG_PANIC("ROM file unzipping failed!");
+        if (LoadCard(data, size) != 0)
+            RG_PANIC("ROM loading failed");
+    }
+    else if (LoadFile(app->romPath) != 0)
+    {
+        RG_PANIC("ROM loading failed");
+    }
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {

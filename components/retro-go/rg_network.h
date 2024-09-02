@@ -24,7 +24,7 @@ typedef enum
 
 typedef struct
 {
-    char name[33];
+    char name[36];
     char ip_addr[16];
     int channel, rssi;
     int state;
@@ -33,10 +33,9 @@ typedef struct
 bool rg_network_init(void);
 void rg_network_deinit(void);
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config);
-bool rg_network_wifi_load_config(int slot);
+bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out);
 bool rg_network_wifi_start(void);
 void rg_network_wifi_stop(void);
-bool rg_network_sync_time(const char *host, int *out_delta);
 rg_network_t rg_network_get_info(void);
 
 typedef struct

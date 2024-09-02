@@ -75,8 +75,9 @@ int SaveState(const char *name);
 void ResetPCE(bool);
 void RunPCE(void);
 void ShutdownPCE();
-int InitPCE(int samplerate, bool stereo, const char *huecard);
-int LoadCard(const char *name);
+int InitPCE(int samplerate, bool stereo);
+int LoadCard(uint8_t *data, size_t size);
+int LoadFile(const char *name);
 void *PalettePCE(int bitdepth);
 
 extern uint8_t *osd_gfx_framebuffer(int width, int height);

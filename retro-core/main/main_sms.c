@@ -118,15 +118,26 @@ void sms_main(void)
     option.extra_gg = 0;
     option.tms_pal = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
 
-    if (strcmp(rg_extension(app->romPath), "sg") == 0)
+    if (rg_extension_match(app->romPath, "sg"))
         option.console = 5;
     else if (strcmp(app->configNs, "col") == 0)
         option.console = 6;
     else
         option.console = 0;
 
-    if (!load_rom(app->romPath))
+    if (rg_extension_match(app->romPath, "zip"))
+    {
+        void *data;
+        size_t size;
+        if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, RG_FILE_ALIGN_16KB))
+            RG_PANIC("ROM file unzipping failed!");
+        if (!load_rom(data, RG_MAX(0x4000, size), size))
+            RG_PANIC("ROM file loading failed!");
+    }
+    else if (!load_rom_file(app->romPath))
+    {
         RG_PANIC("ROM file loading failed!");
+    }
 
     bitmap.width = SMS_WIDTH;
     bitmap.height = SMS_HEIGHT;

@@ -12,10 +12,12 @@
 #include "applications.h"
 #include "bookmarks.h"
 #include "gui.h"
-#include "wifi.h"
+#include "webui.h"
 #include "updater.h"
 
 static rg_app_t *app;
+
+#define SETTING_WEBUI "HTTPFileServer"
 
 static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -140,16 +142,52 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+#ifdef RG_ENABLE_NETWORKING
+static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (rg_network_get_info().state != RG_NETWORK_CONNECTED)
+    {
+        option->flags = RG_DIALOG_FLAG_DISABLED;
+        return RG_DIALOG_VOID;
+    }
+    if (event == RG_DIALOG_ENTER)
+    {
+        updater_show_dialog();
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    bool enabled = rg_settings_get_number(NS_APP, SETTING_WEBUI, 0);
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
+    {
+        enabled = !enabled;
+        webui_stop();
+        if (enabled)
+            webui_start();
+        rg_settings_set_number(NS_APP, SETTING_WEBUI, enabled);
+    }
+    strcpy(option->value, enabled ? "On " : "Off");
+    return RG_DIALOG_VOID;
+}
+#endif
+
 static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0, "Color theme ", "...", 1, &color_theme_cb},
-            {0, "Preview     ", "...", 1, &show_preview_cb},
-            {0, "Scroll mode ", "...", 1, &scroll_mode_cb},
-            {0, "Start screen", "...", 1, &start_screen_cb},
-            {0, "Hide tabs   ", "...", 1, &toggle_tabs_cb},
+            {0, "Color theme ", "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
+            {0, "Preview     ", "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
+            {0, "Scroll mode ", "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
+            {0, "Start screen", "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
+            {0, "Hide tabs   ", "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
+            #ifdef RG_ENABLE_NETWORKING
+            {0, "File server ", "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+            #endif
+            {0, "Startup app ", "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
             RG_DIALOG_END,
         };
         gui_redraw(); // clear main menu
@@ -158,34 +196,25 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
     return RG_DIALOG_VOID;
 }
 
-#ifdef RG_ENABLE_NETWORKING
-static rg_gui_event_t wifi_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        wifi_show_dialog();
-        return RG_DIALOG_REDRAW;
+        rg_input_wait_for_key(RG_KEY_ANY, false, 1000);
+        #ifdef RG_ENABLE_NETWORKING
+        webui_stop();
+        #endif
+        crc_cache_prebuild();
     }
     return RG_DIALOG_VOID;
 }
-
-static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        updater_show_dialog();
-        return RG_DIALOG_REDRAW;
-    }
-    return RG_DIALOG_VOID;
-}
-#endif
 
 static void show_about_menu(void)
 {
-    bool online = rg_network_get_info().state == RG_NETWORK_CONNECTED;
     const rg_gui_option_t options[] = {
+        {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
     #ifdef RG_ENABLE_NETWORKING
-        {0, "Check for updates", NULL, online ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, &updater_cb},
+        {0, "Check for updates", NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
     #endif
         RG_DIALOG_END,
     };
@@ -208,7 +237,9 @@ static void retro_loop(void)
     bookmarks_init();
 
 #ifdef RG_ENABLE_NETWORKING
-    wifi_init();
+    rg_network_init();
+    if (rg_settings_get_number(NS_APP, SETTING_WEBUI, true))
+        webui_start();
 #endif
 
     if (!gui_get_current_tab())
@@ -221,7 +252,7 @@ static void retro_loop(void)
         // It's also risky to let the user do file accesses at the same time (thread safety, SPI, etc)...
         if (gui.http_lock)
         {
-            rg_gui_draw_dialog("HTTP Server Busy...", NULL, 0);
+            rg_gui_draw_message("HTTP Server Busy...");
             redraw_pending = true;
             rg_task_delay(100);
             continue;
@@ -405,11 +436,7 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Startup app ", "...", 1, &startup_app_cb},
-        {0, "Launcher options", NULL,  1, &launcher_options_cb},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, "Wi-Fi options", NULL,  1, &wifi_options_cb},
-    #endif
+        {0, "Launcher options", NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb},
         RG_DIALOG_END,
     };
 

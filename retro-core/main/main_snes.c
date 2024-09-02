@@ -1,22 +1,9 @@
-#include <rg_system.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <time.h>
+#include "shared.h"
+
+#include <snes9x.h>
 #include <math.h>
 
-#include "../components/snes9x/snes9x.h"
-#include "../components/snes9x/soundux.h"
-#include "../components/snes9x/memmap.h"
-#include "../components/snes9x/apu.h"
-#include "../components/snes9x/display.h"
-#include "../components/snes9x/gfx.h"
-#include "../components/snes9x/cpuexec.h"
-#include "../components/snes9x/srtc.h"
-#include "../components/snes9x/save.h"
-
 #include "keymap_snes.h"
-#include "shared.h"
 
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
@@ -289,7 +276,16 @@ void snes_main(void)
     if (!S9xInitGFX())
         RG_PANIC("Graphics init failed!");
 
-    if (!LoadROM(app->romPath))
+    const char *filename = app->romPath;
+
+    if (rg_extension_match(filename, "zip"))
+    {
+        if (!rg_storage_unzip_file(filename, NULL, (void **)&Memory.ROM, &Memory.ROM_AllocSize, RG_FILE_USER_BUFFER))
+            RG_PANIC("ROM file unzipping failed!");
+        filename = NULL;
+    }
+
+    if (!LoadROM(filename))
         RG_PANIC("ROM loading failed!");
 
 #ifdef USE_BLARGG_APU

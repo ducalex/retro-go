@@ -15,7 +15,7 @@ static const char header[16] = "SNES9X_000000002";
 
 bool S9xSaveState(const char *filename)
 {
-   size_t chunks = 0;
+   int chunks = 0;
    FILE *fp = NULL;
 
    if (!(fp = fopen(filename, "wb")))
@@ -45,7 +45,7 @@ bool S9xSaveState(const char *filename)
 bool S9xLoadState(const char *filename)
 {
    uint8_t buffer[512];
-   size_t chunks = 0;
+   int chunks = 0;
    FILE *fp = NULL;
 
    if (!(fp = fopen(filename, "rb")))

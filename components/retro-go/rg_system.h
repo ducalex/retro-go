@@ -16,10 +16,8 @@ extern "C" {
 #include <esp_idf_version.h>
 #include <esp_heap_caps.h>
 #include <esp_attr.h>
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 2, 0)
-#error "Retro-Go requires ESP-IDF version 4.2.0 or newer!"
-#elif ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
-#define SPI_DMA_CH_AUTO 1
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
+#error "Retro-Go requires ESP-IDF version 4.3.0 or newer!"
 #endif
 #else
 #define IRAM_ATTR
@@ -101,6 +99,17 @@ typedef enum
 
 typedef enum
 {
+    RG_INDICATOR_PANIC = 0,
+    RG_INDICATOR_LOW_BATTERY,
+    RG_INDICATOR_CHARGING,
+    RG_INDICATOR_DISK_ACTIVITY,
+    RG_INDICATOR_NETWORK_ACTIVITY,
+    RG_INDICATOR_SYSTEM_ACTIVITY,
+    RG_INDICATOR_USER_ACTIVITY,
+} rg_indicator_t;
+
+typedef enum
+{
     /* Types and masks */
     RG_EVENT_TYPE_SYSTEM  = 0xF10000,
     RG_EVENT_TYPE_POWER   = 0xF20000,
@@ -159,22 +168,23 @@ typedef struct
 
 typedef struct
 {
-    char name[32];
-    char version[32];
-    char buildDate[32];
-    char buildTool[32];
+    const char *name;
+    const char *version;
+    const char *buildDate;
+    const char *buildInfo;
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;
     uint32_t bootType;
+    uint32_t indicatorsMask;
     float speed;
     int sampleRate;
     int tickRate;
     int frameskip;
     int overclock;
     int tickTimeout;
+    int availableMemory;
     bool watchdog;
-    bool lowMemoryMode;
     bool isLauncher;
     // bool isOfficial;
     bool isRelease;
@@ -184,10 +194,6 @@ typedef struct
     const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
-
-    // Volatile values
-    int exitCalled;
-    int ledValue;
 } rg_app_t;
 
 typedef struct
@@ -219,8 +225,10 @@ void rg_system_restart(void) __attribute__((noreturn));
 void rg_system_exit(void) __attribute__((noreturn));
 void rg_system_switch_app(const char *part, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
 bool rg_system_have_app(const char *app);
-void rg_system_set_led(int value);
-int  rg_system_get_led(void);
+void rg_system_set_indicator(rg_indicator_t indicator, bool on);
+bool rg_system_get_indicator(rg_indicator_t indicator);
+void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
+bool rg_system_get_indicator_mask(rg_indicator_t indicator);
 void rg_system_set_overclock(int level);
 int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);
@@ -241,24 +249,36 @@ void rg_system_load_time(void);
 void rg_system_save_time(void);
 
 // Wrappers for the OS' task/thread creation API. It also keeps track of handles for debugging purposes...
-// typedef void rg_task_t;
-bool rg_task_create(const char *name, void (*taskFunc)(void *data), void *data, size_t stackSize, int priority, int affinity);
+typedef struct rg_task_s rg_task_t;
+typedef struct
+{
+    int type; // Negative values are reserved
+    union
+    {
+        const void *dataPtr;
+        uint32_t dataInt;
+    };
+} rg_task_msg_t;
+#define RG_TASK_MSG_STOP -1
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
+rg_task_t *rg_task_find(const char *name);
+rg_task_t *rg_task_current(void);
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg);
+bool rg_task_peek(rg_task_msg_t *out);
+bool rg_task_receive(rg_task_msg_t *out);
+bool rg_task_is_blocked(rg_task_t *task);
+size_t rg_task_messages_waiting(rg_task_t *task);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield
 // to other tasks and will not busy wait time smaller than a tick. Meaning rg_usleep
 // is more accurate but rg_task_delay is more multitasking-friendly.
-void rg_task_delay(int ms);
+void rg_task_delay(uint32_t ms);
 void rg_task_yield(void);
 
-// Wrapper for FreeRTOS queues, which are essentially inter-task communication primitives
-// Retro-Go uses them for locks and message passing. Not sure how we could easily replicate in SDL2 yet...
-typedef void rg_queue_t;
-rg_queue_t *rg_queue_create(size_t length, size_t itemSize);
-void rg_queue_free(rg_queue_t *queue);
-bool rg_queue_send(rg_queue_t *queue, const void *item, int timeoutMS);
-bool rg_queue_receive(rg_queue_t *queue, void *out, int timeoutMS);
-bool rg_queue_peek(rg_queue_t *queue, void *out, int timeoutMS);
-bool rg_queue_is_empty(rg_queue_t *queue);
-bool rg_queue_is_full(rg_queue_t *queue);
+typedef void rg_mutex_t;
+rg_mutex_t *rg_mutex_create(void);
+void rg_mutex_free(rg_mutex_t *mutex);
+bool rg_mutex_give(rg_mutex_t *mutex);
+bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS);
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);
@@ -266,6 +286,7 @@ bool rg_emu_load_state(uint8_t slot);
 bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
+uint8_t rg_emu_get_last_used_slot(const char *romPath);
 void rg_emu_set_speed(float speed);
 float rg_emu_get_speed(void);
 
@@ -278,6 +299,7 @@ float rg_emu_get_speed(void);
 // This should really support printf format...
 #define RG_PANIC(x) rg_system_panic(__func__, x)
 #define RG_ASSERT(cond, msg) while (!(cond)) { RG_PANIC("Assertion failed: `" #cond "` : " msg); }
+#define RG_ASSERT_ARG(cond) while (!(cond)) { RG_PANIC("Invalid function argument"); }
 
 #ifndef RG_LOG_TAG
 #define RG_LOG_TAG __func__

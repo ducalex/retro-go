@@ -364,49 +364,58 @@ void set_rom_config(void)
   }
 }
 
-int load_rom(const char *filename)
+int load_rom(void *data, int size, int crc_size)
 {
-  size_t actual_size = 0, count = 0;
-
-  FILE *fd = fopen(filename, "rb");
-  if (fd)
-  {
-    fseek(fd, 0, SEEK_END);
-    actual_size = ftell(fd);
-    fseek(fd, 0, SEEK_SET);
-
-    cart.size = actual_size < 0x4000 ? 0x4000 : actual_size;
-    cart.rom = calloc(1, cart.size);
-    cart.sram = calloc(1, 0x8000);
-
-    if (!cart.rom || !cart.sram) abort();
-
-    count = fread(cart.rom, actual_size, 1, fd);
-    fclose(fd);
-  }
-
-  if (count == 0)
-  {
+  // We expect data to be 16K aligned and at least one page
+  if (!data || size < 0x4000)
     return 0;
-  }
 
-  if (strcasecmp(filename + (strlen(filename) - 4), ".col") == 0)
-  {
-    option.console = 6;
-  }
-
-  /* Take care of image header, if present */
-  if ((cart.size / 512) & 1)
-  {
-    cart.size -= 512;
-    memmove(cart.rom, cart.rom + 512, cart.size);
-  }
-
-  cart.crc = crc32_le(0, cart.rom, option.console == 6 ? actual_size : cart.size);
+  cart.rom = data;
+  cart.size = size;
+  cart.sram = calloc(1, 0x8000);
+  if (!cart.sram) abort();
+  cart.crc = crc32_le(0, cart.rom, crc_size ?: size);
+  cart.pages = cart.size / 0x4000;
+  cart.loaded = true;
 
   set_rom_config();
 
   MESSAGE_INFO("OK. cart.size=%d, cart.crc=%#010lx\n", (int)cart.size, cart.crc);
 
   return 1;
+}
+
+int load_rom_file(const char *filename)
+{
+  int file_size = 0, buf_size = 0;
+  void *buf = NULL;
+
+  FILE *fd = fopen(filename, "rb");
+  if (!fd)
+    return 0;
+
+  fseek(fd, 0, SEEK_END);
+  file_size = ftell(fd);
+  fseek(fd, 0, SEEK_SET);
+
+  /* Skip image header, if present */
+  if (file_size > 0x4000 && ((file_size / 512) & 1))
+  {
+    fseek(fd, 512, SEEK_SET);
+    file_size -= 512;
+  }
+
+  buf_size = file_size < 0x4000 ? 0x4000 : file_size;
+  buf = calloc(1, buf_size);
+  if (!buf) abort();
+
+  fread(buf, file_size, 1, fd);
+  fclose(fd);
+
+  if (strcasecmp(filename + (strlen(filename) - 4), ".col") == 0)
+  {
+    option.console = 6;
+  }
+
+  return load_rom(buf, buf_size, file_size);
 }

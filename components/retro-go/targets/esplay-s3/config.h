@@ -2,10 +2,12 @@
 #define RG_TARGET_NAME             "ESPLAY-S3"
 
 // Storage
-#define RG_STORAGE_DRIVER           2                   // 0 = Host, 1 = SDSPI, 2 = SDMMC, 3 = USB, 4 = Flash
-#define RG_STORAGE_HOST             SDMMC_HOST_SLOT_1   // Used by driver 1 and 2
-#define RG_STORAGE_SPEED            SDMMC_FREQ_DEFAULT  // Used by driver 1 and 2
-#define RG_STORAGE_ROOT             "/sd"               // Storage mount point
+#define RG_STORAGE_ROOT             "/sd"
+// #define RG_STORAGE_SDSPI_HOST       SPI2_HOST
+// #define RG_STORAGE_SDSPI_SPEED      SDMMC_FREQ_DEFAULT
+#define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
+#define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
+// #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -15,6 +17,7 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_80M
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -60,7 +63,8 @@
 
 // Battery
 #define RG_BATTERY_DRIVER           1
-#define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
+#define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
+#define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
