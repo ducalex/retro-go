@@ -87,11 +87,12 @@ static inline void write_update(const rg_surface_t *update)
     const void *data = update->data + update->offset + (crop_top * stride) + (crop_left * RG_PIXEL_GET_SIZE(format));
     const uint16_t *palette = update->palette;
 
+    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
+
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;
     int lines_updated = 0;
     int window_top = -1;
-    bool partial = true;
 
     for (int y = 0; y < draw_height;)
     {
@@ -112,7 +113,7 @@ static inline void write_update(const rg_surface_t *update)
         uint16_t *line_buffer_ptr = line_buffer;
 
         uint32_t checksum = 0xFFFFFFFF;
-        bool need_update = !partial;
+        bool need_update = !partial_update;
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
@@ -137,7 +138,7 @@ static inline void write_update(const rg_surface_t *update)
                 else
                     RENDER_LINE(uint16_t, buffer[x])
 
-                if (partial)
+                if (partial_update)
                 {
                     checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
                 }
