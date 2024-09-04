@@ -36,9 +36,9 @@
 #define esp_sntp_setservername sntp_setservername
 #endif
 
-static rg_network_t network = {0};
+static rg_network_state_t network_state = RG_NETWORK_DISABLED;
 static rg_wifi_config_t wifi_config = {0};
-static bool initialized = false;
+static esp_netif_t *netif_sta, *netif_ap, *netif;
 
 static void network_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data)
 {
@@ -46,30 +46,27 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
     {
         if (event_id == WIFI_EVENT_STA_STOP || event_id == WIFI_EVENT_AP_STOP)
         {
-            RG_LOGI("Wifi stopped.\n");
-            network.state = RG_NETWORK_DISCONNECTED;
+            network_state = RG_NETWORK_DISCONNECTED;
+            RG_LOGI("Wifi stopped.");
         }
         else if (event_id == WIFI_EVENT_STA_START)
         {
-            RG_LOGI("Connecting to '%s'...\n", wifi_config.ssid);
-            network.state = RG_NETWORK_CONNECTING;
+            network_state = RG_NETWORK_CONNECTING;
+            RG_LOGI("Connecting to '%s'...", wifi_config.ssid);
             esp_wifi_connect();
         }
         else if (event_id == WIFI_EVENT_STA_DISCONNECTED)
         {
-            RG_LOGW("Got disconnected from AP. Reconnecting...\n");
-            network.state = RG_NETWORK_CONNECTING;
+            network_state = RG_NETWORK_CONNECTING;
+            RG_LOGW("Got disconnected from AP. Reconnecting...");
             rg_system_event(RG_EVENT_NETWORK_DISCONNECTED, NULL);
             esp_wifi_connect();
         }
         else if (event_id == WIFI_EVENT_AP_START)
         {
-            esp_netif_ip_info_t ip_info;
-            if (esp_netif_get_ip_info(esp_netif_get_handle_from_ifkey("WIFI_AP_DEF"), &ip_info) == ESP_OK)
-                snprintf(network.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
-
-            RG_LOGI("Access point started! IP: %s\n", network.ip_addr);
-            network.state = RG_NETWORK_CONNECTED;
+            network_state = RG_NETWORK_CONNECTED;
+            rg_network_t info = rg_network_get_info();
+            RG_LOGI("Access point started! IP: %s", info.ip_addr);
             rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
         }
     }
@@ -77,28 +74,17 @@ static void network_event_handler(void *arg, esp_event_base_t event_base, int32_
     {
         if (event_id == IP_EVENT_STA_GOT_IP)
         {
-            ip_event_got_ip_t *event = (ip_event_got_ip_t *)event_data;
-            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip_info.ip));
-
-            wifi_ap_record_t wifidata;
-            if (esp_wifi_sta_get_ap_info(&wifidata) == ESP_OK)
-            {
-                network.channel = wifidata.primary;
-                network.rssi = wifidata.rssi;
-            }
-            network.state = RG_NETWORK_CONNECTED;
-
-            RG_LOGI("Connected! IP: %s, RSSI: %d", network.ip_addr, network.rssi);
-            rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
-
+            network_state = RG_NETWORK_CONNECTED;
+            rg_network_t info = rg_network_get_info();
+            RG_LOGI("Connected! IP: %s, Chan: %d, RSSI: %d", info.ip_addr, info.channel, info.rssi);
             esp_sntp_stop();
             esp_sntp_init();
+            rg_system_event(RG_EVENT_NETWORK_CONNECTED, NULL);
         }
         else if (event_id == IP_EVENT_AP_STAIPASSIGNED)
         {
             ip_event_ap_staipassigned_t* event = (ip_event_ap_staipassigned_t*) event_data;
-            snprintf(network.ip_addr, 16, IPSTR, IP2STR(&event->ip));
-            RG_LOGI("Access point assigned IP to client: %s", network.ip_addr);
+            RG_LOGI("Access point assigned IP to client: "IPSTR, IP2STR(&event->ip));
         }
     }
 
@@ -162,7 +148,7 @@ bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 bool rg_network_wifi_start(void)
 {
 #ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(initialized, "Please call rg_network_init() first");
+    RG_ASSERT(network_state > RG_NETWORK_DISABLED, "Please call rg_network_init() first");
     wifi_config_t config = {0};
     esp_err_t err;
 
@@ -172,10 +158,9 @@ bool rg_network_wifi_start(void)
         return false;
     }
 
-    memcpy(network.name, wifi_config.ssid, 32);
-
     if (wifi_config.ap_mode)
     {
+        netif = netif_ap;
         memcpy(config.ap.ssid, wifi_config.ssid, 32);
         memcpy(config.ap.password, wifi_config.password, 64);
         config.ap.authmode = wifi_config.password[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
@@ -187,6 +172,7 @@ bool rg_network_wifi_start(void)
     }
     else
     {
+        netif = netif_sta;
         memcpy(config.sta.ssid, wifi_config.ssid, 32);
         memcpy(config.sta.password, wifi_config.password, 64);
         config.sta.channel = wifi_config.channel;
@@ -203,19 +189,34 @@ fail:
 void rg_network_wifi_stop(void)
 {
 #ifdef RG_ENABLE_NETWORKING
-    RG_ASSERT(initialized, "Please call rg_network_init() first");
+    RG_ASSERT(network_state > RG_NETWORK_DISABLED, "Please call rg_network_init() first");
     esp_wifi_stop();
-    memset(network.name, 0, sizeof(network.name));
+    netif = NULL;
 #endif
 }
 
 rg_network_t rg_network_get_info(void)
 {
+    rg_network_t info = {0};
 #ifdef RG_ENABLE_NETWORKING
-    return network;
-#else
-    return (rg_network_t){0};
+    if (netif)
+    {
+        memcpy(info.name, wifi_config.ssid, 32);
+        info.channel = wifi_config.channel;
+        esp_netif_ip_info_t ip_info;
+        if (esp_netif_get_ip_info(netif, &ip_info) == ESP_OK)
+            snprintf(info.ip_addr, 16, IPSTR, IP2STR(&ip_info.ip));
+        wifi_ap_record_t ap_info;
+        if (esp_wifi_sta_get_ap_info(&ap_info) == ESP_OK)
+        {
+            memcpy(info.name, ap_info.ssid, 32);
+            info.channel = ap_info.primary;
+            info.rssi = ap_info.rssi;
+        }
+    }
+    info.state = network_state;
 #endif
+    return info;
 }
 
 void rg_network_deinit(void)
@@ -225,16 +226,17 @@ void rg_network_deinit(void)
     esp_wifi_deinit();
     esp_event_handler_unregister(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
     esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &network_event_handler);
+    netif = netif_ap = netif_sta = NULL;
+    network_state = RG_NETWORK_DISABLED;
 #endif
 }
 
 bool rg_network_init(void)
 {
 #ifdef RG_ENABLE_NETWORKING
-    if (initialized)
+    if (network_state > RG_NETWORK_DISABLED)
         return true;
-
-    initialized = true;
+    network_state = RG_NETWORK_DISCONNECTED;
 
     // Init event loop first
     esp_err_t err;
@@ -243,9 +245,12 @@ bool rg_network_init(void)
     TRY(esp_event_handler_register(IP_EVENT, ESP_EVENT_ANY_ID, &network_event_handler, NULL));
 
     // Then TCP stack
-    esp_netif_init();
-    esp_netif_create_default_wifi_sta();
-    esp_netif_create_default_wifi_ap();
+    TRY(esp_netif_init());
+    netif_sta = esp_netif_create_default_wifi_sta();
+    netif_ap = esp_netif_create_default_wifi_ap();
+
+    esp_netif_set_hostname(netif_sta, RG_TARGET_NAME);
+    esp_netif_set_hostname(netif_ap, RG_TARGET_NAME);
 
     // Wifi may use nvs for calibration data
     if (nvs_flash_init() != ESP_OK && nvs_flash_erase() == ESP_OK)
@@ -261,9 +266,6 @@ bool rg_network_init(void)
     esp_sntp_setservername(0, "pool.ntp.org");
     // esp_sntp_init();
 
-    // Tell rg_network_get_info() that we're enabled but not yet connected
-    network.state = RG_NETWORK_DISCONNECTED;
-
     // Load the user's chosen config profile, if any
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, 0);
     rg_network_wifi_read_config(slot, &wifi_config);
@@ -274,6 +276,7 @@ bool rg_network_init(void)
 
     return true;
 fail:
+    network_state = RG_NETWORK_DISABLED;
 #else
     RG_LOGE("Network was disabled at build time!\n");
 #endif

@@ -8,8 +8,8 @@
 
 typedef struct
 {
-    char ssid[32];
-    char password[64];
+    char ssid[32 + 1];
+    char password[64 + 1];
     int channel;
     bool ap_mode;
 } rg_wifi_config_t;
@@ -24,7 +24,7 @@ typedef enum
 
 typedef struct
 {
-    char name[36];
+    char name[32 + 1];
     char ip_addr[16];
     int channel, rssi;
     int state;
