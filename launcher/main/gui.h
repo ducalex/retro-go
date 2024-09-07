@@ -120,7 +120,6 @@ typedef struct {
     int selected_tab;
     int startup_mode;
     int browse;
-    char *hidden_tabs;
     const char *theme;
     int color_theme;
     int start_screen;

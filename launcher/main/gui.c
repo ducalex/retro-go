@@ -15,11 +15,9 @@ retro_gui_t gui;
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
 #define SETTING_STARTUP_MODE    "StartupMode"
-#define SETTING_THEME           "Theme"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_SCROLL_MODE     "ScrollMode"
-#define SETTING_HIDDEN_TABS     "HiddenTabs"
 #define SETTING_HIDE_TAB(name)  strcat((char[99]){"HideTab."}, (name))
 
 static int max_visible_lines(const tab_t *tab, int *_line_height)
@@ -34,7 +32,6 @@ void gui_init(bool cold_boot)
     gui = (retro_gui_t){
         .selected_tab = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
         .startup_mode = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
-        .hidden_tabs  = rg_settings_get_string(NS_APP, SETTING_HIDDEN_TABS, ""),
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
@@ -218,7 +215,6 @@ void gui_save_config(void)
     rg_settings_set_number(NS_APP, SETTING_SCROLL_MODE, gui.scroll_mode);
     rg_settings_set_number(NS_APP, SETTING_COLOR_THEME, gui.color_theme);
     rg_settings_set_number(NS_APP, SETTING_STARTUP_MODE, gui.startup_mode);
-    rg_settings_set_string(NS_APP, SETTING_HIDDEN_TABS, gui.hidden_tabs);
     for (int i = 0; i < gui.tabs_count; i++)
         rg_settings_set_number(NS_APP, SETTING_HIDE_TAB(gui.tabs[i]->name), !gui.tabs[i]->enabled);
     rg_settings_commit();

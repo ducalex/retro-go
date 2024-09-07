@@ -434,7 +434,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
-    app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
+    // app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
     rg_display_init();
@@ -1183,9 +1183,6 @@ static void emu_update_save_slot(uint8_t slot)
 
 bool rg_emu_load_state(uint8_t slot)
 {
-    if (slot == 0xFF)
-        slot = app.saveSlot;
-
     if (!app.romPath || !app.handlers.loadState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -1215,9 +1212,6 @@ bool rg_emu_load_state(uint8_t slot)
 
 bool rg_emu_save_state(uint8_t slot)
 {
-    if (slot == 0xFF)
-        slot = app.saveSlot;
-
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -1264,7 +1258,6 @@ bool rg_emu_save_state(uint8_t slot)
         char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
         rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
         free(filename);
-
         emu_update_save_slot(slot);
     }
 
