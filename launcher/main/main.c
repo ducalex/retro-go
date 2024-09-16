@@ -232,7 +232,7 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
-    gui_init(app->bootType != RG_RST_RESTART);
+    gui_init(app->isColdBoot);
     applications_init();
     bookmarks_init();
 

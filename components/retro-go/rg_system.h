@@ -92,13 +92,6 @@ typedef enum
 
 typedef enum
 {
-    RG_RST_POWERON = 0, // Cold boot
-    RG_RST_RESTART,     // Warm boot
-    RG_RST_PANIC,       // Crash
-} rg_reset_reason_t;
-
-typedef enum
-{
     RG_INDICATOR_PANIC = 0,
     RG_INDICATOR_LOW_BATTERY,
     RG_INDICATOR_CHARGING,
@@ -175,7 +168,6 @@ typedef struct
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;
-    uint32_t bootType;
     uint32_t indicatorsMask;
     float speed;
     int sampleRate;
@@ -184,7 +176,8 @@ typedef struct
     int overclock;
     int tickTimeout;
     int availableMemory;
-    bool watchdog;
+    bool enWatchdog;
+    bool isColdBoot;
     bool isLauncher;
     // bool isOfficial;
     bool isRelease;

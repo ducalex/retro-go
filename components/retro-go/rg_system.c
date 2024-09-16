@@ -342,6 +342,8 @@ rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const 
 rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
 {
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
+    bool enterRecoveryMode = false;
+    bool showCrashDialog = false;
 
     app = (rg_app_t){
         .name = RG_PROJECT_APP,
@@ -351,7 +353,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
-        .bootType = RG_RST_POWERON,
         .indicatorsMask = 0xFFFFFFFF,
         .speed = 1.f,
         .sampleRate = sampleRate,
@@ -360,7 +361,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .overclock = 0,
         .tickTimeout = 3000000,
         .availableMemory = 0,
-        .watchdog = true,
+        .enWatchdog = true,
+        .isColdBoot = true,
         .isLauncher = false,
     #if RG_BUILD_RELEASE
         .isRelease = true,
@@ -377,10 +379,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
 #if defined(ESP_PLATFORM)
     esp_reset_reason_t r_reason = esp_reset_reason();
-    if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
-        app.bootType = RG_RST_PANIC;
-    else if (r_reason == ESP_RST_SW)
-        app.bootType = RG_RST_RESTART;
+    showCrashDialog = (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT ||
+                       r_reason == ESP_RST_INT_WDT || r_reason == ESP_RST_WDT);
+    app.isColdBoot = r_reason != ESP_RST_SW;
     tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
 #elif defined(RG_TARGET_SDL2)
     tasks[0] = (rg_task_t){.handle = SDL_ThreadID(), .name = "main"};
@@ -398,16 +399,17 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
     {
         RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
+        enterRecoveryMode = (timeout == 0);
         rg_task_delay(100);
-        if (timeout > 0)
-            continue;
+    }
+
+    if (enterRecoveryMode)
+    {
         rg_display_init();
         rg_gui_init();
         enter_recovery_mode();
     }
-
-    // Show alert if we've just rebooted from a panic
-    if (app.bootType == RG_RST_PANIC)
+    else if (showCrashDialog)
     {
         RG_LOGE("Recoverying from panic!\n");
         char message[400] = "Application crashed";
