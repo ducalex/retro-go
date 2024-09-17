@@ -1,3 +1,5 @@
+static uint16_t lcd_buffer[LCD_BUFFER_LENGTH];
+
 static void lcd_init(void)
 {
 }
@@ -12,7 +14,7 @@ static void lcd_set_backlight(float percent)
 
 static inline uint16_t *lcd_get_buffer(size_t length)
 {
-    return (void *)0;
+    return lcd_buffer;
 }
 
 static inline void lcd_send_buffer(uint16_t *buffer, size_t length)
