@@ -82,6 +82,7 @@ static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
 static uint32_t indicators;
+static rg_color_t ledColor = -1;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
@@ -183,20 +184,25 @@ static void update_statistics(void)
 static void update_indicators(void)
 {
     uint32_t visibleIndicators = indicators & app.indicatorsMask;
-    rg_color_t ledColor = 0; // C_GREEN
+    rg_color_t newColor = 0; // C_GREEN
 
     if (indicators & (3 << RG_INDICATOR_CRITICAL))
-        ledColor = C_RED; // Make it flash rapidly!
+        newColor = C_RED; // Make it flash rapidly!
     else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
-        ledColor = C_RED;
+        newColor = C_RED;
     else if (visibleIndicators)
-        ledColor = C_BLUE;
+        newColor = C_BLUE;
+
+    // In some cases it can be costly to update the LED status, skip if unchanged
+    if (newColor == ledColor)
+        return;
 
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
     // GPIO LED doesn't support colors, so any color = on
     if (RG_GPIO_LED != GPIO_NUM_NC)
         gpio_set_level(RG_GPIO_LED, ledColor != 0);
 #endif
+    ledColor = newColor;
 }
 
 static void system_monitor_task(void *arg)
