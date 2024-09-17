@@ -422,6 +422,14 @@ static void try_migrate(void)
         rg_settings_set_number(NS_GLOBAL, "Migration", 1390);
         rg_settings_commit();
     }
+
+    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1440)
+    {
+        // Bit order and default value of the indicators has changed in 1.44, reset it
+        rg_settings_set_number(NS_GLOBAL, "Indicators", (1 << RG_INDICATOR_POWER_LOW));
+        rg_settings_set_number(NS_GLOBAL, "Migration", 1440);
+        rg_settings_commit();
+    }
 }
 
 void event_handler(int event, void *arg)

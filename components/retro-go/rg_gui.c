@@ -1241,9 +1241,9 @@ static rg_gui_event_t led_indicator_cb(rg_gui_option_t *option, rg_gui_event_t e
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {RG_INDICATOR_SYSTEM_ACTIVITY, "System activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
-            {RG_INDICATOR_DISK_ACTIVITY, "Disk activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
-            {RG_INDICATOR_LOW_BATTERY, "Low battery", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_ACTIVITY_SYSTEM, "System activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_ACTIVITY_DISK, "Disk activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_POWER_LOW, "Low battery", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
             RG_DIALOG_END,
         };
         rg_gui_dialog("LED options", options, 0);

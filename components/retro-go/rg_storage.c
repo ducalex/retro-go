@@ -50,7 +50,7 @@ static wl_handle_t wl_handle = WL_INVALID_HANDLE;
 #if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 1);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_DISK, 1);
 
     esp_err_t ret = SDCARD_DO_TRANSACTION(slot, cmdinfo);
     if (ret == ESP_ERR_NO_MEM)
@@ -58,7 +58,7 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         // free some memory and try again?
     }
 
-    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 0);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_DISK, 0);
     return ret;
 }
 #endif

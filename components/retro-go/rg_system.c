@@ -185,7 +185,9 @@ static void update_indicators(void)
     uint32_t visibleIndicators = indicators & app.indicatorsMask;
     rg_color_t ledColor = 0; // C_GREEN
 
-    if (visibleIndicators & (1 << RG_INDICATOR_LOW_BATTERY))
+    if (indicators & (3 << RG_INDICATOR_CRITICAL))
+        ledColor = C_RED; // Make it flash rapidly!
+    else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
         ledColor = C_RED;
     else if (visibleIndicators)
         ledColor = C_BLUE;
@@ -214,8 +216,8 @@ static void system_monitor_task(void *arg)
 
         rg_battery_t battery = rg_input_read_battery();
         // TODO: The flashing should eventually be handled by update_indicators instead of here...
-        rg_system_set_indicator(RG_INDICATOR_LOW_BATTERY, (battery.present && battery.level <= 2.f &&
-                                                           !rg_system_get_indicator(RG_INDICATOR_LOW_BATTERY)));
+        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f &&
+                                                           !rg_system_get_indicator(RG_INDICATOR_POWER_LOW)));
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
@@ -355,7 +357,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
-        .indicatorsMask = (1 << RG_INDICATOR_LOW_BATTERY),
+        .indicatorsMask = (1 << RG_INDICATOR_POWER_LOW),
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
@@ -1228,7 +1230,7 @@ bool rg_emu_save_state(uint8_t slot)
 
     RG_LOGI("Saving state to '%s'.\n", filename);
 
-    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 1);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_SYSTEM, 1);
     rg_gui_draw_hourglass();
 
     if (!rg_storage_mkdir(rg_dirname(filename)))
@@ -1269,7 +1271,7 @@ bool rg_emu_save_state(uint8_t slot)
     free(filename);
 
     rg_storage_commit();
-    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 0);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_SYSTEM, 0);
 
     return success;
 }
