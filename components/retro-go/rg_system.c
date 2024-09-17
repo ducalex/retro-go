@@ -191,7 +191,9 @@ static void update_indicators(void)
         ledColor = C_BLUE;
 
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    gpio_set_level(RG_GPIO_LED, ledColor != 0);
+    // GPIO LED doesn't support colors, so any color = on
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        gpio_set_level(RG_GPIO_LED, ledColor != 0);
 #endif
 }
 
@@ -353,7 +355,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
-        .indicatorsMask = 0xFFFFFFFF,
+        .indicatorsMask = (1 << RG_INDICATOR_LOW_BATTERY),
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
