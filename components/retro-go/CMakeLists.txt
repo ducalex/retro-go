@@ -1,3 +1,7 @@
+if(((IDF_VERSION_MAJOR EQUAL 4) AND (IDF_VERSION_MINOR LESS 4)) OR ((IDF_VERSION_MAJOR EQUAL 5) AND (IDF_VERSION_MINOR GREATER 2)))
+  message(FATAL_ERROR "Retro-Go is not compatible with your version of esp-idf.\nPlease use esp-idf 4.4, 5.0, 5.1, or 5.2")
+endif()
+
 set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 if (IDF_VERSION_MAJOR EQUAL 5)
