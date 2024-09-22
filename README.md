@@ -12,7 +12,9 @@
 Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are
 ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that
 have been heavily optimized to reduce their cpu, memory, and flash needs without reducing
-compatibility!
+compatibility! 
+
+Get started in [BUILDING.md](BUILDING.md)
 
 ### Supported systems:
 - Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color, Game & Watch**
@@ -167,7 +169,16 @@ Instructions moved to [THEMING.md](THEMING.md).
 
 
 # Building
-Instructions moved to [BUILDING.md](BUILDING.md).
+To build `retro-go`, you'll need ESP-IDF (v4.3-5.2) and may need to apply patches for full functionality. 
+
+The code can be obtained via Git, and you can build firmware or individual apps using the `rg_tool.py` script.
+
+Read more in [BUILDING.md](BUILDING.md).
+
+# Custom Hardware
+You can build retro-go for your own custom setup that isn't already configured. All you need to do is make a new target and include your drivers.
+
+Get started in [PATCHING.md](PATCHING.md)
 
 
 # Acknowledgements
