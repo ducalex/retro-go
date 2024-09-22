@@ -56,8 +56,9 @@ First, change `RG_TARGET_NAME` to match the name of your target folder.
 
 
 Most of it, you will need to figure out the correct parameters for (eg. Storage and Audio)
+
 **Display**
-___
+
 If you aren't using the ILI9341 screen driver, you will need to change the `SCREEN_DRIVER` parameter. (Otherwise, just change the following settings and continue).
 
 
@@ -87,12 +88,11 @@ Make this driver in `components/retro-go/drivers/display`
 
 ___
 **Input**
-___
+
 Back in `config.h`, you will see the configuration for an I2C gamepad. If you aren't using that, you can make your own parameters based on the existing input forms in `components/retro-go/rg_input.c`
 
 
 You can also write your own input driver for unique input forms. Just look at the existing code in `rg_input.c` and match that
-___
 
 
 
