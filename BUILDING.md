@@ -32,7 +32,7 @@ There are generally two active git branches on retro-go:
 
 
 
-## Build everything and generate .fw:
+## Build everything and generate a firmware image:
 - Generate a .fw file to be installed with odroid-go-firmware (SD Card):\
    `python rg_tool.py build-fw` or `python rg_tool.py release` (clean build)
 - Generate a .img to be flashed with esptool.py (Serial):\
@@ -47,29 +47,34 @@ Note that the app named `retro-core` contains the following emulators: NES, PCE,
 
 
 
+## Flashing an image for the first time
+
+Once we have successfully built an image file (`.img` or `.fw`), it must be flashed to the device. 
+
+To flash a `.img` file with `rg_tool.py`, run:
+```
+python rg_tool.py --target (target) --port (usbport) install (apps)
+```
+
+To flash a `.img` file with `esptool.py`, run:
+```
+...
+```
+
+To flash a `.fw` file: 
+
+Instructions depend on your device, refer to README.md.
+
+
 
 ## Build, flash, and monitor individual apps for faster development:
-(**not for `.img`**s, see below)
 
+A full Retro-Go image must be flashed at least once (refer to previous section), but, after that, it is possible to flash and monitor individual apps for faster development time.
 
-It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
 1. Flash: `python rg_tool.py --port=COM3 flash prboom-go`
 2. Monitor: `python rg_tool.py --port=COM3 monitor prboom-go`
 3. Flash then monitor: `python rg_tool.py --port=COM3 run prboom-go`
 
-
-## Flashing for `.img`s
-
-
-# Flashing
-Once we have a `.img`, we can use `./rg_tool` to flash it to the device. Other tools like `esptool` need specific arguments, which `rg_tool` handles for us.
-
-
-To flash an image, run
-```
-./rg_tool install (apps) --target (target)
-```
-You can also specify the USB port with the `--port` argument
 
 
 ## Environment variables
@@ -97,6 +102,9 @@ To resolve the backtrace you will need the application's elf file. If lost, you 
 
 
 ## Porting
+Instructions to port to new ESP32 devices can be found in [PATCHING.md](PATCHING.md).
+
+
 I don't want to maintain non-ESP32 ports in this repository, but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
 - Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
@@ -105,7 +113,3 @@ I don't want to maintain non-ESP32 ports in this repository, but let me know if 
 
 Whilst all applications were heavily modified or even redesigned for our constrained needs, special care is taken to keep
 Retro-Go and ESP32-specific code exclusively in their port file (main.c). This makes reusing them in your own codebase very easy!
-
-
-For other ESP32 setups, refer to [PATCHING.md](PATCHING.md)
-
