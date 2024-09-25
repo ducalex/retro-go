@@ -58,7 +58,7 @@ Get started in [BUILDING.md](BUILDING.md)
 
 ### Generic ESP32
 This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with smaller flash).
-  1. (optional) Port retro-go to your device ([PATCHING.md](PATCHING.md))
+  1. (optional) Port retro-go to your device ([PORTING.md](PORTING.md))
   2. Build a .img file (refer to [Building Retro-Go](#building) below)
   3. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
       _Note: Your particular device may require extra steps (like holding a button during power up), different esptool flags, or modifying base.sdkconfig._

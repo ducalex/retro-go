@@ -102,7 +102,7 @@ To resolve the backtrace you will need the application's elf file. If lost, you 
 
 
 ## Porting
-Instructions to port to new ESP32 devices can be found in [PATCHING.md](PATCHING.md).
+Instructions to port to new ESP32 devices can be found in [PORTING.md](PORTING.md).
 
 
 I don't want to maintain non-ESP32 ports in this repository, but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
