@@ -31,6 +31,15 @@ There are generally two active git branches on retro-go:
 
 
 
+# rg_tool
+ESP-IDF doesn't support managing multiple apps in one environment (launcher, prboom-go, etc). `rg_tool.py` is used instead, which passes correct arguments to `idf.py` and other tools.
+
+
+To get started, run
+```
+./rg_tool.py
+```
+
 
 ## Build everything and generate a firmware image:
 - Generate a .fw file to be installed with odroid-go-firmware (SD Card):\
@@ -49,7 +58,7 @@ Note that the app named `retro-core` contains the following emulators: NES, PCE,
 
 ## Flashing an image for the first time
 
-Once we have successfully built an image file (`.img` or `.fw`), it must be flashed to the device. 
+Once we have successfully built an image file (`.img` or `.fw`), it must be flashed to the device.
 
 To flash a `.img` file with `rg_tool.py`, run:
 ```
@@ -58,7 +67,7 @@ python rg_tool.py --target (target) --port (usbport) install (apps)
 
 To flash a `.img` file with `esptool.py`, run:
 ```
-...
+esptool.py write_flash --flash_size detect 0x0 retro-go_*.img
 ```
 
 To flash a `.fw` file: 

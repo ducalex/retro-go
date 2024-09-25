@@ -12,27 +12,16 @@ Before using your own patch of retro-go, make a clean build of retro go using ba
 ```
 ./rg_tool.py build-img launcher --target esp32s3-devkit-c
 ```
-Make sure that build successfully before continuing.  If it doesn't, refer to [BUILDING.md](BUILDING.md). Also check your `esp-idf` installation and make sure you have it set up in your environment (run `idf.py --version` to check)
-
-
-# rg_tool
-ESP-IDF doesn't support managing multiple apps in one environment (launcher, prboom-go, etc). `rg_tool.py` is used instead, which passes correct arguments to `idf.py` and other tools.
-
-
-To get started, run
-```
-./rg_tool.py
-```
-
 
 Since we aren't using other setups, like ODROID-GO, we will be building `/img` files, not `.fw`. Use `./rg_tool.py build-img` to build imgs.
 
 
-**Make sure a basic setup is working before continuing to patch the code for your setup**
+**Make sure a basic setup is working before continuing to patch the code for your setup** 
+
+If it doesn't, refer to [BUILDING.md](BUILDING.md). Also check your `esp-idf` installation and make sure you have it set up in your environment (run `idf.py --version` to check)
 ```
 ./rg_tool.py build-img launcher --target esp32s3-devkit-c
 ```
-
 
 # Patching
 Retro-Go uses reusable hardware components, so it is easy to set it up for your own hardware.
