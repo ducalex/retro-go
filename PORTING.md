@@ -114,5 +114,5 @@ This will configure ESP-IDF to run on your board
 Change the target board in `env.py` to match yours
 
 
-After completing all these steps, you should be able to build your apps with `rg_tool`. See `BUILDING.md` for more info about this and flashing. **Make sure to use the steps for `.img`, NOT `.fw`**
+After completing all these steps, you should be able to build your apps with `rg_tool`. See [BUILDING.md](BUILDING.md#flashing-an-image-for-the-first-time) for more info about this and flashing. **Make sure to use the steps for `.img`, NOT `.fw`**
 

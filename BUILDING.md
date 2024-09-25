@@ -39,6 +39,10 @@ To get started, run
 ```
 ./rg_tool.py
 ```
+or 
+```
+python rg_tool.py
+```
 
 
 ## Build everything and generate a firmware image:
@@ -72,7 +76,7 @@ esptool.py write_flash --flash_size detect 0x0 retro-go_*.img
 
 To flash a `.fw` file: 
 
-Instructions depend on your device, refer to README.md.
+Instructions depend on your device, refer to [README.md](README.md#installation).
 
 
 
