@@ -1,4 +1,5 @@
 #include "rg_system.h"
+#include "rg_lang.h"
 
 #include <sys/time.h>
 #include <stdarg.h>
@@ -262,7 +263,7 @@ static void system_monitor_task(void *arg)
             // App hasn't ticked in a while, listen for MENU presses to give feedback to the user
             if (rg_input_wait_for_key(RG_KEY_MENU, true, 1000))
             {
-                const char *message = "App unresponsive... Hold MENU to quit!";
+                const char *message = TEXT_App_unresponsive;
                 // Drawing at this point isn't safe. But the alternative is being frozen...
                 rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, message, C_RED, C_BLACK, RG_TEXT_BIGGER);
                 if (!rg_input_wait_for_key(RG_KEY_MENU, false, 2000))
@@ -290,14 +291,14 @@ static void enter_recovery_mode(void)
     RG_LOGW("Entering recovery mode...\n");
 
     const rg_gui_option_t options[] = {
-        {0, "Reset all settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {1, "Reboot to factory ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Reboot to launcher", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Reset_all_settings, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {1, TEXT_Reboot_to_factory, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, TEXT_Reboot_to_launcher, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     while (true)
     {
-        switch (rg_gui_dialog("Recovery mode", options, -1))
+        switch (rg_gui_dialog(TEXT_Recovery_mode, options, -1))
         {
         case 0:
             rg_storage_delete(RG_BASE_PATH_CONFIG);
