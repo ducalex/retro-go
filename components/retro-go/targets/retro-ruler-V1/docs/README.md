@@ -1,9 +1,9 @@
-# Retro-ESP32
+# Retro-ruler-V1
 - Status:
-- Ref: https://github.com/retro-esp32/
+- Ref: https://github.com/raphatex/retro-ruler
 
 # Hardware info
-- Module: ESP32-WROVER-B
+- Module: ESP32-WROVER-B (4/8MB)
 
 # Images
-![device.jpg](device.jpg)
+![device.png](device.png)
