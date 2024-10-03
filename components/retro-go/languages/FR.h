@@ -7,7 +7,7 @@
 #define TEXT_Reboot_to_factory "Redemarrer usine" // "Reboot to factory "
 #define TEXT_Reboot_to_launcher "Relancer launcher" // "Reboot to launcher"
 
-#define TEXT_Recovery_mode "Mode de récupération" // "Recovery mode"
+#define TEXT_Recovery_mode "Mode de recuperation" // "Recovery mode"
 #define TEXT_System_Panic "Plantage systeme!" // "System Panic!"
 // end of rg_system.c
 
@@ -108,7 +108,7 @@
 #define TEXT_Theme_set_to "Theme appliqué : '%s'!\n" // "Theme set to '%s'!\n"
 #define TEXT_Font_set_to "Police appliqué : points=%d, scaling=%.2f\n" // "Font set to: points=%d, scaling=%.2f\n"
 #define TEXT_SPEED_BUSY "VIT: %d%% (%d %d) / BUSY: %d%%" // "SPEED: %d%% (%d %d) / BUSY: %d%%"
-#define TEXT_Using_built_in_theme "Usage du theme par défault!\n" // "Using built-in theme!\n"
+#define TEXT_Using_built_in_theme "Usage du theme par default!\n" // "Using built-in theme!\n"
 #define TEXT_Folder_is_empty "Le dossier est vide." // "Folder is empty."
 
 #define TEXT_Yes "Oui" // "yes"
@@ -185,9 +185,7 @@
 #define TEXT_Heap_free "Heap free " // "Heap free "
 #define TEXT_Block_free "Block free" // "Block free"
 #define TEXT_App_name "App name  " // "App name  "
-#define TEXT_Network "Network   " // "Network   "
 #define TEXT_Local_time "Local time" // "Local time"
-#define TEXT_Timezone "Timezone  " // "Timezone  "
 #define TEXT_Uptime "Uptime    " // "Uptime    "
 #define TEXT_Battery "Battery   " // "Battery   "
 #define TEXT_Blit_time "Blit time " // "Blit time "

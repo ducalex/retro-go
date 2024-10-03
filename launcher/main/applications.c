@@ -41,7 +41,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
     }
     else if (entry->is_dir)
     {
-        RG_LOGI("Found subdirectory '%s'", entry->path);
+        RG_LOGI(TEXT_Found_subdirectory, entry->path);
         type = RETRO_TYPE_FOLDER;
     }
 
@@ -54,7 +54,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
         retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
         if (!new_buf)
         {
-            RG_LOGW("Ran out of memory, file scanning stopped at %d entries ...", app->files_count);
+            RG_LOGW(TEXT_Ran_out_of_memory_file_scanning_stopped_at, app->files_count);
             return RG_SCANDIR_STOP;
         }
         app->files = new_buf;
@@ -96,7 +96,7 @@ static int scan_saves_cb(const rg_scandir_t *entry, void *arg)
 
 static void application_init(retro_app_t *app)
 {
-    RG_LOGI("Initializing application '%s' (%s)", app->description, app->partition);
+    RG_LOGI(TEXT_Initializing_application, app->description, app->partition);
 
     if (app->initialized)
         return;
@@ -177,7 +177,7 @@ static void crc_cache_init(void)
     crc_cache = calloc(1, sizeof(*crc_cache));
     if (!crc_cache)
     {
-        RG_LOGE("Failed to allocate crc_cache!");
+        RG_LOGE(TEXT_Failed_to_allocate_crc_cache);
         return;
     }
 
@@ -186,7 +186,7 @@ static void crc_cache_init(void)
     rg_storage_read_file(RG_BASE_PATH_CACHE "/crc32.bin", &data_ptr, &data_len, RG_FILE_USER_BUFFER);
     if (crc_cache->magic == CRC_CACHE_MAGIC && crc_cache->count <= CRC_CACHE_MAX_ENTRIES)
     {
-        RG_LOGI("Loaded CRC cache (entries: %d)", (int)crc_cache->count);
+        RG_LOGI(TEXT_Loaded_CRC_cache, (int)crc_cache->count);
         crc_cache_dirty = false;
     }
     else
@@ -200,7 +200,7 @@ static void crc_cache_save(void)
     if (!crc_cache || !crc_cache_dirty)
         return;
 
-    RG_LOGI("Saving CRC cache...");
+    RG_LOGI(TEXT_Saving_CRC_cache);
     size_t data_len = RG_MIN(8 + (crc_cache->count * sizeof(crc_cache->entries[0])), sizeof(*crc_cache));
     crc_cache_dirty = !rg_storage_write_file(RG_BASE_PATH_CACHE"/crc32.bin", crc_cache, data_len, 0);
 }
@@ -251,12 +251,12 @@ static void crc_cache_update(retro_file_t *file)
         else
             index = rand() % CRC_CACHE_MAX_ENTRIES;
 
-        RG_LOGI("Adding %08X => %08X to cache (new total: %d)",
+        RG_LOGI(TEXT_Adding_to_cache,
             (int)key, (int)file->checksum, (int)crc_cache->count);
     }
     else
     {
-        RG_LOGI("Updating %08X => %08X to cache (total: %d)",
+        RG_LOGI(TEXT_Updating_to_cache,
             (int)key, (int)file->checksum, (int)crc_cache->count);
     }
 
@@ -287,7 +287,7 @@ void crc_cache_prebuild(void)
         {
             retro_file_t *file = &app->files[j];
 
-            rg_gui_draw_message("Scanning %s %d/%d", app->short_name, j, app->files_count);
+            rg_gui_draw_message(TEXT_Scanning, app->short_name, j, app->files_count);
 
             // Give up on any button press to improve responsiveness
             if (rg_input_read_gamepad())
@@ -366,12 +366,12 @@ static void tab_refresh(tab_t *tab, const char *selected)
     if (items_count == 0)
     {
         gui_resize_list(tab, 6);
-        sprintf(tab->listbox.items[0].text, "Welcome to Retro-Go!");
+        sprintf(tab->listbox.items[0].text, TEXT_Welcome_to_Retro_Go);
         sprintf(tab->listbox.items[1].text, " ");
-        sprintf(tab->listbox.items[2].text, "Place roms in folder: %s", rg_relpath(app->paths.roms));
-        sprintf(tab->listbox.items[3].text, "With file extension: %s", app->extensions);
+        sprintf(tab->listbox.items[2].text, TEXT_Place_roms_in_folder, rg_relpath(app->paths.roms));
+        sprintf(tab->listbox.items[3].text, TEXT_With_file_extension, app->extensions);
         sprintf(tab->listbox.items[4].text, " ");
-        sprintf(tab->listbox.items[5].text, "You can hide this tab in the menu");
+        sprintf(tab->listbox.items[5].text, TEXT_You_can_hide_this_tab);
         tab->listbox.cursor = 4;
     }
     else if (selected)
@@ -538,18 +538,18 @@ static void show_file_info(retro_file_t *file)
 
     if (!info.exists)
     {
-        rg_gui_alert("File not found", file->name);
+        rg_gui_alert(TEXT_File_not_found, file->name);
         return;
     }
 
     rg_gui_option_t options[] = {
-        {0, "Name", (char *)file->name, 1, NULL},
-        {0, "Folder", (char *)file->folder, 1, NULL},
-        {0, "Size", filesize, 1, NULL},
-        {3, "CRC32", filecrc, 1, NULL},
+        {0, TEXT_ROM_Name, (char *)file->name, 1, NULL},
+        {0, TEXT_ROM_Folder, (char *)file->folder, 1, NULL},
+        {0, TEXT_ROM_Size, filesize, 1, NULL},
+        {3, TEXT_ROM_CRC32, filecrc, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {5, "Delete file", NULL, 1, NULL},
-        {1, "Close", NULL, 1, NULL},
+        {5, TEXT_ROM_Delete_file, NULL, 1, NULL},
+        {1, TEXT_ROM_Close, NULL, 1, NULL},
         RG_DIALOG_END,
     };
 
@@ -560,13 +560,13 @@ static void show_file_info(retro_file_t *file)
         if (file->checksum)
             sprintf(filecrc, "%08X (%d)", (int)file->checksum, file->app->crc_offset);
 
-        switch (rg_gui_dialog("File properties", options, -1))
+        switch (rg_gui_dialog(TEXT_File_properties, options, -1))
         {
         case 3:
             application_get_file_crc32(file);
             continue;
         case 5:
-            if (rg_gui_confirm("Delete selected file?", 0, 0))
+            if (rg_gui_confirm(TEXT_Delete_selected_file, 0, 0))
             {
                 if (remove(get_file_path(file)) == 0)
                 {
@@ -595,13 +595,13 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     int slot = -1;
 
     rg_gui_option_t choices[] = {
-        {0, "Resume game", NULL, has_save, NULL},
-        {1, "New game    ", NULL, 1, NULL},
+        {0, TEXT_Resume_game, NULL, has_save, NULL},
+        {1, TEXT_New_game, NULL, 1, NULL},
         RG_DIALOG_SEPARATOR,
-        {3, is_fav ? "Del favorite" : "Add favorite", NULL, 1, NULL},
-        {2, "Delete save", NULL, has_save || has_sram, NULL},
+        {3, is_fav ? TEXT_Del_favorite : TEXT_Add_favorite, NULL, 1, NULL},
+        {2, TEXT_Delete_save, NULL, has_save || has_sram, NULL},
         RG_DIALOG_SEPARATOR,
-        {4, "Properties", NULL, 1, NULL},
+        {4, TEXT_Properties, NULL, 1, NULL},
         RG_DIALOG_END,
     };
 
@@ -609,7 +609,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     switch (sel)
     {
     case 0:
-        if ((slot = rg_gui_savestate_menu("Resume", rom_path, 1)) == -1)
+        if ((slot = rg_gui_savestate_menu(TEXT_Resume, rom_path, 1)) == -1)
             break;
         /* fallthrough */
     case 1:
@@ -619,13 +619,13 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
 
     case 2:
-        while ((slot = rg_gui_savestate_menu("Delete save?", rom_path, 0)) != -1)
+        while ((slot = rg_gui_savestate_menu(TEXT_Delete_save_question, rom_path, 0)) != -1)
         {
             remove(savestates->slots[slot].preview);
             remove(savestates->slots[slot].file);
             // FIXME: We should update the last slot used here
         }
-        if (has_sram && rg_gui_confirm("Delete sram file?", 0, 0))
+        if (has_sram && rg_gui_confirm(TEXT_Delete_sram_file, 0, 0))
         {
             remove(sram_path);
         }
@@ -659,7 +659,7 @@ static void application(const char *desc, const char *name, const char *exts, co
 
     if (!rg_system_have_app(part))
     {
-        RG_LOGI("Application '%s' (%s) not present, skipping", desc, part);
+        RG_LOGI(TEXT_Application_not_present, desc, part);
         return;
     }
 
