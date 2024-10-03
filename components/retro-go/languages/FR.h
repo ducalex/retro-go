@@ -165,6 +165,44 @@
 #define TEXT_Border "Bordure" // "Border"
 #define TEXT_Speed "Vitesse" // "Speed"
 
+// about menu
+#define TEXT_Version "Version" // "Version"
+#define TEXT_Date "Date   " // "Date   "
+#define TEXT_Target "Target " // "Target "
+#define TEXT_Website "Website" // "Website"
+#define TEXT_Options "Options " // "Options "
+#define TEXT_Debug_menu "Debug menu" // "Debug menu"
+#define TEXT_Reset_settings "Reset settings" // "Reset settings"
+#define TEXT_About_Retro_Go "About Retro-Go" // "About Retro-Go"
+#define TEXT_Credits "Credits" // "Credits"
+#define TEXT_Reset_all_settings_question "Reset all settings?" // "Reset all settings?"
+
+// debug menu
+#define TEXT_Screen_res "Screen res" // "Screen res"
+#define TEXT_Source_res "Source res" // "Source res"
+#define TEXT_Scaled_res "Scaled res" // "Scaled res"
+#define TEXT_Stack_HWM "Stack HWM " // "Stack HWM "
+#define TEXT_Heap_free "Heap free " // "Heap free "
+#define TEXT_Block_free "Block free" // "Block free"
+#define TEXT_App_name "App name  " // "App name  "
+#define TEXT_Network "Network   " // "Network   "
+#define TEXT_Local_time "Local time" // "Local time"
+#define TEXT_Timezone "Timezone  " // "Timezone  "
+#define TEXT_Uptime "Uptime    " // "Uptime    "
+#define TEXT_Battery "Battery   " // "Battery   "
+#define TEXT_Blit_time "Blit time " // "Blit time "
+
+#define TEXT_Overclock "Overclock" // "Overclock"
+#define TEXT_Reboot_to_firmware "Reboot to firmware" // "Reboot to firmware"
+#define TEXT_Clear_cache "Clear cache    " // "Clear cache    "
+#define TEXT_Save_screenshot "Save screenshot" // "Save screenshot"
+#define TEXT_Save_trace "Save trace" // "Save trace"
+#define TEXT_Cheats "Cheats    " // "Cheats    "
+#define TEXT_Crash "Crash     " // "Crash     "
+#define TEXT_Log_debug "Log=debug " // "Log=debug "
+
+#define TEXT_Debugging "Debugging" // "Debugging"
+
 // save slot
 #define TEXT_Slot_last_used "Emplacement %d (dernier utilisé)" // "Slot %d (last used)"
 #define TEXT_Slot "Emplacement %d" // "Slot %d"
@@ -180,9 +218,10 @@
 #define TEXT_Load_game "Charger partie" // "Load game      "
 #define TEXT_Reset "Reset          " // "Reset          "
 #define TEXT_Netplay "Netplay " // "Netplay "
-#define TEXT_Options "Options " // "Options "
 #define TEXT_About "Infos   " // "About   "
 #define TEXT_Quit "Quitter " // "Quit    "
+
+#define TEXT_Retro_Go "Retro-Go" // "Retro-Go"
 
 #define TEXT_Soft_reset "Soft reset" // "Soft reset"
 #define TEXT_Hard_reset "Hard reset" // "Hard reset"

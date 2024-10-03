@@ -1541,15 +1541,15 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
-        {0, "Version", (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Target ", (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Website", (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, TEXT_Version, (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, TEXT_Date, (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, TEXT_Target, (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, TEXT_Website, (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
-        {4, "Options ", NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
+        {4, TEXT_Options, NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
         // {1, "View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, TEXT_Debug_menu, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3, TEXT_Reset_settings, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
 
@@ -1564,17 +1564,17 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
 
     while (true)
     {
-        switch (rg_gui_dialog("About Retro-Go", options, 4))
+        switch (rg_gui_dialog(TEXT_About_Retro_Go, options, 4))
         {
             case 1:
                 // FIXME: This should probably be a regular dialog so that it's scrollable!
-                rg_gui_alert("Credits", RG_PROJECT_CREDITS);
+                rg_gui_alert(TEXT_Credits, RG_PROJECT_CREDITS);
                 break;
             case 2:
                 rg_gui_debug_menu(NULL);
                 break;
             case 3:
-                if (rg_gui_confirm("Reset all settings?", NULL, false)) {
+                if (rg_gui_confirm(TEXT_Reset_all_settings_question, NULL, false)) {
                     rg_storage_delete(RG_BASE_PATH_CACHE);
                     rg_settings_reset();
                     rg_system_restart();
@@ -1599,28 +1599,28 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     char app_name[32], network_str[64];
 
     const rg_gui_option_t options[] = {
-        {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Source res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Scaled res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "App name  ", app_name,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Network   ", network_str,  RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Local time", local_time,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Timezone  ", timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Screen_res, screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Source_res, source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Scaled_res, scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Stack_HWM, stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Heap_free, heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Block_free, block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_App_name, app_name,     RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Network, network_str,  RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Local_time, local_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Timezone, timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Uptime, uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Battery, battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Blit_time, frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
-        {0, "Overclock", "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
-        {1, "Reboot to firmware", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Clear cache    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3, "Save screenshot", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {4, "Save trace", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {5, "Cheats    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {6, "Crash     ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {7, "Log=debug ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, TEXT_Overclock, "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+        {1, TEXT_Reboot_to_firmware, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, TEXT_Clear_cache, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3, TEXT_Save_screenshot, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {4, TEXT_Save_trace, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {5, TEXT_Cheats, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {6, TEXT_Crash, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {7, TEXT_Log_debug, NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
 
@@ -1670,7 +1670,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 
     snprintf(app_name, 32, "%s", rg_system_get_app()->name);
 
-    switch (rg_gui_dialog("Debugging", options, 0))
+    switch (rg_gui_dialog(TEXT_Debugging, options, 0))
     {
     case 1:
         rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
@@ -1782,7 +1782,7 @@ void rg_gui_game_menu(void)
 
     rg_audio_set_mute(true);
 
-    sel = rg_gui_dialog("Retro-Go", choices, 0);
+    sel = rg_gui_dialog(TEXT_Retro_Go, choices, 0);
 
     rg_settings_commit();
 
