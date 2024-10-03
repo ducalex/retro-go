@@ -1,6 +1,5 @@
 #include "rg_system.h"
 #include "rg_gui.h"
-#include "rg_lang.h"
 
 #include <cJSON.h>
 #include <math.h>

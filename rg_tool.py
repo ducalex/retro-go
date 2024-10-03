@@ -16,7 +16,12 @@ TARGETS = ["odroid-go"] # We just need to specify the default, the others are di
 for t in glob.glob("components/retro-go/targets/*/config.h"):
     TARGETS.append(os.path.basename(os.path.dirname(t)))
 
+LANGUAGES = ["EN"] # We just need to specify the default, the others are discovered below
+for t in glob.glob("components/retro-go/languages/*"):
+    LANGUAGES.append(os.path.basename(t).strip('.h'))
+
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
+DEFAULT_LANGUAGE = os.getenv("RG_TOOL_LANGUAGE", LANGUAGES[0])
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
@@ -130,13 +135,14 @@ def clean_app(app):
     print("Done.\n")
 
 
-def build_app(app, device_type, with_profiling=False, no_networking=False, is_release=False):
+def build_app(app, device_type, device_language, with_profiling=False, no_networking=False, is_release=False):
     # To do: clean up if any of the flags changed since last build
     print("Building app '%s'" % app)
     args = [IDF_PY, "app"]
     args.append(f"-DRG_PROJECT_APP={app}")
     args.append(f"-DRG_PROJECT_VER={PROJECT_VER}")
     args.append(f"-DRG_BUILD_TARGET=RG_TARGET_{re.sub(r'[^A-Z0-9]', '_', device_type.upper())}")
+    args.append(f"-DRG_BUILD_LANGUAGE=RG_LANGUAGE_{device_language}")
     args.append(f"-DRG_BUILD_RELEASE={1 if is_release else 0}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
@@ -186,6 +192,9 @@ parser.add_argument(
     "--target", default=DEFAULT_TARGET, choices=set(TARGETS), help="Device to target"
 )
 parser.add_argument(
+    "--language", default=DEFAULT_LANGUAGE, choices=set(LANGUAGES), help="Language for Retro-go"
+)
+parser.add_argument(
     "--no-networking", action="store_const", const=True, help="Build without networking support"
 )
 parser.add_argument(
@@ -223,16 +232,16 @@ try:
     if command in ["build", "build-fw", "build-img", "release", "run", "profile", "install"]:
         print("=== Step: Building ===\n")
         for app in apps:
-            build_app(app, args.target, command == "profile", args.no_networking, command == "release")
+            build_app(app, args.target, args.language, command == "profile", args.no_networking, command == "release")
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
         build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
-        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
         build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
 
     if command in ["install"]:

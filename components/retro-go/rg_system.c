@@ -1,5 +1,4 @@
 #include "rg_system.h"
-#include "rg_lang.h"
 
 #include <sys/time.h>
 #include <stdarg.h>

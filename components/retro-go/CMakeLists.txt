@@ -43,10 +43,11 @@ if(RG_BUILD_RELEASE)
     component_compile_options(-DRG_BUILD_RELEASE=1)
 endif()
 
-set(RG_BUILD_INFO "${RG_BUILD_TARGET}-${RG_BUILD_RELEASE} ${PROJECT_VER} SDK:${IDF_VER} ${IDF_TARGET}")
+set(RG_BUILD_INFO "${RG_BUILD_TARGET}-${RG_BUILD_RELEASE}-${RG_BUILD_LANGUAGE} ${PROJECT_VER} SDK:${IDF_VER} ${IDF_TARGET}")
 string(TIMESTAMP RG_BUILD_TIME "%s")
 
 component_compile_options(-D${RG_BUILD_TARGET}=1)
+component_compile_options(-D${RG_BUILD_LANGUAGE}=1)
 component_compile_options(-DRG_PROJECT_APP="${RG_PROJECT_APP}")
 component_compile_options(-DRG_BUILD_INFO="${RG_BUILD_INFO}")
 component_compile_options(-DRG_BUILD_TIME=${RG_BUILD_TIME})

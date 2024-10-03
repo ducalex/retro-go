@@ -4,6 +4,7 @@ set(EXTRA_COMPONENT_DIRS "${CMAKE_CURRENT_LIST_DIR}/components")
 macro(rg_setup_compile_options)
     component_compile_options(
         -D${RG_BUILD_TARGET}=1
+        -D${RG_BUILD_LANGUAGE}=1
         -DRETRO_GO=1
         -fjump-tables -ftree-switch-conversion
         ${ARGV}

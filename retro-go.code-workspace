@@ -91,5 +91,8 @@
 		"files.watcherExclude": {
 			"**/build/**": true,
 		},
+		"files.associations": {
+			"fr.h": "c"
+		},
 	}
 }

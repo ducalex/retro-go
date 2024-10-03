@@ -14,7 +14,6 @@
 #include "gui.h"
 #include "webui.h"
 #include "updater.h"
-#include "rg_lang.h"
 
 static rg_app_t *app;
 

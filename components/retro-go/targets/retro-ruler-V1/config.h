@@ -1,9 +1,6 @@
 // Target definition
 #define RG_TARGET_NAME             "RETRO-RULER-V1"
 
-// System language
-#define RG_LANG_FR
-
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
 #define RG_STORAGE_SDSPI_HOST       SPI2_HOST

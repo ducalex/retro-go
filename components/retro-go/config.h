@@ -26,6 +26,15 @@
 #define RG_TARGET_ODROID_GO
 #endif
 
+// could be replaced by a "#include RG_LANGUAGE_FILE" for example
+#if defined(RG_LANGUAGE_FR)
+#include "languages/FR.h"
+#else
+#warning "No language defined. Defaulting to EN"
+#include "languages/EN.h"
+#endif
+// could be replaced by a "#include RG_LANGUAGE_FILE" for example
+
 #ifndef RG_PROJECT_NAME
 #define RG_PROJECT_NAME "Retro-Go"
 #endif
