@@ -236,12 +236,12 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
+        fw_file = ("%s_%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
         build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
-        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
+        img_file = ("%s_%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target, args.language)).lower()
         build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
 
     if command in ["install"]:
