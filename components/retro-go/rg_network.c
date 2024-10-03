@@ -287,39 +287,57 @@ rg_http_req_t *rg_network_http_open(const char *url, const rg_http_cfg_t *cfg)
 {
     RG_ASSERT_ARG(url != NULL);
 #ifdef RG_ENABLE_NETWORKING
-    esp_http_client_config_t http_config = {.url = url, .buffer_size = 1024, .buffer_size_tx = 1024};
-    esp_http_client_handle_t http_client = esp_http_client_init(&http_config);
     rg_http_req_t *req = calloc(1, sizeof(rg_http_req_t));
+    if (!req)
+    {
+        RG_LOGE("Out of memory");
+        return NULL;
+    }
 
-    if (!http_client || !req)
+    req->config = cfg ? *cfg : (rg_http_cfg_t)RG_HTTP_DEFAULT_CONFIG();
+    req->client = esp_http_client_init(&(esp_http_client_config_t){
+        .url = url,
+        .buffer_size = 1024,
+        .buffer_size_tx = 1024,
+        .method = req->config.post_data ? HTTP_METHOD_POST : HTTP_METHOD_GET,
+        .timeout_ms = req->config.timeout_ms,
+    });
+
+    if (!req->client)
     {
         RG_LOGE("Error creating client");
         goto fail;
     }
 
 try_again:
-    if (esp_http_client_open(http_client, 0) != ESP_OK)
+    if (esp_http_client_open(req->client, req->config.post_len) != ESP_OK)
     {
         RG_LOGE("Error opening connection");
         goto fail;
     }
 
-    if (esp_http_client_fetch_headers(http_client) < 0)
+    if (req->config.post_data)
+    {
+        esp_http_client_write(req->client, req->config.post_data, req->config.post_len);
+        // Check for errors?
+    }
+
+    if (esp_http_client_fetch_headers(req->client) < 0)
     {
         RG_LOGE("Error fetching headers");
         goto fail;
     }
 
-    req->status_code = esp_http_client_get_status_code(http_client);
-    req->content_length = esp_http_client_get_content_length(http_client);
-    req->client = (void *)http_client;
+    req->status_code = esp_http_client_get_status_code(req->client);
+    req->content_length = esp_http_client_get_content_length(req->client);
 
+    // We must handle redirections manually because we're not using esp_http_client_perform
     if (req->status_code == 301 || req->status_code == 302)
     {
-        if (req->redirections < 5)
+        if (req->redirections < req->config.max_redirections)
         {
-            esp_http_client_set_redirection(http_client);
-            esp_http_client_close(http_client);
+            esp_http_client_set_redirection(req->client);
+            esp_http_client_close(req->client);
             req->redirections++;
             goto try_again;
         }
@@ -328,7 +346,7 @@ try_again:
     return req;
 
 fail:
-    esp_http_client_cleanup(http_client);
+    esp_http_client_cleanup(req->client);
     free(req);
 #endif
     return NULL;
