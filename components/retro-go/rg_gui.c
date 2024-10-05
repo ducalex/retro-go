@@ -506,7 +506,12 @@ void rg_gui_draw_icons(void)
 
     if (battery.present)
     {
-        right += 22;
+
+        #ifdef RG_SCREEN_HAS_ROUND_CORNERS
+        right += 42; // This is to shift the battery icon a bit on the left
+        #else
+        right += 22; // Regular rectangle screen
+        #endif
 
         int width = 16;
         int height = icon_height;
