@@ -13,6 +13,7 @@ Patching esp-idf may be required for full functionality. Patches are located in 
 
 ## Obtaining the code
 
+
 Using git is the preferred method but you can also download a zip from the project's front page and extract it if you want, Retro-Go has no external dependencies.
 
 There are generally two active git branches on retro-go:
@@ -22,24 +23,58 @@ There are generally two active git branches on retro-go:
 `git clone -b <branch> https://github.com/ducalex/retro-go/`
 
 
-## Build everything and generate .fw:
+# rg_tool
+ESP-IDF doesn't support managing multiple apps in one environment (launcher, prboom-go, etc). `rg_tool.py` is used instead, which passes correct arguments to `idf.py` and other tools.
+
+
+To get started, run
+```
+./rg_tool.py
+```
+or 
+```
+python rg_tool.py
+```
+
+## Build everything and generate a firmware image:
 - Generate a .fw file to be installed with odroid-go-firmware (SD Card):\
-    `python rg_tool.py build-fw` or `python rg_tool.py release` (clean build)
+   `python rg_tool.py build-fw` or `python rg_tool.py release` (clean build)
 - Generate a .img to be flashed with esptool.py (Serial):\
-    `python rg_tool.py build-img` or `python rg_tool.py release` (clean build)
+   `python rg_tool.py build-img` or `python rg_tool.py release` (clean build)
+
 
 For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
 1. `python rg_tool.py build-fw launcher prboom-go`
 
+
 Note that the app named `retro-core` contains the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these emulators cannot be selected individually. The reason for the bundling is simply size, together they account for a mere 700KB instead of almost 3MB when they were built separately.
 
 
+## Flashing an image for the first time
+
+Once we have successfully built an image file (`.img` or `.fw`), it must be flashed to the device.
+
+To flash a `.img` file with `rg_tool.py`, run:
+```
+python rg_tool.py --target (target) --port (usbport) install (apps)
+```
+
+To flash a `.img` file with `esptool.py`, run:
+```
+esptool.py write_flash --flash_size detect 0x0 retro-go_*.img
+```
+
+To flash a `.fw` file: 
+
+Instructions depend on your device, refer to [README.md](README.md#installation).
+
 ## Build, flash, and monitor individual apps for faster development:
-It would be tedious to build, move to SD, and flash a full .fw all the time during development. Instead you can:
+
+A full Retro-Go image must be flashed at least once (refer to previous section), but, after that, it is possible to flash and monitor individual apps for faster development time.
+
 1. Flash: `python rg_tool.py --port=COM3 flash prboom-go`
 2. Monitor: `python rg_tool.py --port=COM3 monitor prboom-go`
 3. Flash then monitor: `python rg_tool.py --port=COM3 run prboom-go`
-
 
 ## Environment variables
 rg_tool.py supports a few environment variables if you want to avoid passing flags all the time:
@@ -47,19 +82,20 @@ rg_tool.py supports a few environment variables if you want to avoid passing fla
 - `RG_TOOL_BAUD` represents --baud
 - `RG_TOOL_PORT` represents --port
 
-
 ## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency colour.
-
+All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color.
 
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
 
+
 To resolve the backtrace you will need the application's elf file. If lost, you can recreate it by building the app again **using the same esp-idf and retro-go versions**. Then you can run `xtensa-esp32-elf-addr2line -ifCe app-name/build/app-name.elf`.
 
-
 ## Porting
-I don't want to maintain non-ESP32 ports in this repository but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
+Instructions to port to new ESP32 devices can be found in [PORTING.md](PORTING.md).
+
+
+I don't want to maintain non-ESP32 ports in this repository, but let me know if I can make small changes to make your own port easier! The absolute minimum requirements for Retro-Go are roughly:
 - Processor: 200Mhz 32bit little-endian
 - Memory: 2MB
 - Compiler: C99 (and C++03 for handy-go)
