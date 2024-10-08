@@ -7,7 +7,6 @@
 - [Building](#building)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
-- [Custom Hardware](#custom-hardware)
 
 # Description
 Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are
