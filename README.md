@@ -10,9 +10,9 @@
 
 # Description
 Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are
-ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that
-have been heavily optimized to reduce their cpu, memory, and flash needs without reducing
-compatibility!
+ODROID-GO and MRGC-G32, check [this list for other devices](components/retro-go/README.md)).
+The project consists of a launcher and half a dozen applications that have been heavily
+optimized to reduce their cpu, memory, and flash needs without reducing compatibility!
 
 ### Supported systems:
 - Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color, Game & Watch**

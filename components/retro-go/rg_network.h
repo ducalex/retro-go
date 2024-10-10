@@ -40,8 +40,20 @@ rg_network_t rg_network_get_info(void);
 
 typedef struct
 {
-
+    int max_redirections;
+    int timeout_ms;
+    // Perform POST request
+    const void *post_data;
+    int post_len;
 } rg_http_cfg_t;
+
+#define RG_HTTP_DEFAULT_CONFIG() \
+    {                            \
+        .max_redirections = 5,   \
+        .timeout_ms = 30000,     \
+        .post_data = NULL,       \
+        .post_len = 0,           \
+    }
 
 typedef struct
 {
