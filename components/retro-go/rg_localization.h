@@ -1,0 +1,16 @@
+#pragma once
+
+#include <string.h>
+
+#define _(String) rg_gettext(String)
+
+// Define a struct for holding message translations
+typedef struct {
+    char *msg;    // Original message in english
+    char *fr;    // FR Translated message
+} Translation;
+
+// Lookup function
+const char* rg_gettext(const char *msg);
+int rg_localization_get_language_id(void);
+void rg_localization_set_language_id(int language_id);
