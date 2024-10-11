@@ -12,7 +12,9 @@
 Retro-Go is a firmware to play retro games on ESP32-based devices (officially supported are
 ODROID-GO and MRGC-G32). The project consists of a launcher and half a dozen applications that
 have been heavily optimized to reduce their cpu, memory, and flash needs without reducing
-compatibility!
+compatibility! 
+
+Get started in [BUILDING.md](BUILDING.md)
 
 ### Supported systems:
 - Nintendo: **NES, SNES (slow), Gameboy, Gameboy Color, Game & Watch**
@@ -55,8 +57,9 @@ compatibility!
 
 ### Generic ESP32
 This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with smaller flash).
-  1. Build a .img file (refer to [Building Retro-Go](#building) below)
-  2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
+  1. (optional) Port retro-go to your device ([PORTING.md](PORTING.md))
+  2. Build a .img file (refer to [Building Retro-Go](#building) below)
+  3. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
       _Note: Your particular device may require extra steps (like holding a button during power up), different esptool flags, or modifying base.sdkconfig._
 
 
@@ -167,8 +170,7 @@ Instructions moved to [THEMING.md](THEMING.md).
 
 
 # Building
-Instructions moved to [BUILDING.md](BUILDING.md).
-
+To build retro-go, refer to [BUILDING.md](BUILDING.md).
 
 # Acknowledgements
 - The NES/GBC/SMS emulators and base library were originally from the "Triforce" fork of the [official Go-Play firmware](https://github.com/othercrashoverride/go-play) by crashoverride, Nemo1984, and many others.
