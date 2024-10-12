@@ -1,6 +1,6 @@
 #include "rg_localization.h"
 
-int rg_language = 1;
+int rg_language = 0;
 
 Translation translations[] = {
     // rg_gui.c
@@ -193,14 +193,19 @@ Translation translations[] = {
     {NULL, NULL}  // End of array
 };
 
+#define RG_LANGUAGE_MAX 2
+
 
 int rg_localization_get_language_id(void){
     return rg_language;
 }
 
-void rg_localization_set_language_id(int language_id){
+bool rg_localization_set_language_id(int language_id){
+    if (language_id < 0 || language_id > RG_LANGUAGE_MAX - 1)
+        return false;
+
     rg_language = language_id;
-    return;
+    return true;
 }
 
 const char* rg_gettext(const char *text) {

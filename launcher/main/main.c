@@ -142,26 +142,6 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    int language_id = rg_localization_get_language_id();
-    int prev_language_id = language_id;
-    const char *modes[] = {"English", "Francais"};
-
-    if (event == RG_DIALOG_PREV)
-        language_id = 1;
-    if (event == RG_DIALOG_NEXT)
-        language_id = 0;
-
-    if (language_id != prev_language_id){
-        rg_localization_set_language_id(language_id);
-        return RG_DIALOG_REDRAW;
-    }
-
-    strcpy(option->value, modes[rg_localization_get_language_id()]);
-    return RG_DIALOG_VOID;
-}
-
 #ifdef RG_ENABLE_NETWORKING
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -208,7 +188,6 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
             {0, _("File server "), "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
             #endif
             {0, _("Startup app "), "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
-            {0, _("Language "), "-", RG_DIALOG_FLAG_NORMAL, &language_cb},
             RG_DIALOG_END,
         };
         gui_redraw(); // clear main menu

@@ -34,6 +34,7 @@ static struct
     int font_index;
     bool show_clock;
     bool initialized;
+    int language_index;
 } gui;
 
 #define SETTING_FONTTYPE    "FontType"
@@ -41,6 +42,7 @@ static struct
 #define SETTING_THEME       "Theme"
 #define SETTING_WIFI_ENABLE "Enable"
 #define SETTING_WIFI_SLOT   "Slot"
+#define SETTING_LANGUAGE    "Language"
 
 static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
 {
@@ -103,7 +105,20 @@ void rg_gui_init(void)
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
+    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, 0));
     gui.initialized = true;
+}
+
+bool rg_gui_set_language_id(int index)
+{
+    if (rg_localization_set_language_id(index) == 0)
+        return false;
+
+    gui.language_index = index;
+    rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
+
+    RG_LOGI("Language index set to: %d\n", index);
+    return true;
 }
 
 bool rg_gui_set_theme(const char *theme_name)
@@ -1337,6 +1352,17 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    const char *modes[] = {"English", "Francais"};
+    if (event == RG_DIALOG_PREV && rg_gui_set_language_id(gui.language_index - 1))
+        return RG_DIALOG_REDRAW;
+    if (event == RG_DIALOG_NEXT && rg_gui_set_language_id(gui.language_index + 1))
+        return RG_DIALOG_REDRAW;
+    strcpy(option->value, modes[rg_localization_get_language_id()]);
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -1503,6 +1529,7 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, _("Theme     "), "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
         *opt++ = (rg_gui_option_t){0, _("Show clock"), "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
         *opt++ = (rg_gui_option_t){0, _("Timezone  "), "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
+        *opt++ = (rg_gui_option_t){0, _("Language "), "-", RG_DIALOG_FLAG_NORMAL, &language_cb};
 #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
         *opt++ = (rg_gui_option_t){0, _("LED options"), NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
 #endif
