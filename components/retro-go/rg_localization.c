@@ -209,19 +209,17 @@ bool rg_localization_set_language_id(int language_id){
 }
 
 const char* rg_gettext(const char *text) {
+    if (rg_language == 0)
+        return text; // in case language == 0 == english -> return the original string
+
     for (int i = 0; translations[i].msg != NULL; i++) {
         if (strcmp(translations[i].msg, text) == 0) {
             switch (rg_language)
             {
-            case 0:
-                return translations[i].msg;  // Return the english string
-                break;
-            
             case 1:
                 return translations[i].fr;  // Return the french string
                 break;
             }
         }
     }
-    return text;
 }
