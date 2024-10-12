@@ -193,9 +193,6 @@ Translation translations[] = {
     {NULL, NULL}  // End of array
 };
 
-#define RG_LANGUAGE_MAX 2
-
-
 int rg_localization_get_language_id(void){
     return rg_language;
 }

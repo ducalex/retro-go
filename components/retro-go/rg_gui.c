@@ -34,7 +34,6 @@ static struct
     int font_index;
     bool show_clock;
     bool initialized;
-    int language_index;
 } gui;
 
 #define SETTING_FONTTYPE    "FontType"
@@ -114,7 +113,6 @@ bool rg_gui_set_language_id(int index)
     if (rg_localization_set_language_id(index) == 0)
         return false;
 
-    gui.language_index = index;
     rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
 
     RG_LOGI("Language index set to: %d\n", index);
@@ -1354,18 +1352,29 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    bool language_changed = 0;
-    const char *modes[] = {"English", "Francais"};
-    if (event == RG_DIALOG_PREV && rg_gui_set_language_id(gui.language_index - 1))
-        language_changed = 1;
-    if (event == RG_DIALOG_NEXT && rg_gui_set_language_id(gui.language_index + 1))
-        language_changed = 1;
+    const char *languages[] = {"English", "Francais"};
+    int slot = rg_localization_get_language_id();
 
-    if (language_changed){
-        rg_gui_alert(_("Language changed!"), _("For these changes to take effect you must restart your device."));
+    if (event == RG_DIALOG_ENTER)
+    {
+        // to do : make this dynamic
+        const rg_gui_option_t options[] = {
+            {0, _(languages[0]), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {1, _(languages[1]), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            RG_DIALOG_END,
+        };
+        int sel = rg_gui_dialog(_("Language"), options, slot);
+        if (sel != RG_DIALOG_CANCELLED)
+        {
+            rg_gui_set_language_id(sel);
+            if (rg_gui_confirm(_("Language changed!"), _("For these changes to take effect you must restart your device.\nrestart now?"), true))
+            {
+                rg_system_exit();
+            }
+        }
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, modes[rg_localization_get_language_id()]);
+    sprintf(option->value, "%s", languages[slot]);
     return RG_DIALOG_VOID;
 }
 

@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #define _(String) rg_gettext(String)
+#define RG_LANGUAGE_MAX 2
 
 // Define a struct for holding message translations
 typedef struct {
