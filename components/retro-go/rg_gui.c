@@ -1354,11 +1354,17 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    bool language_changed = 0;
     const char *modes[] = {"English", "Francais"};
     if (event == RG_DIALOG_PREV && rg_gui_set_language_id(gui.language_index - 1))
-        return RG_DIALOG_REDRAW;
+        language_changed = 1;
     if (event == RG_DIALOG_NEXT && rg_gui_set_language_id(gui.language_index + 1))
+        language_changed = 1;
+
+    if (language_changed){
+        rg_gui_alert(_("Language changed!"), _("For these changes to take effect you must restart your device."));
         return RG_DIALOG_REDRAW;
+    }
     strcpy(option->value, modes[rg_localization_get_language_id()]);
     return RG_DIALOG_VOID;
 }

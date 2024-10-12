@@ -222,4 +222,5 @@ const char* rg_gettext(const char *text) {
             }
         }
     }
+    return text;
 }
