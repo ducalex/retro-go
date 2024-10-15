@@ -4,189 +4,442 @@ int rg_language = 0;
 
 Translation translations[] = {
     // rg_gui.c
-    {"Folder is empty.", "Le dossier est vide."},
+    {
+        .msg = "Folder is empty.", 
+        .fr = "Le dossier est vide."},
 
-    {"yes", "Oui"},
-    {"No ", "Non"},
-    {"OK", "OK"},
+    {
+        .msg = "yes", 
+        .fr = "Oui"},
+    {
+        .msg = "No ", 
+        .fr = "Non"},
+    {
+        .msg = "OK", 
+        .fr = "OK"},
 
-    {"On ", "On "},
-    {"Off  ", "Off  "},
-    {"Horiz", "Horiz"},
-    {"Vert ", "Vert "},
-    {"Both ", "Tout"},
+    {
+        .msg = "On ", 
+        .fr = "On "},
+    {
+        .msg = "Off  ", 
+        .fr = "Off  "},
+    {
+        .msg = "Horiz", 
+        .fr = "Horiz"},
+    {
+        .msg = "Vert ", 
+        .fr = "Vert "},
+    {
+        .msg = "Both ", 
+        .fr = "Tout"},
 
-    {"Fit ", "Ajuster"},
-    {"Full ", "Remplir "},
-    {"Zoom", "Zoomer"},
+    {
+        .msg = "Fit ", 
+        .fr = "Ajuster"},
+    {
+        .msg = "Full ", 
+        .fr = "Remplir "},
+    {
+        .msg = "Zoom", 
+        .fr = "Zoomer"},
 
     // Led options
-    {"LED options", "Options LED"},
-    {"System activity", "Activite systeme"},
-    {"Disk activity", "Activite stockage"},
-    {"Low battery", "Battery basse"},
+    {
+        .msg = "LED options", 
+        .fr = "Options LED"},
+    {
+        .msg = "System activity", 
+        .fr = "Activite systeme"},
+    {
+        .msg = "Disk activity", 
+        .fr = "Activite stockage"},
+    {
+        .msg = "Low battery", 
+        .fr = "Battery basse"},
 
-    {"Default", "Default"},
-    {"none", "Aucun"},
-    {"<None>", "<Aucun>"},
+    {
+        .msg = "Default", 
+        .fr = "Default"},
+    {
+        .msg = "none", 
+        .fr = "Aucun"},
+    {
+        .msg = "<None>", 
+        .fr = "<Aucun>"},
 
     // Wifi
-    {"Not connected", "Non connecte"},
-    {"Connecting...", "Connection..."},
-    {"Disconnecting...", "Disconnection..."},
-    {"(empty)", "(vide)"},
-    {"Wi-Fi Profile", "Profil Wi-Fi"},
-    {"Wi-Fi AP", "Wi-Fi AP"},
-    {"Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/"},
-    {"Wi-Fi enable ",  "Activer Wi-Fi"},
-    {"Wi-Fi access point", "Point d'acces WiFi"},
-    {"Network   ", "Reseau   "},
-    {"IP address", "Adresse IP"},
-    {"Wifi Options", "Options Wifi"},
+    {
+        .msg = "Not connected", 
+        .fr = "Non connecte"},
+    {
+        .msg = "Connecting...", 
+        .fr = "Connection..."},
+    {
+        .msg = "Disconnecting...", 
+        .fr = "Disconnection..."},
+    {
+        .msg = "(empty)", 
+        .fr = "(vide)"},
+    {
+        .msg = "Wi-Fi Profile", 
+        .fr = "Profil Wi-Fi"},
+    {
+        .msg = "Wi-Fi AP", 
+        .fr = "Wi-Fi AP"},
+    {
+        .msg = "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", 
+        .fr = "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/"},
+    {
+        .msg = "Wi-Fi enable ",  
+        .fr = "Activer Wi-Fi"},
+    {
+        .msg = "Wi-Fi access point", 
+        .fr = "Point d'acces WiFi"},
+    {
+        .msg = "Network   ", 
+        .fr = "Reseau   "},
+    {
+        .msg = "IP address", 
+        .fr = "Adresse IP"},
+    {
+        .msg = "Wifi Options", 
+        .fr = "Options Wifi"},
 
     // retro-go settings
-    {"Brightness", "Luminosite"},
-    {"Volume    ", "Volume    "},
-    {"Audio out ", "Sortie audio"},
-    {"Font type ", "Police"},
-    {"Theme     ", "Theme"},
-    {"Show clock", "Horloge"},
-    {"Timezone  ", "Fuseau  "},
-    {"Wi-Fi options", "Options Wi-Fi"},
+    {
+        .msg = "Brightness", 
+        .fr = "Luminosite"},
+    {
+        .msg = "Volume    ", 
+        .fr = "Volume    "},
+    {
+        .msg = "Audio out ", 
+        .fr = "Sortie audio"},
+    {
+        .msg = "Font type ", 
+        .fr = "Police"},
+    {
+        .msg = "Theme     ", 
+        .fr = "Theme"},
+    {
+        .msg = "Show clock", 
+        .fr = "Horloge"},
+    {
+        .msg = "Timezone  ", 
+        .fr = "Fuseau  "},
+    {
+        .msg = "Wi-Fi options", 
+        .fr = "Options Wi-Fi"},
 
     // app dettings
-    {"Scaling", "Format"},
-    {" Factor", " Factor"},
-    {"Filter", "Filtre"},
-    {"Border", "Bordure"},
-    {"Speed", "Vitesse"},
+    {
+        .msg = "Scaling", 
+        .fr = "Format"},
+    {
+        .msg = " Factor", 
+        .fr = " Factor"},
+    {
+        .msg = "Filter", 
+        .fr = "Filtre"},
+    {
+        .msg = "Border", 
+        .fr = "Bordure"},
+    {
+        .msg = "Speed", 
+        .fr = "Vitesse"},
 
     // about menu
-    {"Version", "Version"},
-    {"Date   ", "Date"},
-    {"Target ", "Cible"},
-    {"Website", "Site Web"},
-    {"Options ", "Options"},
-    {"View credits", "Credits"},
-    {"Debug menu", "Menu debug"},
-    {"Reset settings", "Reset parametres"},
+    {
+        .msg = "Version", 
+        .fr = "Version"},
+    {
+        .msg = "Date   ", 
+        .fr = "Date"},
+    {
+        .msg = "Target ", 
+        .fr = "Cible"},
+    {
+        .msg = "Website", 
+        .fr = "Site Web"},
+    {
+        .msg = "Options ", 
+        .fr = "Options"},
+    {
+        .msg = "View credits", 
+        .fr = "Credits"},
+    {
+        .msg = "Debug menu", 
+        .fr = "Menu debug"},
+    {
+        .msg = "Reset settings", 
+        .fr = "Reset parametres"},
 
     // save slot
-    {"Slot 0", "Emplacement 0"},
-    {"Slot 1", "Emplacement 1"},
-    {"Slot 2", "Emplacement 2"},
-    {"Slot 3", "Emplacement 3"},
+    {
+        .msg = "Slot 0", 
+        .fr = "Emplacement 0"},
+    {
+        .msg = "Slot 1", 
+        .fr = "Emplacement 1"},
+    {
+        .msg = "Slot 2", 
+        .fr = "Emplacement 2"},
+    {
+        .msg = "Slot 3", 
+        .fr = "Emplacement 3"},
 
     // game menu
-    {"Save & Continue", "Sauver et continuer"},
-    {"Save & Quit    ", "Sauver et quitter"},
-    {"Load game      ", "Charger partie"},
-    {"Reset          ", "Reset          "},
-    {"Netplay ", "Netplay "},
-    {"About   ", "Infos   "},
-    {"Quit    ", "Quitter "},
+    {
+        .msg = "Save & Continue", 
+        .fr = "Sauver et continuer"},
+    {
+        .msg = "Save & Quit    ", 
+        .fr = "Sauver et quitter"},
+    {
+        .msg = "Load game      ", 
+        .fr = "Charger partie"},
+    {
+        .msg = "Reset          ", 
+        .fr = "Reset          "},
+    {
+        .msg = "Netplay ", 
+        .fr = "Netplay "},
+    {
+        .msg = "About   ", 
+        .fr = "Infos   "},
+    {
+        .msg = "Quit    ", 
+        .fr = "Quitter "},
 
-    {"Soft reset", "Soft reset"},
-    {"Hard reset", "Hard reset"},
+    {
+        .msg = "Soft reset", 
+        .fr = "Soft reset"},
+    {
+        .msg = "Hard reset", 
+        .fr = "Hard reset"},
 
-    {"Reset Emulation?", "Reset Emulation?"},
-    {"Save", "Sauver"},
-    {"Load", "Charger"},
+    {
+        .msg = "Reset Emulation?", 
+        .fr = "Reset Emulation?"},
+    {
+        .msg = "Save", 
+        .fr = "Sauver"},
+    {
+        .msg = "Load", 
+        .fr = "Charger"},
     // end of rg_gui.c
 
 
     // main.c
-    {"Show", "Montrer"},
-    {"Hide", "Cacher"},
+    {
+        .msg = "Show", 
+        .fr = "Montrer"},
+    {
+        .msg = "Hide", 
+        .fr = "Cacher"},
 
-    {"Tabs Visibility", "Visibilitee onglets"},
+    {
+        .msg = "Tabs Visibility", 
+        .fr = "Visibilitee onglets"},
 
     // scroll modes
-    {"Center", "centrer"},
-    {"Paging", "Paging"},
+    {
+        .msg = "Center", 
+        .fr = "centrer"},
+    {
+        .msg = "Paging", 
+        .fr = "Paging"},
 
     // start screen
-    {"Auto", "Auto" },
-    {"Carousel", "Carousel"},
-    {"Browser", "Browser"},
+    {
+        .msg = "Auto", 
+        .fr = "Auto" },
+    {
+        .msg = "Carousel", 
+        .fr = "Carousel"},
+    {
+        .msg = "Browser", 
+        .fr = "Browser"},
 
     // preview
-    {"None      ", "Aucun     "},
-    {"Cover,Save", "Cover,Save"},
-    {"Save,Cover", "Save,Cover"},
-    {"Cover only", "Cover only"},
-    {"Save only ", "Save only "},
+    {
+        .msg = "None      ", 
+        .fr = "Aucun     "},
+    {
+        .msg = "Cover,Save", 
+        .fr = "Cover,Save"},
+    {
+        .msg = "Save,Cover", 
+        .fr = "Save,Cover"},
+    {
+        .msg = "Cover only", 
+        .fr = "Cover only"},
+    {
+        .msg = "Save only ", 
+        .fr = "Save only "},
 
     // startup app
-    {"Last game", "Dernier jeu"},
-    {"Launcher", "Launcher"},
+    {
+        .msg = "Last game", 
+        .fr = "Dernier jeu"},
+    {
+        .msg = "Launcher", 
+        .fr = "Launcher"},
 
     // launcher options
-    {"Launcher Options", "Options du launcher"},
-    {"Color theme ", "Couleurs"},
-    {"Preview     ", "Apercu     "},
-    {"Scroll mode ", "Mode defilement"},
-    {"Start screen", "Ecran demarrage"},
-    {"Hide tabs   ", "Cacher onglet"},
-    {"File server ", "Serveur fichier"},
-    {"Startup app ", "App demarrage"},
+    {
+        .msg = "Launcher Options", 
+        .fr = "Options du launcher"},
+    {
+        .msg = "Color theme ", 
+        .fr = "Couleurs"},
+    {
+        .msg = "Preview     ", 
+        .fr = "Apercu     "},
+    {
+        .msg = "Scroll mode ", 
+        .fr = "Mode defilement"},
+    {
+        .msg = "Start screen", 
+        .fr = "Ecran demarrage"},
+    {
+        .msg = "Hide tabs   ", 
+        .fr = "Cacher onglet"},
+    {
+        .msg = "File server ", 
+        .fr = "Serveur fichier"},
+    {
+        .msg = "Startup app ", 
+        .fr = "App demarrage"},
 
-    {"Build CRC cache", "Build CRC cache"},
-    {"Check for updates", "Check for updates"},
-    {"HTTP Server Busy...", "Server Web ..."},
+    {
+        .msg = "Build CRC cache", 
+        .fr = "Build CRC cache"},
+    {
+        .msg = "Check for updates", 
+        .fr = "Check for updates"},
+    {
+        .msg = "HTTP Server Busy...", 
+        .fr = "Server Web ..."},
 
-    {"SD Card Error", "Erreur carte SD"},
-    {"Storage mount failed.\nMake sure the card is FAT32.", "Erreur montage SD.\nVerifiez que la carte est en FAT32."},
+    {
+        .msg = "SD Card Error", 
+        .fr = "Erreur carte SD"},
+    {
+        .msg = "Storage mount failed.\nMake sure the card is FAT32.", 
+        .fr = "Erreur montage SD.\nVerifiez que la carte est en FAT32."},
     // end of main.c
 
 
     // applications.c
-    {"Scanning %s %d/%d", "Scan %s %d/%d"},
+    {
+        .msg = "Scanning %s %d/%d", 
+        .fr = "Scan %s %d/%d"},
 
     // message when no rom
-    {"Welcome to Retro-Go!", "Bienvenue sur Retro-Go!"},
-    {"Place roms in folder: %s", "Placer les ROMS dans le dossier: %s"},
-    {"With file extension: %s", "Avec l'extension: %s"},
-    {"You can hide this tab in the menu", "Vous pouvez cacher cet onglet dans le menu"},
-    {"You have no %s games", "Vous n'avez pas de jeux %s"},
+    {
+        .msg = "Welcome to Retro-Go!", 
+        .fr = "Bienvenue sur Retro-Go!"},
+    {
+        .msg = "Place roms in folder: %s", 
+        .fr = "Placer les ROMS dans le dossier: %s"},
+    {
+        .msg = "With file extension: %s", 
+        .fr = "Avec l'extension: %s"},
+    {
+        .msg = "You can hide this tab in the menu", 
+        .fr = "Vous pouvez cacher cet onglet dans le menu"},
+    {
+        .msg = "You have no %s games", 
+        .fr = "Vous n'avez pas de jeux %s"},
 
-    {"File not found", "Fichier non present"},
+    {
+        .msg = "File not found", 
+        .fr = "Fichier non present"},
 
     // rom options
-    {"Name", "Nom"},
-    {"Folder", "Dossier"},
-    {"Size", "Taille"},
-    {"CRC32", "CRC32"},
-    {"Delete file", "Supprimer fichier"},
-    {"Close", "Fermer"},
-    {"File properties", "Propriete"},
-    {"Delete selected file?", "Supprimer fichier?"},
+    {
+        .msg = "Name", 
+        .fr = "Nom"},
+    {
+        .msg = "Folder", 
+        .fr = "Dossier"},
+    {
+        .msg = "Size", 
+        .fr = "Taille"},
+    {
+        .msg = "CRC32", 
+        .fr = "CRC32"},
+    {
+        .msg = "Delete file", 
+        .fr = "Supprimer fichier"},
+    {
+        .msg = "Close", 
+        .fr = "Fermer"},
+    {
+        .msg = "File properties", 
+        .fr = "Propriete"},
+    {
+        .msg = "Delete selected file?", 
+        .fr = "Supprimer fichier?"},
 
 
     // in-game menu
-    {"Resume game", "Reprendre partie"},
-    {"New game    ", "Nouvelle partie"},
-    {"Del favorite", "supp favori"},
-    {"Add favorite", "Ajouter favori"},
-    {"Delete save", "Supp sauvegarde"},
-    {"Properties", "Proprietes"},
-    {"Resume", "Reprendre"},
-    {"Delete save?", "Supp sauvegarde?"},
-    {"Delete sram file?", "Supp fichier SRAM?"},
+    {
+        .msg = "Resume game", 
+        .fr = "Reprendre partie"},
+    {
+        .msg = "New game    ", 
+        .fr = "Nouvelle partie"},
+    {
+        .msg = "Del favorite", 
+        .fr = "supp favori"},
+    {
+        .msg = "Add favorite", 
+        .fr = "Ajouter favori"},
+    {
+        .msg = "Delete save", 
+        .fr = "Supp sauvegarde"},
+    {
+        .msg = "Properties", 
+        .fr = "Proprietes"},
+    {
+        .msg = "Resume", 
+        .fr = "Reprendre"},
+    {
+        .msg = "Delete save?", 
+        .fr = "Supp sauvegarde?"},
+    {
+        .msg = "Delete sram file?", 
+        .fr = "Supp fichier SRAM?"},
     // end of applications.c
 
 
     // rg_system.c
-    {"App unresponsive... Hold MENU to quit!", "Plantage... MENU pour quitter"},
+    {
+        .msg = "App unresponsive... Hold MENU to quit!", 
+        .fr = "Plantage... MENU pour quitter"},
 
-    {"Reset all settings", "Reset parametres"},
-    {"Reboot to factory ", "Redemarrer usine"},
-    {"Reboot to launcher", "Relancer launcher"},
+    {
+        .msg = "Reset all settings", 
+        .fr = "Reset parametres"},
+    {
+        .msg = "Reboot to factory ", 
+        .fr = "Redemarrer usine"},
+    {
+        .msg = "Reboot to launcher", 
+        .fr = "Relancer launcher"},
 
-    {"Recovery mode", "Mode de recuperation"},
-    {"System Panic!", "Plantage systeme!"},
+    {
+        .msg = "Recovery mode", "Mode de recuperation"},
+    {
+        .msg = "System Panic!", 
+        .fr = "Plantage systeme!"},
 
-    {"Save failed", "Erreur sauvegarde"},
+    {
+        .msg = "Save failed", 
+        .fr = "Erreur sauvegarde"},
     // end of rg_system.c
 
 
