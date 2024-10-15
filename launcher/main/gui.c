@@ -15,6 +15,7 @@ retro_gui_t gui;
 #define SETTING_SELECTED_TAB    "SelectedTab"
 #define SETTING_START_SCREEN    "StartScreen"
 #define SETTING_STARTUP_MODE    "StartupMode"
+#define SETTING_LANGUAGE        "Language"
 #define SETTING_COLOR_THEME     "ColorTheme"
 #define SETTING_SHOW_PREVIEW    "ShowPreview"
 #define SETTING_SCROLL_MODE     "ScrollMode"
@@ -32,6 +33,7 @@ void gui_init(bool cold_boot)
     gui = (retro_gui_t){
         .selected_tab = rg_settings_get_number(NS_APP, SETTING_SELECTED_TAB, 0),
         .startup_mode = rg_settings_get_number(NS_APP, SETTING_STARTUP_MODE, 0),
+        .language     = rg_settings_get_number(NS_APP, SETTING_LANGUAGE, 0),
         .color_theme  = rg_settings_get_number(NS_APP, SETTING_COLOR_THEME, 0),
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),

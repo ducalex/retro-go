@@ -119,6 +119,7 @@ typedef struct {
     size_t tabs_count;
     int selected_tab;
     int startup_mode;
+    int language;
     int browse;
     const char *theme;
     int color_theme;

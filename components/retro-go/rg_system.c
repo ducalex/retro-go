@@ -290,14 +290,14 @@ static void enter_recovery_mode(void)
     RG_LOGW("Entering recovery mode...\n");
 
     const rg_gui_option_t options[] = {
-        {0, "Reset all settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {1, "Reboot to factory ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Reboot to launcher", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Reset all settings"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {1, _("Reboot to factory "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, _("Reboot to launcher"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     while (true)
     {
-        switch (rg_gui_dialog("Recovery mode", options, -1))
+        switch (rg_gui_dialog(_("Recovery mode"), options, -1))
         {
         case 0:
             rg_storage_delete(RG_BASE_PATH_CONFIG);

@@ -200,14 +200,14 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 {
     if (event == RG_DIALOG_ENTER) {
         const rg_gui_option_t choices[] = {
-            {'d', "Day ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'h', "Hour", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'m', "Min ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'s', "Sec ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'x', "Sync", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'d', _("Day "), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'h', _("Hour"), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'m', _("Min "), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'s', _("Sec "), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'x', _("Sync"), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
             RG_DIALOG_END
         };
-        rg_gui_dialog("RTC config", choices, 0);
+        rg_gui_dialog(_("RTC config"), choices, 0);
     }
     int h, m;
     gnuboy_get_time(NULL, &h, &m, NULL);
@@ -241,10 +241,10 @@ void gbc_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Palette      ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        {0, "RTC config   ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
-        {0, "SRAM autosave", "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
-        {0, "Enable BIOS  ", "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb},
+        {0, _("Palette      "), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, _("RTC config   "), "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
+        {0, _("SRAM autosave"), "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
+        {0, _("Enable BIOS  "), "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb},
         RG_DIALOG_END
     };
 

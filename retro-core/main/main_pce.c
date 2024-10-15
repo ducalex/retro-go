@@ -189,7 +189,7 @@ void pce_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Overscan", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
+        {0, _("Overscan"), "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
         RG_DIALOG_END
     };
 

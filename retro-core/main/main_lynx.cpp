@@ -190,7 +190,7 @@ extern "C" void lynx_main(void)
         .memWrite = NULL,
     };
     const rg_gui_option_t options[] = {
-        {0, "Rotation", (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
+        {0, _("Rotation"), (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
         RG_DIALOG_END
     };
 
