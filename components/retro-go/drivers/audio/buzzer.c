@@ -214,7 +214,7 @@ static bool buzzer_init(int device, int sampleRate)
 
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = pwm_resolution,
-        .freq_hz = NOTE_A,
+        .freq_hz = freq,
         .speed_mode = LEDC_PWM_SPEED_MODE,
         .timer_num = LEDC_PWM_TIMER,
         .clk_cfg = LEDC_USE_APB_CLK,
