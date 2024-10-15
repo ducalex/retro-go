@@ -3,6 +3,327 @@
 int rg_language = 0;
 
 Translation translations[] = {
+    {
+        .msg = "Yes",
+        .fr = "Oui",
+    },
+
+    {
+        .msg = "Select file",
+        .fr = "Choisissez un fichier",
+    },
+
+    {
+        .msg = "Off",
+        .fr = "Off",
+    },
+
+    {
+        .msg = "Language",
+        .fr = "Langue",
+    },
+
+    {
+        .msg = "Language changed!",
+        .fr = "Langue changee",
+    },
+
+    {
+        .msg = "For these changes to take effect you must restart your device.\nrestart now?",
+        .fr = "Pour que ces changements prennent effet,\n vous devez redemmarer votre appareil",
+    },
+
+    {
+        .msg = "Wi-Fi profile",
+        .fr = "Profile Wi-Fi",
+    },
+
+    {
+        .msg = "Language ",
+        .fr = "Langue",
+    },
+
+    {
+        .msg = "Options",
+        .fr = "Options",
+    },
+
+    {
+        .msg = "About Retro-Go",
+        .fr = "A propose de Retro-go",
+    },
+
+    {
+        .msg = "Reset all settings?",
+        .fr = "Reset tous les parametres",
+    },
+
+    {
+        .msg = "Initializing...",
+        .fr = "Initialisation...",
+    },
+
+    {
+        .msg = "Host Game (P1)",
+        .fr = "Host Game (P1)",
+    },
+
+    {
+        .msg = "Find Game (P2)",
+        .fr = "Find Game (P2)",
+    },
+
+    {
+        .msg = "Netplay",
+        .fr = "Netplay",
+    },
+
+    {
+        .msg = "ROMs not identical. Continue?",
+        .fr = "ROMs not identical. Continue?",
+    },
+
+    {
+        .msg = "Exchanging info...",
+        .fr = "Exchanging info...",
+    },
+
+    {
+        .msg = "Unable to find host!",
+        .fr = "Unable to find host!",
+    },
+
+    {
+        .msg = "Connection failed!",
+        .fr = "Connection failed!",
+    },
+
+    {
+        .msg = "Waiting for peer...",
+        .fr = "Waiting for peer...",
+    },
+
+    {
+        .msg = "Unknown status...",
+        .fr = "Unknown status...",
+    },
+
+    {
+        .msg = "On",
+        .fr = "On",
+    },
+
+    {
+        .msg = "Keyboard",
+        .fr = "Clavier",
+    },
+
+    {
+        .msg = "Joystick",
+        .fr = "Joystick",
+    },
+
+    {
+        .msg = "Input",
+        .fr = "Entree",
+    },
+
+    {
+        .msg = "Crop ",
+        .fr = "Couper",
+    },
+
+    {
+        .msg = "BIOS file missing!",
+        .fr = "Fichier BIOS manquant",
+    },
+
+    {
+        .msg = "YM2612 audio ",
+        .fr = "YM2612 audio ",
+    },
+
+    {
+        .msg = "SN76489 audio",
+        .fr = "SN76489 audio",
+    },
+
+    {
+        .msg = "Z80 emulation",
+        .fr = "Emulation Z80",
+    },
+
+    {
+        .msg = "Launcher options",
+        .fr = "Options lanceur",
+    },
+
+    {
+        .msg = "Date",
+        .fr = "Date",
+    },
+
+    {
+        .msg = "Files:",
+        .fr = "Fichiers:",
+    },
+
+    {
+        .msg = "Download complete!",
+        .fr = "Telechargement termine",
+    },
+
+    {
+        .msg = "Reboot to flash?",
+        .fr = "Redemarrer",
+    },
+
+    {
+        .msg = "Available Releases",
+        .fr = "Maj disponibles",
+    },
+
+    {
+        .msg = "Received empty list!",
+        .fr = "Liste vide recue",
+    },
+
+    {
+        .msg = "Gamma Boost",
+        .fr = "Boost Gamma",
+    },
+
+    {
+        .msg = "Day ",
+        .fr = "Jour",
+    },
+
+    {
+        .msg = "Hour",
+        .fr = "Heure",
+    },
+
+    {
+        .msg = "Min ",
+        .fr = "Min ",
+    },
+
+    {
+        .msg = "Sec ",
+        .fr = "Sec ",
+    },
+
+    {
+        .msg = "Sync",
+        .fr = "Synchro",
+    },
+
+    {
+        .msg = "RTC config",
+        .fr = "Congig RTC",
+    },
+
+    {
+        .msg = "Palette      ",
+        .fr = "Palette      ",
+    },
+
+    {
+        .msg = "RTC config   ",
+        .fr = "Congig RTC   ",
+    },
+
+    {
+        .msg = "SRAM autosave",
+        .fr = "Sauvegarde auto SRAM",
+    },
+
+    {
+        .msg = "Enable BIOS  ",
+        .fr = "Activer BIOS",
+    },
+
+    {
+        .msg = "Name      ",
+        .fr = "Nom       ",
+    },
+
+    {
+        .msg = "Artist    ",
+        .fr = "Artiste   ",
+    },
+
+    {
+        .msg = "Copyright ",
+        .fr = "Copyright ",
+    },
+
+    {
+        .msg = "Playing   ",
+        .fr = "Playing   ",
+    },
+
+    {
+        .msg = "Palette     ",
+        .fr = "Palette     ",
+    },
+
+    {
+        .msg = "Overscan    ",
+        .fr = "Overscan    ",
+    },
+
+    {
+        .msg = "Crop sides  ",
+        .fr = "Couper les cotes",
+    },
+
+    {
+        .msg = "Sprite limit",
+        .fr = "Limite de sprite",
+    },
+
+    {
+        .msg = "Overscan",
+        .fr = "Overscan",
+    },
+
+    {
+        .msg = "Palette ",
+        .fr = "Palette ",
+    },
+
+    {
+        .msg = "Profile",
+        .fr = "Profile",
+    },
+
+    {
+        .msg = "<profile name>",
+        .fr = "<nom du profil>",
+    },
+
+    {
+        .msg = "Controls",
+        .fr = "Controles",
+    },
+
+    {
+        .msg = "Audio enable",
+        .fr = "",
+    },
+
+    {
+        .msg = "Audio filter",
+        .fr = "Activer audio",
+    },
+
+    {
+        .msg = "Controls    ",
+        .fr = "Controles   ",
+    },
+
+
     // rg_gui.c
     {
         .msg = "Folder is empty.", 
