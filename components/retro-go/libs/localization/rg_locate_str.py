@@ -81,9 +81,11 @@ for string in found_strings_in_files:
     if string not in translated:
         print("missing translation", '"'+string+'"')
         file.write('{\n\t.msg = "'+string+'",\n\t.fr = \"\",\n},\n\n')
-
+        
+        # file output :
         #{
         #   .msg = "missing string",
+        #   .fr = "",
         #},
 
 file.close()

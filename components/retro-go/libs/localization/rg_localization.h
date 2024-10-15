@@ -4,12 +4,13 @@
 #include <stdbool.h>
 
 #define _(String) rg_gettext(String)
-#define RG_LANGUAGE_MAX 2
+#define RG_LANGUAGE_MAX 2 // Update accordingly to Translation struct
 
 // Define a struct for holding message translations
 typedef struct {
-    char *msg;    // Original message in english
+    char *msg;   // Original message in english
     char *fr;    // FR Translated message
+//  char *de;    // for adding DE translation for example
 } Translation;
 
 // Lookup function

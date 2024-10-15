@@ -5,322 +5,322 @@ int rg_language = 0;
 Translation translations[] = {
     {
         .msg = "Yes",
-        .fr = "Oui",
+        .fr = "Oui"
     },
 
     {
         .msg = "Select file",
-        .fr = "Choisissez un fichier",
+        .fr = "Choisissez un fichier"
     },
 
     {
         .msg = "Off",
-        .fr = "Off",
+        .fr = "Off"
     },
 
     {
         .msg = "Language",
-        .fr = "Langue",
+        .fr = "Langue"
     },
 
     {
         .msg = "Language changed!",
-        .fr = "Langue changee",
+        .fr = "Changement de langue"
     },
 
     {
         .msg = "For these changes to take effect you must restart your device.\nrestart now?",
-        .fr = "Pour que ces changements prennent effet,\n vous devez redemmarer votre appareil",
+        .fr = "Pour que ces changements prennent effet, vous devez redemmarer votre appareil.\nRedemmarer maintenant ?"
     },
 
     {
         .msg = "Wi-Fi profile",
-        .fr = "Profile Wi-Fi",
+        .fr = "Profile Wi-Fi"
     },
 
     {
         .msg = "Language ",
-        .fr = "Langue",
+        .fr = "Langue"
     },
 
     {
         .msg = "Options",
-        .fr = "Options",
+        .fr = "Options"
     },
 
     {
         .msg = "About Retro-Go",
-        .fr = "A propose de Retro-go",
+        .fr = "A propose de Retro-go"
     },
 
     {
         .msg = "Reset all settings?",
-        .fr = "Reset tous les parametres",
+        .fr = "Reset tous les parametres"
     },
 
     {
         .msg = "Initializing...",
-        .fr = "Initialisation...",
+        .fr = "Initialisation..."
     },
 
     {
         .msg = "Host Game (P1)",
-        .fr = "Host Game (P1)",
+        .fr = "Host Game (P1)"
     },
 
     {
         .msg = "Find Game (P2)",
-        .fr = "Find Game (P2)",
+        .fr = "Find Game (P2)"
     },
 
     {
         .msg = "Netplay",
-        .fr = "Netplay",
+        .fr = "Netplay"
     },
 
     {
         .msg = "ROMs not identical. Continue?",
-        .fr = "ROMs not identical. Continue?",
+        .fr = "ROMs not identical. Continue?"
     },
 
     {
         .msg = "Exchanging info...",
-        .fr = "Exchanging info...",
+        .fr = "Exchanging info..."
     },
 
     {
         .msg = "Unable to find host!",
-        .fr = "Unable to find host!",
+        .fr = "Unable to find host!"
     },
 
     {
         .msg = "Connection failed!",
-        .fr = "Connection failed!",
+        .fr = "Connection failed!"
     },
 
     {
         .msg = "Waiting for peer...",
-        .fr = "Waiting for peer...",
+        .fr = "Waiting for peer..."
     },
 
     {
         .msg = "Unknown status...",
-        .fr = "Unknown status...",
+        .fr = "Unknown status..."
     },
 
     {
         .msg = "On",
-        .fr = "On",
+        .fr = "On"
     },
 
     {
         .msg = "Keyboard",
-        .fr = "Clavier",
+        .fr = "Clavier"
     },
 
     {
         .msg = "Joystick",
-        .fr = "Joystick",
+        .fr = "Joystick"
     },
 
     {
         .msg = "Input",
-        .fr = "Entree",
+        .fr = "Entree"
     },
 
     {
         .msg = "Crop ",
-        .fr = "Couper",
+        .fr = "Couper"
     },
 
     {
         .msg = "BIOS file missing!",
-        .fr = "Fichier BIOS manquant",
+        .fr = "Fichier BIOS manquant"
     },
 
     {
         .msg = "YM2612 audio ",
-        .fr = "YM2612 audio ",
+        .fr = "YM2612 audio "
     },
 
     {
         .msg = "SN76489 audio",
-        .fr = "SN76489 audio",
+        .fr = "SN76489 audio"
     },
 
     {
         .msg = "Z80 emulation",
-        .fr = "Emulation Z80",
+        .fr = "Emulation Z80"
     },
 
     {
         .msg = "Launcher options",
-        .fr = "Options lanceur",
+        .fr = "Options du lanceur"
     },
 
     {
         .msg = "Date",
-        .fr = "Date",
+        .fr = "Date"
     },
 
     {
         .msg = "Files:",
-        .fr = "Fichiers:",
+        .fr = "Fichiers:"
     },
 
     {
         .msg = "Download complete!",
-        .fr = "Telechargement termine",
+        .fr = "Telechargement termine"
     },
 
     {
         .msg = "Reboot to flash?",
-        .fr = "Redemarrer",
+        .fr = "Redemarrer"
     },
 
     {
         .msg = "Available Releases",
-        .fr = "Maj disponibles",
+        .fr = "Maj disponibles"
     },
 
     {
         .msg = "Received empty list!",
-        .fr = "Liste vide recue",
+        .fr = "Liste vide recue"
     },
 
     {
         .msg = "Gamma Boost",
-        .fr = "Boost Gamma",
+        .fr = "Boost Gamma"
     },
 
     {
         .msg = "Day ",
-        .fr = "Jour",
+        .fr = "Jour"
     },
 
     {
         .msg = "Hour",
-        .fr = "Heure",
+        .fr = "Heure"
     },
 
     {
         .msg = "Min ",
-        .fr = "Min ",
+        .fr = "Min "
     },
 
     {
         .msg = "Sec ",
-        .fr = "Sec ",
+        .fr = "Sec "
     },
 
     {
         .msg = "Sync",
-        .fr = "Synchro",
+        .fr = "Synchro"
     },
 
     {
         .msg = "RTC config",
-        .fr = "Congig RTC",
+        .fr = "Congig RTC"
     },
 
     {
         .msg = "Palette      ",
-        .fr = "Palette      ",
+        .fr = "Palette      "
     },
 
     {
         .msg = "RTC config   ",
-        .fr = "Congig RTC   ",
+        .fr = "Congig RTC   "
     },
 
     {
         .msg = "SRAM autosave",
-        .fr = "Sauvegarde auto SRAM",
+        .fr = "Sauvegarde auto SRAM"
     },
 
     {
         .msg = "Enable BIOS  ",
-        .fr = "Activer BIOS",
+        .fr = "Activer BIOS"
     },
 
     {
         .msg = "Name      ",
-        .fr = "Nom       ",
+        .fr = "Nom       "
     },
 
     {
         .msg = "Artist    ",
-        .fr = "Artiste   ",
+        .fr = "Artiste   "
     },
 
     {
         .msg = "Copyright ",
-        .fr = "Copyright ",
+        .fr = "Copyright "
     },
 
     {
         .msg = "Playing   ",
-        .fr = "Playing   ",
+        .fr = "Playing   "
     },
 
     {
         .msg = "Palette     ",
-        .fr = "Palette     ",
+        .fr = "Palette     "
     },
 
     {
         .msg = "Overscan    ",
-        .fr = "Overscan    ",
+        .fr = "Overscan    "
     },
 
     {
         .msg = "Crop sides  ",
-        .fr = "Couper les cotes",
+        .fr = "Couper les cotes"
     },
 
     {
         .msg = "Sprite limit",
-        .fr = "Limite de sprite",
+        .fr = "Limite de sprite"
     },
 
     {
         .msg = "Overscan",
-        .fr = "Overscan",
+        .fr = "Overscan"
     },
 
     {
         .msg = "Palette ",
-        .fr = "Palette ",
+        .fr = "Palette "
     },
 
     {
         .msg = "Profile",
-        .fr = "Profile",
+        .fr = "Profile"
     },
 
     {
         .msg = "<profile name>",
-        .fr = "<nom du profil>",
+        .fr = "<nom du profil>"
     },
 
     {
         .msg = "Controls",
-        .fr = "Controles",
+        .fr = "Controles"
     },
 
     {
         .msg = "Audio enable",
-        .fr = "",
+        .fr = ""
     },
 
     {
         .msg = "Audio filter",
-        .fr = "Activer audio",
+        .fr = "Activer audio"
     },
 
     {
         .msg = "Controls    ",
-        .fr = "Controles   ",
+        .fr = "Controles   "
     },
 
 
@@ -694,7 +694,7 @@ Translation translations[] = {
     // launcher options
     {
         .msg = "Launcher Options", 
-        .fr = "Options du launcher"
+        .fr = "Options du lanceur"
     },
     {
         .msg = "Color theme ", 
@@ -921,5 +921,5 @@ const char* rg_gettext(const char *text) {
             }
         }
     }
-    return text;
+    return text; // if no translation found
 }
