@@ -389,8 +389,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
 #if defined(ESP_PLATFORM)
     esp_reset_reason_t r_reason = esp_reset_reason();
-    showCrashDialog = (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT ||
-                       r_reason == ESP_RST_INT_WDT || r_reason == ESP_RST_WDT);
+    showCrashDialog = (r_reason == ESP_RST_PANIC); // || r_reason == ESP_RST_TASK_WDT ||
+                       // r_reason == ESP_RST_INT_WDT || r_reason == ESP_RST_WDT);
     app.isColdBoot = r_reason != ESP_RST_SW;
     tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
 #elif defined(RG_TARGET_SDL2)
@@ -1174,7 +1174,7 @@ static void emu_update_save_slot(uint8_t slot)
     if (slot != last_written)
     {
         char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
-        if (rg_storage_write_file(filename, (void *)&last_written, sizeof(last_written), 0))
+        if (rg_storage_write_file(filename, (void *)&slot, sizeof(slot), 0))
             last_written = slot;
         free(filename);
     }
