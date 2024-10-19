@@ -200,7 +200,7 @@ static void update_indicators(void)
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
     // GPIO LED doesn't support colors, so any color = on
     if (RG_GPIO_LED != GPIO_NUM_NC)
-        gpio_set_level(RG_GPIO_LED, ledColor != 0);
+        gpio_set_level(RG_GPIO_LED, newColor != 0);
 #endif
     ledColor = newColor;
 }
