@@ -859,17 +859,24 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_commit();
     }
 #if defined(ESP_PLATFORM)
+    // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
+    // This is simply to avoid an unecessary flash write...
+    const esp_partition_t *current = esp_ota_get_boot_partition();
+    if (current && current->label && partition && strcmp(current->label, partition) == 0)
+    {
+        RG_LOGI("Boot partition already set to desired app!");
+        rg_system_restart();
+    }
     esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
     if (err != ESP_OK)
     {
-        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
+        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!", err);
         RG_PANIC("Unable to set boot app!");
     }
-#elif defined(RG_TARGET_SDL2)
-    // RG_PANIC("Not implemented");
-#endif
     rg_system_restart();
+#endif
+    RG_PANIC("Switch not implemented!");
 }
 
 bool rg_system_have_app(const char *app)
