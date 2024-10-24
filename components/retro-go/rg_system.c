@@ -416,6 +416,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     if (enterRecoveryMode)
     {
         rg_display_init();
+        //rg_settings_init();  FIXME: Find a way to get the user's language without loading all settings
         rg_gui_init();
         enter_recovery_mode();
     }
