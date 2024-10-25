@@ -147,7 +147,12 @@ static void lcd_set_backlight(float percent)
     int error_code = 0;
 
 #if defined(RG_GPIO_LCD_BCKL)
+    #if defined(RG_TARGET_BYTEBOI_REV1)
+    rg_i2c_gpio_set_direction(RG_GPIO_LCD_BCKL, 0);
+    rg_i2c_gpio_set_level(RG_GPIO_LCD_BCKL, percent > 0 ? 0:1);
+    #else
     error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
+    #endif
 #elif defined(RG_TARGET_QTPY_GAMER)
     rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, 0);
     rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, level * 255);
@@ -240,7 +245,7 @@ static void lcd_init(void)
         #warning "LCD init sequence is not defined for this device!"
     #endif
     ILI9341_CMD(0x11);  // Exit Sleep
-    rg_usleep(5 * 1000);// Wait 5ms after sleep out
+    rg_usleep(10 * 1000);// Wait 10ms after sleep out
     ILI9341_CMD(0x29);  // Display on
 
     rg_display_clear(C_BLACK);

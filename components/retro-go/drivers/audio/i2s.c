@@ -105,9 +105,11 @@ static bool driver_deinit(void)
     }
     else if (state.device == 1)
     {
+    #if RG_AUDIO_USE_EXT_DAC
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
         gpio_reset_pin(RG_GPIO_SND_I2S_DATA);
         gpio_reset_pin(RG_GPIO_SND_I2S_WS);
+    #endif
     }
     #ifdef RG_GPIO_SND_AMP_ENABLE
     gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
@@ -118,12 +120,16 @@ static bool driver_deinit(void)
 static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 {
     float volume = state.muted ? 0.f : (state.volume * 0.01f);
+#if RG_AUDIO_USE_INT_DAC == 1 || RG_AUDIO_USE_INT_DAC == 2
+    rg_audio_uframe_t buffer[180]; // the internal DAC expects unsigned data
+#else
     rg_audio_frame_t buffer[180];
+#endif
     size_t written = 0;
     size_t pos = 0;
 
     // In speaker mode we use left and right as a differential mono output to increase resolution.
-    bool differential = state.device == 0;
+    bool differential = state.device == 0 && RG_AUDIO_USE_INT_DAC == 3;
 
     for (size_t i = 0; i < count; ++i)
     {
@@ -155,8 +161,16 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
         // if (right > 32767) right = 32767; else if (right < -32768) right = -32767;
 
         // Queue
+#if RG_AUDIO_USE_INT_DAC == 1
+        buffer[pos].left = ((int32_t)left + (int32_t)right)/2 + 32768; // the internal DAC expects unsigned data
+        buffer[pos].right = 0;
+#elif RG_AUDIO_USE_INT_DAC == 2
+        buffer[pos].left = 0;
+        buffer[pos].right = ((int32_t)left + (int32_t)right)/2 + 32768;
+#else
         buffer[pos].left = left;
         buffer[pos].right = right;
+#endif
 
         if (i == count - 1 || ++pos == RG_COUNT(buffer))
         {
@@ -173,7 +187,11 @@ static bool driver_set_mute(bool mute)
     i2s_zero_dma_buffer(I2S_NUM_0);
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+        #if defined(RG_TARGET_BYTEBOI_REV1)
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute);
+        #else
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+        #endif
     #elif defined(RG_TARGET_QTPY_GAMER)
         rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);

@@ -18,6 +18,8 @@
 #include "targets/esp32s3-devkit-c/config.h"
 #elif defined(RG_TARGET_FRI3D_2024)
 #include "targets/fri3d-2024/config.h"
+#elif defined(RG_TARGET_BYTEBOI_REV1)
+#include "targets/byteboi-rev1/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"

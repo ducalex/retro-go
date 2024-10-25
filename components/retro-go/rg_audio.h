@@ -9,6 +9,13 @@ typedef struct // __attribute__((packed))
     int16_t right;
 } rg_audio_frame_t;
 
+typedef struct // __attribute__((packed))
+{
+    uint16_t left;
+    uint16_t right;
+} rg_audio_uframe_t;
+
+
 typedef rg_audio_frame_t rg_audio_sample_t;
 
 typedef struct
