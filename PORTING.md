@@ -1,6 +1,5 @@
-# Patching Retro-Go
-Adjust retro-go to use your drivers and hardware
-
+# Porting Retro-Go
+This document describes the process of adding support for a new ESP32 device (what retro-go calls a *target*).
 
 
 
@@ -13,10 +12,10 @@ Before using your own patch of retro-go, make a clean build of retro go using ba
 ./rg_tool.py build-img launcher --target esp32s3-devkit-c
 ```
 
-Since we aren't using other setups, like ODROID-GO, we will be building `/img` files, not `.fw`. Use `./rg_tool.py build-img` to build imgs.
+Since we aren't using other setups, like ODROID-GO, we will be building `.img` files, not `.fw`. Use `./rg_tool.py build-img` to build imgs.
 
 
-**Make sure a basic setup is working before continuing to patch the code for your setup** 
+**Make sure a basic setup is working before continuing to patch the code for your setup**
 
 If it doesn't, refer to [BUILDING.md](BUILDING.md). Also check your `esp-idf` installation and make sure you have it set up in your environment (run `idf.py --version` to check)
 ```
