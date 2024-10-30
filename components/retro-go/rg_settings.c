@@ -31,12 +31,14 @@ static cJSON *json_root(const char *name, bool set_dirty)
         cJSON_AddStringToObject(branch, "namespace", name);
         cJSON_AddNumberToObject(branch, "changed", 0);
 
-        void *data; size_t data_len;
+        char *data; size_t data_len;
         char pathbuf[RG_PATH_MAX];
         snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
-        if (rg_storage_read_file(pathbuf, &data, &data_len, 0))
+        if (rg_storage_read_file(pathbuf, (void **)&data, &data_len, 0))
         {
-            cJSON *values = cJSON_Parse((char *)data);
+            cJSON *values = cJSON_Parse(data);
+            if (!values) // Parse failure, clean the markup and try again
+                values = cJSON_Parse(rg_json_fixup(data));
             if (values)
             {
                 RG_LOGI("Config file loaded: '%s'", pathbuf);
