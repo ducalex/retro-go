@@ -3,8 +3,7 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Issues](#issues)
-- [Theming](#theming)
-- [Building](#building)
+- [Development](#development)
 - [Acknowledgements](#acknowledgements)
 - [License](#license)
 
@@ -54,7 +53,7 @@ optimized to reduce their cpu, memory, and flash needs without reducing compatib
   3. Select retro-go in the files list and flash it.
 
 ### Generic ESP32
-This method is intended to be used when .fw support isn't available (when porting to a new device) or undesirable (devices with smaller flash).
+This method is intended to be used when .fw support isn't available (when [porting to a new device](PORTING.md)) or undesirable (devices with smaller flash).
   1. Build a .img file (refer to [Building Retro-Go](#building) below)
   2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
       _Note: Your particular device may require extra steps (like holding a button during power up), different esptool flags, or modifying base.sdkconfig._
@@ -83,26 +82,20 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 ## Game & Watch
 The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Game-Shrinker) and a tutorial can be [found here](https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef).
 
+
 ## Wifi
+To use wifi you will need to create a `/retro-go/config/wifi.json` config file. You can define up to 4 different networks, then selectable in the menu. Its content should look like this:
 
-To use wifi you will need to create a `/retro-go/config/wifi.json` config file. Its content should look like this:
-
-````json
-{
-  "ssid": "my-network",
-  "password": "my-password"
-}
-````
-
-Multiple networks can be defined using the following format (then selectable in the Options menu):
 ````json
 {
   "ssid0": "my-network",
   "password0": "my-password",
-  "ssid1": "my-network",
+  "ssid1": "my-other-network",
   "password1": "my-password",
-  "ssid2": "my-network",
-  "password2": "my-password"
+  "ssid2": "my-third-network",
+  "password2": "my-password",
+  "ssid3": "my-last-network",
+  "password3": "my-password"
 }
 ````
 
@@ -114,6 +107,7 @@ Timezone can be configured in the launcher's options menu.
 ### File manager
 You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
 http://192.168.x.x/ to access the file manager.
+
 
 ## External DAC (headphones)
 
@@ -162,12 +156,12 @@ of losing data when powering down too quickly. Also note that when *resuming* a 
 to a save state if present.
 
 
-# Theming
-Instructions moved to [THEMING.md](THEMING.md).
+# Development
+If you wish to build or modify Retro-Go, you can find help in the following documents:
 
-
-# Building
-Instructions moved to [BUILDING.md](BUILDING.md).
+- Build instructions in [BUILDING.md](BUILDING.md)
+- Theming instructions [THEMING.md](THEMING.md)
+- Porting instructions in [PORTING.md](PORTING.md)
 
 
 # Acknowledgements
