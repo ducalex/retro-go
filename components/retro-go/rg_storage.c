@@ -417,7 +417,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(path);
 
-    size_t output_buffer_align = RG_MAX(0x400, (flags & 0xF) * 0x2000);
+    size_t output_buffer_alloc_size;
     size_t output_buffer_size;
     void *output_buffer;
     size_t file_size;
@@ -435,13 +435,16 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
 
     if (flags & RG_FILE_USER_BUFFER)
     {
+        output_buffer_alloc_size = *data_len;
         output_buffer_size = RG_MIN(*data_len, file_size);
         output_buffer = *data_out;
     }
     else
     {
+        size_t blocksize = RG_MAX(0x400, (flags & 0xF) * 0x2000);
+        output_buffer_alloc_size = (file_size + (blocksize - 1)) & ~(blocksize - 1);
         output_buffer_size = file_size;
-        output_buffer = malloc((output_buffer_size + (output_buffer_align - 1)) & ~(output_buffer_align - 1));
+        output_buffer = malloc(output_buffer_alloc_size);
     }
 
     if (!output_buffer)
@@ -461,6 +464,12 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     }
 
     fclose(fp);
+
+    // Wipe the extra allocated space, if any
+    if (output_buffer_alloc_size > output_buffer_size)
+    {
+        memset(output_buffer + output_buffer_size, 0, output_buffer_alloc_size - output_buffer_size);
+    }
 
     *data_out = output_buffer;
     *data_len = output_buffer_size;
