@@ -120,25 +120,28 @@ static bool driver_deinit(void)
 static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 {
     float volume = state.muted ? 0.f : (state.volume * 0.01f);
-#if RG_AUDIO_USE_INT_DAC == 1 || RG_AUDIO_USE_INT_DAC == 2
-    rg_audio_uframe_t buffer[180]; // the internal DAC expects unsigned data
-#else
     rg_audio_frame_t buffer[180];
-#endif
     size_t written = 0;
     size_t pos = 0;
 
-    // In speaker mode we use left and right as a differential mono output to increase resolution.
-    bool differential = state.device == 0 && RG_AUDIO_USE_INT_DAC == 3;
+    bool use_internal_dac = state.device == 0;
 
     for (size_t i = 0; i < count; ++i)
     {
         int left = frames[i].left * volume;
         int right = frames[i].right * volume;
 
-        if (differential)
+        if (use_internal_dac)
         {
             int sample = (left + right) >> 1;
+        #if RG_AUDIO_USE_INT_DAC == 1
+            left = sample + 0x8000; // the internal DAC expects unsigned data
+            right = 0;
+        #elif RG_AUDIO_USE_INT_DAC == 2
+            left = 0; 
+            right = sample + 0x8000; // the internal DAC expects unsigned data
+        #elif RG_AUDIO_USE_INT_DAC == 3
+            // In two channel mode we use left and right as a differential mono output to increase resolution.
             if (sample > 0x7F00)
             {
                 left = 0x8000 + (sample - 0x7F00);
@@ -154,6 +157,7 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
                 left = 0x8000;
                 right = -0x8000 + sample;
             }
+        #endif
         }
 
         // Clipping   (not necessary, we have (int16 * vol) and volume is never more than 1.0)
@@ -161,16 +165,8 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
         // if (right > 32767) right = 32767; else if (right < -32768) right = -32767;
 
         // Queue
-#if RG_AUDIO_USE_INT_DAC == 1
-        buffer[pos].left = ((int32_t)left + (int32_t)right)/2 + 32768; // the internal DAC expects unsigned data
-        buffer[pos].right = 0;
-#elif RG_AUDIO_USE_INT_DAC == 2
-        buffer[pos].left = 0;
-        buffer[pos].right = ((int32_t)left + (int32_t)right)/2 + 32768;
-#else
         buffer[pos].left = left;
         buffer[pos].right = right;
-#endif
 
         if (i == count - 1 || ++pos == RG_COUNT(buffer))
         {
