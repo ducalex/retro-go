@@ -41,6 +41,7 @@ void gui_init(bool cold_boot)
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
+    gui.theme = &gui.themes[gui.color_theme % RG_COUNT(gui.themes)];
     gui.http_lock = false;
     gui.low_memory_mode = rg_system_get_app()->lowMemoryMode;
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
@@ -112,6 +113,9 @@ rg_image_t *gui_get_image(const char *type, const char *subtype)
 {
     char name[64];
 
+    if (gui.low_memory_mode)
+        return NULL;
+
     if (subtype && *subtype)
         snprintf(name, sizeof(name), "%s_%s.png", type, subtype);
     else
@@ -179,21 +183,29 @@ void gui_set_status(tab_t *tab, const char *left, const char *right)
 void gui_update_theme(void)
 {
     // Load our four color schemes from gui theme
+    gui.themes[0].background = rg_gui_get_theme_color("launcher_1", "background", C_BLACK);
+    gui.themes[0].foreground = rg_gui_get_theme_color("launcher_1", "foreground", C_SNOW);
     gui.themes[0].list.standard_bg = rg_gui_get_theme_color("launcher_1", "list_standard_bg", C_TRANSPARENT);
     gui.themes[0].list.standard_fg = rg_gui_get_theme_color("launcher_1", "list_standard_fg", C_GRAY);
     gui.themes[0].list.selected_bg = rg_gui_get_theme_color("launcher_1", "list_selected_bg", C_TRANSPARENT);
     gui.themes[0].list.selected_fg = rg_gui_get_theme_color("launcher_1", "list_selected_fg", C_WHITE);
 
+    gui.themes[1].background = rg_gui_get_theme_color("launcher_2", "background", C_BLACK);
+    gui.themes[1].foreground = rg_gui_get_theme_color("launcher_2", "foreground", C_SNOW);
     gui.themes[1].list.standard_bg = rg_gui_get_theme_color("launcher_2", "list_standard_bg", C_TRANSPARENT);
     gui.themes[1].list.standard_fg = rg_gui_get_theme_color("launcher_2", "list_standard_fg", C_GRAY);
     gui.themes[1].list.selected_bg = rg_gui_get_theme_color("launcher_2", "list_selected_bg", C_TRANSPARENT);
     gui.themes[1].list.selected_fg = rg_gui_get_theme_color("launcher_2", "list_selected_fg", C_GREEN);
 
+    gui.themes[2].background = rg_gui_get_theme_color("launcher_3", "background", C_BLACK);
+    gui.themes[2].foreground = rg_gui_get_theme_color("launcher_3", "foreground", C_SNOW);
     gui.themes[2].list.standard_bg = rg_gui_get_theme_color("launcher_3", "list_standard_bg", C_TRANSPARENT);
     gui.themes[2].list.standard_fg = rg_gui_get_theme_color("launcher_3", "list_standard_fg", C_GRAY);
     gui.themes[2].list.selected_bg = rg_gui_get_theme_color("launcher_3", "list_selected_bg", C_WHITE);
     gui.themes[2].list.selected_fg = rg_gui_get_theme_color("launcher_3", "list_selected_fg", C_BLACK);
 
+    gui.themes[3].background = rg_gui_get_theme_color("launcher_4", "background", C_BLACK);
+    gui.themes[3].foreground = rg_gui_get_theme_color("launcher_4", "foreground", C_SNOW);
     gui.themes[3].list.standard_bg = rg_gui_get_theme_color("launcher_4", "list_standard_bg", C_TRANSPARENT);
     gui.themes[3].list.standard_fg = rg_gui_get_theme_color("launcher_4", "list_standard_fg", C_DARK_GRAY);
     gui.themes[3].list.selected_bg = rg_gui_get_theme_color("launcher_4", "list_selected_bg", C_WHITE);
@@ -377,14 +389,6 @@ void gui_redraw(void)
 
 void gui_draw_background(tab_t *tab, int shade)
 {
-    // In low memory mode we can't fit an entire background in memory, flood a single color instead
-    // FIXME: The color should be themable...
-    if (gui.low_memory_mode)
-    {
-        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, C_BLACK, C_BLACK);
-        return;
-    }
-
     // We can't losslessly change shade, must reload!
     if (tab->background && tab->background_shade > 0 && tab->background_shade != shade)
     {
@@ -425,7 +429,10 @@ void gui_draw_background(tab_t *tab, int shade)
         tab->background_shade = shade;
     }
 
-    rg_gui_draw_image(0, 0, gui.width, gui.height, false, tab->background);
+    if (tab->background)
+        rg_gui_draw_image(0, 0, gui.width, gui.height, false, tab->background);
+    else
+        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, 0, gui.theme->background);
 }
 
 void gui_draw_header(tab_t *tab, int offset)
@@ -439,7 +446,7 @@ void gui_draw_header(tab_t *tab, int offset)
     if (tab->banner)
         rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, tab->banner);
     else
-        rg_gui_draw_text(LOGO_WIDTH + 8, offset + 8, 0, tab->desc, C_SNOW, C_BLACK, RG_TEXT_BIGGER);
+        rg_gui_draw_text(LOGO_WIDTH + 8, offset + 8, 0, tab->desc, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_BIGGER);
 }
 
 void gui_draw_tab_indicator(void)
@@ -459,16 +466,15 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, C_SNOW, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
-    rg_gui_draw_text(status_x, status_y, 0, txt_left, C_WHITE, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
     rg_gui_draw_icons();
 }
 
 void gui_draw_list(tab_t *tab)
 {
-    const theme_t *theme = &gui.themes[gui.color_theme % RG_COUNT(gui.themes)];
-    rg_color_t fg[2] = {theme->list.standard_fg, theme->list.selected_fg};
-    rg_color_t bg[2] = {theme->list.standard_bg, theme->list.selected_bg};
+    rg_color_t fg[2] = {gui.theme->list.standard_fg, gui.theme->list.selected_fg};
+    rg_color_t bg[2] = {gui.theme->list.standard_bg, gui.theme->list.selected_bg};
 
     const listbox_t *list = &tab->listbox;
     int line_height, top = HEADER_HEIGHT + 6;

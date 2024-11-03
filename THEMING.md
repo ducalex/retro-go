@@ -28,8 +28,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     "author": "John Smith",
     "dialog": {
         "__comment": "This section contains global dialog colors",
-        "foreground": "0xFFFF",
         "background": "0x0010",
+        "foreground": "0xFFFF",
         "border": "0x6B4D",
         "header": "0xFFFF",
         "scrollbar": "0xFFFF",
@@ -39,6 +39,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     },
     "launcher_1": {
         "__comment": "This section contains launcher theme variant 1",
+        "background": "0x0000",
+        "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
         "list_standard_fg": "0x8410",
         "list_selected_bg": "transparent",
@@ -46,6 +48,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     },
     "launcher_2": {
         "__comment": "This section contains launcher theme variant 2",
+        "background": "0x0000",
+        "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
         "list_standard_fg": "0x8410",
         "list_selected_bg": "transparent",
@@ -53,6 +57,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     },
     "launcher_3": {
         "__comment": "This section contains launcher theme variant 3",
+        "background": "0x0000",
+        "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
         "list_standard_fg": "0x8410",
         "list_selected_bg": "0xFFFF",
@@ -60,6 +66,8 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     },
     "launcher_4": {
         "__comment": "This section contains launcher theme variant 4",
+        "background": "0x0000",
+        "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
         "list_standard_fg": "0xAD55",
         "list_selected_bg": "0xFFFF",

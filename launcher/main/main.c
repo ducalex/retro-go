@@ -120,6 +120,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui.color_theme = 0;
 
     gui.color_theme %= RG_COUNT(gui.themes);
+    gui.theme = &gui.themes[gui.color_theme];
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         return RG_DIALOG_REDRAW;
