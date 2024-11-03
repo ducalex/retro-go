@@ -441,7 +441,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
     }
     else if (event == TAB_IDLE)
     {
-        if (file && !tab->preview && gui.browse && gui.idle_counter == 1)
+        if (file && !tab->preview && gui.idle_counter == 1)
             gui_load_preview(tab);
     }
     else if (event == TAB_ACTION)

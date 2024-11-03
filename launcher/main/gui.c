@@ -236,7 +236,7 @@ void gui_save_config(void)
 
 listbox_item_t *gui_get_selected_item(tab_t *tab)
 {
-    if (tab)
+    if (tab && gui.browse)
     {
         listbox_t *list = &tab->listbox;
         if (list->cursor >= 0 && list->cursor < list->length)
