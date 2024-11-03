@@ -683,7 +683,6 @@ static void application(const char *desc, const char *name, const char *exts, co
 
 void applications_init(void)
 {
-    bool big_memory = rg_system_get_app()->availableMemory >= 0x600000;
     application("Nintendo Entertainment System", "nes", "nes fc fds nsf zip", "retro-core", 16);
     application("Super Nintendo", "snes", "smc sfc zip", "retro-core", 0);
     application("Nintendo Gameboy", "gb", "gb gbc zip", "retro-core", 0);
@@ -697,13 +696,14 @@ void applications_init(void)
     application("Coleco ColecoVision", "col", "col rom zip", "retro-core", 0);
     application("NEC PC Engine", "pce", "pce zip", "retro-core", 0);
     application("Atari Lynx", "lnx", "lnx zip", "retro-core", 64);
-    // application("Atari 2600", "a26", "a26", "stella-go", 0);
-    // application("Neo Geo Pocket Color", "ngp", "ngp ngc", "ngpocket-go", 0);
-    application("DOOM", "doom", big_memory ? "wad zip" : "wad", "prboom-go", 0);
+    // application("Atari 2600", "a26", "a26 zip", "stella-go", 0);
+    // application("Neo Geo Pocket Color", "ngp", "ngp ngc zip", "ngpocket-go", 0);
+    application("DOOM", "doom", "wad zip", "prboom-go", 0);
     application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 
     // Special app to bootstrap native esp32 binaries from the SD card
     // application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
-    crc_cache_init();
+    if (!rg_system_get_app()->lowMemoryMode)
+        crc_cache_init();
 }

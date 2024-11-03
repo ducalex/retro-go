@@ -155,6 +155,9 @@ You can configure automatic SRAM saving in the options menu. A longer delay will
 of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority
 to a save state if present.
 
+### ZIP files
+Most Retro-Go applications now support ZIP files. ZIP archives should contain only one ROM file and nothing else. ZIP support also depends on available memory and larger ROMs may fail to load on some devices unfortunately.
+
 
 # Development
 If you wish to build or modify Retro-Go, you can find help in the following documents:

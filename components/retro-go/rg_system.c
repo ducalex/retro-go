@@ -370,7 +370,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .frameskip = 1,
         .overclock = 0,
         .tickTimeout = 3000000,
-        .availableMemory = 0,
+        .lowMemoryMode = false,
         .enWatchdog = true,
         .isColdBoot = true,
         .isLauncher = false,
@@ -440,6 +440,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     memset(&panicTrace, 0, sizeof(panicTrace));
     panicTraceCleared = true;
 
+    update_memory_statistics();
+    app.lowMemoryMode = statistics.totalMemoryExt == 0;
+
     rg_settings_init();
     app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
@@ -467,13 +470,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = rg_mutex_create();
 #endif
 
-    update_memory_statistics();
-    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
-            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
-    app.availableMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
-
 #ifdef ESP_PLATFORM
-    if (statistics.totalMemoryExt == 0)
+    if (app.lowMemoryMode)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
@@ -484,6 +482,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
+    update_memory_statistics();
+    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
     RG_LOGI("Retro-Go ready.\n\n");
 
     return &app;

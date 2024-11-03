@@ -41,6 +41,8 @@ void gui_init(bool cold_boot)
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
+    gui.http_lock = false;
+    gui.low_memory_mode = rg_system_get_app()->lowMemoryMode;
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
     gui_update_theme();
 }
@@ -375,6 +377,14 @@ void gui_redraw(void)
 
 void gui_draw_background(tab_t *tab, int shade)
 {
+    // In low memory mode we can't fit an entire background in memory, flood a single color instead
+    // FIXME: The color should be themable...
+    if (gui.low_memory_mode)
+    {
+        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, C_BLACK, C_BLACK);
+        return;
+    }
+
     // We can't losslessly change shade, must reload!
     if (tab->background && tab->background_shade > 0 && tab->background_shade != shade)
     {
@@ -511,7 +521,7 @@ void gui_load_preview(tab_t *tab)
 
     gui_set_preview(tab, NULL);
 
-    if (!item || !item->arg)
+    if (!item || !item->arg || gui.low_memory_mode)
         return;
 
     switch (gui.show_preview)

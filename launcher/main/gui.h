@@ -131,6 +131,7 @@ typedef struct {
     uint32_t idle_counter;
     uint32_t joystick;
     bool http_lock; // FIXME: should be a mutex...
+    bool low_memory_mode;
     rg_surface_t *surface;
 } retro_gui_t;
 
