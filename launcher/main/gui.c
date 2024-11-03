@@ -485,7 +485,7 @@ void gui_draw_list(tab_t *tab)
     {
         char buffer[64];
         snprintf(buffer, 63, "[%s]",  tab->navpath);
-        top += rg_gui_draw_text(0, top, gui.width, buffer, fg[0], bg[0], 0).height;
+        top += rg_gui_draw_text(0, top, gui.width, buffer, gui.theme->foreground, C_TRANSPARENT, 0).height;
     }
 
     top += ((gui.height - top) - (lines * line_height)) / 2;

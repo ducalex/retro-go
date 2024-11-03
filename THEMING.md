@@ -38,7 +38,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "item_message": "0xBDF7"
     },
     "launcher_1": {
-        "__comment": "This section contains launcher theme variant 1",
+        "__comment": "This section contains launcher colors variant 1",
         "background": "0x0000",
         "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
@@ -47,7 +47,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "list_selected_fg": "0xFFFF"
     },
     "launcher_2": {
-        "__comment": "This section contains launcher theme variant 2",
+        "__comment": "This section contains launcher colors variant 2",
         "background": "0x0000",
         "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
@@ -56,7 +56,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "list_selected_fg": "0xFFFF"
     },
     "launcher_3": {
-        "__comment": "This section contains launcher theme variant 3",
+        "__comment": "This section contains launcher colors variant 3",
         "background": "0x0000",
         "foreground": "0xFFDE",
         "list_standard_bg": "transparent",
@@ -65,7 +65,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "list_selected_fg": "0x0000"
     },
     "launcher_4": {
-        "__comment": "This section contains launcher theme variant 4",
+        "__comment": "This section contains launcher colors variant 4",
         "background": "0x0000",
         "foreground": "0xFFDE",
         "list_standard_bg": "transparent",

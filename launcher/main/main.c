@@ -388,7 +388,8 @@ static void retro_loop(void)
             prev_joystick = 0;
             gui_event(TAB_IDLE, tab);
             next_idle_event = rg_system_timer() + 100000;
-            redraw_pending = true;
+            if (gui.idle_counter % 10 == 1)
+                redraw_pending = true;
         }
         else if (gui.idle_counter)
         {
