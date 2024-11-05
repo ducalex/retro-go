@@ -2,322 +2,260 @@
 
 int rg_language = 0;
 
-Translation translations[] = {
+Translation translations[] = 
+{
     {
         .msg = "Yes",
         .fr = "Oui"
     },
-
     {
         .msg = "Select file",
         .fr = "Choisissez un fichier"
     },
-
     {
         .msg = "Off",
         .fr = "Off"
     },
-
     {
         .msg = "Language",
         .fr = "Langue"
     },
-
     {
         .msg = "Language changed!",
         .fr = "Changement de langue"
     },
-
     {
         .msg = "For these changes to take effect you must restart your device.\nrestart now?",
         .fr = "Pour que ces changements prennent effet, vous devez redemmarer votre appareil.\nRedemmarer maintenant ?"
     },
-
     {
         .msg = "Wi-Fi profile",
         .fr = "Profile Wi-Fi"
     },
-
     {
         .msg = "Language ",
         .fr = "Langue"
     },
-
     {
         .msg = "Options",
         .fr = "Options"
     },
-
     {
         .msg = "About Retro-Go",
         .fr = "A propose de Retro-go"
     },
-
     {
         .msg = "Reset all settings?",
         .fr = "Reset tous les parametres"
     },
-
     {
         .msg = "Initializing...",
         .fr = "Initialisation..."
     },
-
     {
         .msg = "Host Game (P1)",
         .fr = "Host Game (P1)"
     },
-
     {
         .msg = "Find Game (P2)",
         .fr = "Find Game (P2)"
     },
-
     {
         .msg = "Netplay",
         .fr = "Netplay"
     },
-
     {
         .msg = "ROMs not identical. Continue?",
         .fr = "ROMs not identical. Continue?"
     },
-
     {
         .msg = "Exchanging info...",
         .fr = "Exchanging info..."
     },
-
     {
         .msg = "Unable to find host!",
         .fr = "Unable to find host!"
     },
-
     {
         .msg = "Connection failed!",
         .fr = "Connection failed!"
     },
-
     {
         .msg = "Waiting for peer...",
         .fr = "Waiting for peer..."
     },
-
     {
         .msg = "Unknown status...",
         .fr = "Unknown status..."
     },
-
     {
         .msg = "On",
         .fr = "On"
     },
-
     {
         .msg = "Keyboard",
         .fr = "Clavier"
     },
-
     {
         .msg = "Joystick",
         .fr = "Joystick"
     },
-
     {
         .msg = "Input",
         .fr = "Entree"
     },
-
     {
         .msg = "Crop ",
         .fr = "Couper"
     },
-
     {
         .msg = "BIOS file missing!",
         .fr = "Fichier BIOS manquant"
     },
-
     {
         .msg = "YM2612 audio ",
         .fr = "YM2612 audio "
     },
-
     {
         .msg = "SN76489 audio",
         .fr = "SN76489 audio"
     },
-
     {
         .msg = "Z80 emulation",
         .fr = "Emulation Z80"
     },
-
     {
         .msg = "Launcher options",
         .fr = "Options du lanceur"
     },
-
     {
         .msg = "Date",
         .fr = "Date"
     },
-
     {
         .msg = "Files:",
         .fr = "Fichiers:"
     },
-
     {
         .msg = "Download complete!",
         .fr = "Telechargement termine"
     },
-
     {
         .msg = "Reboot to flash?",
         .fr = "Redemarrer"
     },
-
     {
         .msg = "Available Releases",
         .fr = "Maj disponibles"
     },
-
     {
         .msg = "Received empty list!",
         .fr = "Liste vide recue"
     },
-
     {
         .msg = "Gamma Boost",
         .fr = "Boost Gamma"
     },
-
     {
         .msg = "Day ",
         .fr = "Jour"
     },
-
     {
         .msg = "Hour",
         .fr = "Heure"
     },
-
     {
         .msg = "Min ",
         .fr = "Min "
     },
-
     {
         .msg = "Sec ",
         .fr = "Sec "
     },
-
     {
         .msg = "Sync",
         .fr = "Synchro"
     },
-
     {
         .msg = "RTC config",
         .fr = "Congig RTC"
     },
-
     {
         .msg = "Palette      ",
         .fr = "Palette      "
     },
-
     {
         .msg = "RTC config   ",
         .fr = "Congig RTC   "
     },
-
     {
         .msg = "SRAM autosave",
         .fr = "Sauvegarde auto SRAM"
     },
-
     {
         .msg = "Enable BIOS  ",
         .fr = "Activer BIOS"
     },
-
     {
         .msg = "Name      ",
         .fr = "Nom       "
     },
-
     {
         .msg = "Artist    ",
         .fr = "Artiste   "
     },
-
     {
         .msg = "Copyright ",
         .fr = "Copyright "
     },
-
     {
         .msg = "Playing   ",
         .fr = "Playing   "
     },
-
     {
         .msg = "Palette     ",
         .fr = "Palette     "
     },
-
     {
         .msg = "Overscan    ",
         .fr = "Overscan    "
     },
-
     {
         .msg = "Crop sides  ",
         .fr = "Couper les cotes"
     },
-
     {
         .msg = "Sprite limit",
         .fr = "Limite de sprite"
     },
-
     {
         .msg = "Overscan",
         .fr = "Overscan"
     },
-
     {
         .msg = "Palette ",
         .fr = "Palette "
     },
-
     {
         .msg = "Profile",
         .fr = "Profile"
     },
-
     {
         .msg = "<profile name>",
         .fr = "<nom du profil>"
     },
-
     {
         .msg = "Controls",
         .fr = "Controles"
     },
-
     {
         .msg = "Audio enable",
         .fr = ""
     },
-
     {
         .msg = "Audio filter",
         .fr = "Activer audio"
     },
-
     {
         .msg = "Controls    ",
         .fr = "Controles   "
@@ -329,7 +267,6 @@ Translation translations[] = {
         .msg = "Folder is empty.", 
         .fr = "Le dossier est vide."
     },
-
     {
         .msg = "yes", 
         .fr = "Oui"
@@ -342,7 +279,6 @@ Translation translations[] = {
         .msg = "OK", 
         .fr = "OK"
     },
-
     {
         .msg = "On ", 
         .fr = "On "
@@ -363,7 +299,6 @@ Translation translations[] = {
         .msg = "Both ", 
         .fr = "Tout"
     },
-
     {
         .msg = "Fit ", 
         .fr = "Ajuster"
@@ -394,7 +329,6 @@ Translation translations[] = {
         .msg = "Low battery", 
         .fr = "Battery basse"
     },
-
     {
         .msg = "Default", 
         .fr = "Default"
@@ -629,7 +563,6 @@ Translation translations[] = {
         .msg = "Hide", 
         .fr = "Cacher"
     },
-
     {
         .msg = "Tabs Visibility", 
         .fr = "Visibilitee onglets"
@@ -724,7 +657,6 @@ Translation translations[] = {
         .msg = "Startup app ", 
         .fr = "App demarrage"
     },
-
     {
         .msg = "Build CRC cache", 
         .fr = "Build CRC cache"
@@ -737,7 +669,6 @@ Translation translations[] = {
         .msg = "HTTP Server Busy...", 
         .fr = "Server Web ..."
     },
-
     {
         .msg = "SD Card Error", 
         .fr = "Erreur carte SD"
@@ -754,7 +685,6 @@ Translation translations[] = {
         .msg = "Scanning %s %d/%d", 
         .fr = "Scan %s %d/%d"
     },
-
     // message when no rom
     {
         .msg = "Welcome to Retro-Go!", 
@@ -776,7 +706,6 @@ Translation translations[] = {
         .msg = "You have no %s games", 
         .fr = "Vous n'avez pas de jeux %s"
     },
-
     {
         .msg = "File not found", 
         .fr = "Fichier non present"
@@ -862,7 +791,6 @@ Translation translations[] = {
         .msg = "App unresponsive... Hold MENU to quit!", 
         .fr = "Plantage... MENU pour quitter"
     },
-
     {
         .msg = "Reset all settings", 
         .fr = "Reset parametres"
@@ -884,22 +812,22 @@ Translation translations[] = {
         .msg = "System Panic!", 
         .fr = "Plantage systeme!"
     },
-
     {
         .msg = "Save failed", 
         .fr = "Erreur sauvegarde"
     },
     // end of rg_system.c
 
-
     {NULL, NULL}  // End of array
 };
 
-int rg_localization_get_language_id(void){
+int rg_localization_get_language_id(void)
+{
     return rg_language;
 }
 
-bool rg_localization_set_language_id(int language_id){
+bool rg_localization_set_language_id(int language_id)
+{
     if (language_id < 0 || language_id > RG_LANGUAGE_MAX - 1)
         return false;
 
@@ -907,12 +835,15 @@ bool rg_localization_set_language_id(int language_id){
     return true;
 }
 
-const char* rg_gettext(const char *text) {
+const char* rg_gettext(const char *text)
+{
     if (rg_language == 0)
         return text; // in case language == 0 == english -> return the original string
 
-    for (int i = 0; translations[i].msg != NULL; i++) {
-        if (strcmp(translations[i].msg, text) == 0) {
+    for (int i = 0; translations[i].msg != NULL; i++)
+    {
+        if (strcmp(translations[i].msg, text) == 0)
+        {
             switch (rg_language)
             {
             case 1:
