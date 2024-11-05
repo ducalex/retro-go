@@ -4,7 +4,6 @@
 #include <stdbool.h>
 
 #define _(String) rg_gettext(String)
-#define RG_LANGUAGE_MAX 2 // Update accordingly to Translation struct
 
 // Define a struct for holding message translations
 typedef struct
@@ -13,6 +12,14 @@ typedef struct
     char *fr;    // FR Translated message
 //  char *de;    // for adding DE translation for example
 } Translation;
+
+enum languages
+{
+    RG_LANG_EN,
+    RG_LANG_FR,
+
+    RG_LANGUAGE_MAX
+};
 
 // Lookup function
 const char* rg_gettext(const char *msg);
