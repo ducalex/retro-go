@@ -235,7 +235,7 @@ void snes_main(void)
     const rg_gui_option_t options[] = {
         {0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
         {0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
-        {0, _("Controls    "), "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
+        {0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
         RG_DIALOG_END,
     };
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

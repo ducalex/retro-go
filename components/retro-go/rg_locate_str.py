@@ -80,7 +80,7 @@ file = open("missing_translation.txt", "w")
 for string in found_strings_in_files:
     if string not in translated:
         print("missing translation", '"'+string+'"')
-        file.write('{\n\t.msg = "'+string+'",\n\t.fr = \"\",\n},\n\n')
+        file.write('{\n\t.msg = "'+string+'",\n\t.fr = \"\",\n},\n')
         
         # file output :
         #{

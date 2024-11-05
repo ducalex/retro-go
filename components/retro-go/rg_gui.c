@@ -966,7 +966,7 @@ bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
         {0, message, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "",      NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
         {1, _("Yes"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
-        {0, _("No "),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {0, _("No"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
         RG_DIALOG_END,
     };
     return rg_gui_dialog(title, message ? options : options + 1, default_yes ? -2 : -1) == 1;
@@ -1162,13 +1162,13 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     }
 
     if (mode == RG_DISPLAY_FILTER_OFF)
-        strcpy(option->value, _("Off  "));
+        strcpy(option->value, _("Off"));
     if (mode == RG_DISPLAY_FILTER_HORIZ)
         strcpy(option->value, _("Horiz"));
     if (mode == RG_DISPLAY_FILTER_VERT)
-        strcpy(option->value, _("Vert "));
+        strcpy(option->value, _("Vert"));
     if (mode == RG_DISPLAY_FILTER_BOTH)
-        strcpy(option->value, _("Both "));
+        strcpy(option->value, _("Both"));
 
     return RG_DIALOG_VOID;
 }
@@ -1250,7 +1250,7 @@ static rg_gui_event_t led_indicator_opt_cb(rg_gui_option_t *option, rg_gui_event
     {
         rg_system_set_indicator_mask(option->arg, !rg_system_get_indicator_mask(option->arg));
     }
-    strcpy(option->value, rg_system_get_indicator_mask(option->arg) ? _("On ") : _("Off"));
+    strcpy(option->value, rg_system_get_indicator_mask(option->arg) ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1277,7 +1277,7 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
         rg_settings_set_number(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, gui.show_clock ? _("On ") : _("Off"));
+    strcpy(option->value, gui.show_clock ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1501,7 +1501,7 @@ static rg_gui_event_t wifi_enable_cb(rg_gui_option_t *option, rg_gui_event_t eve
         wifi_toggle_interactive(enabled, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1));
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, enabled ? _("On ") : _("Off"));
+    strcpy(option->value, enabled ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1510,12 +1510,12 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0x00, _("Wi-Fi enable "),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
+            {0x00, _("Wi-Fi enable"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
             {0x01, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb },
             RG_DIALOG_SEPARATOR,
             {0x02, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
-            {0x10, _("Network   "),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            {0x10, _("Network"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
             {0x11, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
             RG_DIALOG_END,
         };
@@ -1534,17 +1534,17 @@ void rg_gui_options_menu(void)
 #ifdef RG_SCREEN_BACKLIGHT
     *opt++ = (rg_gui_option_t){0, _("Brightness"), "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
 #endif
-    *opt++ = (rg_gui_option_t){0, _("Volume    "), "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
-    *opt++ = (rg_gui_option_t){0, _("Audio out "), "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb};
+    *opt++ = (rg_gui_option_t){0, _("Volume"), "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
+    *opt++ = (rg_gui_option_t){0, _("Audio out"), "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb};
 
     // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
     {
-        *opt++ = (rg_gui_option_t){0, _("Font type "), "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
-        *opt++ = (rg_gui_option_t){0, _("Theme     "), "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
+        *opt++ = (rg_gui_option_t){0, _("Font type"), "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
+        *opt++ = (rg_gui_option_t){0, _("Theme"), "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
         *opt++ = (rg_gui_option_t){0, _("Show clock"), "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
-        *opt++ = (rg_gui_option_t){0, _("Timezone  "), "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
-        *opt++ = (rg_gui_option_t){0, _("Language "), "-", RG_DIALOG_FLAG_NORMAL, &language_cb};
+        *opt++ = (rg_gui_option_t){0, _("Timezone"), "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
+        *opt++ = (rg_gui_option_t){0, _("Language"), "-", RG_DIALOG_FLAG_NORMAL, &language_cb};
 #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
         *opt++ = (rg_gui_option_t){0, _("LED options"), NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
 #endif
@@ -1556,7 +1556,7 @@ void rg_gui_options_menu(void)
     else
     {
         *opt++ = (rg_gui_option_t){0, _("Scaling"),   "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
-        *opt++ = (rg_gui_option_t){0, _(" Factor"),   "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
+        *opt++ = (rg_gui_option_t){0, _("Factor"),   "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
         *opt++ = (rg_gui_option_t){0, _("Filter"),    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Border"),    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Speed"),     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
@@ -1584,8 +1584,8 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
         {0, _("Version"), (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, _("Date   "), (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, _("Target "), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Date"), (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Target"), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, _("Website"), (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
         {4, _("Options "), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
@@ -1809,15 +1809,15 @@ void rg_gui_game_menu(void)
     bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
     const rg_gui_option_t choices[] = {
         {1000, _("Save & Continue"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2000, _("Save & Quit    "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3001, _("Load game      "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3000, _("Reset          "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2000, _("Save & Quit"),     NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3001, _("Load game"),       NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3000, _("Reset"),           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         #ifdef RG_ENABLE_NETPLAY
-        {5000, _("Netplay "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {5000, _("Netplay"),         NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         #endif
-        {5500, _("Options "), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL, NULL},
-        {6000, _("About   "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {7000, _("Quit    "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {5500, _("Options"),         NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL, NULL},
+        {6000, _("About"),           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {7000, _("Quit"),            NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
     int slot, sel;

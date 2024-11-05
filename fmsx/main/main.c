@@ -431,7 +431,7 @@ void app_main(void)
     };
     const rg_gui_option_t options[] = {
         {0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
-        {0, _("Crop "), "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
+        {0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
         // {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
         RG_DIALOG_END,
     };

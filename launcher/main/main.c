@@ -83,7 +83,7 @@ static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {_("None      "), _("Cover,Save"), _("Save,Cover"), _("Cover only"), _("Save only ")};
+    const char *modes[] = {_("None"), _("Cover,Save"), _("Save,Cover"), _("Cover only"), _("Save only")};
     const int max = PREVIEW_MODE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
@@ -179,15 +179,15 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0, _("Color theme "), "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
-            {0, _("Preview     "), "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
-            {0, _("Scroll mode "), "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
+            {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
+            {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
+            {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
             {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
-            {0, _("Hide tabs   "), "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
+            {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
             #ifdef RG_ENABLE_NETWORKING
-            {0, _("File server "), "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+            {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
             #endif
-            {0, _("Startup app "), "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
+            {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
             RG_DIALOG_END,
         };
         gui_redraw(); // clear main menu

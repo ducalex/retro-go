@@ -33,7 +33,7 @@ Translation translations[] =
         .fr = "Profile Wi-Fi"
     },
     {
-        .msg = "Language ",
+        .msg = "Language",
         .fr = "Langue"
     },
     {
@@ -105,7 +105,7 @@ Translation translations[] =
         .fr = "Entree"
     },
     {
-        .msg = "Crop ",
+        .msg = "Crop",
         .fr = "Couper"
     },
     {
@@ -157,7 +157,7 @@ Translation translations[] =
         .fr = "Boost Gamma"
     },
     {
-        .msg = "Day ",
+        .msg = "Day",
         .fr = "Jour"
     },
     {
@@ -165,12 +165,12 @@ Translation translations[] =
         .fr = "Heure"
     },
     {
-        .msg = "Min ",
-        .fr = "Min "
+        .msg = "Min",
+        .fr = "Min"
     },
     {
-        .msg = "Sec ",
-        .fr = "Sec "
+        .msg = "Sec",
+        .fr = "Sec"
     },
     {
         .msg = "Sync",
@@ -181,47 +181,47 @@ Translation translations[] =
         .fr = "Congig RTC"
     },
     {
-        .msg = "Palette      ",
-        .fr = "Palette      "
+        .msg = "Palette",
+        .fr = "Palette"
     },
     {
-        .msg = "RTC config   ",
-        .fr = "Congig RTC   "
+        .msg = "RTC config",
+        .fr = "Congig RTC"
     },
     {
         .msg = "SRAM autosave",
         .fr = "Sauvegarde auto SRAM"
     },
     {
-        .msg = "Enable BIOS  ",
+        .msg = "Enable BIOS",
         .fr = "Activer BIOS"
     },
     {
-        .msg = "Name      ",
-        .fr = "Nom       "
+        .msg = "Name",
+        .fr = "Nom"
     },
     {
-        .msg = "Artist    ",
-        .fr = "Artiste   "
+        .msg = "Artist",
+        .fr = "Artiste"
     },
     {
-        .msg = "Copyright ",
-        .fr = "Copyright "
+        .msg = "Copyright",
+        .fr = "Copyright"
     },
     {
-        .msg = "Playing   ",
-        .fr = "Playing   "
+        .msg = "Playing",
+        .fr = "Playing"
     },
     {
-        .msg = "Palette     ",
-        .fr = "Palette     "
+        .msg = "Palette",
+        .fr = "Palette"
     },
     {
-        .msg = "Overscan    ",
-        .fr = "Overscan    "
+        .msg = "Overscan",
+        .fr = "Overscan"
     },
     {
-        .msg = "Crop sides  ",
+        .msg = "Crop sides",
         .fr = "Couper les cotes"
     },
     {
@@ -233,8 +233,8 @@ Translation translations[] =
         .fr = "Overscan"
     },
     {
-        .msg = "Palette ",
-        .fr = "Palette "
+        .msg = "Palette",
+        .fr = "Palette"
     },
     {
         .msg = "Profile",
@@ -250,15 +250,11 @@ Translation translations[] =
     },
     {
         .msg = "Audio enable",
-        .fr = ""
+        .fr = "Activer audio"
     },
     {
         .msg = "Audio filter",
         .fr = "Activer audio"
-    },
-    {
-        .msg = "Controls    ",
-        .fr = "Controles   "
     },
 
 
@@ -268,11 +264,7 @@ Translation translations[] =
         .fr = "Le dossier est vide."
     },
     {
-        .msg = "yes", 
-        .fr = "Oui"
-    },
-    {
-        .msg = "No ", 
+        .msg = "No", 
         .fr = "Non"
     },
     {
@@ -280,27 +272,27 @@ Translation translations[] =
         .fr = "OK"
     },
     {
-        .msg = "On ", 
-        .fr = "On "
+        .msg = "On", 
+        .fr = "On"
     },
     {
-        .msg = "Off  ", 
-        .fr = "Off  "
+        .msg = "Off", 
+        .fr = "Off"
     },
     {
         .msg = "Horiz", 
         .fr = "Horiz"
     },
     {
-        .msg = "Vert ", 
+        .msg = "Vert", 
         .fr = "Vert "
     },
     {
-        .msg = "Both ", 
+        .msg = "Both", 
         .fr = "Tout"
     },
     {
-        .msg = "Fit ", 
+        .msg = "Fit", 
         .fr = "Ajuster"
     },
     {
@@ -372,7 +364,7 @@ Translation translations[] =
         .fr = "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/"
     },
     {
-        .msg = "Wi-Fi enable ",  
+        .msg = "Wi-Fi enable",  
         .fr = "Activer Wi-Fi"
     },
     {
@@ -380,8 +372,8 @@ Translation translations[] =
         .fr = "Point d'acces WiFi"
     },
     {
-        .msg = "Network   ", 
-        .fr = "Reseau   "
+        .msg = "Network", 
+        .fr = "Reseau"
     },
     {
         .msg = "IP address", 
@@ -398,19 +390,19 @@ Translation translations[] =
         .fr = "Luminosite"
     },
     {
-        .msg = "Volume    ", 
-        .fr = "Volume    "
+        .msg = "Volume", 
+        .fr = "Volume"
     },
     {
-        .msg = "Audio out ", 
+        .msg = "Audio out", 
         .fr = "Sortie audio"
     },
     {
-        .msg = "Font type ", 
+        .msg = "Font type", 
         .fr = "Police"
     },
     {
-        .msg = "Theme     ", 
+        .msg = "Theme", 
         .fr = "Theme"
     },
     {
@@ -418,8 +410,8 @@ Translation translations[] =
         .fr = "Horloge"
     },
     {
-        .msg = "Timezone  ", 
-        .fr = "Fuseau  "
+        .msg = "Timezone", 
+        .fr = "Fuseau"
     },
     {
         .msg = "Wi-Fi options", 
@@ -432,8 +424,8 @@ Translation translations[] =
         .fr = "Format"
     },
     {
-        .msg = " Factor", 
-        .fr = " Factor"
+        .msg = "Factor", 
+        .fr = "Factor"
     },
     {
         .msg = "Filter", 
@@ -454,11 +446,11 @@ Translation translations[] =
         .fr = "Version"
     },
     {
-        .msg = "Date   ", 
+        .msg = "Date", 
         .fr = "Date"
     },
     {
-        .msg = "Target ", 
+        .msg = "Target", 
         .fr = "Cible"
     },
     {
@@ -506,28 +498,28 @@ Translation translations[] =
         .fr = "Sauver et continuer"
     },
     {
-        .msg = "Save & Quit    ", 
+        .msg = "Save & Quit", 
         .fr = "Sauver et quitter"
     },
     {
-        .msg = "Load game      ", 
+        .msg = "Load game", 
         .fr = "Charger partie"
     },
     {
-        .msg = "Reset          ", 
-        .fr = "Reset          "
+        .msg = "Reset", 
+        .fr = "Reset"
     },
     {
-        .msg = "Netplay ", 
-        .fr = "Netplay "
+        .msg = "Netplay", 
+        .fr = "Netplay"
     },
     {
-        .msg = "About   ", 
-        .fr = "Infos   "
+        .msg = "About", 
+        .fr = "Infos"
     },
     {
-        .msg = "Quit    ", 
-        .fr = "Quitter "
+        .msg = "Quit", 
+        .fr = "Quitter"
     },
 
     {
@@ -594,8 +586,8 @@ Translation translations[] =
 
     // preview
     {
-        .msg = "None      ", 
-        .fr = "Aucun     "
+        .msg = "None", 
+        .fr = "Aucun"
     },
     {
         .msg = "Cover,Save", 
@@ -610,8 +602,8 @@ Translation translations[] =
         .fr = "Cover only"
     },
     {
-        .msg = "Save only ", 
-        .fr = "Save only "
+        .msg = "Save only", 
+        .fr = "Save only"
     },
 
     // startup app
@@ -630,15 +622,15 @@ Translation translations[] =
         .fr = "Options du lanceur"
     },
     {
-        .msg = "Color theme ", 
+        .msg = "Color theme", 
         .fr = "Couleurs"
     },
     {
-        .msg = "Preview     ", 
-        .fr = "Apercu     "
+        .msg = "Preview", 
+        .fr = "Apercu"
     },
     {
-        .msg = "Scroll mode ", 
+        .msg = "Scroll mode", 
         .fr = "Mode defilement"
     },
     {
@@ -646,15 +638,15 @@ Translation translations[] =
         .fr = "Ecran demarrage"
     },
     {
-        .msg = "Hide tabs   ", 
+        .msg = "Hide tabs", 
         .fr = "Cacher onglet"
     },
     {
-        .msg = "File server ", 
+        .msg = "File server", 
         .fr = "Serveur fichier"
     },
     {
-        .msg = "Startup app ", 
+        .msg = "Startup app", 
         .fr = "App demarrage"
     },
     {
@@ -752,7 +744,7 @@ Translation translations[] =
         .fr = "Reprendre partie"
     },
     {
-        .msg = "New game    ", 
+        .msg = "New game", 
         .fr = "Nouvelle partie"
     },
     {

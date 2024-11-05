@@ -102,7 +102,7 @@ void sms_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, _("Palette "), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, _("Palette"), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
         RG_DIALOG_END
     };
 
