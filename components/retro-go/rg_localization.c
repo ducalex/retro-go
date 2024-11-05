@@ -31,6 +31,13 @@ const char* rg_gettext(const char *text)
             case RG_LANG_FR:
                 return translations[i].fr;  // Return the french string
                 break;
+
+            /*
+            case RG_LANG_ES:
+                return translations[i].es;  // Return the spanish string
+                break;
+            */
+
             }
         }
     }

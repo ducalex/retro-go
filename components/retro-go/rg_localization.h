@@ -17,6 +17,7 @@ enum languages
 {
     RG_LANG_EN,
     RG_LANG_FR,
+  //RG_LANG_ES,
 
     RG_LANGUAGE_MAX
 };
