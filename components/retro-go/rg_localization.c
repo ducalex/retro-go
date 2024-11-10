@@ -19,11 +19,8 @@ bool rg_localization_set_language_id(int language_id)
 
 const char *rg_gettext(const char *text)
 {
-    if (text == NULL)
-        return NULL;
-
-    if (rg_language <= 0 || rg_language >= RG_LANG_MAX)
-        return text; // If rg_language is english or invalid, we return the original string
+    if (rg_language == 0 || text == NULL)
+        return text; // If rg_language is english or text is NULL, we can return self
 
     for (size_t i = 0; i < RG_COUNT(translations); ++i)
     {
