@@ -1,816 +1,812 @@
-#pragma once
-
 #include "rg_localization.h"
 
 static const char *language_names[RG_LANG_MAX] = {"English", "Francais"};
 
-static const Translation translations[] =
+static const char *translations[][RG_LANG_MAX] =
 {
     {
-        .msg = "Yes",
-        .fr = "Oui"
+        [RG_LANG_EN] = "Yes",
+        [RG_LANG_FR] = "Oui"
     },
     {
-        .msg = "Select file",
-        .fr = "Choisissez un fichier"
+        [RG_LANG_EN] = "Select file",
+        [RG_LANG_FR] = "Choisissez un fichier"
     },
     {
-        .msg = "Off",
-        .fr = "Off"
+        [RG_LANG_EN] = "Off",
+        [RG_LANG_FR] = "Off"
     },
     {
-        .msg = "Language",
-        .fr = "Langue"
+        [RG_LANG_EN] = "Language",
+        [RG_LANG_FR] = "Langue"
     },
     {
-        .msg = "Language changed!",
-        .fr = "Changement de langue"
+        [RG_LANG_EN] = "Language changed!",
+        [RG_LANG_FR] = "Changement de langue"
     },
     {
-        .msg = "For these changes to take effect you must restart your device.\nrestart now?",
-        .fr = "Pour que ces changements prennent effet, vous devez redemmarer votre appareil.\nRedemmarer maintenant ?"
+        [RG_LANG_EN] = "For these changes to take effect you must restart your device.\nrestart now?",
+        [RG_LANG_FR] = "Pour que ces changements prennent effet, vous devez redemmarer votre appareil.\nRedemmarer maintenant ?"
     },
     {
-        .msg = "Wi-Fi profile",
-        .fr = "Profile Wi-Fi"
+        [RG_LANG_EN] = "Wi-Fi profile",
+        [RG_LANG_FR] = "Profile Wi-Fi"
     },
     {
-        .msg = "Language",
-        .fr = "Langue"
+        [RG_LANG_EN] = "Language",
+        [RG_LANG_FR] = "Langue"
     },
     {
-        .msg = "Options",
-        .fr = "Options"
+        [RG_LANG_EN] = "Options",
+        [RG_LANG_FR] = "Options"
     },
     {
-        .msg = "About Retro-Go",
-        .fr = "A propose de Retro-go"
+        [RG_LANG_EN] = "About Retro-Go",
+        [RG_LANG_FR] = "A propose de Retro-go"
     },
     {
-        .msg = "Reset all settings?",
-        .fr = "Reset tous les parametres"
+        [RG_LANG_EN] = "Reset all settings?",
+        [RG_LANG_FR] = "Reset tous les parametres"
     },
     {
-        .msg = "Initializing...",
-        .fr = "Initialisation..."
+        [RG_LANG_EN] = "Initializing...",
+        [RG_LANG_FR] = "Initialisation..."
     },
     {
-        .msg = "Host Game (P1)",
-        .fr = "Host Game (P1)"
+        [RG_LANG_EN] = "Host Game (P1)",
+        [RG_LANG_FR] = "Host Game (P1)"
     },
     {
-        .msg = "Find Game (P2)",
-        .fr = "Find Game (P2)"
+        [RG_LANG_EN] = "Find Game (P2)",
+        [RG_LANG_FR] = "Find Game (P2)"
     },
     {
-        .msg = "Netplay",
-        .fr = "Netplay"
+        [RG_LANG_EN] = "Netplay",
+        [RG_LANG_FR] = "Netplay"
     },
     {
-        .msg = "ROMs not identical. Continue?",
-        .fr = "ROMs not identical. Continue?"
+        [RG_LANG_EN] = "ROMs not identical. Continue?",
+        [RG_LANG_FR] = "ROMs not identical. Continue?"
     },
     {
-        .msg = "Exchanging info...",
-        .fr = "Exchanging info..."
+        [RG_LANG_EN] = "Exchanging info...",
+        [RG_LANG_FR] = "Exchanging info..."
     },
     {
-        .msg = "Unable to find host!",
-        .fr = "Unable to find host!"
+        [RG_LANG_EN] = "Unable to find host!",
+        [RG_LANG_FR] = "Unable to find host!"
     },
     {
-        .msg = "Connection failed!",
-        .fr = "Connection failed!"
+        [RG_LANG_EN] = "Connection failed!",
+        [RG_LANG_FR] = "Connection failed!"
     },
     {
-        .msg = "Waiting for peer...",
-        .fr = "Waiting for peer..."
+        [RG_LANG_EN] = "Waiting for peer...",
+        [RG_LANG_FR] = "Waiting for peer..."
     },
     {
-        .msg = "Unknown status...",
-        .fr = "Unknown status..."
+        [RG_LANG_EN] = "Unknown status...",
+        [RG_LANG_FR] = "Unknown status..."
     },
     {
-        .msg = "On",
-        .fr = "On"
+        [RG_LANG_EN] = "On",
+        [RG_LANG_FR] = "On"
     },
     {
-        .msg = "Keyboard",
-        .fr = "Clavier"
+        [RG_LANG_EN] = "Keyboard",
+        [RG_LANG_FR] = "Clavier"
     },
     {
-        .msg = "Joystick",
-        .fr = "Joystick"
+        [RG_LANG_EN] = "Joystick",
+        [RG_LANG_FR] = "Joystick"
     },
     {
-        .msg = "Input",
-        .fr = "Entree"
+        [RG_LANG_EN] = "Input",
+        [RG_LANG_FR] = "Entree"
     },
     {
-        .msg = "Crop",
-        .fr = "Couper"
+        [RG_LANG_EN] = "Crop",
+        [RG_LANG_FR] = "Couper"
     },
     {
-        .msg = "BIOS file missing!",
-        .fr = "Fichier BIOS manquant"
+        [RG_LANG_EN] = "BIOS file missing!",
+        [RG_LANG_FR] = "Fichier BIOS manquant"
     },
     {
-        .msg = "YM2612 audio ",
-        .fr = "YM2612 audio "
+        [RG_LANG_EN] = "YM2612 audio ",
+        [RG_LANG_FR] = "YM2612 audio "
     },
     {
-        .msg = "SN76489 audio",
-        .fr = "SN76489 audio"
+        [RG_LANG_EN] = "SN76489 audio",
+        [RG_LANG_FR] = "SN76489 audio"
     },
     {
-        .msg = "Z80 emulation",
-        .fr = "Emulation Z80"
+        [RG_LANG_EN] = "Z80 emulation",
+        [RG_LANG_FR] = "Emulation Z80"
     },
     {
-        .msg = "Launcher options",
-        .fr = "Options du lanceur"
+        [RG_LANG_EN] = "Launcher options",
+        [RG_LANG_FR] = "Options du lanceur"
     },
     {
-        .msg = "Date",
-        .fr = "Date"
+        [RG_LANG_EN] = "Date",
+        [RG_LANG_FR] = "Date"
     },
     {
-        .msg = "Files:",
-        .fr = "Fichiers:"
+        [RG_LANG_EN] = "Files:",
+        [RG_LANG_FR] = "Fichiers:"
     },
     {
-        .msg = "Download complete!",
-        .fr = "Telechargement termine"
+        [RG_LANG_EN] = "Download complete!",
+        [RG_LANG_FR] = "Telechargement termine"
     },
     {
-        .msg = "Reboot to flash?",
-        .fr = "Redemarrer"
+        [RG_LANG_EN] = "Reboot to flash?",
+        [RG_LANG_FR] = "Redemarrer"
     },
     {
-        .msg = "Available Releases",
-        .fr = "Maj disponibles"
+        [RG_LANG_EN] = "Available Releases",
+        [RG_LANG_FR] = "Maj disponibles"
     },
     {
-        .msg = "Received empty list!",
-        .fr = "Liste vide recue"
+        [RG_LANG_EN] = "Received empty list!",
+        [RG_LANG_FR] = "Liste vide recue"
     },
     {
-        .msg = "Gamma Boost",
-        .fr = "Boost Gamma"
+        [RG_LANG_EN] = "Gamma Boost",
+        [RG_LANG_FR] = "Boost Gamma"
     },
     {
-        .msg = "Day",
-        .fr = "Jour"
+        [RG_LANG_EN] = "Day",
+        [RG_LANG_FR] = "Jour"
     },
     {
-        .msg = "Hour",
-        .fr = "Heure"
+        [RG_LANG_EN] = "Hour",
+        [RG_LANG_FR] = "Heure"
     },
     {
-        .msg = "Min",
-        .fr = "Min"
+        [RG_LANG_EN] = "Min",
+        [RG_LANG_FR] = "Min"
     },
     {
-        .msg = "Sec",
-        .fr = "Sec"
+        [RG_LANG_EN] = "Sec",
+        [RG_LANG_FR] = "Sec"
     },
     {
-        .msg = "Sync",
-        .fr = "Synchro"
+        [RG_LANG_EN] = "Sync",
+        [RG_LANG_FR] = "Synchro"
     },
     {
-        .msg = "RTC config",
-        .fr = "Congig RTC"
+        [RG_LANG_EN] = "RTC config",
+        [RG_LANG_FR] = "Congig RTC"
     },
     {
-        .msg = "Palette",
-        .fr = "Palette"
+        [RG_LANG_EN] = "Palette",
+        [RG_LANG_FR] = "Palette"
     },
     {
-        .msg = "RTC config",
-        .fr = "Congig RTC"
+        [RG_LANG_EN] = "RTC config",
+        [RG_LANG_FR] = "Congig RTC"
     },
     {
-        .msg = "SRAM autosave",
-        .fr = "Sauvegarde auto SRAM"
+        [RG_LANG_EN] = "SRAM autosave",
+        [RG_LANG_FR] = "Sauvegarde auto SRAM"
     },
     {
-        .msg = "Enable BIOS",
-        .fr = "Activer BIOS"
+        [RG_LANG_EN] = "Enable BIOS",
+        [RG_LANG_FR] = "Activer BIOS"
     },
     {
-        .msg = "Name",
-        .fr = "Nom"
+        [RG_LANG_EN] = "Name",
+        [RG_LANG_FR] = "Nom"
     },
     {
-        .msg = "Artist",
-        .fr = "Artiste"
+        [RG_LANG_EN] = "Artist",
+        [RG_LANG_FR] = "Artiste"
     },
     {
-        .msg = "Copyright",
-        .fr = "Copyright"
+        [RG_LANG_EN] = "Copyright",
+        [RG_LANG_FR] = "Copyright"
     },
     {
-        .msg = "Playing",
-        .fr = "Playing"
+        [RG_LANG_EN] = "Playing",
+        [RG_LANG_FR] = "Playing"
     },
     {
-        .msg = "Palette",
-        .fr = "Palette"
+        [RG_LANG_EN] = "Palette",
+        [RG_LANG_FR] = "Palette"
     },
     {
-        .msg = "Overscan",
-        .fr = "Overscan"
+        [RG_LANG_EN] = "Overscan",
+        [RG_LANG_FR] = "Overscan"
     },
     {
-        .msg = "Crop sides",
-        .fr = "Couper les cotes"
+        [RG_LANG_EN] = "Crop sides",
+        [RG_LANG_FR] = "Couper les cotes"
     },
     {
-        .msg = "Sprite limit",
-        .fr = "Limite de sprite"
+        [RG_LANG_EN] = "Sprite limit",
+        [RG_LANG_FR] = "Limite de sprite"
     },
     {
-        .msg = "Overscan",
-        .fr = "Overscan"
+        [RG_LANG_EN] = "Overscan",
+        [RG_LANG_FR] = "Overscan"
     },
     {
-        .msg = "Palette",
-        .fr = "Palette"
+        [RG_LANG_EN] = "Palette",
+        [RG_LANG_FR] = "Palette"
     },
     {
-        .msg = "Profile",
-        .fr = "Profile"
+        [RG_LANG_EN] = "Profile",
+        [RG_LANG_FR] = "Profile"
     },
     {
-        .msg = "<profile name>",
-        .fr = "<nom du profil>"
+        [RG_LANG_EN] = "<profile name>",
+        [RG_LANG_FR] = "<nom du profil>"
     },
     {
-        .msg = "Controls",
-        .fr = "Controles"
+        [RG_LANG_EN] = "Controls",
+        [RG_LANG_FR] = "Controles"
     },
     {
-        .msg = "Audio enable",
-        .fr = "Activer audio"
+        [RG_LANG_EN] = "Audio enable",
+        [RG_LANG_FR] = "Activer audio"
     },
     {
-        .msg = "Audio filter",
-        .fr = "Activer audio"
+        [RG_LANG_EN] = "Audio filter",
+        [RG_LANG_FR] = "Activer audio"
     },
 
 
     // rg_gui.c
     {
-        .msg = "Folder is empty.", 
-        .fr = "Le dossier est vide."
+        [RG_LANG_EN] = "Folder is empty.",
+        [RG_LANG_FR] = "Le dossier est vide."
     },
     {
-        .msg = "No", 
-        .fr = "Non"
+        [RG_LANG_EN] = "No",
+        [RG_LANG_FR] = "Non"
     },
     {
-        .msg = "OK", 
-        .fr = "OK"
+        [RG_LANG_EN] = "OK",
+        [RG_LANG_FR] = "OK"
     },
     {
-        .msg = "On", 
-        .fr = "On"
+        [RG_LANG_EN] = "On",
+        [RG_LANG_FR] = "On"
     },
     {
-        .msg = "Off", 
-        .fr = "Off"
+        [RG_LANG_EN] = "Off",
+        [RG_LANG_FR] = "Off"
     },
     {
-        .msg = "Horiz", 
-        .fr = "Horiz"
+        [RG_LANG_EN] = "Horiz",
+        [RG_LANG_FR] = "Horiz"
     },
     {
-        .msg = "Vert", 
-        .fr = "Vert "
+        [RG_LANG_EN] = "Vert",
+        [RG_LANG_FR] = "Vert "
     },
     {
-        .msg = "Both", 
-        .fr = "Tout"
+        [RG_LANG_EN] = "Both",
+        [RG_LANG_FR] = "Tout"
     },
     {
-        .msg = "Fit", 
-        .fr = "Ajuster"
+        [RG_LANG_EN] = "Fit",
+        [RG_LANG_FR] = "Ajuster"
     },
     {
-        .msg = "Full ", 
-        .fr = "Remplir "
+        [RG_LANG_EN] = "Full ",
+        [RG_LANG_FR] = "Remplir "
     },
     {
-        .msg = "Zoom", 
-        .fr = "Zoomer"
+        [RG_LANG_EN] = "Zoom",
+        [RG_LANG_FR] = "Zoomer"
     },
 
     // Led options
     {
-        .msg = "LED options", 
-        .fr = "Options LED"
+        [RG_LANG_EN] = "LED options",
+        [RG_LANG_FR] = "Options LED"
     },
     {
-        .msg = "System activity", 
-        .fr = "Activite systeme"
+        [RG_LANG_EN] = "System activity",
+        [RG_LANG_FR] = "Activite systeme"
     },
     {
-        .msg = "Disk activity", 
-        .fr = "Activite stockage"
+        [RG_LANG_EN] = "Disk activity",
+        [RG_LANG_FR] = "Activite stockage"
     },
     {
-        .msg = "Low battery", 
-        .fr = "Battery basse"
+        [RG_LANG_EN] = "Low battery",
+        [RG_LANG_FR] = "Battery basse"
     },
     {
-        .msg = "Default", 
-        .fr = "Default"
+        [RG_LANG_EN] = "Default",
+        [RG_LANG_FR] = "Default"
     },
     {
-        .msg = "none", 
-        .fr = "Aucun"
+        [RG_LANG_EN] = "none",
+        [RG_LANG_FR] = "Aucun"
     },
     {
-        .msg = "<None>", 
-        .fr = "<Aucun>"
+        [RG_LANG_EN] = "<None>",
+        [RG_LANG_FR] = "<Aucun>"
     },
 
     // Wifi
     {
-        .msg = "Not connected", 
-        .fr = "Non connecte"
+        [RG_LANG_EN] = "Not connected",
+        [RG_LANG_FR] = "Non connecte"
     },
     {
-        .msg = "Connecting...", 
-        .fr = "Connection..."
+        [RG_LANG_EN] = "Connecting...",
+        [RG_LANG_FR] = "Connection..."
     },
     {
-        .msg = "Disconnecting...", 
-        .fr = "Disconnection..."
+        [RG_LANG_EN] = "Disconnecting...",
+        [RG_LANG_FR] = "Disconnection..."
     },
     {
-        .msg = "(empty)", 
-        .fr = "(vide)"
+        [RG_LANG_EN] = "(empty)",
+        [RG_LANG_FR] = "(vide)"
     },
     {
-        .msg = "Wi-Fi Profile", 
-        .fr = "Profil Wi-Fi"
+        [RG_LANG_EN] = "Wi-Fi Profile",
+        [RG_LANG_FR] = "Profil Wi-Fi"
     },
     {
-        .msg = "Wi-Fi AP", 
-        .fr = "Wi-Fi AP"
+        [RG_LANG_EN] = "Wi-Fi AP",
+        [RG_LANG_FR] = "Wi-Fi AP"
     },
     {
-        .msg = "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", 
-        .fr = "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/"
+        [RG_LANG_EN] = "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/",
+        [RG_LANG_FR] = "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/"
     },
     {
-        .msg = "Wi-Fi enable",  
-        .fr = "Activer Wi-Fi"
+        [RG_LANG_EN] = "Wi-Fi enable",
+        [RG_LANG_FR] = "Activer Wi-Fi"
     },
     {
-        .msg = "Wi-Fi access point", 
-        .fr = "Point d'acces WiFi"
+        [RG_LANG_EN] = "Wi-Fi access point",
+        [RG_LANG_FR] = "Point d'acces WiFi"
     },
     {
-        .msg = "Network", 
-        .fr = "Reseau"
+        [RG_LANG_EN] = "Network",
+        [RG_LANG_FR] = "Reseau"
     },
     {
-        .msg = "IP address", 
-        .fr = "Adresse IP"
+        [RG_LANG_EN] = "IP address",
+        [RG_LANG_FR] = "Adresse IP"
     },
     {
-        .msg = "Wifi Options", 
-        .fr = "Options Wifi"
+        [RG_LANG_EN] = "Wifi Options",
+        [RG_LANG_FR] = "Options Wifi"
     },
 
     // retro-go settings
     {
-        .msg = "Brightness", 
-        .fr = "Luminosite"
+        [RG_LANG_EN] = "Brightness",
+        [RG_LANG_FR] = "Luminosite"
     },
     {
-        .msg = "Volume", 
-        .fr = "Volume"
+        [RG_LANG_EN] = "Volume",
+        [RG_LANG_FR] = "Volume"
     },
     {
-        .msg = "Audio out", 
-        .fr = "Sortie audio"
+        [RG_LANG_EN] = "Audio out",
+        [RG_LANG_FR] = "Sortie audio"
     },
     {
-        .msg = "Font type", 
-        .fr = "Police"
+        [RG_LANG_EN] = "Font type",
+        [RG_LANG_FR] = "Police"
     },
     {
-        .msg = "Theme", 
-        .fr = "Theme"
+        [RG_LANG_EN] = "Theme",
+        [RG_LANG_FR] = "Theme"
     },
     {
-        .msg = "Show clock", 
-        .fr = "Horloge"
+        [RG_LANG_EN] = "Show clock",
+        [RG_LANG_FR] = "Horloge"
     },
     {
-        .msg = "Timezone", 
-        .fr = "Fuseau"
+        [RG_LANG_EN] = "Timezone",
+        [RG_LANG_FR] = "Fuseau"
     },
     {
-        .msg = "Wi-Fi options", 
-        .fr = "Options Wi-Fi"
+        [RG_LANG_EN] = "Wi-Fi options",
+        [RG_LANG_FR] = "Options Wi-Fi"
     },
 
     // app dettings
     {
-        .msg = "Scaling", 
-        .fr = "Format"
+        [RG_LANG_EN] = "Scaling",
+        [RG_LANG_FR] = "Format"
     },
     {
-        .msg = "Factor", 
-        .fr = "Factor"
+        [RG_LANG_EN] = "Factor",
+        [RG_LANG_FR] = "Factor"
     },
     {
-        .msg = "Filter", 
-        .fr = "Filtre"
+        [RG_LANG_EN] = "Filter",
+        [RG_LANG_FR] = "Filtre"
     },
     {
-        .msg = "Border", 
-        .fr = "Bordure"
+        [RG_LANG_EN] = "Border",
+        [RG_LANG_FR] = "Bordure"
     },
     {
-        .msg = "Speed", 
-        .fr = "Vitesse"
+        [RG_LANG_EN] = "Speed",
+        [RG_LANG_FR] = "Vitesse"
     },
 
     // about menu
     {
-        .msg = "Version", 
-        .fr = "Version"
+        [RG_LANG_EN] = "Version",
+        [RG_LANG_FR] = "Version"
     },
     {
-        .msg = "Date", 
-        .fr = "Date"
+        [RG_LANG_EN] = "Date",
+        [RG_LANG_FR] = "Date"
     },
     {
-        .msg = "Target", 
-        .fr = "Cible"
+        [RG_LANG_EN] = "Target",
+        [RG_LANG_FR] = "Cible"
     },
     {
-        .msg = "Website", 
-        .fr = "Site Web"
+        [RG_LANG_EN] = "Website",
+        [RG_LANG_FR] = "Site Web"
     },
     {
-        .msg = "Options ", 
-        .fr = "Options"
+        [RG_LANG_EN] = "Options ",
+        [RG_LANG_FR] = "Options"
     },
     {
-        .msg = "View credits", 
-        .fr = "Credits"
+        [RG_LANG_EN] = "View credits",
+        [RG_LANG_FR] = "Credits"
     },
     {
-        .msg = "Debug menu", 
-        .fr = "Menu debug"
+        [RG_LANG_EN] = "Debug menu",
+        [RG_LANG_FR] = "Menu debug"
     },
     {
-        .msg = "Reset settings", 
-        .fr = "Reset parametres"
+        [RG_LANG_EN] = "Reset settings",
+        [RG_LANG_FR] = "Reset parametres"
     },
 
     // save slot
     {
-        .msg = "Slot 0", 
-        .fr = "Emplacement 0"
+        [RG_LANG_EN] = "Slot 0",
+        [RG_LANG_FR] = "Emplacement 0"
     },
     {
-        .msg = "Slot 1", 
-        .fr = "Emplacement 1"
+        [RG_LANG_EN] = "Slot 1",
+        [RG_LANG_FR] = "Emplacement 1"
     },
     {
-        .msg = "Slot 2", 
-        .fr = "Emplacement 2"
+        [RG_LANG_EN] = "Slot 2",
+        [RG_LANG_FR] = "Emplacement 2"
     },
     {
-        .msg = "Slot 3", 
-        .fr = "Emplacement 3"
+        [RG_LANG_EN] = "Slot 3",
+        [RG_LANG_FR] = "Emplacement 3"
     },
 
     // game menu
     {
-        .msg = "Save & Continue", 
-        .fr = "Sauver et continuer"
+        [RG_LANG_EN] = "Save & Continue",
+        [RG_LANG_FR] = "Sauver et continuer"
     },
     {
-        .msg = "Save & Quit", 
-        .fr = "Sauver et quitter"
+        [RG_LANG_EN] = "Save & Quit",
+        [RG_LANG_FR] = "Sauver et quitter"
     },
     {
-        .msg = "Load game", 
-        .fr = "Charger partie"
+        [RG_LANG_EN] = "Load game",
+        [RG_LANG_FR] = "Charger partie"
     },
     {
-        .msg = "Reset", 
-        .fr = "Reset"
+        [RG_LANG_EN] = "Reset",
+        [RG_LANG_FR] = "Reset"
     },
     {
-        .msg = "Netplay", 
-        .fr = "Netplay"
+        [RG_LANG_EN] = "Netplay",
+        [RG_LANG_FR] = "Netplay"
     },
     {
-        .msg = "About", 
-        .fr = "Infos"
+        [RG_LANG_EN] = "About",
+        [RG_LANG_FR] = "Infos"
     },
     {
-        .msg = "Quit", 
-        .fr = "Quitter"
-    },
-
-    {
-        .msg = "Soft reset", 
-        .fr = "Soft reset"
-    },
-    {
-        .msg = "Hard reset", 
-        .fr = "Hard reset"
+        [RG_LANG_EN] = "Quit",
+        [RG_LANG_FR] = "Quitter"
     },
 
     {
-        .msg = "Reset Emulation?", 
-        .fr = "Reset Emulation?"
+        [RG_LANG_EN] = "Soft reset",
+        [RG_LANG_FR] = "Soft reset"
     },
     {
-        .msg = "Save", 
-        .fr = "Sauver"
+        [RG_LANG_EN] = "Hard reset",
+        [RG_LANG_FR] = "Hard reset"
+    },
+
+    {
+        [RG_LANG_EN] = "Reset Emulation?",
+        [RG_LANG_FR] = "Reset Emulation?"
     },
     {
-        .msg = "Load", 
-        .fr = "Charger"
+        [RG_LANG_EN] = "Save",
+        [RG_LANG_FR] = "Sauver"
+    },
+    {
+        [RG_LANG_EN] = "Load",
+        [RG_LANG_FR] = "Charger"
     },
     // end of rg_gui.c
 
 
     // main.c
     {
-        .msg = "Show", 
-        .fr = "Montrer"
+        [RG_LANG_EN] = "Show",
+        [RG_LANG_FR] = "Montrer"
     },
     {
-        .msg = "Hide", 
-        .fr = "Cacher"
+        [RG_LANG_EN] = "Hide",
+        [RG_LANG_FR] = "Cacher"
     },
     {
-        .msg = "Tabs Visibility", 
-        .fr = "Visibilitee onglets"
+        [RG_LANG_EN] = "Tabs Visibility",
+        [RG_LANG_FR] = "Visibilitee onglets"
     },
 
     // scroll modes
     {
-        .msg = "Center", 
-        .fr = "centrer"
+        [RG_LANG_EN] = "Center",
+        [RG_LANG_FR] = "centrer"
     },
     {
-        .msg = "Paging", 
-        .fr = "Paging"
+        [RG_LANG_EN] = "Paging",
+        [RG_LANG_FR] = "Paging"
     },
 
     // start screen
     {
-        .msg = "Auto", 
-        .fr = "Auto"
+        [RG_LANG_EN] = "Auto",
+        [RG_LANG_FR] = "Auto"
     },
     {
-        .msg = "Carousel", 
-        .fr = "Carousel"
+        [RG_LANG_EN] = "Carousel",
+        [RG_LANG_FR] = "Carousel"
     },
     {
-        .msg = "Browser", 
-        .fr = "Browser"
+        [RG_LANG_EN] = "Browser",
+        [RG_LANG_FR] = "Browser"
     },
 
     // preview
     {
-        .msg = "None", 
-        .fr = "Aucun"
+        [RG_LANG_EN] = "None",
+        [RG_LANG_FR] = "Aucun"
     },
     {
-        .msg = "Cover,Save", 
-        .fr = "Cover,Save"
+        [RG_LANG_EN] = "Cover,Save",
+        [RG_LANG_FR] = "Cover,Save"
     },
     {
-        .msg = "Save,Cover", 
-        .fr = "Save,Cover"
+        [RG_LANG_EN] = "Save,Cover",
+        [RG_LANG_FR] = "Save,Cover"
     },
     {
-        .msg = "Cover only", 
-        .fr = "Cover only"
+        [RG_LANG_EN] = "Cover only",
+        [RG_LANG_FR] = "Cover only"
     },
     {
-        .msg = "Save only", 
-        .fr = "Save only"
+        [RG_LANG_EN] = "Save only",
+        [RG_LANG_FR] = "Save only"
     },
 
     // startup app
     {
-        .msg = "Last game", 
-        .fr = "Dernier jeu"
+        [RG_LANG_EN] = "Last game",
+        [RG_LANG_FR] = "Dernier jeu"
     },
     {
-        .msg = "Launcher", 
-        .fr = "Launcher"
+        [RG_LANG_EN] = "Launcher",
+        [RG_LANG_FR] = "Launcher"
     },
 
     // launcher options
     {
-        .msg = "Launcher Options", 
-        .fr = "Options du lanceur"
+        [RG_LANG_EN] = "Launcher Options",
+        [RG_LANG_FR] = "Options du lanceur"
     },
     {
-        .msg = "Color theme", 
-        .fr = "Couleurs"
+        [RG_LANG_EN] = "Color theme",
+        [RG_LANG_FR] = "Couleurs"
     },
     {
-        .msg = "Preview", 
-        .fr = "Apercu"
+        [RG_LANG_EN] = "Preview",
+        [RG_LANG_FR] = "Apercu"
     },
     {
-        .msg = "Scroll mode", 
-        .fr = "Mode defilement"
+        [RG_LANG_EN] = "Scroll mode",
+        [RG_LANG_FR] = "Mode defilement"
     },
     {
-        .msg = "Start screen", 
-        .fr = "Ecran demarrage"
+        [RG_LANG_EN] = "Start screen",
+        [RG_LANG_FR] = "Ecran demarrage"
     },
     {
-        .msg = "Hide tabs", 
-        .fr = "Cacher onglet"
+        [RG_LANG_EN] = "Hide tabs",
+        [RG_LANG_FR] = "Cacher onglet"
     },
     {
-        .msg = "File server", 
-        .fr = "Serveur fichier"
+        [RG_LANG_EN] = "File server",
+        [RG_LANG_FR] = "Serveur fichier"
     },
     {
-        .msg = "Startup app", 
-        .fr = "App demarrage"
+        [RG_LANG_EN] = "Startup app",
+        [RG_LANG_FR] = "App demarrage"
     },
     {
-        .msg = "Build CRC cache", 
-        .fr = "Build CRC cache"
+        [RG_LANG_EN] = "Build CRC cache",
+        [RG_LANG_FR] = "Build CRC cache"
     },
     {
-        .msg = "Check for updates", 
-        .fr = "Check for updates"
+        [RG_LANG_EN] = "Check for updates",
+        [RG_LANG_FR] = "Check for updates"
     },
     {
-        .msg = "HTTP Server Busy...", 
-        .fr = "Server Web ..."
+        [RG_LANG_EN] = "HTTP Server Busy...",
+        [RG_LANG_FR] = "Server Web ..."
     },
     {
-        .msg = "SD Card Error", 
-        .fr = "Erreur carte SD"
+        [RG_LANG_EN] = "SD Card Error",
+        [RG_LANG_FR] = "Erreur carte SD"
     },
     {
-        .msg = "Storage mount failed.\nMake sure the card is FAT32.", 
-        .fr = "Erreur montage SD.\nVerifiez que la carte est en FAT32."
+        [RG_LANG_EN] = "Storage mount failed.\nMake sure the card is FAT32.",
+        [RG_LANG_FR] = "Erreur montage SD.\nVerifiez que la carte est en FAT32."
     },
     // end of main.c
 
 
     // applications.c
     {
-        .msg = "Scanning %s %d/%d", 
-        .fr = "Scan %s %d/%d"
+        [RG_LANG_EN] = "Scanning %s %d/%d",
+        [RG_LANG_FR] = "Scan %s %d/%d"
     },
     // message when no rom
     {
-        .msg = "Welcome to Retro-Go!", 
-        .fr = "Bienvenue sur Retro-Go!"
+        [RG_LANG_EN] = "Welcome to Retro-Go!",
+        [RG_LANG_FR] = "Bienvenue sur Retro-Go!"
     },
     {
-        .msg = "Place roms in folder: %s", 
-        .fr = "Placer les ROMS dans le dossier: %s"
+        [RG_LANG_EN] = "Place roms in folder: %s",
+        [RG_LANG_FR] = "Placer les ROMS dans le dossier: %s"
     },
     {
-        .msg = "With file extension: %s", 
-        .fr = "Avec l'extension: %s"
+        [RG_LANG_EN] = "With file extension: %s",
+        [RG_LANG_FR] = "Avec l'extension: %s"
     },
     {
-        .msg = "You can hide this tab in the menu", 
-        .fr = "Vous pouvez cacher cet onglet dans le menu"
+        [RG_LANG_EN] = "You can hide this tab in the menu",
+        [RG_LANG_FR] = "Vous pouvez cacher cet onglet dans le menu"
     },
     {
-        .msg = "You have no %s games", 
-        .fr = "Vous n'avez pas de jeux %s"
+        [RG_LANG_EN] = "You have no %s games",
+        [RG_LANG_FR] = "Vous n'avez pas de jeux %s"
     },
     {
-        .msg = "File not found", 
-        .fr = "Fichier non present"
+        [RG_LANG_EN] = "File not found",
+        [RG_LANG_FR] = "Fichier non present"
     },
 
     // rom options
     {
-        .msg = "Name", 
-        .fr = "Nom"
+        [RG_LANG_EN] = "Name",
+        [RG_LANG_FR] = "Nom"
     },
     {
-        .msg = "Folder", 
-        .fr = "Dossier"
+        [RG_LANG_EN] = "Folder",
+        [RG_LANG_FR] = "Dossier"
     },
     {
-        .msg = "Size", 
-        .fr = "Taille"
+        [RG_LANG_EN] = "Size",
+        [RG_LANG_FR] = "Taille"
     },
     {
-        .msg = "CRC32", 
-        .fr = "CRC32"
+        [RG_LANG_EN] = "CRC32",
+        [RG_LANG_FR] = "CRC32"
     },
     {
-        .msg = "Delete file", 
-        .fr = "Supprimer fichier"
+        [RG_LANG_EN] = "Delete file",
+        [RG_LANG_FR] = "Supprimer fichier"
     },
     {
-        .msg = "Close", 
-        .fr = "Fermer"
+        [RG_LANG_EN] = "Close",
+        [RG_LANG_FR] = "Fermer"
     },
     {
-        .msg = "File properties", 
-        .fr = "Propriete"
+        [RG_LANG_EN] = "File properties",
+        [RG_LANG_FR] = "Propriete"
     },
     {
-        .msg = "Delete selected file?", 
-        .fr = "Supprimer fichier?"
+        [RG_LANG_EN] = "Delete selected file?",
+        [RG_LANG_FR] = "Supprimer fichier?"
     },
 
 
     // in-game menu
     {
-        .msg = "Resume game", 
-        .fr = "Reprendre partie"
+        [RG_LANG_EN] = "Resume game",
+        [RG_LANG_FR] = "Reprendre partie"
     },
     {
-        .msg = "New game", 
-        .fr = "Nouvelle partie"
+        [RG_LANG_EN] = "New game",
+        [RG_LANG_FR] = "Nouvelle partie"
     },
     {
-        .msg = "Del favorite", 
-        .fr = "supp favori"
+        [RG_LANG_EN] = "Del favorite",
+        [RG_LANG_FR] = "supp favori"
     },
     {
-        .msg = "Add favorite", 
-        .fr = "Ajouter favori"
+        [RG_LANG_EN] = "Add favorite",
+        [RG_LANG_FR] = "Ajouter favori"
     },
     {
-        .msg = "Delete save", 
-        .fr = "Supp sauvegarde"
+        [RG_LANG_EN] = "Delete save",
+        [RG_LANG_FR] = "Supp sauvegarde"
     },
     {
-        .msg = "Properties", 
-        .fr = "Proprietes"
+        [RG_LANG_EN] = "Properties",
+        [RG_LANG_FR] = "Proprietes"
     },
     {
-        .msg = "Resume", 
-        .fr = "Reprendre"
+        [RG_LANG_EN] = "Resume",
+        [RG_LANG_FR] = "Reprendre"
     },
     {
-        .msg = "Delete save?", 
-        .fr = "Supp sauvegarde?"
+        [RG_LANG_EN] = "Delete save?",
+        [RG_LANG_FR] = "Supp sauvegarde?"
     },
     {
-        .msg = "Delete sram file?", 
-        .fr = "Supp fichier SRAM?"
+        [RG_LANG_EN] = "Delete sram file?",
+        [RG_LANG_FR] = "Supp fichier SRAM?"
     },
     // end of applications.c
 
 
     // rg_system.c
     {
-        .msg = "App unresponsive... Hold MENU to quit!", 
-        .fr = "Plantage... MENU pour quitter"
+        [RG_LANG_EN] = "App unresponsive... Hold MENU to quit!",
+        [RG_LANG_FR] = "Plantage... MENU pour quitter"
     },
     {
-        .msg = "Reset all settings", 
-        .fr = "Reset parametres"
+        [RG_LANG_EN] = "Reset all settings",
+        [RG_LANG_FR] = "Reset parametres"
     },
     {
-        .msg = "Reboot to factory ", 
-        .fr = "Redemarrer usine"
+        [RG_LANG_EN] = "Reboot to factory ",
+        [RG_LANG_FR] = "Redemarrer usine"
     },
     {
-        .msg = "Reboot to launcher", 
-        .fr = "Relancer launcher"
+        [RG_LANG_EN] = "Reboot to launcher",
+        [RG_LANG_FR] = "Relancer launcher"
     },
 
     {
-        .msg = "Recovery mode", 
-        .fr = "Mode de recuperation"
+        [RG_LANG_EN] = "Recovery mode",
+        [RG_LANG_FR] = "Mode de recuperation"
     },
     {
-        .msg = "System Panic!", 
-        .fr = "Plantage systeme!"
+        [RG_LANG_EN] = "System Panic!",
+        [RG_LANG_FR] = "Plantage systeme!"
     },
     {
-        .msg = "Save failed", 
-        .fr = "Erreur sauvegarde"
+        [RG_LANG_EN] = "Save failed",
+        [RG_LANG_FR] = "Erreur sauvegarde"
     },
     // end of rg_system.c
-
-    {}  // End of array
 };

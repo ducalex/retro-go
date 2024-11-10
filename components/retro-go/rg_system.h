@@ -24,6 +24,7 @@ extern "C" {
 #define RTC_NOINIT_ATTR
 #endif
 
+#include "rg_localization.h"
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"
@@ -33,7 +34,6 @@ extern "C" {
 #include "rg_gui.h"
 #include "rg_i2c.h"
 #include "rg_utils.h"
-#include "rg_localization.h"
 
 #ifdef RG_ENABLE_NETPLAY
 #include "rg_netplay.h"

@@ -5,25 +5,14 @@
 
 #define _(String) rg_gettext(String)
 
-enum languages
+typedef enum
 {
     RG_LANG_EN = 0,
     RG_LANG_FR,
   //RG_LANG_ES,
 
     RG_LANG_MAX
-};
-
-// Define a struct for holding message translations
-typedef union
-{
-    struct {
-      const char *msg;   // Original message in english
-      const char *fr;    // FR Translated message
-      //  const char *es;    // for adding ES translation for example
-    };
-    const char *msgs[RG_LANG_MAX];
-} Translation;
+} rg_language_t;
 
 // Lookup function
 const char *rg_gettext(const char *msg);

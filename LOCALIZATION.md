@@ -2,37 +2,28 @@ This document describes the localization protocol used in Retro-go
 
 
 # C files
-translation.h contains the original messages and the corresponding translations ex :
+translation.h contains the original messages (in english) and the corresponding translations ex:
 ````c
 {
-    .msg = "Yes",
-    .fr = "Oui",
-    .es = "Si"
+    [RG_LANG_EN] = "Yes",
+    [RG_LANG_FR] = "Oui",
+    [RG_LANG_ES] = "Si",
 },
 ````
 
 If you want to add your own language :
-First, this is what the struct definition should looks like in rg_localization.h :
-````c
-typedef struct {
-    const char *msg;   // Original message in english
-    const char *fr;    // FR Translated message
 
-    const char *es;    // to add spanish translation
-} Translation;
-````
-
-You should also update the enum accordingly (in rg_localization.h):
+You should update the enum accordingly (in rg_localization.h):
 ````c
-enum languages
+typedef enum
 {
     RG_LANG_EN,
     RG_LANG_FR,
 
-    RG_LANG_ES, // to add spanish translation
+    RG_LANG_ES, // <-- to add spanish translation
 
     RG_LANG_MAX
-};
+} rg_language_t;
 ````
 
 

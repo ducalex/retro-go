@@ -24,9 +24,9 @@ const char *rg_gettext(const char *text)
 
     for (size_t i = 0; i < RG_COUNT(translations); ++i)
     {
-        if (strcmp(translations[i].msg, text) == 0)
+        if (strcmp(translations[i][0], text) == 0)
         {
-            const char *msg = translations[i].msgs[rg_language];
+            const char *msg = translations[i][rg_language];
             // If the translation is missing, we return the original string
             return msg ? msg : text;
         }
