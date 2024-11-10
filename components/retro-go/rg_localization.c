@@ -1,4 +1,4 @@
-#include "rg_localization.h"
+#include "rg_system.h"
 #include "translations.h"
 
 static int rg_language = RG_LANG_EN;
@@ -25,7 +25,7 @@ const char *rg_gettext(const char *text)
     if (rg_language <= 0 || rg_language >= RG_LANG_MAX)
         return text; // If rg_language is english or invalid, we return the original string
 
-    for (int i = 0; translations[i].msg != NULL; i++)
+    for (size_t i = 0; i < RG_COUNT(translations); ++i)
     {
         if (strcmp(translations[i].msg, text) == 0)
         {
