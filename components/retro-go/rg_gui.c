@@ -101,10 +101,10 @@ void rg_gui_init(void)
     gui.screen_width = rg_display_get_info()->screen.width;
     gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
+    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
-    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, 0));
     gui.initialized = true;
 }
 
@@ -1352,18 +1352,17 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *languages[] = {"English", "Francais"};
-    int slot = rg_localization_get_language_id();
+    int language_id = rg_localization_get_language_id();
+    const char *language_name = rg_localization_get_language_name(language_id);
 
     if (event == RG_DIALOG_ENTER)
     {
-        // to do : make this dynamic
-        const rg_gui_option_t options[] = {
-            {0, _(languages[0]), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {1, _(languages[1]), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            RG_DIALOG_END,
-        };
-        int sel = rg_gui_dialog(_("Language"), options, slot);
+        rg_gui_option_t options[RG_LANG_MAX];
+        for (int i = 0; i < RG_LANG_MAX; i++)
+            options[i] = (rg_gui_option_t){i, rg_localization_get_language_name(i), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+        options[RG_LANG_MAX - 1] = (rg_gui_option_t)RG_DIALOG_END;
+
+        int sel = rg_gui_dialog(_("Language"), options, language_id);
         if (sel != RG_DIALOG_CANCELLED)
         {
             rg_gui_set_language_id(sel);
@@ -1371,10 +1370,12 @@ static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
             {
                 rg_system_exit();
             }
+            language_id = sel;
+            language_name = rg_localization_get_language_name(sel);
         }
         return RG_DIALOG_REDRAW;
     }
-    sprintf(option->value, "%s", languages[slot]);
+    sprintf(option->value, "%s", language_name ? language_name : "???");
     return RG_DIALOG_VOID;
 }
 

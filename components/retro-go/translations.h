@@ -2,7 +2,9 @@
 
 #include "rg_localization.h"
 
-Translation translations[] = 
+static const char *language_names[RG_LANG_MAX] = {"English", "Francais"};
+
+static const Translation translations[] =
 {
     {
         .msg = "Yes",
@@ -810,5 +812,5 @@ Translation translations[] =
     },
     // end of rg_system.c
 
-    {NULL, NULL}  // End of array
+    {}  // End of array
 };
