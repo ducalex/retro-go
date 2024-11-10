@@ -1357,10 +1357,10 @@ static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
     if (event == RG_DIALOG_ENTER)
     {
-        rg_gui_option_t options[RG_LANG_MAX];
+        rg_gui_option_t options[RG_LANG_MAX + 1];
         for (int i = 0; i < RG_LANG_MAX; i++)
             options[i] = (rg_gui_option_t){i, rg_localization_get_language_name(i), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-        options[RG_LANG_MAX - 1] = (rg_gui_option_t)RG_DIALOG_END;
+        options[RG_LANG_MAX] = (rg_gui_option_t)RG_DIALOG_END;
 
         int sel = rg_gui_dialog(_("Language"), options, language_id);
         if (sel != RG_DIALOG_CANCELLED)
