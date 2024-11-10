@@ -110,13 +110,15 @@ void rg_gui_init(void)
 
 bool rg_gui_set_language_id(int index)
 {
-    if (rg_localization_set_language_id(index) == 0)
-        return false;
-
-    rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
-
-    RG_LOGI("Language index set to: %d\n", index);
-    return true;
+    if (rg_localization_set_language_id(index))
+    {
+        rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
+        RG_LOGI("Language set to: %s (%d)", rg_localization_get_language_name(index), index);
+        return true;
+    }
+    rg_localization_set_language_id(RG_LANG_EN);
+    RG_LOGE("Invalid language id %d!", index);
+    return false;
 }
 
 bool rg_gui_set_theme(const char *theme_name)
