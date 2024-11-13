@@ -169,7 +169,7 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
             webui_start();
         rg_settings_set_number(NS_APP, SETTING_WEBUI, enabled);
     }
-    strcpy(option->value, enabled ? _("On ") : _("Off"));
+    strcpy(option->value, enabled ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 #endif

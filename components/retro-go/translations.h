@@ -5,6 +5,38 @@ static const char *language_names[RG_LANG_MAX] = {"English", "Francais"};
 static const char *translations[][RG_LANG_MAX] =
 {
     {
+        [RG_LANG_EN] = "Never",
+        [RG_LANG_FR] = "Jamais",
+    },
+    {
+        [RG_LANG_EN] = "Always",
+        [RG_LANG_FR] = "Toujours",
+    },
+    {
+        [RG_LANG_EN] = "Composite",
+        [RG_LANG_FR] = "Composite",
+    },
+    {
+        [RG_LANG_EN] = "NES Classic",
+        [RG_LANG_FR] = "NES Classic",
+    },
+    {
+        [RG_LANG_EN] = "NTSC",
+        [RG_LANG_FR] = "NTSC",
+    },
+    {
+        [RG_LANG_EN] = "PVM",
+        [RG_LANG_FR] = "PVM",
+    },
+    {
+        [RG_LANG_EN] = "Smooth",
+        [RG_LANG_FR] = "Lisser",
+    },
+    {
+        [RG_LANG_EN] = "To start, try: 1 or * or #",
+        [RG_LANG_FR] = "Pour commencer, 1 ou * ou #",
+    },
+    {
 	    [RG_LANG_EN] = "Full",
 	    [RG_LANG_FR] = "Complet",
     },
@@ -258,7 +290,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Audio filter",
-        [RG_LANG_FR] = "Activer audio"
+        [RG_LANG_FR] = "Activer filtre"
     },
 
 

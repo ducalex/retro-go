@@ -138,7 +138,7 @@ static rg_gui_event_t sram_autosave_cb(rg_gui_option_t *option, rg_gui_event_t e
         rg_settings_set_number(NS_APP, SETTING_SAVESRAM, autoSaveSRAM);
     }
 
-    if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
+    if (autoSaveSRAM == 0) strcpy(option->value, _("Off"));
     else sprintf(option->value, "%3ds", autoSaveSRAM);
 
     return RG_DIALOG_VOID;
@@ -151,7 +151,7 @@ static rg_gui_event_t enable_bios_cb(rg_gui_option_t *option, rg_gui_event_t eve
         loadBIOSFile = !loadBIOSFile;
         rg_settings_set_number(NS_APP, SETTING_LOADBIOS, loadBIOSFile);
     }
-    strcpy(option->value, loadBIOSFile ? "Yes" : "No");
+    strcpy(option->value, loadBIOSFile ? _("Yes") : _("No"));
     return RG_DIALOG_VOID;
 }
 
@@ -186,7 +186,7 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
             useSystemTime = !useSystemTime;
             rg_settings_set_number(NS_APP, SETTING_SYSTIME, useSystemTime);
         }
-        strcpy(option->value, useSystemTime ? "Yes" : "No ");
+        strcpy(option->value, useSystemTime ? _("Yes") : _("No"));
     }
 
     gnuboy_set_time(d, h, m, s);

@@ -79,7 +79,7 @@ static rg_gui_event_t sprite_limit_cb(rg_gui_option_t *option, rg_gui_event_t ev
         ppu_setopt(PPU_LIMIT_SPRITES, spritelimit);
     }
 
-    strcpy(option->value, spritelimit ? "On " : "Off");
+    strcpy(option->value, spritelimit ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -93,7 +93,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, overscan ? "Auto" : "Off ");
+    strcpy(option->value, overscan ? _("Auto") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -113,9 +113,9 @@ static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    if (val == 0) strcpy(option->value, "Never ");
-    if (val == 1) strcpy(option->value, "Auto  ");
-    if (val == 2) strcpy(option->value, "Always");
+    if (val == 0) strcpy(option->value, _("Never"));
+    if (val == 1) strcpy(option->value, _("Auto"));
+    if (val == 2) strcpy(option->value, _("Always"));
 
     return RG_DIALOG_VOID;
 }
@@ -136,12 +136,12 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         return RG_DIALOG_REDRAW;
     }
 
-    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");
-    if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, "Composite  ");
-    if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, "NES Classic");
-    if (pal == NES_PALETTE_NTSC)        strcpy(option->value, "NTSC       ");
-    if (pal == NES_PALETTE_PVM)         strcpy(option->value, "PVM        ");
-    if (pal == NES_PALETTE_SMOOTH)      strcpy(option->value, "Smooth     ");
+    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, _("Default"));
+    if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, _("Composite"));
+    if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, _("NES Classic"));
+    if (pal == NES_PALETTE_NTSC)        strcpy(option->value, _("NTSC"));
+    if (pal == NES_PALETTE_PVM)         strcpy(option->value, _("PVM"));
+    if (pal == NES_PALETTE_SMOOTH)      strcpy(option->value, _("Smooth"));
 
     return RG_DIALOG_VOID;
 }

@@ -119,10 +119,10 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, "Off");
-    if (rotation == RG_DISPLAY_ROTATION_AUTO)  strcpy(option->value, "Auto ");
-    if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, "Left ");
-    if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, "Right");
+    strcpy(option->value, _("Off"));
+    if (rotation == RG_DISPLAY_ROTATION_AUTO)  strcpy(option->value, _("Auto"));
+    if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, _("Left"));
+    if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, _("Right"));
 
     return RG_DIALOG_VOID;
 }

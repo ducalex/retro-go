@@ -115,7 +115,7 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
         yfm_enabled = !yfm_enabled;
         rg_settings_set_number(NS_APP, SETTING_YFM_EMULATION, yfm_enabled);
     }
-    strcpy(option->value, yfm_enabled ? _("On ") : _("Off"));
+    strcpy(option->value, yfm_enabled ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -127,7 +127,7 @@ static rg_gui_event_t sn76489_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         sn76489_enabled = !sn76489_enabled;
         rg_settings_set_number(NS_APP, SETTING_SN76489_EMULATION, sn76489_enabled);
     }
-    strcpy(option->value, sn76489_enabled ? _("On ") : _("Off"));
+    strcpy(option->value, sn76489_enabled ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -139,7 +139,7 @@ static rg_gui_event_t z80_update_cb(rg_gui_option_t *option, rg_gui_event_t even
         z80_enabled = !z80_enabled;
         rg_settings_set_number(NS_APP, SETTING_Z80_EMULATION, z80_enabled);
     }
-    strcpy(option->value, z80_enabled ? _("On ") : _("Off"));
+    strcpy(option->value, z80_enabled ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }

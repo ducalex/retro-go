@@ -1394,7 +1394,7 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
         }
     }
     char *border = rg_display_get_border();
-    sprintf(option->value, "%.9s", border ? rg_basename(border) : "None");
+    sprintf(option->value, "%.9s", border ? rg_basename(border) : _("None"));
     free(border);
     return RG_DIALOG_VOID;
 }
