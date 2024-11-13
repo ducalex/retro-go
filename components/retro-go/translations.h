@@ -290,7 +290,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Audio filter",
-        [RG_LANG_FR] = "Activer filtre"
+        [RG_LANG_FR] = "Filtre audio"
     },
 
 
