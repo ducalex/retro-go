@@ -47,12 +47,12 @@ def scan_file_for_msg_strings(file_path):
             start = 0
             while start < len(line):
                 # Find the occurrence of .msg =
-                start = line.find('.msg = "', start)
+                start = line.find('[RG_LANG_EN] = "', start)
                 if start == -1:
                     break  # No more occurrences in this line
 
                 # Find the closing "
-                start_quote = start + len('.msg = "')
+                start_quote = start + len('[RG_LANG_EN] = "')
                 end_quote = line.find('"', start_quote)
                 if end_quote != -1:
                     # Extract the string between " and "
@@ -74,18 +74,18 @@ found_strings_in_files = scan_folder_for_strings(os.getcwd())
 found_strings_in_files = list(dict.fromkeys(found_strings_in_files))
 
 # Scan the file 'retro-go/localization.c'
-translated = scan_file_for_msg_strings('components/retro-go/rg_localization.c')
+translated = scan_file_for_msg_strings('components/retro-go/translations.h')
 
 file = open("missing_translation.txt", "w")
 for string in found_strings_in_files:
     if string not in translated:
         print("missing translation", '"'+string+'"')
-        file.write('{\n\t.msg = "'+string+'",\n\t.fr = \"\",\n},\n')
+        file.write('{\n\t[RG_LANG_EN] = "'+string+'",\n\t[RG_LANG_FR] = \"\",\n},\n')
         
         # file output :
         #{
-        #   .msg = "missing string",
-        #   .fr = "",
+        #   [RG_LANG_EN]  = "missing string",
+        #   [RG_LANG_FR]  = "",
         #},
 
 file.close()

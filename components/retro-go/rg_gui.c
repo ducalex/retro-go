@@ -1193,11 +1193,11 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     }
 
     if (mode == RG_DISPLAY_SCALING_OFF)
-        strcpy(option->value, _("Off  "));
+        strcpy(option->value, _("Off"));
     else if (mode == RG_DISPLAY_SCALING_FIT)
-        strcpy(option->value, _("Fit "));
+        strcpy(option->value, _("Fit"));
     else if (mode == RG_DISPLAY_SCALING_FULL)
-        strcpy(option->value, _("Full "));
+        strcpy(option->value, _("Full"));
     else if (mode == RG_DISPLAY_SCALING_ZOOM)
         strcpy(option->value, _("Zoom"));
 
