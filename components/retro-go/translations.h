@@ -78,7 +78,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "About Retro-Go",
-        [RG_LANG_FR] = "A propose de Retro-go"
+        [RG_LANG_FR] = "A propos de Retro-go"
     },
     {
         [RG_LANG_EN] = "Reset all settings?",
@@ -557,7 +557,6 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_EN] = "Quit",
         [RG_LANG_FR] = "Quitter"
     },
-
     {
         [RG_LANG_EN] = "Soft reset",
         [RG_LANG_FR] = "Soft reset"
@@ -831,7 +830,6 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_EN] = "Reboot to launcher",
         [RG_LANG_FR] = "Relancer launcher"
     },
-
     {
         [RG_LANG_EN] = "Recovery mode",
         [RG_LANG_FR] = "Mode de recuperation"
