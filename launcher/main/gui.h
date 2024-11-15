@@ -55,6 +55,8 @@ typedef enum {
 } preview_mode_t;
 
 typedef struct {
+    uint16_t background;
+    uint16_t foreground;
     struct {
         uint16_t standard_bg;
         uint16_t standard_fg;
@@ -120,7 +122,6 @@ typedef struct {
     int selected_tab;
     int startup_mode;
     int browse;
-    const char *theme;
     int color_theme;
     int start_screen;
     int show_preview;
@@ -128,9 +129,11 @@ typedef struct {
     int width;
     int height;
     theme_t themes[4];
+    theme_t *theme;
     uint32_t idle_counter;
     uint32_t joystick;
     bool http_lock; // FIXME: should be a mutex...
+    bool low_memory_mode;
     rg_surface_t *surface;
 } retro_gui_t;
 

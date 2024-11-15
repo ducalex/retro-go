@@ -120,6 +120,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui.color_theme = 0;
 
     gui.color_theme %= RG_COUNT(gui.themes);
+    gui.theme = &gui.themes[gui.color_theme];
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         return RG_DIALOG_REDRAW;
@@ -387,7 +388,8 @@ static void retro_loop(void)
             prev_joystick = 0;
             gui_event(TAB_IDLE, tab);
             next_idle_event = rg_system_timer() + 100000;
-            redraw_pending = true;
+            if (gui.idle_counter % 10 == 1)
+                redraw_pending = true;
         }
         else if (gui.idle_counter)
         {
