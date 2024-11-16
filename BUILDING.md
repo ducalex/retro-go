@@ -83,6 +83,10 @@ or even do nothing at all. In such cases you should use `python rg_tool.py ...` 
 All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color.
 
 
+## Updating translations
+When adding new menu items or on-screen messages, they should be translated. Retro-Go uses a system similar to gettext where, as a developer, your only task is to wrap your strings in `_(...)`. Refer to [LOCALIZATION.md](LOCALIZATION.md) to learn how to add the actual translations.
+
+
 ## Capturing crash logs
 When a panic occurs, Retro-Go has the ability to save debugging information to `/sd/crash.log`. This provides users with a simple way of recovering a backtrace (and often more) without having to install drivers and serial console software. A weak hook is installed into esp-idf panic's putchar, allowing us to save each chars in RTC RAM. Then, after the system resets, we can move that data to the sd card. You will find a small esp-idf patch to enable this feature in tools/patches.
 

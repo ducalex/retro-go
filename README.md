@@ -165,6 +165,7 @@ If you wish to build or modify Retro-Go, you can find help in the following docu
 - Build instructions in [BUILDING.md](BUILDING.md)
 - Theming instructions [THEMING.md](THEMING.md)
 - Porting instructions in [PORTING.md](PORTING.md)
+- Translating instructions in [LOCALIZATION.md](LOCALIZATION.md)
 
 
 # Acknowledgements
