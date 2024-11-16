@@ -135,8 +135,8 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
         rg_gui_option_t options[release->assets_count + 4];
         rg_gui_option_t *opt = options;
 
-        *opt++ = (rg_gui_option_t){0, "Date", release->date, -1, NULL};
-        *opt++ = (rg_gui_option_t){0, "Files:", NULL, -1, NULL};
+        *opt++ = (rg_gui_option_t){0, _("Date"), release->date, -1, NULL};
+        *opt++ = (rg_gui_option_t){0, _("Files:"), NULL, -1, NULL};
 
         for (int i = 0; i < release->assets_count; i++)
             *opt++ = (rg_gui_option_t){i, release->assets[i].name, NULL, 1, NULL};
@@ -150,7 +150,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
             gui_redraw();
             if (download_file(release->assets[sel].url, dest_path))
             {
-                if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
+                if (rg_gui_confirm(_("Download complete!"), _("Reboot to flash?"), true))
                     rg_system_switch_app(RG_APP_UPDATER, NULL, dest_path, 0);
             }
         }
@@ -212,11 +212,11 @@ void updater_show_dialog(void)
             *opt++ = (rg_gui_option_t){(intptr_t)&releases[i], releases[i].name, NULL, 1, &view_release_cb};
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-        rg_gui_dialog("Available Releases", options, 0);
+        rg_gui_dialog(_("Available Releases"), options, 0);
     }
     else
     {
-        rg_gui_alert("Available Releases", "Received empty list!");
+        rg_gui_alert(_("Available Releases"), _("Received empty list!"));
     }
 
     for (int i = 0; i < releases_count; ++i)

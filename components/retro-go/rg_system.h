@@ -24,6 +24,7 @@ extern "C" {
 #define RTC_NOINIT_ATTR
 #endif
 
+#include "rg_localization.h"
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"

@@ -122,7 +122,7 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
         rg_settings_set_number(NS_APP, SETTING_APU_EMULATION, apu_enabled);
     }
 
-    strcpy(option->value, apu_enabled ? "On " : "Off");
+    strcpy(option->value, apu_enabled ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -132,7 +132,7 @@ static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         lowpass_filter = !lowpass_filter;
 
-    strcpy(option->value, lowpass_filter ? "On" : "Off");
+    strcpy(option->value, lowpass_filter ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -188,7 +188,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[20] = {
-            {-1, "Profile", "<profile name>", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
+            {-1, _("Profile"), _("<profile name>"), RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
             {-2, "", NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
             {-3, "snes9x  ", "handheld", RG_DIALOG_FLAG_MESSAGE, NULL},
             {0, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
@@ -209,7 +209,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             {15, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog("Controls", options, 0);
+        rg_gui_dialog(_("Controls"), options, 0);
         return RG_DIALOG_REDRAW;
     }
 
@@ -292,9 +292,9 @@ void snes_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Audio enable", "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
-        {0, "Audio filter", "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
-        {0, "Controls    ", "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
+        {0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
+        {0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
+        {0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
         RG_DIALOG_END,
     };
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);

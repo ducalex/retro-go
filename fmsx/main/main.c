@@ -384,7 +384,7 @@ static rg_gui_event_t crop_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         rg_settings_set_number(NS_APP, "Crop", CropPicture);
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, CropPicture ? "On" : "Off");
+    strcpy(option->value, CropPicture ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -395,7 +395,7 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
         KeyboardEmulation = !KeyboardEmulation;
         rg_settings_set_number(NS_APP, "Input", KeyboardEmulation);
     }
-    strcpy(option->value, KeyboardEmulation ? "Keyboard" : "Joystick");
+    strcpy(option->value, KeyboardEmulation ? _("Keyboard") : _("Joystick"));
     return RG_DIALOG_VOID;
 }
 
@@ -430,8 +430,8 @@ void app_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Input", "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
-        {0, "Crop ", "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
+        {0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
+        {0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
         // {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
         RG_DIALOG_END,
     };
@@ -456,7 +456,7 @@ void app_main(void)
             char message[512];
             snprintf(message, 512, "File: %s\nYou can find it at:\n%s",
                         rg_relpath(pathbuf), "https://fms.komkon.org/fMSX/");
-            rg_gui_alert("BIOS file missing!", message);
+            rg_gui_alert(_("BIOS file missing!"), message);
         }
     }
 

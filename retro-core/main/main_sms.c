@@ -102,7 +102,7 @@ void sms_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Palette ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
+        {0, _("Palette"), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
         RG_DIALOG_END
     };
 
@@ -214,7 +214,7 @@ void sms_main(void)
 
             if (joystick & RG_KEY_START)
             {
-                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, "To start, try: 1 or * or #", C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
+                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, _("To start, try: 1 or * or #"), C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
                 rg_audio_set_mute(true);
                 int key = rg_input_read_keyboard(&coleco_keyboard);
                 rg_audio_set_mute(false);

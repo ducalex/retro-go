@@ -34,7 +34,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, overscan ? "On " : "Off");
+    strcpy(option->value, overscan ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -189,7 +189,7 @@ void pce_main(void)
         .event = &event_handler,
     };
     const rg_gui_option_t options[] = {
-        {0, "Overscan", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
+        {0, _("Overscan"), "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
         RG_DIALOG_END
     };
 

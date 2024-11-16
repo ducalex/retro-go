@@ -360,19 +360,19 @@ void rg_netplay_init(netplay_callback_t callback)
 
 bool rg_netplay_quick_start(void)
 {
-    const char *status_msg = "Initializing...";
+    const char *status_msg = _("Initializing...");
     const char *screen_msg = NULL;
     // int timeout = 100;
 
     rg_display_clear(0);
 
     const rg_gui_option_t options[] = {
-        {1, "Host Game (P1)", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Find Game (P2)", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {1, _("Host Game (P1)"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, _("Find Game (P2)"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
 
-    int ret = rg_gui_dialog("Netplay", options, 0);
+    int ret = rg_gui_dialog(_("Netplay"), options, 0);
 
     if (ret == 1)
         rg_netplay_start(NETPLAY_MODE_HOST);
@@ -387,31 +387,31 @@ bool rg_netplay_quick_start(void)
         {
             case NETPLAY_STATUS_CONNECTED:
                 return remote_player->game_id == local_player->game_id
-                    || rg_gui_confirm("Netplay", "ROMs not identical. Continue?", 1);
+                    || rg_gui_confirm(_("Netplay"), _("ROMs not identical. Continue?"), 1);
                 break;
 
             case NETPLAY_STATUS_HANDSHAKE:
-                status_msg = "Exchanging info...";
+                status_msg = _("Exchanging info...");
                 break;
 
             case NETPLAY_STATUS_CONNECTING:
-                status_msg = "Connecting...";
+                status_msg = _("Connecting...");
                 break;
 
             case NETPLAY_STATUS_DISCONNECTED:
-                status_msg = "Unable to find host!";
+                status_msg = _("Unable to find host!");
                 break;
 
             case NETPLAY_STATUS_STOPPED:
-                status_msg = "Connection failed!";
+                status_msg = _("Connection failed!");
                 break;
 
             case NETPLAY_STATUS_LISTENING:
-                status_msg = "Waiting for peer...";
+                status_msg = _("Waiting for peer...");
                 break;
 
             default:
-                status_msg = "Unknown status...";
+                status_msg = _("Unknown status...");
         }
 
         if (screen_msg != status_msg)
