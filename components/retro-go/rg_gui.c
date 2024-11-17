@@ -265,10 +265,11 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    size_t glyph_width = font->width;
+    size_t glyph_width = 0;
 
     if (font->type == 0) // Monospace Bitmap
     {
+        glyph_width = font->width;
         if (output)
         {
             if (c >= font->chars)
@@ -290,12 +291,13 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
             }
         }
     }
-    else // Proportional
+    else if (font->type == 1) // Proportional
     {
         // Based on code by Boris Lovosevic (https://github.com/loboris)
         int charCode, adjYOffset, width, height, xOffset, xDelta;
         const uint8_t *data = font->data;
-        while (1) {
+        while (1)
+        {
             charCode = *data++;
             adjYOffset = *data++;
             width = *data++;
@@ -311,26 +313,28 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
                 data += (((width * height) - 1) / 8) + 1;
         }
 
-        if (c == charCode)
+        // If the glyph is not found, we fallback to the basic font which has most glyphs.
+        // It will be ugly, but at least the letter won't be missing...
+        if (charCode != c)
+            return get_glyph(output, &font_basic8x8, RG_MAX(8, points - 2), c);
+
+        glyph_width = RG_MAX(width, xDelta);
+        if (output)
         {
-            glyph_width = RG_MAX(width, xDelta);
-            if (output)
+            int ch = 0, mask = 0x80;
+            for (int y = 0; y < height; y++)
             {
-                int ch = 0, mask = 0x80;
-                for (int y = 0; y < height; y++)
+                output[adjYOffset + y] = 0;
+                for (int x = 0; x < width; x++)
                 {
-                    output[adjYOffset + y] = 0;
-                    for (int x = 0; x < width; x++)
+                    if (((x + (y * width)) % 8) == 0)
                     {
-                        if (((x + (y * width)) % 8) == 0)
-                        {
-                            mask = 0x80;
-                            ch = *data++;
-                        }
-                        if ((ch & mask) != 0)
-                            output[adjYOffset + y] |= (1 << (xOffset + x));
-                        mask >>= 1;
+                        mask = 0x80;
+                        ch = *data++;
                     }
+                    if ((ch & mask) != 0)
+                        output[adjYOffset + y] |= (1 << (xOffset + x));
+                    mask >>= 1;
                 }
             }
         }
