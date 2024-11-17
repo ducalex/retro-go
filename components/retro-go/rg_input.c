@@ -196,7 +196,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 static void input_task(void *arg)
 {
-    const uint8_t debounce_level = 0x03;
+    const uint8_t debounce_level = 0x3F;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
     uint32_t state;
@@ -211,17 +211,17 @@ static void input_task(void *arg)
         {
             for (int i = 0; i < RG_KEY_COUNT; ++i)
             {
+                if (((local_gamepad_state >> i) & 1) == 1) {
+                    if ((debounce[i] == debounce_level && ((state >> i) & 1) == 0) || debounce[i] == 0) {
+                        local_gamepad_state &= ~(1 << i); // Released
+                    }
+                } else {
+                    if ((debounce[i] == 0 && ((state >> i) & 1) == 1) || debounce[i] == debounce_level) {
+                        local_gamepad_state |= (1 << i); // Pressed
+                    }
+                }
                 debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
                 debounce[i] &= debounce_level;
-
-                if (debounce[i] == debounce_level) // Pressed
-                {
-                    local_gamepad_state |= (1 << i);
-                }
-                else if (debounce[i] == 0x00) // Released
-                {
-                    local_gamepad_state &= ~(1 << i);
-                }
             }
             gamepad_state = local_gamepad_state;
         }
