@@ -1,5 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
-from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas
+from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk
 import os
 
 ############################### - Data structure - ###############################
@@ -94,19 +94,24 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-canva_width = 220
-canva_height = 140
+windows_x = 1280
+windows_y = 720
 
 pixel_size = 5
 
-treshold_init = 50 # tip : lower if too thin letters / missing pixel
+canva_width = windows_x//pixel_size
+canva_height = windows_y//pixel_size
+
+treshold_init = 80 # tip : lower if too thin letters / missing pixel
 
 # Example usage
-font_name = "OpenSans"
+font_name_init = "OpenSans"
 font_path = os.path.abspath("OpenSans-Regular.ttf")  # Replace with your TTF font path
-font_size = 12
+font_size_init = 12
 
 def generate_font_data():
+    font_name = font_name_input.get()
+    font_size = int(font_height_input.get())
     # Load the TTF font
     pil_font = ImageFont.truetype(font_path, font_size)
 
@@ -192,15 +197,15 @@ def generate_font_data():
             max_width = glyph['width']
     print(f"Max width : {max_width}")
 
-    save_file("OUTPUT_OpenSans.c", {
+    save_file(font_name, {
         "header": header,
         "glyphs": font_data,
         "memory_usage": memory_usage,
         "num_characters": num_characters,
     })
 
-def save_file(file_path, font_data):
-    with open (file_path, 'w', encoding='ISO8859-1') as f:
+def save_file(font_name, font_data):
+    with open (font_name+font_height_input.get()+".c", 'w', encoding='ISO8859-1') as f:
         # Output header
 
         f.write("#include \"../rg_gui.h\"\n\n")
@@ -228,28 +233,72 @@ def save_file(file_path, font_data):
         f.write("  },\n")
         f.write("};\n")
 
+def select_file():
+    filetypes = (
+        ('True Type Font', '*.ttf'),
+        ('All files', '*.*')
+    )
+
+    filename = filedialog.askopenfilename(
+        title='Open a Font',
+        initialdir='/',
+        filetypes=filetypes)
+
+    font_name_input.set(os.path.basename(filename)[:-4:])
+
+    global font_path
+    font_path = filename
+
+
 window = Tk()
 frame = Frame(window)
 frame.pack(padx=20, pady=10)
 
 lab1 = Label(frame, text="Font render")
-lab1.grid(row=0, column=0, columnspan=3, padx=2, pady=2)
+lab1.grid(row=0, column=0, columnspan=8, padx=2, pady=2)
+
+# choose font button
+choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
+choose_font_button.grid(row=1, column=0, padx=2, pady=2)
+
 
 labelText=StringVar()
-labelText.set("Treshold Value")
+labelText.set("Font height")
 labelDir=Label(frame, textvariable=labelText, height=4)
-labelDir.grid(row=1, column=0, padx=2, pady=2)
+labelDir.grid(row=1, column=1, padx=2, pady=2)
+
+font_height_input=StringVar(None)
+font_height_input.set(str(font_size_init))
+entree=Entry(frame,textvariable=font_height_input,width=20)
+entree.grid(row=1, column=2, padx=2, pady=2)
+
+
+labelText_2=StringVar()
+labelText_2.set("Font name (used for output)")
+labelDir_2=Label(frame, textvariable=labelText_2, height=4)
+labelDir_2.grid(row=1, column=3, padx=2, pady=2)
+
+font_name_input=StringVar(None)
+font_name_input.set(str(font_name_init))
+entree_1=Entry(frame,textvariable=font_name_input,width=20)
+entree_1.grid(row=1, column=4, padx=2, pady=2)
+
+
+labelText_1=StringVar()
+labelText_1.set("Treshold Value (1-255)")
+labelDir_1=Label(frame, textvariable=labelText_1, height=4)
+labelDir_1.grid(row=1, column=5, padx=2, pady=2)
 
 treshold_input=StringVar(None)
 treshold_input.set(str(treshold_init))
-entree=Entry(frame,textvariable=treshold_input,width=50)
-entree.grid(row=1, column=1, padx=2, pady=2)
+entree_2=Entry(frame,textvariable=treshold_input,width=20)
+entree_2.grid(row=1, column=6, padx=2, pady=2)
 
 canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
 
 b1 = Button(frame, text="generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
-b1.grid(row=1, column=2, padx=2, pady=2)
+b1.grid(row=1, column=7, padx=2, pady=2)
 
 canvas.focus_set()
-canvas.grid(row=3, column=0, columnspan=3)
+canvas.grid(row=3, column=0, columnspan=8)
 window.mainloop()
