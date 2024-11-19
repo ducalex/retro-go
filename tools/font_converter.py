@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw, ImageFont
+from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas
 import os
 
 ############################### - Data structure - ###############################
@@ -93,7 +94,19 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-def generate_font_data(font_path, font_size):
+canva_width = 220
+canva_height = 140
+
+pixel_size = 5
+
+treshold_init = 50 # tip : lower if too thin letters / missing pixel
+
+# Example usage
+font_name = "OpenSans"
+font_path = os.path.abspath("OpenSans-Regular.ttf")  # Replace with your TTF font path
+font_size = 12
+
+def generate_font_data():
     # Load the TTF font
     pil_font = ImageFont.truetype(font_path, font_size)
 
@@ -101,6 +114,11 @@ def generate_font_data(font_path, font_size):
     font_data = []
     memory_usage = 0
     num_characters = 0
+
+    canvas.delete("all")
+    treshold = int(treshold_input.get())
+    offset_x_1 = 1
+    offset_y_1 = 1
 
     for char_code in range(32, 255):  # ASCII printable characters
         char = chr(char_code)
@@ -131,11 +149,19 @@ def generate_font_data(font_path, font_size):
                     bitmap.append(row)
                     row = 0
                     i = 0
-                row = (row << 1) | (1 if pixel > 1 else 0)
+                row = (row << 1) | (1 if pixel > treshold else 0) # play with the condition value to get the best quality
+                if pixel > treshold:
+                    canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1)*pixel_size+pixel_size,fill="white")
                 i += 1
 
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
+
+        if offset_x_1+2*width+6 <= canva_width:
+            offset_x_1 += width + 2
+        else:
+            offset_x_1 = 1
+            offset_y_1 += font_size + 1
 
         # Create glyph entry
         glyph_data = {
@@ -160,25 +186,28 @@ def generate_font_data(font_path, font_size):
         "num_chars": 0x00,
     }
 
-    # Output results
-    return {
+    max_width = 0
+    for glyph in font_data:
+        if glyph['width'] > max_width:
+            max_width = glyph['width']
+    print(f"Max width : {max_width}")
+
+    save_file("OUTPUT_OpenSans.c", {
         "header": header,
         "glyphs": font_data,
         "memory_usage": memory_usage,
         "num_characters": num_characters,
-    }
+    })
 
 def save_file(file_path, font_data):
     with open (file_path, 'w', encoding='ISO8859-1') as f:
         # Output header
-        f.write(f"// Memory usage: {font_data['memory_usage']} bytes\n")
-        f.write(f"// Number of characters: {font_data['num_characters']}\n")
 
         f.write("#include \"../rg_gui.h\"\n\n")
         f.write(f"// Font         : {font_name}\n")
         f.write(f"// Point Size   : 12\n")
-        f.write(f"// Memory usage : 1161 bytes\n")
-        f.write(f"// # characters : 95\n\n")
+        f.write(f"// Memory usage : {font_data['memory_usage']} bytes\n")
+        f.write(f"// # characters : {font_data['num_characters']}\n\n")
         f.write(f"const rg_font_t font_VeraBold12 = ")
         f.write("{\n")
         f.write("    .type = 1,\n")
@@ -199,18 +228,28 @@ def save_file(file_path, font_data):
         f.write("  },\n")
         f.write("};\n")
 
+window = Tk()
+frame = Frame(window)
+frame.pack(padx=20, pady=10)
 
-# Example usage
-font_name = "VeraBold"
-font_path = os.path.abspath("VeraBold.ttf")  # Replace with your TTF font path
-font_size = 11
+lab1 = Label(frame, text="Font render")
+lab1.grid(row=0, column=0, columnspan=3, padx=2, pady=2)
 
-font_data = generate_font_data(font_path, font_size)
+labelText=StringVar()
+labelText.set("Treshold Value")
+labelDir=Label(frame, textvariable=labelText, height=4)
+labelDir.grid(row=1, column=0, padx=2, pady=2)
 
-max_width = 0
-for glyph in font_data["glyphs"]:
-    if glyph['width'] > max_width:
-        max_width = glyph['width']
-print(f"Max width : {max_width}")
+treshold_input=StringVar(None)
+treshold_input.set(str(treshold_init))
+entree=Entry(frame,textvariable=treshold_input,width=50)
+entree.grid(row=1, column=1, padx=2, pady=2)
 
-save_file("OUTPUT_VeraBold.c", font_data)
+canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
+
+b1 = Button(frame, text="generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
+b1.grid(row=1, column=2, padx=2, pady=2)
+
+canvas.focus_set()
+canvas.grid(row=3, column=0, columnspan=3)
+window.mainloop()
