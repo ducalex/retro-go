@@ -301,7 +301,9 @@ def select_file():
 
 window = Tk()
 window.title("Font render")
-frame = Frame(window).pack(anchor="center", padx=10, pady=2)
+
+frame = Frame(window)
+frame.pack(anchor="center", padx=10, pady=2)
 
 # choose font button (file picker)
 choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
