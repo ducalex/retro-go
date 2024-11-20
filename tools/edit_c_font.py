@@ -99,26 +99,24 @@ def select_file():
 
 
 window = Tk()
+window.title("C font editor")
 frame = Frame(window)
 frame.pack(padx=20, pady=10)
 
-lab1 = Label(frame, text="C Font renderer")
-lab1.grid(row=0, column=0, columnspan=3, padx=2, pady=2)
-
 # choose font button
 choose_font_button = ttk.Button(frame, text='Choose C font', command=select_file)
-choose_font_button.grid(row=1, column=0, padx=2, pady=2)
+choose_font_button.grid(row=0, column=0, padx=2, pady=2)
 
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
 checkbox = Checkbutton(frame, text="Bounding box", variable=bounding_box_bool)
-checkbox.grid(row=1, column=1, padx=2, pady=2)
+checkbox.grid(row=0, column=1, padx=2, pady=2)
 
 b1 = Button(frame, text="Render", width=14, height=2, background="blue", foreground="white", command=extract_bytes)
-b1.grid(row=1, column=2, padx=2, pady=2)
+b1.grid(row=0, column=2, padx=2, pady=2)
 
 canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
 canvas.focus_set()
-canvas.grid(row=2, column=0, columnspan=3)
+canvas.grid(row=1, column=0, columnspan=3)
 
 window.mainloop()

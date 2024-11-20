@@ -94,20 +94,23 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-windows_x = 1280
-windows_y = 720
+windows_width = 1280
+windows_height = 720
 
 pixel_size = 5 # pixel size on the renderer
 
-canva_width = windows_x//pixel_size
-canva_height = windows_y//pixel_size
+canva_width = windows_width//pixel_size
+canva_height = windows_height//pixel_size
 
 treshold_init = 110 # tip : lower if too thin letters / missing pixel
+
+first_char_init = 32
+last_char_init = 255
 
 # Example usage (defaults parameters)
 font_name_init = "arial"
 font_path = ("arial.ttf")  # Replace with your TTF font path
-font_size_init = 12
+font_size_init = 11
 
 def find_bounding_box(image):
     pixels = image.load()
@@ -145,7 +148,7 @@ def generate_font_data():
     offset_x_1 = 1
     offset_y_1 = 1
 
-    for char_code in range(32, 127):  # ASCII printable characters
+    for char_code in range(int(first_char.get()), int(last_char.get())):  # ASCII printable characters
         char = chr(char_code)
         print("char : " + char)
         # Render character to an image and get its bounding box
@@ -154,14 +157,19 @@ def generate_font_data():
         draw.text((0, 0), char, font=pil_font, fill=255)
 
 
-        pixels = image.load()  # Load the pixel data into a pixel access object
+        ### - MOST IMPORTANT PART - ###
         # this step convert 8bit grayscale image to 1bit color (0 or 1)
+        # TODO : make it better (or can we ?)
+
+        pixels = image.load()  # Load the pixel data into a pixel access object
         for x in range(image.width):
             for y in range(image.height):
                 if pixels[x, y] >= treshold:  # play with the treshold value to get the best quality
                     pixels[x, y] = 1  # Set the pixel to white
                 else:
                     pixels[x, y] = 0  # Set the pixel to black
+
+        ### - END OF MOST IMPORTANT PART - ###
 
 
         bbox = find_bounding_box(image)  # Get bounding box
@@ -198,10 +206,9 @@ def generate_font_data():
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
 
-
-        # Draw the image on the Canvas !!!!!!!!!!!!! NOT WORKING
-        tk_image = ImageTk.PhotoImage(cropped_image)
-        canvas.create_image((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, anchor="nw", image=tk_image)
+        # Draw the regular image on the Canvas in grayscale (!!!!!!!!!!!!! NOT WORKING)
+        # tk_image = ImageTk.PhotoImage(cropped_image)
+        # canvas.create_image((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, anchor="nw", image=tk_image)
 
         if offset_x_1+2*width+6 <= canva_width:
             offset_x_1 += width + 2
@@ -225,18 +232,17 @@ def generate_font_data():
         memory_usage += len(bitmap) + 6  # 6 bytes for the header per character
         num_characters += 1
 
+    # find max width/height
+    max_width, max_height = (0,0)
+    for glyph in font_data:
+        max_width = max(glyph['width'], max_width)
+        max_height = max(glyph['height'], max_height)
+
     # Generate header
     header = {
-        "char_width": 0x00,  # Marker for proportional font
-        "char_height": font_size,
-        "num_chars": 0x00,
+    "char_width": max_width,
+    "char_height": max_height,
     }
-
-    max_width = 0
-    for glyph in font_data:
-        if glyph['width'] > max_width:
-            max_width = glyph['width']
-    print(f"Max width : {max_width}")
 
     save_file(font_name, {
         "header": header,
@@ -294,60 +300,49 @@ def select_file():
 
 
 window = Tk()
-frame = Frame(window)
-frame.pack(padx=20, pady=10)
+window.title("Font render")
+frame = Frame(window).pack(anchor="center", padx=10, pady=2)
 
-lab1 = Label(frame, text="Font render")
-lab1.grid(row=0, column=0, columnspan=9, padx=2, pady=2)
-
-# choose font button
+# choose font button (file picker)
 choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
-choose_font_button.grid(row=1, column=0, padx=2, pady=2)
+choose_font_button.pack(side="left", padx=5)
 
+# Label and Entry for Font height
+Label(frame, text="Font height", height=4).pack(side="left", padx=5)
+font_height_input = StringVar(value=str(font_size_init))
+Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
 
-labelText=StringVar()
-labelText.set("Font height")
-labelDir=Label(frame, textvariable=labelText, height=4)
-labelDir.grid(row=1, column=1, padx=2, pady=2)
+# Label and Entry for First Char
+Label(frame, text="First Char", height=4).pack(side="left", padx=5)
+first_char = StringVar(value=str(first_char_init))
+Entry(frame, textvariable=first_char, width=4).pack(side="left", padx=5)
 
-font_height_input=StringVar(None)
-font_height_input.set(str(font_size_init))
-entree=Entry(frame,textvariable=font_height_input,width=20)
-entree.grid(row=1, column=2, padx=2, pady=2)
+# Label and Entry for Last Char
+Label(frame, text="Last Char", height=4).pack(side="left", padx=5)
+last_char = StringVar(value=str(last_char_init))
+Entry(frame, textvariable=last_char, width=4).pack(side="left", padx=5)
 
+# Label and Entry for Font Name
+Label(frame, text="Font name (used for output)", height=4).pack(side="left", padx=5)
+font_name_input = StringVar(value=str(font_name_init))
+Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
 
-labelText_2=StringVar()
-labelText_2.set("Font name (used for output)")
-labelDir_2=Label(frame, textvariable=labelText_2, height=4)
-labelDir_2.grid(row=1, column=3, padx=2, pady=2)
-
-font_name_input=StringVar(None)
-font_name_input.set(str(font_name_init))
-entree_1=Entry(frame,textvariable=font_name_input,width=20)
-entree_1.grid(row=1, column=4, padx=2, pady=2)
-
-
-labelText_1=StringVar()
-labelText_1.set("Treshold Value (1-255)")
-labelDir_1=Label(frame, textvariable=labelText_1, height=4)
-labelDir_1.grid(row=1, column=5, padx=2, pady=2)
-
-treshold_input=StringVar(None)
-treshold_input.set(str(treshold_init))
-entree_2=Entry(frame,textvariable=treshold_input,width=20)
-entree_2.grid(row=1, column=6, padx=2, pady=2)
-
+# Label and Entry for Treshold Value
+Label(frame, text="Treshold Value (1-255)", height=4).pack(side="left", padx=5)
+treshold_input = StringVar(value=str(treshold_init))
+Entry(frame, textvariable=treshold_input, width=4).pack(side="left", padx=5)
 
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
-checkbox = Checkbutton(frame, text="Bounding box", variable=bounding_box_bool)
-checkbox.grid(row=1, column=7, padx=2, pady=2)
+Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
 
-b1 = Button(frame, text="generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
-b1.grid(row=1, column=8, padx=2, pady=2)
+# Button to launch the font generation function
+b1 = Button(frame, text="Generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
+b1.pack(side="left", padx=5)
 
+frame = Frame(window).pack(anchor="w", padx=2, pady=2)
 canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
 canvas.focus_set()
-canvas.grid(row=2, column=0, columnspan=9)
+canvas.pack(side="left", padx=5)
 
 window.mainloop()
