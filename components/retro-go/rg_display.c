@@ -310,14 +310,15 @@ static void display_task(void *arg)
 
         if (display.changed)
         {
-            if (config.scaling != RG_DISPLAY_SCALING_FULL)
+            update_viewport_scaling();
+            // Clear the screen if the viewport doesn't cover the entire screen because garbage could remain on the sides
+            if (display.viewport.width < display.screen.width || display.viewport.height < display.screen.height)
             {
                 if (border)
                     rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
                     rg_display_clear(C_BLACK);
             }
-            update_viewport_scaling();
             display.changed = false;
         }
 
