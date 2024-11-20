@@ -55,13 +55,13 @@ typedef enum {
 } preview_mode_t;
 
 typedef struct {
-    uint16_t background;
-    uint16_t foreground;
+    rg_color_t background;
+    rg_color_t foreground;
     struct {
-        uint16_t standard_bg;
-        uint16_t standard_fg;
-        uint16_t selected_bg;
-        uint16_t selected_fg;
+        rg_color_t standard_bg;
+        rg_color_t standard_fg;
+        rg_color_t selected_bg;
+        rg_color_t selected_fg;
     } list;
 } theme_t;
 

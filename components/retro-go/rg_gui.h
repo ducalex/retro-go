@@ -134,7 +134,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options);
 /* -- µGUI COLORS                                                                -- */
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */
 /* -------------------------------------------------------------------------------- */
-enum colors565
+enum colors565 // rg_color_t
 {
     C_MAROON                   = 0x8000,
     C_DARK_RED                 = 0x8800,
@@ -275,7 +275,7 @@ enum colors565
     C_GAINSBORO                = 0xDEDB,
     C_WHITE_SMOKE              = 0xF7BE,
     C_WHITE                    = 0xFFFF,
-    // C_TRANSPARENT              = -1,
-    C_TRANSPARENT              = C_MAGENTA,
-    C_NONE = -1,
+
+    C_TRANSPARENT = C_MAGENTA, // -1,
+    C_NONE = -2,
 };

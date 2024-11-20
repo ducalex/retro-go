@@ -60,8 +60,11 @@ static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
     if (!gui.draw_buffer)
         RG_PANIC("Failed to allocate draw buffer!");
 
-    for (size_t i = 0; i < pixels; ++i)
-        gui.draw_buffer[i] = fill_color;
+    if (fill_color != C_NONE)
+    {
+        for (size_t i = 0; i < pixels; ++i)
+            gui.draw_buffer[i] = fill_color;
+    }
 
     return gui.draw_buffer;
 }
@@ -185,6 +188,8 @@ rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color
         return default_value;
     if (strcmp(strval, "transparent") == 0)
         return C_TRANSPARENT;
+    if (strcmp(strval, "none") == 0)
+        return C_NONE;
     int intval = (int)strtol(strval, NULL, 0);
     // It is better to specify colors as RGB565 to avoid data loss, but we also accept RGB888 for convenience
     if (strlen(strval) == 8 && strval[0] == '0' && strval[1] == 'x')
@@ -438,9 +443,13 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             {
                 for (int y = 0; y < font_height; y++)
                 {
-                    uint16_t *output = &draw_buffer[(draw_width * (y + padding)) + x_offset];
-                    for (int x = 0; x < width; x++)
-                        output[x] = (bitmap[y] & (1 << x)) ? color_fg : color_bg;
+                    uint32_t row = bitmap[y];
+                    if (row != 0) // get_draw_buffer fills the bg color, nothing to do if row empty
+                    {
+                        uint16_t *output = &draw_buffer[(draw_width * (y + padding)) + x_offset];
+                        for (int x = 0; x < width; x++)
+                            output[x] = ((row >> x) & 1) ? color_fg : color_bg;
+                    }
                 }
             }
 
@@ -527,7 +536,6 @@ void rg_gui_draw_icons(void)
 
     if (battery.present)
     {
-
         #ifdef RG_SCREEN_HAS_ROUND_CORNERS
         right += 42; // This is to shift the battery icon a bit on the left
         #else
