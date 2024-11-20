@@ -1,5 +1,5 @@
-from PIL import Image, ImageDraw, ImageFont
-from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk
+from PIL import Image, ImageDraw, ImageFont, ImageTk
+from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
 import os
 
 ############################### - Data structure - ###############################
@@ -97,17 +97,37 @@ import os
 windows_x = 1280
 windows_y = 720
 
-pixel_size = 5
+pixel_size = 5 # pixel size on the renderer
 
 canva_width = windows_x//pixel_size
 canva_height = windows_y//pixel_size
 
-treshold_init = 80 # tip : lower if too thin letters / missing pixel
+treshold_init = 110 # tip : lower if too thin letters / missing pixel
 
-# Example usage
-font_name_init = "OpenSans"
-font_path = os.path.abspath("OpenSans-Regular.ttf")  # Replace with your TTF font path
+# Example usage (defaults parameters)
+font_name_init = "arial"
+font_path = ("arial.ttf")  # Replace with your TTF font path
 font_size_init = 12
+
+def find_bounding_box(image):
+    pixels = image.load()
+    width, height = image.size
+    x_min, y_min = width, height
+    x_max, y_max = 0, 0
+
+
+    for y in range(height):
+        for x in range(width):
+            if pixels[x, y] == 1:  # Looking for 'on' pixels
+                x_min = min(x_min, x)
+                y_min = min(y_min, y)
+                x_max = max(x_max, x)
+                y_max = max(y_max, y)
+
+    if x_min > x_max or y_min > y_max:  # No target pixels found
+        return None
+    return (x_min, y_min, x_max+1, y_max+1)
+
 
 def generate_font_data():
     font_name = font_name_input.get()
@@ -125,13 +145,26 @@ def generate_font_data():
     offset_x_1 = 1
     offset_y_1 = 1
 
-    for char_code in range(32, 255):  # ASCII printable characters
+    for char_code in range(32, 127):  # ASCII printable characters
         char = chr(char_code)
+        print("char : " + char)
         # Render character to an image and get its bounding box
         image = Image.new("L", (font_size * 2, font_size * 2), 0)
         draw = ImageDraw.Draw(image)
         draw.text((0, 0), char, font=pil_font, fill=255)
-        bbox = draw.textbbox((0, 0), char, font=pil_font)  # Get bounding box
+
+
+        pixels = image.load()  # Load the pixel data into a pixel access object
+        # this step convert 8bit grayscale image to 1bit color (0 or 1)
+        for x in range(image.width):
+            for y in range(image.height):
+                if pixels[x, y] >= treshold:  # play with the treshold value to get the best quality
+                    pixels[x, y] = 1  # Set the pixel to white
+                else:
+                    pixels[x, y] = 0  # Set the pixel to black
+
+
+        bbox = find_bounding_box(image)  # Get bounding box
         if bbox is None:
             continue  # Skip if character has no valid bounding box
         
@@ -144,9 +177,12 @@ def generate_font_data():
 
         # Extract bitmap data
         bitmap = []
-        print("char : " + char)
         row = 0
         i = 0
+
+        if bounding_box_bool.get():
+            canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, (width+offset_x_1)*pixel_size, (height+offset_y_1+offset_y)*pixel_size, width=1, outline="blue",fill='') # bounding box
+
         for y in range(height):
             for x in range(width):
                 pixel = cropped_image.getpixel((x, y))
@@ -154,19 +190,24 @@ def generate_font_data():
                     bitmap.append(row)
                     row = 0
                     i = 0
-                row = (row << 1) | (1 if pixel > treshold else 0) # play with the condition value to get the best quality
-                if pixel > treshold:
-                    canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1)*pixel_size+pixel_size,fill="white")
+                row = (row << 1) | pixel
+                if pixel:
+                    canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1+offset_y)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1+offset_y)*pixel_size+pixel_size,fill="white")
                 i += 1
 
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
 
+
+        # Draw the image on the Canvas !!!!!!!!!!!!! NOT WORKING
+        tk_image = ImageTk.PhotoImage(cropped_image)
+        canvas.create_image((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, anchor="nw", image=tk_image)
+
         if offset_x_1+2*width+6 <= canva_width:
             offset_x_1 += width + 2
         else:
             offset_x_1 = 1
-            offset_y_1 += font_size + 1
+            offset_y_1 += font_size + 2
 
         # Create glyph entry
         glyph_data = {
@@ -211,17 +252,19 @@ def save_file(font_name, font_data):
         f.write("#include \"../rg_gui.h\"\n\n")
         f.write(f"// Font         : {font_name}\n")
         f.write(f"// Point Size   : 12\n")
+        f.write(f"// Treshold Value : {treshold_input.get()}")
         f.write(f"// Memory usage : {font_data['memory_usage']} bytes\n")
         f.write(f"// # characters : {font_data['num_characters']}\n\n")
         f.write(f"const rg_font_t font_VeraBold12 = ")
         f.write("{\n")
-        f.write("    .type = 1,\n")
         f.write(f"    .name = \"{font_name}\",\n")
+        f.write("    .type = 1,\n")
         f.write(f"    .width = {font_data['header']['char_width']},\n")
         f.write(f"    .height = {font_data['header']['char_height']+3},\n")
         f.write(f"    .chars = {font_data['num_characters']},\n")
         f.write("    .data = {\n")
 
+        # output glyph data
         for glyph in font_data["glyphs"]:
             f.write(f"        // '{chr(glyph['char_code'])}'\n")
             f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
@@ -241,7 +284,7 @@ def select_file():
 
     filename = filedialog.askopenfilename(
         title='Open a Font',
-        initialdir='/',
+        initialdir=os.getcwd(),
         filetypes=filetypes)
 
     font_name_input.set(os.path.basename(filename)[:-4:])
@@ -255,7 +298,7 @@ frame = Frame(window)
 frame.pack(padx=20, pady=10)
 
 lab1 = Label(frame, text="Font render")
-lab1.grid(row=0, column=0, columnspan=8, padx=2, pady=2)
+lab1.grid(row=0, column=0, columnspan=9, padx=2, pady=2)
 
 # choose font button
 choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
@@ -294,11 +337,17 @@ treshold_input.set(str(treshold_init))
 entree_2=Entry(frame,textvariable=treshold_input,width=20)
 entree_2.grid(row=1, column=6, padx=2, pady=2)
 
-canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
+
+# Variable to hold the state of the checkbox
+bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
+checkbox = Checkbutton(frame, text="Bounding box", variable=bounding_box_bool)
+checkbox.grid(row=1, column=7, padx=2, pady=2)
 
 b1 = Button(frame, text="generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
-b1.grid(row=1, column=7, padx=2, pady=2)
+b1.grid(row=1, column=8, padx=2, pady=2)
 
+canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
 canvas.focus_set()
-canvas.grid(row=3, column=0, columnspan=8)
+canvas.grid(row=2, column=0, columnspan=9)
+
 window.mainloop()
