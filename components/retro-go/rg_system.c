@@ -864,7 +864,7 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
     // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
     // This is simply to avoid an unecessary flash write...
     const esp_partition_t *current = esp_ota_get_boot_partition();
-    if (current && current->label && partition && strcmp(current->label, partition) == 0)
+    if (current && partition && strncmp(current->label, partition, 16) == 0)
     {
         RG_LOGI("Boot partition already set to desired app!");
         rg_system_restart();
