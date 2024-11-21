@@ -96,13 +96,29 @@ import os
 
 treshold_init = 110 # tip : lower if too thin letters / missing pixel
 
-first_char_init = 31
+first_char_init = 32
 last_char_init = 255
 
 # Example usage (defaults parameters)
 font_name_init = "arial"
 font_path = ("arial.ttf")  # Replace with your TTF font path
 font_size_init = 11
+
+def pre_compute_x_delta_space(treshold, font_size, pil_font):
+    # pre-compute the x_delta_space for control/space char
+    image_control_char = Image.new("L", (font_size * 2, font_size * 2), 0)
+    draw_control_char = ImageDraw.Draw(image_control_char)
+    draw_control_char.text((0, 0), chr(1), font=pil_font, fill=255)
+    pixels = image_control_char.load()  # Load the pixel data into a pixel access object
+    for x in range(image_control_char.width):
+        for y in range(image_control_char.height):
+            if pixels[x, y] >= treshold:  # play with the treshold value to get the best quality
+                pixels[x, y] = 1  # Set the pixel to white
+            else:
+                pixels[x, y] = 0  # Set the pixel to black
+
+    x0, y0, x1, y1 = find_bounding_box(image_control_char)  # Get bounding box
+    return (x1 - x0)
 
 def find_bounding_box(image):
     pixels = image.load()
@@ -122,7 +138,6 @@ def find_bounding_box(image):
         return None
     return (x_min, y_min, x_max+1, y_max+1)
 
-
 def generate_font_data():
     font_name = font_name_input.get()
     font_size = int(font_height_input.get())
@@ -138,6 +153,8 @@ def generate_font_data():
     treshold = int(treshold_input.get())
     offset_x_1 = 1
     offset_y_1 = 1
+
+    x_delta_space = pre_compute_x_delta_space(treshold, font_size, pil_font)
 
     for char_code in range(int(first_char.get()), int(last_char.get())):  # ASCII printable characters
         char = chr(char_code)
@@ -164,7 +181,20 @@ def generate_font_data():
 
 
         bbox = find_bounding_box(image)  # Get bounding box
-        if bbox is None:
+
+        if bbox is None: # control character / space
+            # Create glyph entry
+            glyph_data = {
+                "char_code": char_code,
+                "y_offset": 0,
+                "width": 0,
+                "height": 0,
+                "x_offset": 0,
+                "x_delta": x_delta_space,
+                "data": [],
+            }
+            font_data.append(glyph_data)
+            num_characters += 1
             continue  # Skip if character has no valid bounding box
         
         x0, y0, x1, y1 = bbox
@@ -261,7 +291,11 @@ def save_file(font_name, font_data):
             f.write(f"        // '{chr(glyph['char_code'])}'\n")
             f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
                     f"0x{glyph['height']:02X},0x{glyph['x_offset']:02X},0x{glyph['x_delta']:02X},\n        ")
-            f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]) + ",\n")
+            f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]))
+            if glyph['data'] == []:
+                f.write("\n")
+            else:
+                f.write(",\n")
 
         f.write("\n    // Terminator\n")
         f.write("    0xFF,\n")
