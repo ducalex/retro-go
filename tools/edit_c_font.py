@@ -18,18 +18,6 @@ for y in range(canva_height):
 list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct pixels on the canva
 font_data = [] # contain font data for all glyphs
 
-def edit_C_char(byte_list, list_char, list_pixel):
-    byte_index = 0
-    for char in list_char:
-        while byte_list[byte_index] != char:
-            width = byte_list[byte_index+2]
-            height = byte_list[byte_index+3]
-            bit_index = 0
-            data_index = byte_index+6
-
-            print(byte_list[byte_index])
-
-
 def renderCfont(byte_list):
     canvas.delete("all")
 
@@ -149,7 +137,7 @@ def generate_font_data():
         # Update font data with the bitmap
         font['data'] = bitmap
         print(font['data'])
-        
+
     # find max width/height
     max_width, max_height = (0,0)
     for glyph in font_data:
@@ -191,8 +179,12 @@ def save_file(font_name, font_data):
             f.write(f"        // '{chr(glyph['char_code'])}'\n")
             f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
                     f"0x{glyph['height']:02X},0x{glyph['x_offset']:02X},0x{glyph['x_delta']:02X},\n        ")
-            f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]) + ",\n")
-
+            f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]))
+            if glyph['data'] == []:
+                f.write("\n")
+            else:
+                f.write(",\n")
+                
         f.write("\n    // Terminator\n")
         f.write("    0xFF,\n")
         f.write("  },\n")
@@ -228,7 +220,6 @@ def extract_bytes():
                         pass
 
     renderCfont(byte_list)
-
 
 def select_file():
     filetypes = (

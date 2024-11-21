@@ -276,6 +276,10 @@ def save_file(font_name, font_data):
             f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
                     f"0x{glyph['height']:02X},0x{glyph['x_offset']:02X},0x{glyph['x_delta']:02X},\n        ")
             f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]) + ",\n")
+            if glyph['data'] == []:
+                f.write("\n")
+            else:
+                f.write(",\n")
 
         f.write("\n    // Terminator\n")
         f.write("    0xFF,\n")
