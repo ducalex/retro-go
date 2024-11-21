@@ -1,22 +1,12 @@
 from tkinter import Tk, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
 import os
 
-windows_x = 1280
-windows_y = 720
-
-pixel_size = 6
 font_size = 14
-
-canva_width = windows_x//pixel_size
-canva_height = windows_y//pixel_size
-
-rect_ids = []  # This is gonna be used to store rectangles ids
-for y in range(canva_height):
-    line = [-1] * canva_width  # Create a new list for each row
-    rect_ids.append(line)
 
 list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct pixels on the canva
 font_data = [] # contain font data for all glyphs
+
+lastrect_xy = (0,0) # used for sliding function
 
 def renderCfont(byte_list):
     canvas.delete("all")
@@ -136,7 +126,6 @@ def generate_font_data():
 
         # Update font data with the bitmap
         font['data'] = bitmap
-        print(font['data'])
 
     # find max width/height
     max_width, max_height = (0,0)
@@ -244,7 +233,7 @@ def motion(event):
         x-= x%pixel_size
     if y%pixel_size != 0:
         y-= y%pixel_size
-    canvas.itemconfig(ov, fill="White")  # Changes the fill color to black to "hide" it
+    canvas.itemconfig(ov, fill="White")
     canvas.coords(ov, x, y, x+pixel_size, y+pixel_size)
 
 def click(event):
@@ -260,6 +249,7 @@ def click(event):
 def slide(event):
     global x
     global y
+    global lastrect_xy
     x = event.x
     y = event.y
     if x%pixel_size != 0:
@@ -270,17 +260,36 @@ def slide(event):
 
     x_pixel = x//pixel_size
     y_pixel = y//pixel_size
-    if rect_ids[y_pixel][x_pixel] == -1:
-        rect_ids[y_pixel][x_pixel] = canvas.create_rectangle(x, y, x + pixel_size, y + pixel_size, fill="white")
-    else:
-        canvas.delete(rect_ids[y_pixel][x_pixel])
-        rect_ids[y_pixel][x_pixel] = -1
+    if rect_ids[y_pixel][x_pixel] != lastrect_xy:
+        if rect_ids[y_pixel][x_pixel] == -1:
+            rect_ids[y_pixel][x_pixel] = canvas.create_rectangle(x, y, x + pixel_size, y + pixel_size, fill="white")
+        else:
+            canvas.delete(rect_ids[y_pixel][x_pixel])
+            rect_ids[y_pixel][x_pixel] = -1
+        lastrect_xy = (y_pixel,x_pixel)
+
 
 window = Tk()
 window.title("C font editor")
 
+# Get screen width and height
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+# Set the window size to fill the entire screen
+window.geometry(f"{screen_width}x{screen_height}")
+
+pixel_size = 10 # pixel size on the renderer
+
+canva_width = screen_width//pixel_size
+canva_height = screen_height//pixel_size-16
+
 frame = Frame(window)
 frame.pack(anchor="center", padx=10, pady=2)
+
+rect_ids = []  # This is gonna be used to store rectangles ids
+for y in range(canva_height):
+    line = [-1] * canva_width  # Create a new list for each row
+    rect_ids.append(line)
 
 # choose font button
 choose_font_button = ttk.Button(frame, text='Choose C font', command=select_file)

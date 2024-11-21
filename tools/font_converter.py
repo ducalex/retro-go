@@ -94,17 +94,9 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-windows_width = 1280
-windows_height = 720
-
-pixel_size = 5 # pixel size on the renderer
-
-canva_width = windows_width//pixel_size
-canva_height = windows_height//pixel_size
-
 treshold_init = 110 # tip : lower if too thin letters / missing pixel
 
-first_char_init = 32
+first_char_init = 31
 last_char_init = 255
 
 # Example usage (defaults parameters)
@@ -117,7 +109,6 @@ def find_bounding_box(image):
     width, height = image.size
     x_min, y_min = width, height
     x_max, y_max = 0, 0
-
 
     for y in range(height):
         for x in range(width):
@@ -206,10 +197,6 @@ def generate_font_data():
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
 
-        # Draw the regular image on the Canvas in grayscale (!!!!!!!!!!!!! NOT WORKING)
-        # tk_image = ImageTk.PhotoImage(cropped_image)
-        # canvas.create_image((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, anchor="nw", image=tk_image)
-
         if offset_x_1+2*width+6 <= canva_width:
             offset_x_1 += width + 2
         else:
@@ -254,14 +241,13 @@ def generate_font_data():
 def save_file(font_name, font_data):
     with open (font_name+font_height_input.get()+".c", 'w', encoding='ISO8859-1') as f:
         # Output header
-
         f.write("#include \"../rg_gui.h\"\n\n")
         f.write(f"// Font           : {font_name}\n")
         f.write(f"// Point Size     : {font_height_input.get()}\n")
         f.write(f"// Treshold Value : {treshold_input.get()}\n")
         f.write(f"// Memory usage   : {font_data['memory_usage']} bytes\n")
         f.write(f"// # characters   : {font_data['num_characters']}\n\n")
-        f.write(f"const rg_font_t font_{font_name+font_height_input.get()} = ")
+        f.write(f"const rg_font_t font_{font_name.replace("-", "_")+font_height_input.get()} = ")
         f.write("{\n")
         f.write(f"    .name = \"{font_name}\",\n")
         f.write("    .type = 1,\n")
@@ -276,10 +262,6 @@ def save_file(font_name, font_data):
             f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
                     f"0x{glyph['height']:02X},0x{glyph['x_offset']:02X},0x{glyph['x_delta']:02X},\n        ")
             f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]) + ",\n")
-            if glyph['data'] == []:
-                f.write("\n")
-            else:
-                f.write(",\n")
 
         f.write("\n    // Terminator\n")
         f.write("    0xFF,\n")
@@ -302,9 +284,33 @@ def select_file():
     global font_path
     font_path = filename
 
+# Function to zoom in and out on the canvas
+def zoom(event):
+    scale = 1.0
+    if event.delta > 0:  # Scroll up to zoom in
+        scale = 1.1
+    elif event.delta < 0:  # Scroll down to zoom out
+        scale = 0.9
+
+    # Get the canvas size and adjust scale based on cursor position
+    canvas.scale("all", event.x, event.y, scale, scale)
+    
+    # Update the scroll region to reflect the new scale
+    canvas.configure(scrollregion=canvas.bbox("all"))
 
 window = Tk()
 window.title("Font render")
+
+# Get screen width and height
+screen_width = window.winfo_screenwidth()
+screen_height = window.winfo_screenheight()
+# Set the window size to fill the entire screen
+window.geometry(f"{screen_width}x{screen_height}")
+
+pixel_size = 10 # pixel size on the renderer
+
+canva_width = screen_width//pixel_size
+canva_height = screen_height//pixel_size-16
 
 frame = Frame(window)
 frame.pack(anchor="center", padx=10, pady=2)
@@ -348,6 +354,8 @@ b1.pack(side="left", padx=5)
 
 frame = Frame(window).pack(anchor="w", padx=2, pady=2)
 canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
+canvas.configure(scrollregion=(0, 0, canva_width*pixel_size, canva_height*pixel_size))
+canvas.bind("<MouseWheel>", zoom)
 canvas.focus_set()
 canvas.pack(side="left", padx=5)
 
