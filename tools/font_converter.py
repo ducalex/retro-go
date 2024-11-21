@@ -256,12 +256,12 @@ def save_file(font_name, font_data):
         # Output header
 
         f.write("#include \"../rg_gui.h\"\n\n")
-        f.write(f"// Font         : {font_name}\n")
-        f.write(f"// Point Size   : 12\n")
-        f.write(f"// Treshold Value : {treshold_input.get()}")
-        f.write(f"// Memory usage : {font_data['memory_usage']} bytes\n")
-        f.write(f"// # characters : {font_data['num_characters']}\n\n")
-        f.write(f"const rg_font_t font_VeraBold12 = ")
+        f.write(f"// Font           : {font_name}\n")
+        f.write(f"// Point Size     : {font_height_input.get()}\n")
+        f.write(f"// Treshold Value : {treshold_input.get()}\n")
+        f.write(f"// Memory usage   : {font_data['memory_usage']} bytes\n")
+        f.write(f"// # characters   : {font_data['num_characters']}\n\n")
+        f.write(f"const rg_font_t font_{font_name+font_height_input.get()} = ")
         f.write("{\n")
         f.write(f"    .name = \"{font_name}\",\n")
         f.write("    .type = 1,\n")
