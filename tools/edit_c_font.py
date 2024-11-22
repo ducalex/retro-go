@@ -144,24 +144,26 @@ def generate_font_data():
         "glyphs": font_data,
     })
     
-def save_file(font_name, font_data):
-    with open (font_name, 'w', encoding='ISO8859-1') as f:
+def save_file(file_name, font_data):
+    with open (file_name, 'w', encoding='ISO8859-1') as f:
         # Output header
 
         f.write("#include \"../rg_gui.h\"\n\n")
+        f.write("// This file was generated using font_converter.py\n")
+        f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
         f.write(f"// Font           : {'arial'}\n")
-        f.write(f"// Point Size     : 12\n")
-        f.write(f"// Treshold Value : {0}\n")
+        f.write(f"// Point Size     : {0}\n")
+        f.write(f"// Treshold Value : {0}\n")  # FIXME we should probably be getting the header from the original file and pasting it here
         f.write(f"// Memory usage   : {0} bytes\n")
         f.write(f"// # characters   : {0}\n\n")
         f.write(f"const rg_font_t font_VeraBold12 = ")
         f.write("{\n")
         f.write(f"    .name = \"{'test'}\",\n")
-        f.write("    .type = 1,\n")
+        f.write( "    .type = 1,\n")
         f.write(f"    .width = {font_data['header']['char_width']},\n")
         f.write(f"    .height = {font_data['header']['char_height']+3},\n")
         f.write(f"    .chars = {0},\n")
-        f.write("    .data = {\n")
+        f.write( "    .data = {\n")
 
         # output glyph data
         for glyph in font_data["glyphs"]:

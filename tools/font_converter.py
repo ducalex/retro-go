@@ -99,10 +99,38 @@ treshold_init = 110 # tip : lower if too thin letters / missing pixel
 first_char_init = 32
 last_char_init = 255
 
+list_char_exclude_init = "127-160, 192-221"
+
 # Example usage (defaults parameters)
 font_name_init = "arial"
 font_path = ("arial.ttf")  # Replace with your TTF font path
 font_size_init = 11
+
+# Variables to track panning
+start_x = 0
+start_y = 0
+
+def get_char_list():
+    list_char_exclude_int = []
+    if list_char_exclude.get() != '':
+        for intervals in list_char_exclude.get().split(','):
+            first = intervals.split('-')[0]
+            # we check if we the user input is a single char or an interval
+            try:
+                second = intervals.split('-')[1]
+            except IndexError:
+                list_char_exclude_int.append(int(first))
+            else:
+                second = intervals.split('-')[1]
+                for char in range(int(first), int(second)):
+                    list_char_exclude_int.append(char)
+
+    list_char = []
+    for char_code in range(int(first_char.get()), int(last_char.get())):
+        if char_code not in list_char_exclude_int:
+            list_char.append(char_code)
+
+    return list_char    
 
 def pre_compute_x_delta_space(treshold, font_size, pil_font):
     # pre-compute the x_delta_space for control/space char
@@ -156,7 +184,7 @@ def generate_font_data():
 
     x_delta_space = pre_compute_x_delta_space(treshold, font_size, pil_font)
 
-    for char_code in range(int(first_char.get()), int(last_char.get())):  # ASCII printable characters
+    for char_code in get_char_list():
         char = chr(char_code)
         print("char : " + char)
         # Render character to an image and get its bounding box
@@ -272,6 +300,8 @@ def save_file(font_name, font_data):
     with open (font_name+font_height_input.get()+".c", 'w', encoding='ISO8859-1') as f:
         # Output header
         f.write("#include \"../rg_gui.h\"\n\n")
+        f.write("// This file was generated using font_converter.py\n")
+        f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
         f.write(f"// Font           : {font_name}\n")
         f.write(f"// Point Size     : {font_height_input.get()}\n")
         f.write(f"// Treshold Value : {treshold_input.get()}\n")
@@ -280,11 +310,11 @@ def save_file(font_name, font_data):
         f.write(f"const rg_font_t font_{font_name.replace("-", "_")+font_height_input.get()} = ")
         f.write("{\n")
         f.write(f"    .name = \"{font_name}\",\n")
-        f.write("    .type = 1,\n")
+        f.write( "    .type = 1,\n")
         f.write(f"    .width = {font_data['header']['char_width']},\n")
         f.write(f"    .height = {font_data['header']['char_height']+3},\n")
         f.write(f"    .chars = {font_data['num_characters']},\n")
-        f.write("    .data = {\n")
+        f.write( "    .data = {\n")
 
         # output glyph data
         for glyph in font_data["glyphs"]:
@@ -322,15 +352,34 @@ def select_file():
 def zoom(event):
     scale = 1.0
     if event.delta > 0:  # Scroll up to zoom in
-        scale = 1.1
+        scale = 1.2
     elif event.delta < 0:  # Scroll down to zoom out
-        scale = 0.9
+        scale = 0.8
 
     # Get the canvas size and adjust scale based on cursor position
     canvas.scale("all", event.x, event.y, scale, scale)
     
     # Update the scroll region to reflect the new scale
     canvas.configure(scrollregion=canvas.bbox("all"))
+
+def start_pan(event):
+    global start_x, start_y
+    # Record the current mouse position
+    start_x = event.x
+    start_y = event.y
+
+def pan_canvas(event):
+    global start_x, start_y
+    # Calculate the distance moved
+    dx = start_x - event.x
+    dy = start_y - event.y
+
+    # Scroll the canvas
+    canvas.move("all", -dx, -dy)
+
+    # Update the starting position
+    start_x = event.x
+    start_y = event.y
 
 window = Tk()
 window.title("Font render")
@@ -368,6 +417,11 @@ Label(frame, text="Last Char", height=4).pack(side="left", padx=5)
 last_char = StringVar(value=str(last_char_init))
 Entry(frame, textvariable=last_char, width=4).pack(side="left", padx=5)
 
+# Label and Entry for Char to exclude
+Label(frame, text="Char to exclude", height=4).pack(side="left", padx=5)
+list_char_exclude = StringVar(value=str(list_char_exclude_init))
+Entry(frame, textvariable=list_char_exclude, width=30).pack(side="left", padx=5)
+
 # Label and Entry for Font Name
 Label(frame, text="Font name (used for output)", height=4).pack(side="left", padx=5)
 font_name_input = StringVar(value=str(font_name_init))
@@ -390,7 +444,9 @@ frame = Frame(window).pack(anchor="w", padx=2, pady=2)
 canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
 canvas.configure(scrollregion=(0, 0, canva_width*pixel_size, canva_height*pixel_size))
 canvas.bind("<MouseWheel>", zoom)
+canvas.bind("<ButtonPress-1>", start_pan)  # Start panning
+canvas.bind("<B1-Motion>",pan_canvas)
 canvas.focus_set()
-canvas.pack(side="left", padx=5)
+canvas.pack(fill="both", expand=True)
 
 window.mainloop()
