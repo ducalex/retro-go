@@ -1,7 +1,7 @@
 /**
  * IMPORTANT: This file must be opened and saved as ISO 8859-1 (Latin-1)!
  * Retro-Go does NOT understand UTF-8 or any other encoding.
- * If the following looks like gibberish, your encoding is wrong: è é ê à â ä ò ô
+ * If the following looks like gibberish, your encoding is wrong: ï¿½ ï¿½ ï¿½ ï¿½ ï¿½ ï¿½ ï¿½ ï¿½
  */
 
 #include "rg_localization.h"
@@ -281,10 +281,6 @@ static const char *translations[][RG_LANG_MAX] =
     {
         [RG_LANG_EN] = "Profile",
         [RG_LANG_FR] = "Profile"
-    },
-    {
-        [RG_LANG_EN] = "<profile name>",
-        [RG_LANG_FR] = "<nom du profil>"
     },
     {
         [RG_LANG_EN] = "Controls",
