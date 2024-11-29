@@ -233,7 +233,6 @@ void nes_main(void)
     else if (ret < 0)
         RG_PANIC("Unsupported ROM.");
 
-    app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
     nsfPlayer = nes->cart->type == ROM_TYPE_NSF;
@@ -251,6 +250,8 @@ void nes_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    rg_system_set_tick_rate(nes->refresh_rate);
 
     int skipFrames = 0;
 

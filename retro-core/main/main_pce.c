@@ -74,7 +74,7 @@ void osd_vsync(void)
     }
 
     int64_t curtime = rg_system_timer();
-    int frameTime = 1000000 / (app->tickRate * app->speed);
+    int frameTime = app->frameTime;
     int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
@@ -238,7 +238,7 @@ void pce_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = 60;
+    rg_system_set_tick_rate(60);
     app->frameskip = 1;
 
     emulationPaused = false;

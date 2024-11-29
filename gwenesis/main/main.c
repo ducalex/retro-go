@@ -253,8 +253,8 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = 60;
-    app->frameskip = 3;
+    rg_system_set_tick_rate(60);
+    rg_system_set_frame_skip(3, 15, true);
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
@@ -402,11 +402,10 @@ void app_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

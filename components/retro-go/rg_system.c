@@ -367,6 +367,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
+        .frameTime = 1000000 / 60,
         .frameskip = 1,
         .overclock = 0,
         .tickTimeout = 3000000,
@@ -770,6 +771,17 @@ rg_app_t *rg_system_get_app(void)
 rg_stats_t rg_system_get_counters(void)
 {
     return statistics;
+}
+
+void rg_system_set_tick_rate(int tickRate)
+{
+    app.tickRate = tickRate;
+    app.frameTime = 1000000 / (app.tickRate * app.speed);
+}
+
+int rg_system_get_tick_rate(void)
+{
+    return app.tickRate;
 }
 
 void rg_system_tick(int busyTime)
@@ -1372,8 +1384,8 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    app.frameskip = 0;
-    app.speed = 1.f;
+    app.frameskip = 1;
+    rg_emu_set_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
@@ -1383,6 +1395,7 @@ void rg_emu_set_speed(float speed)
 {
     app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
     app.frameskip = RG_MAX(app.frameskip, (app.speed > 1.0f) ? 2 : 0);
+    app.frameTime = 1000000.f / (app.tickRate * app.speed);
     rg_audio_set_sample_rate(app.sampleRate * app.speed);
     rg_system_event(RG_EVENT_SPEEDUP, NULL);
 }
