@@ -196,7 +196,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 static void input_task(void *arg)
 {
-    const uint8_t debounce_level = 0x03;
+    const uint8_t debounce_level = RG_GAMEPAD_DEBOUNCE_LEVEL;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
     uint32_t state;
