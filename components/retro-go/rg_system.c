@@ -471,14 +471,18 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = rg_mutex_create();
 #endif
 
-#ifdef ESP_PLATFORM
     if (app.lowMemoryMode)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
+    {
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, "launcher");
+        rg_settings_commit();
+    #ifdef ESP_PLATFORM
         esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
-#endif
+    #endif
+    }
 
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
