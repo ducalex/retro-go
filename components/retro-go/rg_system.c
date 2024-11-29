@@ -39,6 +39,14 @@ typedef struct
 
 typedef struct
 {
+    uint32_t magicWord;
+    char name[32];
+    char args[256];
+    uint32_t flags;
+} boot_config_t;
+
+typedef struct
+{
     int32_t totalFrames, fullFrames, partFrames, ticks;
     int64_t busyTime, updateTime;
 } counters_t;
@@ -78,6 +86,7 @@ static struct
 
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
+static RTC_NOINIT_ATTR boot_config_t bootConfig;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
@@ -87,9 +96,6 @@ static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
 
-static const char *SETTING_BOOT_NAME = "BootName";
-static const char *SETTING_BOOT_ARGS = "BootArgs";
-static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
 static const char *SETTING_INDICATOR_MASK = "Indicators";
 
@@ -115,6 +121,35 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
         begin_panic_trace("esp_panic", NULL);
     logbuf_putc(&panicTrace, c);
+}
+
+static bool update_boot_config(const char *part, const char *name, const char *args, uint32_t flags)
+{
+    memset(&bootConfig, 0, sizeof(bootConfig));
+    bootConfig.magicWord = RG_STRUCT_MAGIC;
+    strncpy(bootConfig.name, name ?: "", sizeof(bootConfig.name));
+    strncpy(bootConfig.args, args ?: "", sizeof(bootConfig.args));
+    bootConfig.flags = flags;
+    rg_storage_write_file(RG_BASE_PATH_CACHE "/boot.bin", &bootConfig, sizeof(bootConfig), 0);
+
+#if defined(ESP_PLATFORM)
+    // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
+    // This is simply to avoid an unecessary flash write...
+    const esp_partition_t *current = esp_ota_get_boot_partition();
+    if (current && part && strncmp(current->label, part, 16) == 0)
+    {
+        RG_LOGI("Boot partition already set to desired app!");
+        return true;
+    }
+    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
+            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, part));
+    if (err != ESP_OK)
+    {
+        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!", err);
+        return false;
+    }
+#endif
+    return true;
 }
 
 static void update_memory_statistics(void)
@@ -445,15 +480,25 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     update_memory_statistics();
     app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
-    rg_settings_init();
-    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
-    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
-    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
+    // Check if we have a valid boot config (selected emulator, rom file, save state, etc)
+    if (bootConfig.magicWord != RG_STRUCT_MAGIC || app.isColdBoot)
+    {
+        memset(&bootConfig, 0, sizeof(bootConfig));
+        void *data_ptr = (void *)&bootConfig;
+        size_t data_len = sizeof(bootConfig);
+        rg_storage_read_file(RG_BASE_PATH_CACHE "/boot.bin", &data_ptr, &data_len, RG_FILE_USER_BUFFER);
+    }
+    if (bootConfig.magicWord == RG_STRUCT_MAGIC) // && strncmp(bootConfig.part, part, sizeof(bootConfig.part)) == 0
+    {
+        app.configNs = strdup(bootConfig.name);
+        app.bootArgs = strdup(bootConfig.args);
+        app.bootFlags = bootConfig.flags;
+    }
     app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs;
-    // app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
-    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
+    rg_settings_init();
+    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
     rg_display_init();
     rg_gui_init();
     rg_gui_draw_hourglass();
@@ -476,13 +521,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
-    {
-        rg_storage_delete(RG_BASE_PATH_CONFIG "/boot.json");
-    #ifdef ESP_PLATFORM
-        esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
-    #endif
-    }
+        update_boot_config(RG_APP_LAUNCHER, NULL, NULL, 0);
 
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
@@ -868,36 +907,10 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
 {
     RG_LOGI("Switching to app %s (%s)", partition ?: "-", name ?: "-");
 
-    if (app.initialized)
-    {
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
-        rg_settings_commit();
-    }
-    else
-    {
-        rg_storage_delete(RG_BASE_PATH_CONFIG "/boot.json");
-    }
-#if defined(ESP_PLATFORM)
-    // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
-    // This is simply to avoid an unecessary flash write...
-    const esp_partition_t *current = esp_ota_get_boot_partition();
-    if (current && partition && strncmp(current->label, partition, 16) == 0)
-    {
-        RG_LOGI("Boot partition already set to desired app!");
+    if (update_boot_config(partition, name, args, flags))
         rg_system_restart();
-    }
-    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
-    if (err != ESP_OK)
-    {
-        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!", err);
-        RG_PANIC("Unable to set boot app!");
-    }
-    rg_system_restart();
-#endif
-    RG_PANIC("Switch not implemented!");
+
+    RG_PANIC("Failed to switch app!");
 }
 
 bool rg_system_have_app(const char *app)
@@ -1214,8 +1227,7 @@ static void emu_update_save_slot(uint8_t slot)
         app.bootFlags &= ~RG_BOOT_SLOT_MASK;
         app.bootFlags |= app.saveSlot << 4;
         app.bootFlags |= RG_BOOT_RESUME;
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
-        rg_settings_commit();
+        update_boot_config(NULL, app.configNs, app.bootArgs, app.bootFlags);
     }
 
     rg_storage_commit();

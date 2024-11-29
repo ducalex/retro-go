@@ -8,7 +8,6 @@
 #define NS_APP    ((char *)1)
 #define NS_FILE   ((char *)2)
 #define NS_WIFI   ((char *)3)
-#define NS_BOOT   ((char *)4)
 
 void rg_settings_init(void);
 void rg_settings_commit(void);
