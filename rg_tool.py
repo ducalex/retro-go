@@ -214,10 +214,6 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
         exec(f.read())
 
 try:
-    if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
-        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
-        apps.insert(0, "launcher")
-
     if command in ["clean", "release"]:
         print("=== Step: Cleaning ===\n")
         for app in apps:

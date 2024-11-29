@@ -75,7 +75,7 @@
 // #endif
 
 #ifndef RG_APP_LAUNCHER
-#define RG_APP_LAUNCHER "launcher"
+#define RG_APP_LAUNCHER "retro-core"
 #endif
 
 #ifndef RG_APP_FACTORY

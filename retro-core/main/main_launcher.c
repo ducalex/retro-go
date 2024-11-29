@@ -1,9 +1,10 @@
 #include "shared.h"
 
-void launcher_main(void)
-{
-    // app->configNs = "launcher";
-    // app->isLauncher = true;
-    // Currently a separate app, see launcher in project's root
-    rg_system_exit();
-}
+// launcher_main() is in ../components/launcher/main.c
+
+// void launcher_main(void)
+// {
+//     app->configNs = "launcher";
+//     app->isLauncher = true;
+//     rg_system_exit();
+// }

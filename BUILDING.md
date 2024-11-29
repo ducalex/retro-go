@@ -42,10 +42,10 @@ Run `python rg_tool.py --help` to see all available flags and commands.
 - Generate a .img to be flashed with esptool.py (Serial):\
     `python rg_tool.py build-img` or `python rg_tool.py release` (clean build)
 
-For a smaller build you can also specify which apps you want, for example the launcher + DOOM only:
-1. `python rg_tool.py build-fw launcher prboom-go`
+For a smaller build you can also specify which apps you want, for example DOOM only:
+1. `python rg_tool.py build-fw prboom-go`
 
-Note that the app named `retro-core` contains the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these emulators cannot be selected individually. The reason for the bundling is simply size, together they account for a mere 700KB instead of almost 3MB when they were built separately.
+Note that the app named `retro-core` contains the launcher as well as the following emulators: NES, PCE, G&W, Lynx, and SMS/GG/COL. As such, these applications cannot be selected individually and if you want the launcher, you need retro-core. The reason for the bundling is mainly greatly reduced firmware size.
 
 
 ## Flashing an image for the first time
@@ -80,7 +80,7 @@ or even do nothing at all. In such cases you should use `python rg_tool.py ...` 
 
 
 ## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color.
+All images used by the launcher (headers, logos) are located in `retro-core/components/launcher/images`. If you edit them you must run the `retro-core/components/launcher/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color.
 
 
 ## Updating translations
