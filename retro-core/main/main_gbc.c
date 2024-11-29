@@ -267,7 +267,7 @@ void gbc_main(void)
         RG_PANIC("Emulator init failed!");
 
     gnuboy_set_framebuffer(currentUpdate->data);
-    gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
+    gnuboy_set_soundbuffer(malloc(AUDIO_BUFFER_LENGTH * 4), AUDIO_BUFFER_LENGTH);
 
     // Load ROM
     if (rg_extension_match(app->romPath, "zip"))

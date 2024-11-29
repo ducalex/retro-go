@@ -1,6 +1,5 @@
 #include "shared.h"
 
-rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
 rg_app_t *app;
 
 

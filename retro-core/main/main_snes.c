@@ -68,6 +68,7 @@ static const char *SNES_BUTTONS[] = {
 
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
+static rg_audio_sample_t *audioBuffer;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
@@ -304,6 +305,8 @@ void snes_main(void)
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
     updates[0]->height = SNES_HEIGHT;
     currentUpdate = updates[0];
+
+    audioBuffer = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
