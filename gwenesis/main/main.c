@@ -254,7 +254,7 @@ void app_main(void)
     }
 
     rg_system_set_tick_rate(60);
-    rg_system_set_frame_skip(3, 15, true);
+    app->frameskip = 3;
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
