@@ -396,7 +396,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .buildDate = RG_BUILD_DATE,
         .buildInfo = RG_BUILD_INFO,
         .configNs = RG_PROJECT_APP,
-        .bootArgs = NULL,
+        .bootArgs = "",
         .bootFlags = 0,
         .indicatorsMask = (1 << RG_INDICATOR_POWER_LOW),
         .speed = 1.f,
@@ -481,7 +481,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
     // Check if we have a valid boot config (selected emulator, rom file, save state, etc)
-    if (bootConfig.magicWord != RG_STRUCT_MAGIC || app.isColdBoot)
+    if (bootConfig.magicWord != RG_STRUCT_MAGIC) // || app.isColdBoot
     {
         memset(&bootConfig, 0, sizeof(bootConfig));
         void *data_ptr = (void *)&bootConfig;
@@ -493,9 +493,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         app.configNs = strdup(bootConfig.name);
         app.bootArgs = strdup(bootConfig.args);
         app.bootFlags = bootConfig.flags;
+        app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
+        app.romPath = app.bootArgs;
     }
-    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
-    app.romPath = app.bootArgs;
 
     rg_settings_init();
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
