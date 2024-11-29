@@ -477,8 +477,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
     if (app.bootFlags & RG_BOOT_ONCE)
     {
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, "launcher");
-        rg_settings_commit();
+        rg_storage_delete(RG_BASE_PATH_CONFIG "/boot.json");
     #ifdef ESP_PLATFORM
         esp_ota_set_boot_partition(esp_partition_find_first(
             ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
@@ -875,6 +874,10 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
         rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
+    }
+    else
+    {
+        rg_storage_delete(RG_BASE_PATH_CONFIG "/boot.json");
     }
 #if defined(ESP_PLATFORM)
     // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
