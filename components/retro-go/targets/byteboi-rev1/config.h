@@ -65,6 +65,9 @@
     {RG_KEY_OPTION, RG_KEY_UP| RG_KEY_SELECT},\
 }
 
+//Try 0x0F or 0x3F with the original switches
+#define RG_GAMEPAD_DEBOUNCE_LEVEL 0x03
+
 // Battery
 #define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
