@@ -210,7 +210,7 @@ extern "C" void lynx_main(void)
     }
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
-    gAudioBuffer = (SWORD*)&audioBuffer;
+    gAudioBuffer = (SWORD*)malloc(AUDIO_BUFFER_LENGTH * 4);
     gAudioEnabled = 1;
 
     if (app->bootFlags & RG_BOOT_RESUME)
@@ -264,7 +264,7 @@ extern "C" void lynx_main(void)
         rg_system_set_tick_rate(AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2));
         rg_system_tick(rg_system_timer() - startTime);
 
-        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
+        rg_audio_submit((const rg_audio_frame_t *)gAudioBuffer, gAudioBufferPointer / 2);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
