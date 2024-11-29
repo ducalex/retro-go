@@ -23,6 +23,7 @@ Button mapping:
 - Really only supports the first hardware revision. The second revision has a different display and the buttons are connected differently, so it will definitely not work at all with this configuration!
 - No display brightness support (the backlight is connected to the GPIO extender with no PWM support).
 - Low sound quality due to use of internal 8-bit DAC (especially at low volumes).
+- The switches are rather bouncy and somewhat unreliable. I recommend replacing them (e.g. Omron B3F-4050 works very well). Alternatively, you can try to increase the RG_GAMEPAD_DEBOUNCE_LEVEL to 0x0F or 0x3F.
 
 # Images
 ![device.jpg](device.jpg)
