@@ -289,6 +289,7 @@ static void enter_recovery_mode(void)
 {
     RG_LOGW("Entering recovery mode...\n");
 
+    // FIXME: At this point we don't have valid settings, we should find way to get the user's language...
     const rg_gui_option_t options[] = {
         {0, _("Reset all settings"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {1, _("Reboot to factory "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -414,11 +415,12 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         rg_task_delay(100);
     }
 
+    rg_settings_init(enterRecoveryMode || showCrashDialog);
+    rg_display_init();
+    rg_gui_init();
+
     if (enterRecoveryMode)
     {
-        rg_display_init();
-        //rg_settings_init();  FIXME: Find a way to get the user's language without loading all settings
-        rg_gui_init();
         enter_recovery_mode();
     }
     else if (showCrashDialog)
@@ -433,8 +435,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             if (rg_system_save_trace(RG_STORAGE_ROOT "/crash.log", 1))
                 strcat(message, "\nLog saved to SD Card.");
         }
-        rg_display_init();
-        rg_gui_init();
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
         rg_system_exit();
@@ -445,7 +445,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     update_memory_statistics();
     app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
-    rg_settings_init();
     app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
@@ -454,8 +453,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     // app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
 
-    rg_display_init();
-    rg_gui_init();
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
