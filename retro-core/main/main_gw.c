@@ -139,7 +139,6 @@ void gw_main(void)
     };
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
-    app->tickRate = GW_REFRESH_RATE;
 
     updates[0] = rg_surface_create(GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, RG_PIXEL_565_LE, MEM_FAST);
     currentUpdate = updates[0];
@@ -227,6 +226,8 @@ void gw_main(void)
 
     /*** Main emulator loop */
     printf("Main emulator loop start\n");
+
+    rg_system_set_tick_rate(GW_REFRESH_RATE);
 
     while (true)
     {

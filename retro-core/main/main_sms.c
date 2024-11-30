@@ -146,8 +146,6 @@ void sms_main(void)
 
     system_poweron();
 
-    app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
-
     updates[0]->offset = bitmap.viewport.x;
     updates[0]->width = bitmap.viewport.w;
     updates[0]->height = bitmap.viewport.h;
@@ -159,6 +157,8 @@ void sms_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    rg_system_set_tick_rate((sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL);
 
     int skipFrames = 0;
     int colecoKey = 0;
@@ -266,11 +266,10 @@ void sms_main(void)
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

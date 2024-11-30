@@ -201,9 +201,6 @@ extern "C" void lynx_main(void)
     updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
     currentUpdate = updates[0];
 
-    // The Lynx has a variable framerate but 60 is typical
-    app->tickRate = 60;
-
     // Init emulator
     lynx = new_lynx();
 
@@ -223,7 +220,6 @@ extern "C" void lynx_main(void)
 
     set_display_mode();
 
-    float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
     bool slowFrame = false;
 
@@ -238,7 +234,6 @@ extern "C" void lynx_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            sampleTime = 1000000.f / (app->sampleRate * app->speed);
         }
 
         int64_t startTime = rg_system_timer();
@@ -265,7 +260,8 @@ extern "C" void lynx_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
         }
 
-        app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);
+        // The Lynx has a variable tick rate, I don't know of a better way to guess than from audio stream
+        rg_system_set_tick_rate(AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2));
         rg_system_tick(rg_system_timer() - startTime);
 
         rg_audio_submit((const rg_audio_frame_t *)gAudioBuffer, gAudioBufferPointer / 2);
@@ -273,12 +269,11 @@ extern "C" void lynx_main(void)
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            int frameTime = ((gAudioBufferPointer / 2) * sampleTime);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            else if (elapsed > frameTime + 1500)
+            else if (elapsed > app->frameTime + 1500)
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

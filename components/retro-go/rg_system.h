@@ -177,6 +177,7 @@ typedef struct
     float speed;
     int sampleRate;
     int tickRate;
+    int frameTime;
     int frameskip;
     int overclock;
     int tickTimeout;
@@ -227,6 +228,8 @@ void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
 void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator_mask(rg_indicator_t indicator);
+void rg_system_set_tick_rate(int tickRate);
+int rg_system_get_tick_rate(void);
 void rg_system_set_overclock(int level);
 int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);

@@ -539,7 +539,7 @@ void app_main()
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
-    app->tickRate = TICRATE;
+    rg_system_set_tick_rate(TICRATE);
 
     const rg_display_t *display = rg_display_get_info();
     SCREENWIDTH = RG_MIN(display->screen.width, MAX_SCREENWIDTH);

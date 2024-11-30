@@ -361,7 +361,7 @@ void snes_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = Memory.ROMFramesPerSecond;
+    rg_system_set_tick_rate(Memory.ROMFramesPerSecond);
     app->frameskip = 3;
 
     bool menuCancelled = false;
@@ -424,11 +424,10 @@ void snes_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;
