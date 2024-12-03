@@ -14,6 +14,7 @@ static int dpad_mapped_down;
 static int dpad_mapped_left;
 static int dpad_mapped_right;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 // static bool netplay = false;

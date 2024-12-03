@@ -15,6 +15,7 @@ static int autoSaveSRAM_Timer = 0;
 static bool useSystemTime = true;
 static bool loadBIOSFile = false;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 

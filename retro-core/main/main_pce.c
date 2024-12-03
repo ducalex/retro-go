@@ -18,6 +18,7 @@ static int skipFrames = 0;
 static bool drawFrame = true;
 static bool slowFrame = false;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 

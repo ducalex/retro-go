@@ -66,6 +66,7 @@ static const char *SNES_BUTTONS[] = {
 
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_audio_sample_t *audioBuffer;

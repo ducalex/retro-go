@@ -22,6 +22,7 @@ static bool softkey_A_pressed = 0;
 static bool softkey_only = 0;
 static int softkey_duration = 0;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
