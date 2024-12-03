@@ -400,7 +400,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .sampleRate = sampleRate,
         .tickRate = 60,
         .frameTime = 1000000 / 60,
-        .frameskip = 1,
+        .frameskip = 1, // 0,
         .overclock = 0,
         .tickTimeout = 3000000,
         .lowMemoryMode = false,
@@ -447,6 +447,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     }
 
     rg_settings_init(enterRecoveryMode || showCrashDialog);
+    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.configNs);
+    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, app.bootArgs);
+    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
     rg_display_init();
     rg_gui_init();
 
@@ -476,13 +479,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     update_memory_statistics();
     app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
-    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
-    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
-    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
-    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
-    app.romPath = app.bootArgs;
-    // app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
+    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
+    app.romPath = app.bootArgs ?: ""; // For whatever reason some of our code isn't NULL-aware, sigh..
 
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
@@ -836,7 +835,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
     rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    rg_system_save_time();                    // RTC might save to storage, do it before
+    // rg_system_save_time();                    // RTC might save to storage, do it before
     rg_storage_deinit();                      // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, 0, -1); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                        // Now we can shutdown input
