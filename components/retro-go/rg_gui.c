@@ -1757,9 +1757,9 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
     if (event == RG_DIALOG_FOCUS_GAINED)
     {
-        rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
         rg_image_t *preview = NULL;
         rg_color_t color = C_BLUE;
         size_t margin = 0; // TEXT_RECT("ABC", 0).height;
@@ -1792,10 +1792,9 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
     #undef draw_status
 }
 
-int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
+int rg_gui_savestate_menu(const char *title, const char *rom_path)
 {
-    const rg_app_t *app = rg_system_get_app();
-    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: app->romPath, 4);
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 4);
     const rg_gui_option_t choices[] = {
         {(intptr_t)&savestates->slots[0], _("Slot 0"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {(intptr_t)&savestates->slots[1], _("Slot 1"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
@@ -1803,26 +1802,16 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_re
         {(intptr_t)&savestates->slots[3], _("Slot 3"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         RG_DIALOG_END
     };
-    int sel = 0;
 
-    if (!rom_path)
-        sel = app->saveSlot;
-    else if (savestates->lastused)
-        sel = savestates->lastused->id;
-
-    intptr_t ret = rg_gui_dialog(title, choices, sel);
-    if (ret && ret != RG_DIALOG_CANCELLED)
-        sel = ((rg_emu_slot_t *)ret)->id;
-    else
-        sel = -1;
-
+    intptr_t ret = rg_gui_dialog(title, choices, savestates->lastused ? savestates->lastused->id : 0);
+    int slot = (ret == RG_DIALOG_CANCELLED) ? -1 : ((rg_emu_slot_t *)ret)->id;
     free(savestates);
-
-    return sel;
+    return slot;
 }
 
 void rg_gui_game_menu(void)
 {
+    const char *rom_path = rg_system_get_app()->romPath;
     bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
     const rg_gui_option_t choices[] = {
         {1000, _("Save & Continue"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1857,9 +1846,9 @@ void rg_gui_game_menu(void)
 
     switch (sel)
     {
-        case 1000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) rg_emu_save_state(slot); break;
-        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
-        case 3001: if ((slot = rg_gui_savestate_menu("Load", 0, 0)) >= 0) rg_emu_load_state(slot); break;
+        case 1000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0) rg_emu_save_state(slot); break;
+        case 2000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
+        case 3001: if ((slot = rg_gui_savestate_menu(_("Load"), rom_path)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
     #ifdef RG_ENABLE_NETPLAY

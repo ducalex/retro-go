@@ -609,7 +609,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
     switch (sel)
     {
     case 0:
-        if ((slot = rg_gui_savestate_menu(_("Resume"), rom_path, 1)) == -1)
+        if ((slot = rg_gui_savestate_menu(_("Resume"), rom_path)) == -1)
             break;
         /* fallthrough */
     case 1:
@@ -619,7 +619,7 @@ void application_show_file_menu(retro_file_t *file, bool advanced)
         break;
 
     case 2:
-        while ((slot = rg_gui_savestate_menu(_("Delete save?"), rom_path, 0)) != -1)
+        while ((slot = rg_gui_savestate_menu(_("Delete save?"), rom_path)) != -1)
         {
             remove(savestates->slots[slot].preview);
             remove(savestates->slots[slot].file);
