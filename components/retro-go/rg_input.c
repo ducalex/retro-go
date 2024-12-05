@@ -8,6 +8,9 @@
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
 #include <driver/adc.h>
+// This is a lazy way to silence deprecation notices on some esp-idf versions...
+// This hardcoded value is the first thing to check if something stops working!
+#define ADC_ATTEN_DB_11 3
 #else
 #include <SDL2/SDL.h>
 #endif
@@ -17,9 +20,15 @@
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
-// This is a lazy way to silence deprecation notices on some esp-idf versions...
-// This hardcoded value is the first thing to check if something stops working!
-#define ADC_ATTEN_DB_11 3
+// Number of cycles the hardware state must be maintained before the change is reflected in rg_input_read_gamepad.
+// The reaction time is calculated as such: N*10ms +/- 10ms. Different hardware types have different requirements.
+// Valid range is 1-9
+#ifndef RG_GAMEPAD_DEBOUNCE_PRESS
+#define RG_GAMEPAD_DEBOUNCE_PRESS (2)
+#endif
+#ifndef RG_GAMEPAD_DEBOUNCE_RELEASE
+#define RG_GAMEPAD_DEBOUNCE_RELEASE (2)
+#endif
 
 #ifdef RG_GAMEPAD_ADC_MAP
 static rg_keymap_adc_t keymap_adc[] = RG_GAMEPAD_ADC_MAP;
@@ -196,13 +205,13 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 static void input_task(void *arg)
 {
-    const uint8_t debounce_level = RG_GAMEPAD_DEBOUNCE_LEVEL;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
     uint32_t state;
     int64_t next_battery_update = 0;
 
-    memset(debounce, debounce_level, sizeof(debounce));
+    // Start the task with debounce history full to allow a button held during boot to be detected
+    memset(debounce, 0xFF, sizeof(debounce));
     input_task_running = true;
 
     while (input_task_running)
@@ -211,16 +220,16 @@ static void input_task(void *arg)
         {
             for (int i = 0; i < RG_KEY_COUNT; ++i)
             {
-                debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
-                debounce[i] &= debounce_level;
+                uint32_t val = ((debounce[i] << 1) | ((state >> i) & 1));
+                debounce[i] = val & 0xFF;
 
-                if (debounce[i] == debounce_level) // Pressed
+                if ((val & ((1 << RG_GAMEPAD_DEBOUNCE_PRESS) - 1)) == ((1 << RG_GAMEPAD_DEBOUNCE_PRESS) - 1))
                 {
-                    local_gamepad_state |= (1 << i);
+                    local_gamepad_state |= (1 << i); // Pressed
                 }
-                else if (debounce[i] == 0x00) // Released
+                else if ((val & ((1 << RG_GAMEPAD_DEBOUNCE_RELEASE) - 1)) == 0)
                 {
-                    local_gamepad_state &= ~(1 << i);
+                    local_gamepad_state &= ~(1 << i); // Released
                 }
             }
             gamepad_state = local_gamepad_state;
