@@ -400,7 +400,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .sampleRate = sampleRate,
         .tickRate = 60,
         .frameTime = 1000000 / 60,
-        .frameskip = 1, // 0,
+        .frameskip = 0,
         .overclock = 0,
         .tickTimeout = 3000000,
         .lowMemoryMode = false,
@@ -1381,7 +1381,7 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    app.frameskip = 1;
+    app.frameskip = 0;
     rg_emu_set_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
