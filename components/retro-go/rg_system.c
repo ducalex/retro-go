@@ -228,6 +228,10 @@ static void update_indicators(void)
     if (newColor == ledColor)
         return;
 
+#ifdef RG_GPIO_LED_ACTIVE_LOW
+    ledColor = !ledColor;
+#endif
+
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
     // GPIO LED doesn't support colors, so any color = on
     if (RG_GPIO_LED != GPIO_NUM_NC)
