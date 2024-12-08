@@ -28,6 +28,7 @@ static struct
         rg_color_t item_disabled;
         rg_color_t item_message;
         rg_color_t scrollbar;
+        rg_color_t shadow;
     } style;
     char theme_name[32];
     cJSON *theme_obj;
@@ -173,6 +174,7 @@ bool rg_gui_set_theme(const char *theme_name)
     gui.style.item_disabled = rg_gui_get_theme_color("dialog", "item_disabled", C_GRAY);
     gui.style.item_message = rg_gui_get_theme_color("dialog", "item_message", C_SILVER);
     gui.style.scrollbar = rg_gui_get_theme_color("dialog", "scrollbar", C_WHITE);
+    gui.style.shadow = rg_gui_get_theme_color("dialog", "shadow", C_NONE);
 
     return true;
 }
