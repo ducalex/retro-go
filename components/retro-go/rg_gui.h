@@ -59,7 +59,6 @@ typedef struct
 {
     const uint8_t *bitmap_data; /* stores the data for the bitmap glyph*/
     const lv_font_fmt_txt_glyph_dsc_t * glyph_dsc; /** Describe the glyphs */
-    uint16_t bpp : 1; /** Bit per pixel: 1, 2, 3, 4, 8 */    
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
     char name[16];

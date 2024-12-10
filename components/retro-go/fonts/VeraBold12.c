@@ -810,7 +810,6 @@ static const lv_font_fmt_txt_glyph_dsc_t verabold12_glyph_dsc[] = {
 const rg_font_t font_verabold12 = {
     .bitmap_data = verabold12_glyph_bitmap,
     .glyph_dsc = verabold12_glyph_dsc,
-    .bpp = 1,
     .name = "Verabold",
     .height = 14,
 };
