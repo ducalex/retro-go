@@ -272,7 +272,7 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     uint16_t bitmap_index, xDelta, width, height, xOffset, yOffset;
 
     const uint8_t *bitmap_data = font->bitmap_data;
-    const lv_font_fmt_txt_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
+    const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
     
     // getting the glyph informations :
     bitmap_index = glyph_dsc[c].bitmap_index;

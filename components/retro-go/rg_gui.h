@@ -53,12 +53,12 @@ typedef struct {
     uint8_t box_h;                  /**< Height of the glyph's bounding box*/
     int8_t ofs_x;                   /**< x offset of the bounding box*/
     int8_t ofs_y;                   /**< y offset of the bounding box. Measured from the top of the line*/
-} lv_font_fmt_txt_glyph_dsc_t;
+} rg_font_glyph_dsc_t;
 
 typedef struct
 {
     const uint8_t *bitmap_data; /* stores the data for the bitmap glyph*/
-    const lv_font_fmt_txt_glyph_dsc_t * glyph_dsc; /** Describe the glyphs */
+    const rg_font_glyph_dsc_t * glyph_dsc; /** Describe the glyphs */
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
     char name[16];

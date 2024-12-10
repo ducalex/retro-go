@@ -610,7 +610,7 @@ uint8_t verabold12_glyph_bitmap[] = {
  *  GLYPH DESCRIPTION
  *--------------------*/
 
-static const lv_font_fmt_txt_glyph_dsc_t verabold12_glyph_dsc[] = {
+static const rg_font_glyph_dsc_t verabold12_glyph_dsc[] = {
     {.bitmap_index = 0, .adv_w = 56, .box_w = 1, .box_h = 1, .ofs_x = 0, .ofs_y = 0},
     {.bitmap_index = 1, .adv_w = 73, .box_w = 2, .box_h = 8, .ofs_x = 1, .ofs_y = 0},
     {.bitmap_index = 3, .adv_w = 83, .box_w = 3, .box_h = 3, .ofs_x = 1, .ofs_y = 5},
