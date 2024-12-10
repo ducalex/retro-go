@@ -46,14 +46,23 @@ enum
     RG_GUI_RIGHT  = 0xF58000,
 };
 
+typedef struct {
+    uint16_t bitmap_index;          /**< Start index of the bitmap. A font can be max 1 MB.*/
+    uint8_t adv_w;                  /**< Draw the next glyph after this width. 8.4 format (real_value * 16 is stored).*/
+    uint8_t box_w;                  /**< Width of the glyph's bounding box*/
+    uint8_t box_h;                  /**< Height of the glyph's bounding box*/
+    int8_t ofs_x;                   /**< x offset of the bounding box*/
+    int8_t ofs_y;                   /**< y offset of the bounding box. Measured from the top of the line*/
+} lv_font_fmt_txt_glyph_dsc_t;
+
 typedef struct
 {
-    uint8_t type;   // 0=bitmap, 1=prop
+    const uint8_t *bitmap_data; /* stores the data for the bitmap glyph*/
+    const lv_font_fmt_txt_glyph_dsc_t * glyph_dsc; /** Describe the glyphs */
+    uint16_t bpp : 1; /** Bit per pixel: 1, 2, 3, 4, 8 */    
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
-    size_t chars;   // glyph count
     char name[16];
-    uint8_t data[];
 } rg_font_t;
 
 typedef struct

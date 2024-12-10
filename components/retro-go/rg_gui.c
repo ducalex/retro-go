@@ -102,7 +102,7 @@ void rg_gui_init(void)
     gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
+    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERABOLD_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
     gui.initialized = true;
@@ -215,13 +215,12 @@ bool rg_gui_set_font(int index)
 
     gui.font_index = index;
     gui.style.font = font;
-    gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
+    gui.style.font_height = font->height;
     gui.style.font_width = font->width ?: 8;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
-    RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
-        gui.style.font_height, (float)gui.style.font_height / font->height);
+    RG_LOGI("Font set to: points=%d\n", gui.style.font_height);
 
     return true;
 }
@@ -265,87 +264,51 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    size_t glyph_width = 0;
+    c -= 32;
+    if (c >= 160)
+        c -= 33;
+    // 'c' contains the character code
 
-    if (font->type == 0) // Monospace Bitmap
+    uint16_t bitmap_index, xDelta, width, height, xOffset, yOffset;
+
+    const uint8_t *bitmap_data = font->bitmap_data;
+    const lv_font_fmt_txt_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
+    
+    // getting the glyph informations :
+    bitmap_index = glyph_dsc[c].bitmap_index;
+    if (glyph_dsc[c].adv_w && 0b1000)
+        xDelta = (glyph_dsc[c].adv_w >> 4) + 1;
+    else
+        xDelta = (glyph_dsc[c].adv_w >> 4);
+
+    width = glyph_dsc[c].box_w;
+    height = glyph_dsc[c].box_h;
+    xOffset = glyph_dsc[c].ofs_x;
+    yOffset = glyph_dsc[c].ofs_y;
+
+    yOffset = points - height - yOffset - 3;
+
+    const uint8_t *data = &bitmap_data[bitmap_index];
+
+    size_t glyph_width = xDelta;
+    if (output)
     {
-        glyph_width = font->width;
-        if (output)
+        int ch = 0, mask = 0x80;
+        for (int y = 0; y < height; y++)
         {
-            if (c >= font->chars)
+            output[yOffset + y] = 0;
+            for (int x = 0; x < width; x++)
             {
-                for (int y = 0; y < font->height; y++)
-                    output[y] = 0;
-            }
-            else if (font->width > 8)
-            {
-                uint16_t *pattern = (uint16_t *)font->data + (c * font->height);
-                for (int y = 0; y < font->height; y++)
-                    output[y] = pattern[y];
-            }
-            else
-            {
-                uint8_t *pattern = (uint8_t *)font->data + (c * font->height);
-                for (int y = 0; y < font->height; y++)
-                    output[y] = pattern[y];
-            }
-        }
-    }
-    else if (font->type == 1) // Proportional
-    {
-        // Based on code by Boris Lovosevic (https://github.com/loboris)
-        int charCode, adjYOffset, width, height, xOffset, xDelta;
-        const uint8_t *data = font->data;
-        while (1)
-        {
-            charCode = *data++;
-            adjYOffset = *data++;
-            width = *data++;
-            height = *data++;
-            xOffset = *data++;
-            xOffset = xOffset < 0x80 ? xOffset : -(0xFF - xOffset);
-            xDelta = *data++;
-
-            if (charCode == c || charCode == 0xFF)
-                break;
-
-            if (width != 0)
-                data += (((width * height) - 1) / 8) + 1;
-        }
-
-        // If the glyph is not found, we fallback to the basic font which has most glyphs.
-        // It will be ugly, but at least the letter won't be missing...
-        if (charCode != c)
-            return get_glyph(output, &font_basic8x8, RG_MAX(8, points - 2), c);
-
-        glyph_width = RG_MAX(width, xDelta);
-        if (output)
-        {
-            int ch = 0, mask = 0x80;
-            for (int y = 0; y < height; y++)
-            {
-                output[adjYOffset + y] = 0;
-                for (int x = 0; x < width; x++)
+                if (((x + (y * width)) % 8) == 0)
                 {
-                    if (((x + (y * width)) % 8) == 0)
-                    {
-                        mask = 0x80;
-                        ch = *data++;
-                    }
-                    if ((ch & mask) != 0)
-                        output[adjYOffset + y] |= (1 << (xOffset + x));
-                    mask >>= 1;
+                    mask = 0x80;
+                    ch = *data++;
                 }
+                if ((ch & mask) != 0)
+                    output[yOffset + y] |= (1 << (xOffset + x));
+                mask >>= 1;
             }
         }
-    }
-
-    // Vertical stretching
-    if (output && points && points != font->height)
-    {
-        float scale = (float)points / font->height;
-        for (int y = points - 1; y >= 0; y--)
-            output[y] = output[(int)(y / scale)];
     }
 
     return glyph_width;
@@ -356,7 +319,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 {
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
-    int monospace = ((flags & RG_TEXT_MONOSPACE) || gui.style.font->type == 0) ? gui.style.font_width : 0;
+    int monospace = ((flags & RG_TEXT_MONOSPACE)) ? gui.style.font_width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
     const rg_font_t *font = gui.style.font;
