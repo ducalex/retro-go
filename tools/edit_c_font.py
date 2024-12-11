@@ -63,7 +63,7 @@ def renderCfont(byte_list):
                     data_index += 1
 
                 else:
-                    byte_list[data_index] = byte_list[data_index] << 1 # we shift data[n] to get the next pixel on the least significant bit
+                    byte_list[data_index] = byte_list[data_index] << 1 # we shift data[n] to get the next pixel on the most significant bit
                     bit_index += 1
 
         if offset_x_1+2*width+6 <= canva_width:
@@ -152,8 +152,7 @@ def save_file(file_name, font_data):
         f.write("// This file was generated using font_converter.py\n")
         f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
         f.write(f"// Font           : {'arial'}\n")
-        f.write(f"// Point Size     : {0}\n")
-        f.write(f"// Treshold Value : {0}\n")  # FIXME we should probably be getting the header from the original file and pasting it here
+        f.write(f"// Point Size     : {0}\n")  # FIXME we should probably be getting the header from the original file and pasting it here
         f.write(f"// Memory usage   : {0} bytes\n")
         f.write(f"// # characters   : {0}\n\n")
         f.write(f"const rg_font_t font_VeraBold12 = ")

@@ -94,8 +94,6 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-treshold_init = 110 # tip : lower if too thin letters / missing pixel
-
 first_char_init = 32
 last_char_init = 255
 
@@ -132,7 +130,7 @@ def get_char_list():
 
     return list_char    
 
-def pre_compute_x_delta_space(treshold, font_size, pil_font):
+def pre_compute_x_delta_space(font_size, pil_font):
     # pre-compute the x_delta_space for control/space char
     image_control_char = Image.new("L", (font_size * 2, font_size * 2), 0)
     draw_control_char = ImageDraw.Draw(image_control_char)
@@ -140,10 +138,7 @@ def pre_compute_x_delta_space(treshold, font_size, pil_font):
     pixels = image_control_char.load()  # Load the pixel data into a pixel access object
     for x in range(image_control_char.width):
         for y in range(image_control_char.height):
-            if pixels[x, y] >= treshold:  # play with the treshold value to get the best quality
-                pixels[x, y] = 1  # Set the pixel to white
-            else:
-                pixels[x, y] = 0  # Set the pixel to black
+            pixels[x, y] = (pixels[x, y] >> 7)
 
     x0, y0, x1, y1 = find_bounding_box(image_control_char)  # Get bounding box
     return (x1 - x0)
@@ -178,11 +173,10 @@ def generate_font_data():
     num_characters = 0
 
     canvas.delete("all")
-    treshold = int(treshold_input.get())
     offset_x_1 = 1
     offset_y_1 = 1
 
-    x_delta_space = pre_compute_x_delta_space(treshold, font_size, pil_font)
+    x_delta_space = pre_compute_x_delta_space(font_size, pil_font)
 
     for char_code in get_char_list():
         char = chr(char_code)
@@ -195,15 +189,11 @@ def generate_font_data():
 
         ### - MOST IMPORTANT PART - ###
         # this step convert 8bit grayscale image to 1bit color (0 or 1)
-        # TODO : make it better (or can we ?)
 
         pixels = image.load()  # Load the pixel data into a pixel access object
         for x in range(image.width):
             for y in range(image.height):
-                if pixels[x, y] >= treshold:  # play with the treshold value to get the best quality
-                    pixels[x, y] = 1  # Set the pixel to white
-                else:
-                    pixels[x, y] = 0  # Set the pixel to black
+                pixels[x, y] = (pixels[x, y] >> 7)
 
         ### - END OF MOST IMPORTANT PART - ###
 
@@ -304,7 +294,6 @@ def save_file(font_name, font_data):
         f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
         f.write(f"// Font           : {font_name}\n")
         f.write(f"// Point Size     : {font_height_input.get()}\n")
-        f.write(f"// Treshold Value : {treshold_input.get()}\n")
         f.write(f"// Memory usage   : {font_data['memory_usage']} bytes\n")
         f.write(f"// # characters   : {font_data['num_characters']}\n\n")
         f.write(f"const rg_font_t font_{font_name.replace('-', '_')+font_height_input.get()} = ")
@@ -426,11 +415,6 @@ Entry(frame, textvariable=list_char_exclude, width=30).pack(side="left", padx=5)
 Label(frame, text="Font name (used for output)", height=4).pack(side="left", padx=5)
 font_name_input = StringVar(value=str(font_name_init))
 Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
-
-# Label and Entry for Treshold Value
-Label(frame, text="Treshold Value (1-255)", height=4).pack(side="left", padx=5)
-treshold_input = StringVar(value=str(treshold_init))
-Entry(frame, textvariable=treshold_input, width=4).pack(side="left", padx=5)
 
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked

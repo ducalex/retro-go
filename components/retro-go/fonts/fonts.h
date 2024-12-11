@@ -5,6 +5,9 @@
  * There is a tool to convert ttf to prop fonts there:
  * https://github.com/loboris/ESP32_TFT_library/tree/master/tools
  * Note: The header must be removed (the first 4 bytes of data)
+ * 
+ * https://github.com/lvgl/lv_font_conv/blob/master/doc/font_spec.md
+ * 
  */
 
 extern const rg_font_t font_verabold12;
