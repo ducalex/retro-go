@@ -27,8 +27,6 @@ A theme is a folder placed in `sd:/retro-go/themes` containing the following fil
 | banner_X.png | PNG 272x24 | Launcher banners where X is the name of the launcher tab | No |
 | logo_X.png | PNG 46x50 | Launcher logos where X is the name of the launcher tab | No |
 
-It is highly recommended to keep the image files sizes as small as possible to ensure good loading speed. This can be achieved by using the lowest bit depth possible when saving your PNG file. Tools like [pngquant](https://pngquant.org/) can also help!
-
 
 ### theme.json
 
@@ -93,3 +91,10 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
 ````
 
 Important: If retro-go refuses to load your theme, please run your theme.json through a JSON validator to make sure the format is correct (JSON is quite strict regarding quotes or trailing commas for example).
+
+
+### Images
+
+It is highly recommended to keep the image files sizes as small as possible to ensure good loading speed. This can be achieved by using the lowest bit depth possible when saving your PNG file. Tools like [pngquant](https://pngquant.org/) can also help!
+
+Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color in some situations.
