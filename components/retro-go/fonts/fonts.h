@@ -10,7 +10,7 @@
  * 
  */
 
-extern const rg_font_t font_verabold12;
+extern const rg_font_t font_Vera_Bold12;
 
 enum {
     RG_FONT_VERABOLD_12,
@@ -19,5 +19,5 @@ enum {
 };
 
 static const rg_font_t *fonts[RG_FONT_MAX] = {
-    &font_verabold12,
+    &font_Vera_Bold12,
 };

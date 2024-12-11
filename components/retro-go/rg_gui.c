@@ -269,24 +269,20 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
         c -= 33;
     // 'c' contains the character code
 
-    uint16_t bitmap_index, xDelta, width, height, xOffset, yOffset;
+    uint16_t bitmap_index;
+    uint8_t xDelta, width, height;
+    int8_t xOffset, yOffset;
 
     const uint8_t *bitmap_data = font->bitmap_data;
     const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
     
     // getting the glyph informations :
     bitmap_index = glyph_dsc[c].bitmap_index;
-    if (glyph_dsc[c].adv_w && 0b1000)
-        xDelta = (glyph_dsc[c].adv_w >> 4) + 1;
-    else
-        xDelta = (glyph_dsc[c].adv_w >> 4);
-
+    xDelta = glyph_dsc[c].adv_w;
     width = glyph_dsc[c].box_w;
     height = glyph_dsc[c].box_h;
     xOffset = glyph_dsc[c].ofs_x;
-    yOffset = glyph_dsc[c].ofs_y;
-
-    yOffset = points - height - yOffset - 3;
+    yOffset = glyph_dsc[c].ofs_y-2;
 
     const uint8_t *data = &bitmap_data[bitmap_index];
 
