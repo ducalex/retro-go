@@ -95,8 +95,6 @@ import freetype
 #
 # And that's basically how characters are encoded using this tool
 
-threshold_init = 128 # tip : lower if too thin letters / missing pixel
-
 first_char_init = 32
 last_char_init = 255
 
@@ -133,15 +131,15 @@ def get_char_list():
 
     return list_char    
 
-def pre_compute_adv_w_space(threshold, font_size, pil_font):
+def pre_compute_adv_w_space(font_size, pil_font):
     # pre-compute the adv_w_space for control/space char
-    image_control_char = Image.new("L", (font_size * 2, font_size * 2), 0)
+    image_control_char = Image.new("1", (font_size * 2, font_size * 2), 0)
     draw_control_char = ImageDraw.Draw(image_control_char)
     draw_control_char.text((0, 0), chr(1), font=pil_font, fill=255)
     pixels = image_control_char.load()  # Load the pixel data into a pixel access object
     for x in range(image_control_char.width):
         for y in range(image_control_char.height):
-            if pixels[x, y] >= threshold:  # play with the threshold value to get the best quality
+            if pixels[x, y] >= 1:  # play with the threshold value to get the best quality
                 pixels[x, y] = 1  # Set the pixel to white
             else:
                 pixels[x, y] = 0  # Set the pixel to black
@@ -179,26 +177,24 @@ def generate_font_data():
     memory_usage = 0
 
     canvas.delete("all")
-    threshold = int(threshold_input.get())
-    print(threshold)
     offset_x_1 = 1
     offset_y_1 = 1
 
-    adv_w_space = pre_compute_adv_w_space(threshold, font_size, pil_font)
+    adv_w_space = pre_compute_adv_w_space(font_size, pil_font)
 
     for char_code in get_char_list():
         char = chr(char_code)
         print(f"Processing character: {char} ({char_code})")
 
-        image = Image.new("L", (font_size * 2, font_size * 2), 0)
+        image = Image.new("1", (font_size * 2, font_size * 2), 0) # generate mono bmp, 0 = black color
         draw = ImageDraw.Draw(image)
-        draw.text((0, 0), char, font=pil_font, fill=255)
+        draw.text((1, 0), char, font=pil_font, fill=255)
 
         pixels = image.load()
 
         for x in range(image.width):
             for y in range(image.height):
-                pixels[x, y] = (1 if pixels[x, y] >= threshold else 0)
+                pixels[x, y] = (1 if pixels[x, y] >= 1 else 0)
 
         bbox = find_bounding_box(image)  # Get bounding box
 
@@ -446,11 +442,6 @@ Entry(frame, textvariable=list_char_exclude, width=30).pack(side="left", padx=5)
 Label(frame, text="Font name (used for output)", height=4).pack(side="left", padx=5)
 font_name_input = StringVar(value=str(font_name_init))
 Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
-
-# Label and Entry for Threshold Value
-Label(frame, text="Threshold Value (1-255)", height=4).pack(side="left", padx=5)
-threshold_input = StringVar(value=str(threshold_init))
-Entry(frame, textvariable=threshold_input, width=4).pack(side="left", padx=5)
 
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
