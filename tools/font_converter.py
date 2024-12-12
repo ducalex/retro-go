@@ -109,6 +109,19 @@ font_size_init = 11
 start_x = 0
 start_y = 0
 
+# letters that have a diferent w_advance:
+thin_letters = ('P','T','f','V','r','O','U','L','t','s','c','y','F')
+
+header_start = """
+/*
+*  This file was generated using font_converter.py
+*  Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format
+*/
+
+#include \"../rg_gui.h\"
+
+"""
+
 def get_char_list():
     list_char_exclude_int = []
     if list_char_exclude.get() != '':
@@ -255,8 +268,8 @@ def generate_font_data():
             "ofs_y": offset_y,
             "box_w": width,
             "box_h": height,
-            "ofs_x": offset_x - 2,
-            "adv_w": width + 2, # FIXME make it better
+            "ofs_x": offset_x,
+            "adv_w": width + offset_x
         }
         font_data.append(glyph_data)
 
@@ -287,13 +300,10 @@ def generate_font_data():
 def save_file(font_name, font_data):
     with open (font_name.replace('-', '_')+font_height_input.get()+".c", 'w', encoding='ISO8859-1') as f:
         # Output header
-        f.write("// This file was generated using font_converter.py\n")
-        f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
+        f.write(header_start)
         f.write(f"// Font           : {font_name}\n")
         f.write(f"// Point Size     : {font_height_input.get()}\n")
         f.write(f"// Memory usage   : {font_data['memory_usage']} bytes\n\n")
-
-        f.write("#include \"../rg_gui.h\"\n\n")
 
         # writing bitmap data
         f.write(f"uint8_t {font_name.replace('-', '_')+font_height_input.get()}_glyph_bitmap[] = ")
@@ -398,7 +408,7 @@ def pan_canvas(event):
     start_y = event.y
 
 window = Tk()
-window.title("Font render")
+window.title("Font preview")
 
 # Get screen width and height
 screen_width = window.winfo_screenwidth()

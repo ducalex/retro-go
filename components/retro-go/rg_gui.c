@@ -265,8 +265,6 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
         return 0;
 
     c -= 32;
-    if (c >= 160)
-        c -= 33;
     // 'c' contains the character code
 
     uint16_t bitmap_index;
