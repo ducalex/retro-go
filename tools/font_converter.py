@@ -279,22 +279,15 @@ def generate_font_data():
         memory_usage += len(bitmap) + 8  # 8 bytes for the header per glyph
 
     # find max width/height
-    max_width, max_height = (0,0)
+    max_height = 0
     for glyph in font_data:
-        max_width = max(glyph['box_w'], max_width)
         max_height = max(glyph['box_h'], max_height)
-
-    # Generate header
-    header = {
-    "char_width": max_width,
-    "char_height": max_height,
-    }
 
     save_file(font_name, {
         "bitmap": bitmap_data,
         "glyphs": font_data,
-        "header": header,
         "memory_usage": memory_usage,
+        "max_height": max_height
     })
 
 def save_file(font_name, font_data):

@@ -4,9 +4,19 @@ import os
 font_size = 14
 
 list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct pixels on the canva
-font_data = [] # contain font data for all glyphs
+list_glyph_data = [] # contain font data for all glyphs
 
 lastrect_xy = (0,0) # used for sliding function
+
+header_start = """
+/*
+*  This file was generated using font_converter.py
+*  Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format
+*/
+
+#include \"../rg_gui.h\"
+
+"""
 
 def renderCfont(byte_list):
     canvas.delete("all")
@@ -18,9 +28,6 @@ def renderCfont(byte_list):
         line = [-1] * canva_width
         rect_ids.append(line)
 
-    global font_data
-    font_data = []
-
     global list_bbox
     list_bbox = []
 
@@ -28,20 +35,20 @@ def renderCfont(byte_list):
     global ov
     ov = canvas.create_rectangle(0,0,pixel_size,pixel_size,fill="white")
 
-    byte_index = 0
     offset_x_1 = 1
     offset_y_1 = 1
 
-    while byte_index <= len(byte_list)-5:
-        char_code = byte_list[byte_index]
-        offset_y = byte_list[byte_index+1]
-        width = byte_list[byte_index+2]
-        height = byte_list[byte_index+3]
-        xOffset = byte_list[byte_index+4]
-        xDelta = byte_list[byte_index+5]
+    global list_glyph_data
+
+    for glyph in list_glyph_data:
+        bitmap_index = glyph['bitmap_index']
+        offset_y = glyph['ofs_y']
+        width = glyph['box_w']
+        height = glyph['box_h']
+        xOffset = glyph['ofs_x']
+        xDelta = glyph['adv_w']
 
         bit_index = 0
-        data_index = byte_index+6
 
         if bounding_box_bool.get():
             canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, (width+offset_x_1)*pixel_size, (height+offset_y_1+offset_y)*pixel_size, width=1, outline="blue",fill='') # bounding box
@@ -55,15 +62,15 @@ def renderCfont(byte_list):
 
         for y in range(height):
             for x in range(width):
-                if byte_list[data_index] & 0b10000000: # Pixel(x,y) = 1
+                if byte_list[bitmap_index] & 0b10000000: # Pixel(x,y) = 1
                     rect_ids[y+offset_y_1+offset_y][x+offset_x_1] = canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1+offset_y)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1+offset_y)*pixel_size+pixel_size,fill="white")
 
                 if bit_index == 7:
                     bit_index = 0
-                    data_index += 1
+                    bitmap_index += 1
 
                 else:
-                    byte_list[data_index] = byte_list[data_index] << 1 # we shift data[n] to get the next pixel on the most significant bit
+                    byte_list[bitmap_index] = byte_list[bitmap_index] << 1 # we shift data[n] to get the next pixel on the most significant bit
                     bit_index += 1
 
         if offset_x_1+2*width+6 <= canva_width:
@@ -72,31 +79,14 @@ def renderCfont(byte_list):
             offset_x_1 = 1
             offset_y_1 += font_size + 1
 
-        
-        if (width*height)%8 != 0:
-            byte_index += ((width*height)//8+7)
-
-        else:
-            byte_index += (((width*height)//8+6) if (width*height) != 0 else 6)
-
-        glyph_data = {
-            "char_code": char_code,
-            "y_offset": offset_y,
-            "width": width,
-            "height": height,
-            "x_offset": xOffset,
-            "x_delta": xDelta,
-            "data": [],
-        }
-
-        font_data.append(glyph_data)
         list_bbox.append(bbox)
 
 def generate_font_data():
     # Initialize the font data structure
+    bitmap_data = []
 
-    for font, bbox in zip(font_data, list_bbox):
-        width, height = font['width'], font['height']
+    for glyph_data, bbox in zip(list_glyph_data, list_bbox):
+        width, height = glyph_data['box_w'], glyph_data['box_h']
         x0, y0 = bbox['x0'], bbox['y0']
         
         # Extract bitmap data
@@ -125,89 +115,152 @@ def generate_font_data():
             bitmap.append(row)
 
         # Update font data with the bitmap
-        font['data'] = bitmap
+        bitmap_data.append(bitmap)
 
     # find max width/height
-    max_width, max_height = (0,0)
-    for glyph in font_data:
-        max_width = max(glyph['width'], max_width)
-        max_height = max(glyph['height'], max_height)
-
-    # Generate header
-    header = {
-    "char_width": max_width,
-    "char_height": max_height,
-    }
+    max_height = 0
+    for glyph in list_glyph_data:
+        max_height = max(glyph['box_h'], max_height)
 
     save_file(font_path, {
-        "header": header,
-        "glyphs": font_data,
+        "bitmap": bitmap_data,
+        "max_height": max_height,
+        "glyphs": list_glyph_data,
     })
     
-def save_file(file_name, font_data):
-    with open (file_name, 'w', encoding='ISO8859-1') as f:
+def save_file(font_path, font_data):
+    with open (font_path, 'w', encoding='ISO8859-1') as f:
         # Output header
+        f.write(header_start)
+        f.write(f"// Font           : {'font_name'}\n")
+        f.write(f"// Point Size     : {'font_height'}\n")
+        f.write(f"// Memory usage   : {'999'} bytes\n\n")
 
-        f.write("#include \"../rg_gui.h\"\n\n")
-        f.write("// This file was generated using font_converter.py\n")
-        f.write("// Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format\n")
-        f.write(f"// Font           : {'arial'}\n")
-        f.write(f"// Point Size     : {0}\n")  # FIXME we should probably be getting the header from the original file and pasting it here
-        f.write(f"// Memory usage   : {0} bytes\n")
-        f.write(f"// # characters   : {0}\n\n")
-        f.write(f"const rg_font_t font_VeraBold12 = ")
-        f.write("{\n")
-        f.write(f"    .name = \"{'test'}\",\n")
-        f.write( "    .type = 1,\n")
-        f.write(f"    .width = {font_data['header']['char_width']},\n")
-        f.write(f"    .height = {font_data['header']['char_height']+3},\n")
-        f.write(f"    .chars = {0},\n")
-        f.write( "    .data = {\n")
+        # writing bitmap data
+        f.write(f"uint8_t {'font_name'}_glyph_bitmap[] = ")
+        f.write( "{\n")
 
-        # output glyph data
+        bitmap_index, glyph_index = (0,0)
         for glyph in font_data["glyphs"]:
-            f.write(f"        // '{chr(glyph['char_code'])}'\n")
-            f.write(f"        0x{glyph['char_code']:02X},0x{glyph['y_offset']:02X},0x{glyph['width']:02X},"
-                    f"0x{glyph['height']:02X},0x{glyph['x_offset']:02X},0x{glyph['x_delta']:02X},\n        ")
-            f.write(",".join([f"0x{byte:02X}" for byte in glyph["data"]]))
-            if glyph['data'] == []:
-                f.write("\n")
+            bitmap_data = font_data["bitmap"][glyph_index]
+
+            f.write(f"    /* {chr(glyph_index+32)} */\n    ")
+            if bitmap_data:
+                f.write( ",".join([f"0x{byte:02X}" for byte in bitmap_data]))
             else:
-                f.write(",\n")
-                
-        f.write("\n    // Terminator\n")
-        f.write("    0xFF,\n")
-        f.write("  },\n")
+                f.write('0x0')
+            f.write( ",\n\n")
+
+            glyph["bitmap_index"] = bitmap_index
+            bitmap_index += len(bitmap_data)
+
+            glyph_index += 1
+
+        f.write("};\n\n")
+
+        f.write(f"static const rg_font_glyph_dsc_t {'font_name'}_glyph_dsc[] = ")
+        f.write("{\n")
+
+        for glyph in font_data["glyphs"]:
+            f.write("    {.bitmap_index = ")
+            f.write(str(glyph["bitmap_index"]))
+
+            f.write(", .adv_w = ")
+            f.write(str(glyph["adv_w"]))
+
+            f.write(", .box_w = ")
+            f.write(str(glyph["box_w"]))
+
+            f.write(", .box_h = ")
+            f.write(str(glyph["box_h"]))
+
+            f.write(", .ofs_x = ")
+            f.write(str(glyph["ofs_x"]))
+
+            f.write(", .ofs_y = ")
+            f.write(str(glyph["ofs_y"]))
+
+            f.write("},\n")
+
+        f.write("};\n\n")
+
+
+        f.write(f"const rg_font_t font_{'font_name'} = ")
+        f.write("{\n")
+        f.write(f"    .bitmap_data = {'font_name'}_glyph_bitmap,\n")
+        f.write(f"    .glyph_dsc = {'font_name'}_glyph_dsc,\n")
+        f.write(f"    .name = \"{'font_name'}\",\n")
+        f.write(f"    .height = {font_data['max_height']}\n")
         f.write("};\n")
 
 def extract_bytes():
+    array_index = 0
     byte_list = []
+    global list_glyph_data
+    list_glyph_data = []
     with open(font_path, 'r', encoding='ISO8859-1') as file:
         inside_data_section = False
         for line in file:
             line = line.strip()
             # skip commented lines
-            if '//' in line:
+            if '/*' in line or '//' in line:
                 continue
+            
             # Detect when the .data section starts
-            if '.data = {' in line:
+            if '[] = {' in line:
+                array_index += 1
                 inside_data_section = True
                 continue
+
+            # Detect when the font struct starts
+            if 'const rg_font_t' in line:
+                inside_data_section = True
+                continue
+
             # Detect when the .data section ends
-            if inside_data_section and '}' in line:
-                break
+            if inside_data_section and '};' in line:
+                inside_data_section = False
             # Skip lines outside the .data section
+
             if not inside_data_section:
                 continue
-            # Extract bytes from the line
-            parts = line.split(',')
-            for part in parts:
-                part = part.strip()
-                if part.startswith('0x'):
-                    try:
-                        byte_list.append(int(part, 16))
-                    except ValueError:
-                        pass
+
+            if array_index == 1: # bitmap pixels data
+                # Extract bytes from the line
+                parts = line.split(',')
+                for part in parts:
+                    part = part.strip()
+                    if part.startswith('0x'):
+                        try:
+                            byte_list.append(int(part, 16))
+                        except ValueError:
+                            pass
+
+            if array_index == 2: # glyph descriptor
+                parts = line.split(',')
+                for part in parts:
+                    if "bitmap_index" in part:
+                        bitmap_index = int(part.split('=')[1])
+                    elif "adv_w" in part:
+                        adv_w = int(part.split('=')[1])
+                    elif "box_w" in part:
+                        box_w = int(part.split('=')[1])
+                    elif "box_h" in part:
+                        box_h = int(part.split('=')[1])
+                    elif "ofs_x" in part:
+                        ofs_x = int(part.split('=')[1])
+                    elif "ofs_y" in part:
+                        ofs_y = int(part.split('=')[1][1])
+                        glyph_data = {
+                        "bitmap_index": bitmap_index,
+                        "adv_w": adv_w,
+                        "box_w": box_w,
+                        "box_h": box_h,
+                        "ofs_x": ofs_x,
+                        "ofs_y": ofs_y
+                        }
+                        print(glyph_data)
+                        list_glyph_data.append(glyph_data)
 
     renderCfont(byte_list)
 
