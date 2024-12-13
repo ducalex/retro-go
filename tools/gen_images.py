@@ -7,7 +7,7 @@ import os, sys, glob, textwrap
 output = '#include "gui.h"\n\n'
 refs = ""
 
-for file in sorted(glob.glob("launcher/main/images/*.png")):
+for file in sorted(glob.glob("themes/default/*.png")):
     with open(file, "rb") as f:
         data = f.read()
         size = len(data)

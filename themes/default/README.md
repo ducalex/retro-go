@@ -2,7 +2,6 @@ At this time the default theme is hardcoded in retro-go. You can find some of it
 
 - `components/retro-go/rg_gui.c`
 - `launcher/main/gui.c`
-- `launcher/main/images/`
 
 At some point all of that stuff will be moved here...
 

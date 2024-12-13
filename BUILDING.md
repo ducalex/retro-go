@@ -80,7 +80,7 @@ or even do nothing at all. In such cases you should use `python rg_tool.py ...` 
 
 
 ## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `tools/gen_images.py` script to regenerate `launcher/main/images.c`. Refer to [THEMING.md](THEMING.md) for details about the image format.
+All images used by the launcher (headers, logos) are located in `themes/default`. If you edit them you must run the `tools/gen_images.py` script to regenerate `launcher/main/images.c`. Refer to [THEMING.md](THEMING.md) for details about the image format.
 
 
 ## Updating translations
