@@ -96,7 +96,7 @@ ESP-IDF provides a tool to edit it, namely `menuconfig`, but to use it in retro-
 4. Optionally test the app with the new config (but do NOT run `rg_tool.py clean` at this point, your new config will be deleted)
     - `cd ..`
     - `./rg_tool.py --target <targetname> run launcher`
-4. When you're satisfied, copy the `sdkconfig` file from the launcher to the target folder, so that it's used by all apps
+5. When you're satisfied, copy the `sdkconfig` file from the launcher to the target folder, so that it's used by all apps
     - `cd ..`
     - `mv  -f launcher/sdkconfig components/retro-go/targets/<targetname>/sdkconfig`
 
