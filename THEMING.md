@@ -30,15 +30,20 @@ A theme is a folder placed in `sd:/retro-go/themes` containing the following fil
 
 ### theme.json
 
-All fields are optional (you'll have to dig in the source if you need to know the default value...).
+The `theme.json` file contains the colors used by the theme, as well as some author meta data.
+
+All fields are optional but it is not recommended to omit individual values because the fallback value that will be used is subject to change between retro-go versions. You are free to omit entire sections, however. For example if you only wish to retheme the launcher but not the dialogs, or vice-versa.
 
 Colors are RGB565 and can be represented as integers or hex strings. The special value `transparent` is also accepted in some places.
 
+<details>
+  <summary>View example theme.json</summary>
+
 ````json
 {
-    "description": "Theme description",
-    "website": "https://example.com/retro-go-theme",
-    "author": "John Smith",
+    "description": "Default Retro-Go Theme",
+    "website": "https://github.com/ducalex/retro-go/",
+    "author": "ducalex",
     "dialog": {
         "__comment": "This section contains global dialog colors",
         "background": "0x0010",
@@ -67,7 +72,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
         "list_standard_bg": "transparent",
         "list_standard_fg": "0x8410",
         "list_selected_bg": "transparent",
-        "list_selected_fg": "0xFFFF"
+        "list_selected_fg": "0x07E0"
     },
     "launcher_3": {
         "__comment": "This section contains launcher colors variant 3",
@@ -89,8 +94,7 @@ Colors are RGB565 and can be represented as integers or hex strings. The special
     }
 }
 ````
-
-Important: If retro-go refuses to load your theme, please run your theme.json through a JSON validator to make sure the format is correct (JSON is quite strict regarding quotes or trailing commas for example).
+</details>
 
 
 ### Images
