@@ -2,6 +2,7 @@
 - [Prerequisites](#prerequisites)
 - [Targets](#targets)
 - [Porting](#porting)
+- [Patching](#patching)
 
 
 # Introduction
@@ -90,15 +91,15 @@ ESP-IDF provides a tool to edit it, namely `menuconfig`, but to use it in retro-
 
 1. Build the launcher for your target (this will make sure you have the correct ESP32 board selected and generate a default sdkconfig)
     - `./rg_tool.py clean`
-    - `./rg_tool.py --target <targetname> build launcher`
+    - `./rg_tool.py --target my-target build launcher`
 2. Enter the launcher directory: `cd launcher`
 3. Run `idf.py menuconfig` and make the changes that you need. Make sure to save the changes and exit.
 4. Optionally test the app with the new config (but do NOT run `rg_tool.py clean` at this point, your new config will be deleted)
     - `cd ..`
-    - `./rg_tool.py --target <targetname> run launcher`
+    - `./rg_tool.py --target my-target run launcher`
 5. When you're satisfied, copy the `sdkconfig` file from the launcher to the target folder, so that it's used by all apps
     - `cd ..`
-    - `mv  -f launcher/sdkconfig components/retro-go/targets/<targetname>/sdkconfig`
+    - `mv  -f launcher/sdkconfig components/retro-go/targets/my-target/sdkconfig`
 
 Note that any time you modify your target's `sdkconfig` file, you must run `./rg_tool.py clean` to ensure it will be applied.
 
@@ -109,3 +110,18 @@ Change the target board in `env.py` to match yours
 
 
 After completing all these steps, you should be able to build your apps with `rg_tool`. See [BUILDING.md](BUILDING.md#flashing-an-image-for-the-first-time) for more info about this and flashing. **Make sure to use the steps for `.img`, NOT `.fw`**
+
+
+## Patching
+
+Not everything can be done through `config.h`. Sometimes you have to patch retro-go to add special code for your hardware. Any such modification will be harder to upstream, if that is your goal, but they are easy to perform.
+
+The build system automatically defines a constant for the target in use, eg `RG_TARGET_MY_TARGET` if your target is named `my-target` (the name is capitalized and `-` is replaced with `_`).
+
+Anywhere in retro-go you can add code wrapped in a #ifdef block that will apply only to your target:
+
+````c
+#ifdef RG_TARGET_MY_TARGET
+// do stuff
+#endif
+````
