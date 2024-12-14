@@ -10,20 +10,20 @@
  * 
  */
 
-extern const rg_font_t font_Vera_Bold12;
-extern const rg_font_t font_arial12;
+extern const rg_font_t font_Vera_Bold11;
+extern const rg_font_t font_arial11;
 extern const rg_font_t font_OpenSans_Bold14;
 
 enum {
-    RG_FONT_VERABOLD_12,
-    RG_FONT_ARIAL_12,
+    RG_FONT_VERABOLD_11,
+    RG_FONT_ARIAL_11,
     RG_FONT_OPEN_SANS_BOLD_14,
 
     RG_FONT_MAX,
 };
 
 static const rg_font_t *fonts[RG_FONT_MAX] = {
-    &font_Vera_Bold12,
-    &font_arial12,
+    &font_Vera_Bold11,
+    &font_arial11,
     &font_OpenSans_Bold14,
 };

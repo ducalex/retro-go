@@ -102,7 +102,7 @@ void rg_gui_init(void)
     gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERABOLD_12));
+    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERABOLD_11));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
     gui.initialized = true;
@@ -303,8 +303,14 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
                 mask >>= 1;
             }
         }
+        // Vertical stretching
+        if (points && points != font->height)
+        {
+            float scale = (float)points / font->height;
+            for (int y = points - 1; y >= 0; y--)
+                output[y] = output[(int)(y / scale)];
+        }
     }
-
     return glyph_width;
 }
 
