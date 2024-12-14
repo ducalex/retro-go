@@ -267,26 +267,26 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     c -= 32;
     // 'c' contains the character code
 
-    uint16_t bitmap_index;
-    uint8_t xDelta, width, height;
-    int8_t xOffset, yOffset;
-
-    const uint8_t *bitmap_data = font->bitmap_data;
     const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
     
-    // getting the glyph informations :
-    bitmap_index = glyph_dsc[c].bitmap_index;
-    xDelta = glyph_dsc[c].adv_w;
-    width = glyph_dsc[c].box_w;
-    height = glyph_dsc[c].box_h;
-    xOffset = glyph_dsc[c].ofs_x;
-    yOffset = glyph_dsc[c].ofs_y-2;
+    // getting the glyph width :
+    uint16_t bitmap_index = glyph_dsc[c].bitmap_index;
+    size_t glyph_width = glyph_dsc[c].adv_w;
 
-    const uint8_t *data = &bitmap_data[bitmap_index];
-
-    size_t glyph_width = xDelta;
     if (output)
     {
+        // getting the rest of the glyph data to draw it
+        uint8_t width, height;
+        int8_t xOffset, yOffset;
+
+        width = glyph_dsc[c].box_w;
+        height = glyph_dsc[c].box_h;
+        xOffset = glyph_dsc[c].ofs_x;
+        yOffset = glyph_dsc[c].ofs_y-2;
+
+        const uint8_t *bitmap_data = font->bitmap_data;
+        const uint8_t *data = &bitmap_data[bitmap_index];
+
         int ch = 0, mask = 0x80;
         for (int y = 0; y < height; y++)
         {
