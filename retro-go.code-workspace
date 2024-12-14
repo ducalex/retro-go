@@ -19,6 +19,12 @@
 			"path": "retro-core"
 		},
 		{
+			"path": "themes"
+		},
+		{
+			"path": "tools"
+		},
+		{
 			"path": ".",
 			"name": "root"
 		}
