@@ -158,7 +158,7 @@ def pre_compute_adv_w_space(font_size, pil_font):
                 pixels[x, y] = 0  # Set the pixel to black
 
     x0, y0, x1, y1 = find_bounding_box(image_control_char)  # Get bounding box
-    return (x1 - x0)
+    return (x1 - x0 - 2)
 
 def find_bounding_box(image):
     pixels = image.load()
@@ -268,8 +268,8 @@ def generate_font_data():
             "ofs_y": offset_y,
             "box_w": width,
             "box_h": height,
-            "ofs_x": offset_x,
-            "adv_w": width + offset_x
+            "ofs_x": offset_x - 1,
+            "adv_w": width + offset_x - (1 if chr(char_code) in thin_letters else 0)
         }
         font_data.append(glyph_data)
 
@@ -281,7 +281,7 @@ def generate_font_data():
     # find max width/height
     max_height = 0
     for glyph in font_data:
-        max_height = max(glyph['box_h'], max_height)
+        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
 
     save_file(font_name, {
         "bitmap": bitmap_data,
@@ -348,7 +348,7 @@ def save_file(font_name, font_data):
         f.write(f"    .bitmap_data = {font_name.replace('-', '_')+font_height_input.get()}_glyph_bitmap,\n")
         f.write(f"    .glyph_dsc = {font_name.replace('-', '_')+font_height_input.get()}_glyph_dsc,\n")
         f.write(f"    .name = \"{font_name}\",\n")
-        f.write(f"    .height = {font_data['header']['char_height']}\n")
+        f.write(f"    .height = {font_data['max_height']}\n")
         f.write("};\n")
 
 def select_file():
@@ -409,7 +409,7 @@ screen_height = window.winfo_screenheight()
 # Set the window size to fill the entire screen
 window.geometry(f"{screen_width}x{screen_height}")
 
-pixel_size = 10 # pixel size on the renderer
+pixel_size = 8 # pixel size on the renderer
 
 canva_width = screen_width//pixel_size
 canva_height = screen_height//pixel_size-16

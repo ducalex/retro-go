@@ -120,7 +120,7 @@ def generate_font_data():
     # find max width/height
     max_height = 0
     for glyph in list_glyph_data:
-        max_height = max(glyph['box_h'], max_height)
+        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
 
     save_file(font_path, {
         "bitmap": bitmap_data,
@@ -129,20 +129,22 @@ def generate_font_data():
     })
     
 def save_file(font_path, font_data):
+
+    font_name = os.path.splitext(os.path.basename(font_path))[0]
+
     with open (font_path, 'w', encoding='ISO8859-1') as f:
         # Output header
         f.write(header_start)
-        f.write(f"// Font           : {'font_name'}\n")
+        f.write(f"// Font           : {font_name}\n")
         f.write(f"// Point Size     : {'font_height'}\n")
         f.write(f"// Memory usage   : {'999'} bytes\n\n")
 
         # writing bitmap data
-        f.write(f"uint8_t {'font_name'}_glyph_bitmap[] = ")
+        f.write(f"uint8_t {font_name}_glyph_bitmap[] = ")
         f.write( "{\n")
 
-        bitmap_index, glyph_index = (0,0)
-        for glyph in font_data["glyphs"]:
-            bitmap_data = font_data["bitmap"][glyph_index]
+        glyph_index = 0
+        for glyph, bitmap_data in zip(font_data["glyphs"], font_data["bitmap"]):
 
             f.write(f"    /* {chr(glyph_index+32)} */\n    ")
             if bitmap_data:
@@ -151,14 +153,11 @@ def save_file(font_path, font_data):
                 f.write('0x0')
             f.write( ",\n\n")
 
-            glyph["bitmap_index"] = bitmap_index
-            bitmap_index += len(bitmap_data)
-
             glyph_index += 1
 
         f.write("};\n\n")
 
-        f.write(f"static const rg_font_glyph_dsc_t {'font_name'}_glyph_dsc[] = ")
+        f.write(f"static const rg_font_glyph_dsc_t {font_name}_glyph_dsc[] = ")
         f.write("{\n")
 
         for glyph in font_data["glyphs"]:
@@ -185,11 +184,11 @@ def save_file(font_path, font_data):
         f.write("};\n\n")
 
 
-        f.write(f"const rg_font_t font_{'font_name'} = ")
+        f.write(f"const rg_font_t font_{font_name} = ")
         f.write("{\n")
-        f.write(f"    .bitmap_data = {'font_name'}_glyph_bitmap,\n")
-        f.write(f"    .glyph_dsc = {'font_name'}_glyph_dsc,\n")
-        f.write(f"    .name = \"{'font_name'}\",\n")
+        f.write(f"    .bitmap_data = {font_name}_glyph_bitmap,\n")
+        f.write(f"    .glyph_dsc = {font_name}_glyph_dsc,\n")
+        f.write(f"    .name = \"{font_name}\",\n")
         f.write(f"    .height = {font_data['max_height']}\n")
         f.write("};\n")
 
@@ -332,7 +331,7 @@ screen_height = window.winfo_screenheight()
 # Set the window size to fill the entire screen
 window.geometry(f"{screen_width}x{screen_height}")
 
-pixel_size = 10 # pixel size on the renderer
+pixel_size = 8 # pixel size on the renderer
 
 canva_width = screen_width//pixel_size
 canva_height = screen_height//pixel_size-16
