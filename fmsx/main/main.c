@@ -399,16 +399,6 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t fmsx_menu_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        InMenu = 2;
-        return RG_DIALOG_CANCEL;
-    }
-    return RG_DIALOG_VOID;
-}
-
 static void audioTask(void *arg)
 {
     RG_LOGI("task started");

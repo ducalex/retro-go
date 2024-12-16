@@ -189,7 +189,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        const rg_gui_option_t options[20] = {
+        const rg_gui_option_t options[] = {
             {-1, _("Profile"), "-", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
             {-2, "", NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
             {-3, "snes9x  ", "handheld", RG_DIALOG_FLAG_MESSAGE, NULL},

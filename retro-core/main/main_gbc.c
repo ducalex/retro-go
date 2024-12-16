@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <gnuboy.h>
 
-static int skipFrames = 20; // The 20 is to hide startup flicker in some games
+static int skipFrames = 0;
 static bool slowFrame = false;
 
 static int video_time;
@@ -80,7 +80,7 @@ static bool reset_handler(bool hard)
     gnuboy_reset(hard);
     update_rtc_time();
 
-    skipFrames = 20;
+    skipFrames = 0;
     autoSaveSRAM_Timer = 0;
 
     return true;

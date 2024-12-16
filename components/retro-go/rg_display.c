@@ -314,6 +314,7 @@ static void display_task(void *arg)
             // Clear the screen if the viewport doesn't cover the entire screen because garbage could remain on the sides
             if (display.viewport.width < display.screen.width || display.viewport.height < display.screen.height)
             {
+                // FIXME: It would reduce flicker if we filled only the areas outside the viewport...
                 if (border)
                     rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
