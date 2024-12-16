@@ -41,7 +41,7 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
             *opt++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-        rg_gui_dialog(_("Tabs Visibility"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
@@ -192,7 +192,7 @@ static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_
             RG_DIALOG_END,
         };
         gui_redraw(); // clear main menu
-        rg_gui_dialog(_("Launcher Options"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }

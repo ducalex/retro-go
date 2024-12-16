@@ -135,11 +135,8 @@ void gw_main(void)
         .screenshot = &screenshot_handler,
         .event = &event_handler,
     };
-    const rg_gui_option_t options[] = {
-        RG_DIALOG_END,
-    };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0] = rg_surface_create(GW_SCREEN_WIDTH, GW_SCREEN_HEIGHT, RG_PIXEL_565_LE, MEM_FAST);
     currentUpdate = updates[0];

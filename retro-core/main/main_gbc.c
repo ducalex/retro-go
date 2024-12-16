@@ -208,7 +208,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
             {'x', _("Sync"), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
             RG_DIALOG_END
         };
-        rg_gui_dialog(_("RTC config"), choices, 0);
+        rg_gui_dialog(option->label, choices, 0);
     }
     int h, m;
     gnuboy_get_time(NULL, &h, &m, NULL);

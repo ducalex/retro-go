@@ -876,7 +876,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     uint32_t joystick = 0, joystick_old;
     uint64_t joystick_last = 0;
 
-    while (event != RG_DIALOG_CLOSE && event != RG_DIALOG_CANCEL)
+    while (event != RG_DIALOG_SELECT && event != RG_DIALOG_CANCEL)
     {
         // TO DO: Add acceleration!
         joystick_old = ((rg_system_timer() - joystick_last) > 300000) ? 0 : joystick;
@@ -910,7 +910,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 redraw = true;
             }
             else if (joystick & RG_KEY_A && active_selection) {
-                event = RG_DIALOG_CLOSE;
+                event = RG_DIALOG_SELECT;
             }
 
             joystick_last = rg_system_timer();
@@ -1282,7 +1282,7 @@ static rg_gui_event_t led_indicator_cb(rg_gui_option_t *option, rg_gui_event_t e
             {RG_INDICATOR_POWER_LOW, _("Low battery"), "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog(_("LED options"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
@@ -1380,7 +1380,7 @@ static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
             options[i] = (rg_gui_option_t){i, rg_localization_get_language_name(i), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
         options[RG_LANG_MAX] = (rg_gui_option_t)RG_DIALOG_END;
 
-        int sel = rg_gui_dialog(_("Language"), options, language_id);
+        int sel = rg_gui_dialog(option->label, options, language_id);
         if (sel != RG_DIALOG_CANCELLED)
         {
             rg_gui_set_language_id(sel);
@@ -1481,7 +1481,7 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
             {4, "4", labels[4], RG_DIALOG_FLAG_NORMAL, NULL},
             RG_DIALOG_END,
         };
-        int sel = rg_gui_dialog(_("Wi-Fi Profile"), options, slot);
+        int sel = rg_gui_dialog(option->label, options, slot);
         if (sel != RG_DIALOG_CANCELLED)
         {
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, 1);
@@ -1529,16 +1529,16 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0x00, _("Wi-Fi enable"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
+            {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
             {0x01, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb },
             RG_DIALOG_SEPARATOR,
             {0x02, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
-            {0x10, _("Network"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            {0x10, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
             {0x11, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
             RG_DIALOG_END,
         };
-        rg_gui_dialog(_("Wifi Options"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
@@ -1575,7 +1575,7 @@ void rg_gui_options_menu(void)
     else
     {
         *opt++ = (rg_gui_option_t){0, _("Scaling"),   "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
-        *opt++ = (rg_gui_option_t){0, _("Factor"),   "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
+        *opt++ = (rg_gui_option_t){0, _("Factor"),    "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
         *opt++ = (rg_gui_option_t){0, _("Filter"),    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Border"),    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Speed"),     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
@@ -1590,8 +1590,8 @@ void rg_gui_options_menu(void)
     rg_audio_set_mute(true);
 
     rg_gui_dialog(_("Options"), options, 0);
-
     rg_settings_commit();
+
     rg_audio_set_mute(false);
 }
 
@@ -1607,7 +1607,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         {0, _("Target"), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, _("Website"), (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
-        {4, _("Options "), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
+        {4, _("Options"), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
         // {1, _("View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, _("Debug menu"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, _("Reset settings"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -1788,7 +1788,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
     }
     else if (event == RG_DIALOG_ENTER)
     {
-        return RG_DIALOG_CLOSE;
+        return RG_DIALOG_SELECT;
     }
     return RG_DIALOG_VOID;
     #undef draw_status

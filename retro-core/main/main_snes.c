@@ -211,7 +211,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             {15, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog(_("Controls"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
         return RG_DIALOG_REDRAW;
     }
 

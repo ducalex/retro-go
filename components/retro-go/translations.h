@@ -390,10 +390,6 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "(vide)"
     },
     {
-        [RG_LANG_EN] = "Wi-Fi Profile",
-        [RG_LANG_FR] = "Profil Wi-Fi"
-    },
-    {
         [RG_LANG_EN] = "Wi-Fi AP",
         [RG_LANG_FR] = "Wi-Fi AP"
     },
@@ -416,10 +412,6 @@ static const char *translations[][RG_LANG_MAX] =
     {
         [RG_LANG_EN] = "IP address",
         [RG_LANG_FR] = "Adresse IP"
-    },
-    {
-        [RG_LANG_EN] = "Wifi Options",
-        [RG_LANG_FR] = "Options Wifi"
     },
 
     // retro-go settings
@@ -496,7 +488,7 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "Site Web"
     },
     {
-        [RG_LANG_EN] = "Options ",
+        [RG_LANG_EN] = "Options",
         [RG_LANG_FR] = "Options"
     },
     {
@@ -592,10 +584,6 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_EN] = "Hide",
         [RG_LANG_FR] = "Cacher"
     },
-    {
-        [RG_LANG_EN] = "Tabs Visibility",
-        [RG_LANG_FR] = "Visibilitee onglets"
-    },
 
     // scroll modes
     {
@@ -654,10 +642,6 @@ static const char *translations[][RG_LANG_MAX] =
     },
 
     // launcher options
-    {
-        [RG_LANG_EN] = "Launcher Options",
-        [RG_LANG_FR] = "Options du lanceur"
-    },
     {
         [RG_LANG_EN] = "Color theme",
         [RG_LANG_FR] = "Couleurs"
