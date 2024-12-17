@@ -262,7 +262,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer, 0);
+        rg_display_write_rect(left, top, width, height, stride, buffer, 0);
     }
 }
 
@@ -600,7 +600,7 @@ void rg_gui_draw_icons(void)
 
 void rg_gui_draw_hourglass(void)
 {
-    rg_display_write((gui.screen_width / 2) - (image_hourglass.width / 2),
+    rg_display_write_rect((gui.screen_width / 2) - (image_hourglass.width / 2),
         (gui.screen_height / 2) - (image_hourglass.height / 2),
         image_hourglass.width,
         image_hourglass.height,

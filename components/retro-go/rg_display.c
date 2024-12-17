@@ -314,11 +314,10 @@ static void display_task(void *arg)
             // Clear the screen if the viewport doesn't cover the entire screen because garbage could remain on the sides
             if (display.viewport.width < display.screen.width || display.viewport.height < display.screen.height)
             {
-                // FIXME: It would reduce flicker if we filled only the areas outside the viewport...
                 if (border)
-                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
+                    rg_display_write_rect(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
-                    rg_display_clear(C_BLACK);
+                    rg_display_clear_except(display.viewport.left, display.viewport.top, display.viewport.width, display.viewport.height, C_BLACK);
             }
             display.changed = false;
         }
@@ -461,15 +460,9 @@ bool rg_display_sync(bool block)
     return !rg_task_messages_waiting(display_task_queue);
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
+void rg_display_write_rect(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
     RG_ASSERT_ARG(buffer);
-
-    // Offsets can be negative to indicate N pixels from the end
-    if (left < 0)
-        left += display.screen.width;
-    if (top < 0)
-        top += display.screen.height;
 
     // calc stride before clipping width
     stride = RG_MAX(stride, width * 2);
@@ -523,25 +516,44 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     lcd_sync();
 }
 
+void rg_display_clear_rect(int left, int top, int width, int height, uint16_t color_le)
+{
+    const uint16_t color_be = (color_le << 8) | (color_le >> 8);
+    int pixels_remaining = width * height;
+    if (pixels_remaining > 0)
+    {
+        lcd_set_window(left + display.screen.margin_left, top + display.screen.margin_top, width, height);
+        while (pixels_remaining > 0)
+        {
+            uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+            int pixels = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
+            for (size_t j = 0; j < pixels; ++j)
+                buffer[j] = color_be;
+            lcd_send_buffer(buffer, pixels);
+            pixels_remaining -= pixels;
+        }
+    }
+}
+
+void rg_display_clear_except(int left, int top, int width, int height, uint16_t color_le)
+{
+    // Clear everything except the specified area
+    // FIXME: Do not ignore left/top...
+    int left_offset = -display.screen.margin_left;
+    int top_offset = -display.screen.margin_top;
+    int horiz = (display.screen.real_width - width + 1) / 2;
+    int vert = (display.screen.real_height - height + 1) / 2;
+    rg_display_clear_rect(left_offset, top_offset, horiz, display.screen.real_height, color_le); // Left
+    rg_display_clear_rect(left_offset + horiz + width, top_offset, horiz, display.screen.real_height, color_le); // Right
+    rg_display_clear_rect(left_offset + horiz, top_offset, display.screen.real_width - horiz * 2, vert, color_le); // Top
+    rg_display_clear_rect(left_offset + horiz, top_offset + vert + height, display.screen.real_width - horiz * 2, vert, color_le); // Bottom
+}
+
 void rg_display_clear(uint16_t color_le)
 {
-    // We ignore margins here, we want to fill the entire
-    int screen_width = display.screen.real_width;
-    int screen_height = display.screen.real_height;
-
-    lcd_set_window(0, 0, screen_width, screen_height);
-
-    uint16_t color_be = (color_le << 8) | (color_le >> 8);
-    for (size_t y = 0; y < screen_height;)
-    {
-        uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
-        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / screen_width, screen_height - y);
-        size_t pixels = screen_width * num_lines;
-        for (size_t j = 0; j < pixels; ++j)
-            buffer[j] = color_be;
-        lcd_send_buffer(buffer, pixels);
-        y += num_lines;
-    }
+    // We ignore margins here, we want to fill the entire screen
+    rg_display_clear_rect(-display.screen.margin_left, -display.screen.margin_top, display.screen.real_width,
+                          display.screen.real_height, color_le);
 }
 
 void rg_display_deinit(void)
