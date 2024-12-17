@@ -1371,7 +1371,6 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int language_id = rg_localization_get_language_id();
-    const char *language_name = rg_localization_get_language_name(language_id);
 
     if (event == RG_DIALOG_ENTER)
     {
@@ -1389,11 +1388,11 @@ static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
                 rg_system_exit();
             }
             language_id = sel;
-            language_name = rg_localization_get_language_name(sel);
         }
         return RG_DIALOG_REDRAW;
     }
-    sprintf(option->value, "%s", language_name ? language_name : "???");
+
+    sprintf(option->value, "%s", rg_localization_get_language_name(language_id) ?: "???");
     return RG_DIALOG_VOID;
 }
 
@@ -1529,13 +1528,13 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
-            {0x01, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb },
+            {0, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
+            {0, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
             RG_DIALOG_SEPARATOR,
-            {0x02, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
+            {0, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
-            {0x10, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
-            {0x11, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            {0, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
+            {0, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
             RG_DIALOG_END,
         };
         rg_gui_dialog(option->label, options, 0);
@@ -1714,16 +1713,14 @@ void rg_gui_debug_menu(void)
     snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
+    snprintf(app_name, 32, "%s", rg_system_get_app()->name);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+
     rg_battery_t battery;
     if (rg_input_read_battery_raw(&battery))
-    {
         snprintf(battery_info, sizeof(battery_info), "%.2f%% | %.2fV", battery.level, battery.volts);
-    }
     else
-    {
         snprintf(battery_info, sizeof(battery_info), "N/A");
-    }
 
     rg_network_t net = rg_network_get_info();
     if (net.state == RG_NETWORK_DISABLED)
@@ -1736,8 +1733,6 @@ void rg_gui_debug_menu(void)
         snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
     else
         snprintf(network_str, 64, "%s", "disconnected");
-
-    snprintf(app_name, 32, "%s", rg_system_get_app()->name);
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
@@ -1841,8 +1836,6 @@ void rg_gui_game_menu(void)
     rg_audio_set_mute(true);
 
     sel = rg_gui_dialog("Retro-Go", choices, 0);
-
-    rg_settings_commit();
 
     if (sel == 3000)
     {
