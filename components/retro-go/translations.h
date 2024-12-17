@@ -171,6 +171,10 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "Options du lanceur"
     },
     {
+        [RG_LANG_EN] = "Emulator options",
+        [RG_LANG_FR] = "Options emulateur"
+    },
+    {
         [RG_LANG_EN] = "Date",
         [RG_LANG_FR] = "Date"
     },

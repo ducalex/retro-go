@@ -175,28 +175,6 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
 }
 #endif
 
-static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
-            {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
-            {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
-            {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
-            {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
-            #ifdef RG_ENABLE_NETWORKING
-            {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
-            #endif
-            {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
-            RG_DIALOG_END,
-        };
-        gui_redraw(); // clear main menu
-        rg_gui_dialog(option->label, options, 0);
-    }
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -430,8 +408,19 @@ void event_handler(int event, void *arg)
 
 static void options_handler(rg_gui_option_t *dest)
 {
-    *dest++ = (rg_gui_option_t){0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb};
-    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+    const rg_gui_option_t options[] = {
+        {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
+        {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
+        {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
+        {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
+        {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
+        #ifdef RG_ENABLE_NETWORKING
+        {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+        #endif
+        {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
+        RG_DIALOG_END,
+    };
+    memcpy(dest, options, sizeof(options));
 }
 
 static void about_handler(rg_gui_option_t *dest)

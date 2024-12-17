@@ -1544,9 +1544,24 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
 }
 #endif
 
+static rg_gui_event_t app_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_app_t *app = rg_system_get_app();
+        rg_gui_option_t options[16] = {0};
+        if (app->handlers.options)
+            app->handlers.options(options);
+        rg_display_force_redraw();
+        rg_gui_dialog(option->label, options, 0);
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
 void rg_gui_options_menu(void)
 {
-    rg_gui_option_t options[24] = {
+    rg_gui_option_t options[16] = {
         #if RG_SCREEN_BACKLIGHT
         {0, _("Brightness"),    "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb},
         #endif
@@ -1566,6 +1581,7 @@ void rg_gui_options_menu(void)
         #ifdef RG_ENABLE_NETWORKING
         {0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb},
         #endif
+        {0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
     };
     const rg_gui_option_t game_options[] = {
@@ -1575,6 +1591,7 @@ void rg_gui_options_menu(void)
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
+        {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
     };
 
@@ -1583,9 +1600,6 @@ void rg_gui_options_menu(void)
         memcpy(options + get_dialog_items_count(options), misc_options, sizeof(misc_options));
     else
         memcpy(options + get_dialog_items_count(options), game_options, sizeof(game_options));
-
-    if (app->handlers.options)
-        app->handlers.options(options + get_dialog_items_count(options));
 
     rg_audio_set_mute(true);
 
