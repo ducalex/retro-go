@@ -210,18 +210,6 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
     return RG_DIALOG_VOID;
 }
 
-static void show_about_menu(void)
-{
-    const rg_gui_option_t options[] = {
-        {0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
-    #endif
-        RG_DIALOG_END,
-    };
-    rg_gui_about_menu(options);
-}
-
 static void retro_loop(void)
 {
     tab_t *tab = NULL;
@@ -281,7 +269,7 @@ static void retro_loop(void)
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
             if (joystick == RG_KEY_MENU)
-                show_about_menu();
+                rg_gui_about_menu();
             else
                 rg_gui_options_menu();
 
@@ -440,17 +428,30 @@ void event_handler(int event, void *arg)
         gui_redraw();
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
+static void about_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb};
+    #ifdef RG_ENABLE_NETWORKING
+    *dest++ = (rg_gui_option_t){0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
+    #endif
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb},
-        RG_DIALOG_END,
+        .options = &options_handler,
+        .about = &about_handler,
     };
 
-    app = rg_system_init(32000, &handlers, options);
+    app = rg_system_init(32000, &handlers, NULL);
     app->configNs = "launcher";
     app->isLauncher = true;
 

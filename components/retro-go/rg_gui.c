@@ -1587,6 +1587,9 @@ void rg_gui_options_menu(void)
 
     *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
+    if (app->handlers.options)
+        app->handlers.options(options + get_dialog_items_count(options));
+
     rg_audio_set_mute(true);
 
     rg_gui_dialog(_("Options"), options, 0);
@@ -1595,7 +1598,7 @@ void rg_gui_options_menu(void)
     rg_audio_set_mute(false);
 }
 
-void rg_gui_about_menu(const rg_gui_option_t *extra_options)
+void rg_gui_about_menu(void)
 {
     const rg_app_t *app = rg_system_get_app();
     bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
@@ -1614,14 +1617,8 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
         RG_DIALOG_END,
     };
 
-    size_t extra_options_count = get_dialog_items_count(extra_options);
-    if (extra_options_count > 0)
-    {
-        rg_gui_option_t *opt = options + get_dialog_items_count(options);
-        for (size_t i = 0; i < extra_options_count; i++)
-            *opt++ = extra_options[i];
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-    }
+    if (app->handlers.about)
+        app->handlers.about(options + get_dialog_items_count(options));
 
     while (true)
     {
@@ -1632,7 +1629,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
                 rg_gui_alert("Credits", RG_PROJECT_CREDITS);
                 break;
             case 2:
-                rg_gui_debug_menu(NULL);
+                rg_gui_debug_menu();
                 break;
             case 3:
                 if (rg_gui_confirm(_("Reset all settings?"), NULL, false)) {
@@ -1651,7 +1648,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     }
 }
 
-void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
+void rg_gui_debug_menu(void)
 {
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
@@ -1857,7 +1854,7 @@ void rg_gui_game_menu(void)
         case 5000: rg_netplay_quick_start(); break;
     #endif
         case 5500: rg_gui_options_menu(); break;
-        case 6000: rg_gui_about_menu(NULL); break;
+        case 6000: rg_gui_about_menu(); break;
         case 7000: rg_system_exit(); break;
     }
 

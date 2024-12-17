@@ -124,8 +124,8 @@ char *rg_gui_prompt(const char *title, const char *message, const char *default_
 int rg_gui_savestate_menu(const char *title, const char *rom_path);
 void rg_gui_options_menu(void);
 void rg_gui_game_menu(void);
-void rg_gui_about_menu(const rg_gui_option_t *extra_options);
-void rg_gui_debug_menu(const rg_gui_option_t *extra_options);
+void rg_gui_about_menu(void);
+void rg_gui_debug_menu(void);
 
 // Creates a 565LE color from C_RGB(255, 255, 255)
 #define C_RGB(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
