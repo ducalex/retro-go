@@ -1570,6 +1570,7 @@ void rg_gui_options_menu(void)
 #ifdef RG_ENABLE_NETWORKING
         *opt++ = (rg_gui_option_t){0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb};
 #endif
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
     }
     // App settings that are shown only inside a game
     else
@@ -1579,13 +1580,8 @@ void rg_gui_options_menu(void)
         *opt++ = (rg_gui_option_t){0, _("Filter"),    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Border"),    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
         *opt++ = (rg_gui_option_t){0, _("Speed"),     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
+        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
     }
-
-    size_t extra_options = get_dialog_items_count(app->options);
-    for (size_t i = 0; i < extra_options; i++)
-        *opt++ = app->options[i];
-
-    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
     if (app->handlers.options)
         app->handlers.options(options + get_dialog_items_count(options));

@@ -410,6 +410,13 @@ static void audioTask(void *arg)
     }
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb};
+    *dest++ = (rg_gui_option_t){0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -418,15 +425,10 @@ void app_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
-        {0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
-        // {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
-        RG_DIALOG_END,
+        .options = &options_handler,
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
     // This is probably not right, but the emulator outputs 440 samples per frame??
     rg_system_set_tick_rate(55);
 

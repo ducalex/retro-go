@@ -179,6 +179,15 @@ static void nsf_draw_overlay(void)
 }
 
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"),      "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Overscan"),     "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Crop sides"),   "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Sprite limit"), "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void nes_main(void)
 {
     const rg_handlers_t handlers = {
@@ -187,16 +196,10 @@ void nes_main(void)
         .reset = &reset_handler,
         .event = &event_handler,
         .screenshot = &screenshot_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Palette"),      "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        {0, _("Overscan"),     "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
-        {0, _("Crop sides"),   "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb},
-        {0, _("Sprite limit"), "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);

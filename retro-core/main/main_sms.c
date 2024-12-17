@@ -93,6 +93,12 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void sms_main(void)
 {
     const rg_handlers_t handlers = {
@@ -101,13 +107,10 @@ void sms_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Palette"), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);

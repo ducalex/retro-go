@@ -185,7 +185,6 @@ typedef struct
     int logLevel;
     int saveSlot;
     const char *romPath;
-    const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
 } rg_app_t;
@@ -210,8 +209,8 @@ typedef struct
     int freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused);
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));

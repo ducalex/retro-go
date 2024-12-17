@@ -284,6 +284,14 @@ static void S9xAudioCallback(void)
 }
 #endif
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb};
+    *dest++ = (rg_gui_option_t){0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb};
+    *dest++ = (rg_gui_option_t){0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void snes_main(void)
 {
     const rg_handlers_t handlers = {
@@ -292,14 +300,9 @@ void snes_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
+        .options = &options_handler,
     };
-    const rg_gui_option_t options[] = {
-        {0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
-        {0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
-        {0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
-        RG_DIALOG_END,
-    };
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 

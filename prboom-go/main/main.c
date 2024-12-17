@@ -524,6 +524,12 @@ bool is_iwad(const char *path)
     return header[0] == 'I' && header[1] == 'W';
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Gamma Boost"), "-", RG_DIALOG_FLAG_NORMAL, &gamma_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main()
 {
     const rg_handlers_t handlers = {
@@ -532,13 +538,10 @@ void app_main()
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Gamma Boost"), "-", RG_DIALOG_FLAG_NORMAL, &gamma_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
     rg_system_set_tick_rate(TICRATE);
 
     const rg_display_t *display = rg_display_get_info();

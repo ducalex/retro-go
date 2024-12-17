@@ -181,6 +181,12 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Overscan"), "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void pce_main(void)
 {
     const rg_handlers_t handlers = {
@@ -189,13 +195,10 @@ void pce_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Overscan"), "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
 
     updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);

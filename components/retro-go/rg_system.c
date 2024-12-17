@@ -39,6 +39,11 @@ typedef struct
 
 typedef struct
 {
+    uint32_t magicWord;
+} boot_config_t;
+
+typedef struct
+{
     int32_t totalFrames, fullFrames, partFrames, ticks;
     int64_t busyTime, updateTime;
 } counters_t;
@@ -78,6 +83,7 @@ static struct
 
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
+// static RTC_NOINIT_ATTR boot_config_t bootConfig;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
@@ -367,21 +373,20 @@ static void platform_init(void)
 #endif
 }
 
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused)
 {
     if (!app.initialized)
-        return rg_system_init(sampleRate, handlers, options);
+        return rg_system_init(sampleRate, handlers, NULL);
 
     app.sampleRate = sampleRate;
     if (handlers)
         app.handlers = *handlers;
-    app.options = options;
     rg_audio_set_sample_rate(app.sampleRate);
 
     return &app;
 }
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused)
 {
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
     bool enterRecoveryMode = false;
@@ -414,7 +419,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .isRelease = false,
         .logLevel = RG_LOG_DEBUG,
     #endif
-        .options = options, // TO DO: We should make a copy of it?
     };
 
     // Do this very early, may be needed to enable serial console

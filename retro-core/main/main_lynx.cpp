@@ -179,6 +179,12 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Rotation"), (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 extern "C" void lynx_main(void)
 {
     const rg_handlers_t handlers = {
@@ -192,12 +198,8 @@ extern "C" void lynx_main(void)
         .options = NULL,
         .about = NULL,
     };
-    const rg_gui_option_t options[] = {
-        {0, _("Rotation"), (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
-        RG_DIALOG_END
-    };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
@@ -213,7 +215,7 @@ extern "C" void lynx_main(void)
     }
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
-    gAudioBuffer = (SWORD*)malloc(AUDIO_BUFFER_LENGTH * 4);
+    gAudioBuffer = new SWORD[AUDIO_BUFFER_LENGTH * 2];
     gAudioEnabled = 1;
 
     if (app->bootFlags & RG_BOOT_RESUME)

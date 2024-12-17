@@ -232,6 +232,15 @@ static void audio_callback(void *buffer, size_t length)
     audio_time += rg_system_timer() - startTime;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"),       "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("RTC config"),    "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("SRAM autosave"), "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb};
+    *dest++ = (rg_gui_option_t){0, _("Enable BIOS"),   "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void gbc_main(void)
 {
     const rg_handlers_t handlers = {
@@ -240,16 +249,10 @@ void gbc_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Palette"),       "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        {0, _("RTC config"),    "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
-        {0, _("SRAM autosave"), "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
-        {0, _("Enable BIOS"),   "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
     updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
