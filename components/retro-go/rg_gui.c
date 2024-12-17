@@ -1546,42 +1546,43 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
 
 void rg_gui_options_menu(void)
 {
+    rg_gui_option_t options[24] = {
+        #if RG_SCREEN_BACKLIGHT
+        {0, _("Brightness"),    "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb},
+        #endif
+        {0, _("Volume"),        "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb},
+        {0, _("Audio out"),     "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb},
+        RG_DIALOG_END,
+    };
+    const rg_gui_option_t misc_options[] = {
+        {0, _("Font type"),     "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb},
+        {0, _("Theme"),         "-", RG_DIALOG_FLAG_NORMAL, &theme_cb},
+        {0, _("Show clock"),    "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb},
+        {0, _("Timezone"),      "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb},
+        {0, _("Language"),      "-", RG_DIALOG_FLAG_NORMAL, &language_cb},
+        #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
+        {0, _("LED options"),   NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb},
+        #endif
+        #ifdef RG_ENABLE_NETWORKING
+        {0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb},
+        #endif
+        RG_DIALOG_END,
+    };
+    const rg_gui_option_t game_options[] = {
+        {0, _("Scaling"),       "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb},
+        {0, _("Factor"),        "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb},
+        {0, _("Filter"),        "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb},
+        {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
+        {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
+        // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
+        RG_DIALOG_END,
+    };
+
     const rg_app_t *app = rg_system_get_app();
-    rg_gui_option_t options[24];
-    rg_gui_option_t *opt = &options[0];
-
-#ifdef RG_SCREEN_BACKLIGHT
-    *opt++ = (rg_gui_option_t){0, _("Brightness"), "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
-#endif
-    *opt++ = (rg_gui_option_t){0, _("Volume"), "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
-    *opt++ = (rg_gui_option_t){0, _("Audio out"), "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb};
-
-    // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
-    {
-        *opt++ = (rg_gui_option_t){0, _("Font type"), "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
-        *opt++ = (rg_gui_option_t){0, _("Theme"), "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
-        *opt++ = (rg_gui_option_t){0, _("Show clock"), "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
-        *opt++ = (rg_gui_option_t){0, _("Timezone"), "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
-        *opt++ = (rg_gui_option_t){0, _("Language"), "-", RG_DIALOG_FLAG_NORMAL, &language_cb};
-#ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
-        *opt++ = (rg_gui_option_t){0, _("LED options"), NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
-#endif
-#ifdef RG_ENABLE_NETWORKING
-        *opt++ = (rg_gui_option_t){0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb};
-#endif
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-    }
-    // App settings that are shown only inside a game
+        memcpy(options + get_dialog_items_count(options), misc_options, sizeof(misc_options));
     else
-    {
-        *opt++ = (rg_gui_option_t){0, _("Scaling"),   "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
-        *opt++ = (rg_gui_option_t){0, _("Factor"),    "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
-        *opt++ = (rg_gui_option_t){0, _("Filter"),    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
-        *opt++ = (rg_gui_option_t){0, _("Border"),    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
-        *opt++ = (rg_gui_option_t){0, _("Speed"),     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-    }
+        memcpy(options + get_dialog_items_count(options), game_options, sizeof(game_options));
 
     if (app->handlers.options)
         app->handlers.options(options + get_dialog_items_count(options));
