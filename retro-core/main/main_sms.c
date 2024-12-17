@@ -163,6 +163,7 @@ void sms_main(void)
     }
 
     rg_system_set_tick_rate((sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL);
+    app->frameskip = 0;
 
     int skipFrames = 0;
     int colecoKey = 0;

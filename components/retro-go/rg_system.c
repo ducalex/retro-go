@@ -405,7 +405,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         .sampleRate = sampleRate,
         .tickRate = 60,
         .frameTime = 1000000 / 60,
-        .frameskip = 0,
+        .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
         .overclock = 0,
         .tickTimeout = 3000000,
         .lowMemoryMode = false,
@@ -1385,8 +1385,8 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    app.frameskip = 0;
-    rg_emu_set_speed(1.f);
+    if (app.speed != 1.f)
+        rg_emu_set_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
@@ -1395,7 +1395,8 @@ bool rg_emu_reset(bool hard)
 void rg_emu_set_speed(float speed)
 {
     app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
-    app.frameskip = RG_MAX(app.frameskip, (app.speed > 1.0f) ? 2 : 0);
+    // FIXME: We need to store the actual default frameskip so we can return to it...
+    app.frameskip = (app.speed - 0.5f) * 3;
     app.frameTime = 1000000.f / (app.tickRate * app.speed);
     rg_audio_set_sample_rate(app.sampleRate * app.speed);
     rg_system_event(RG_EVENT_SPEEDUP, NULL);
