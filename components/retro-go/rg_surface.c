@@ -1,7 +1,7 @@
 #include "rg_system.h"
 #include "rg_surface.h"
-#include "lodepng.h"
 
+#include <lodepng.h>
 #include <stdlib.h>
 #include <math.h>
 
