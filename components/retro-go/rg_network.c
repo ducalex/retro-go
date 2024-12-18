@@ -271,7 +271,7 @@ bool rg_network_init(void)
     rg_network_wifi_read_config(slot, &wifi_config);
 
     // Auto-start?
-    if (rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false))
+    if (rg_settings_get_boolean(NS_WIFI, SETTING_WIFI_ENABLE, false))
         rg_network_wifi_start();
 
     return true;

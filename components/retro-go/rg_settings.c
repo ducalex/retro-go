@@ -132,10 +132,23 @@ void rg_settings_reset(void)
     }
 }
 
+bool rg_settings_get_boolean(const char *section, const char *key, bool default_value)
+{
+    cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
+    if (cJSON_IsNumber(obj)) // Backwards compatible with plain numbers
+        return obj->valueint != 0;
+    return cJSON_IsBool(obj) ? cJSON_IsTrue(obj) : default_value;
+}
+
+void rg_settings_set_boolean(const char *section, const char *key, bool value)
+{
+    update_value(section, key, cJSON_CreateBool(value));
+}
+
 double rg_settings_get_number(const char *section, const char *key, double default_value)
 {
     cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
-    return obj ? obj->valuedouble : default_value;
+    return cJSON_IsNumber(obj) ? obj->valuedouble : default_value;
 }
 
 void rg_settings_set_number(const char *section, const char *key, double value)
@@ -159,4 +172,9 @@ void rg_settings_set_string(const char *section, const char *key, const char *va
 void rg_settings_delete(const char *section, const char *key)
 {
     cJSON_DeleteItemFromObject(json_root(section, 1), key);
+}
+
+bool rg_settings_exists(const char *section, const char *key)
+{
+    return cJSON_GetObjectItem(json_root(section, 0), key) != NULL;
 }

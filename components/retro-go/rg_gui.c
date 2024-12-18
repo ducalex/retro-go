@@ -108,7 +108,7 @@ void rg_gui_init(void)
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
-    gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
+    gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
     gui.initialized = true;
 }
 
@@ -1292,7 +1292,7 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         gui.show_clock = !gui.show_clock;
-        rg_settings_set_number(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
+        rg_settings_set_boolean(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
         return RG_DIALOG_REDRAW;
     }
     strcpy(option->value, gui.show_clock ? _("On") : _("Off"));
@@ -1483,7 +1483,7 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
         int sel = rg_gui_dialog(option->label, options, slot);
         if (sel != RG_DIALOG_CANCELLED)
         {
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, 1);
+            rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
             wifi_toggle_interactive(true, sel);
         }
@@ -1511,11 +1511,11 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
 
 static rg_gui_event_t wifi_enable_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    bool enabled = rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false);
+    bool enabled = rg_settings_get_boolean(NS_WIFI, SETTING_WIFI_ENABLE, false);
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
         enabled = !enabled;
-        rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, enabled);
+        rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, enabled);
         wifi_toggle_interactive(enabled, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1));
         return RG_DIALOG_REDRAW;
     }
