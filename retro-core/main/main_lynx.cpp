@@ -195,7 +195,7 @@ extern "C" void lynx_main(void)
         .event = &event_handler,
         .memRead = NULL,
         .memWrite = NULL,
-        .options = NULL,
+        .options = &options_handler,
         .about = NULL,
     };
 
