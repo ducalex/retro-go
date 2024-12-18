@@ -264,13 +264,10 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    c -= 32;
-    // 'c' contains the character code
+    c -= 32; // we didn't included the first 32 control chars in the fonts
 
-    const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
-    
     // getting the glyph width :
-    uint16_t bitmap_index = glyph_dsc[c].bitmap_index;
+    const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
     size_t glyph_width = glyph_dsc[c].adv_w;
 
     if (output)
@@ -284,6 +281,7 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
         xOffset = glyph_dsc[c].ofs_x;
         yOffset = glyph_dsc[c].ofs_y-2;
 
+        uint16_t bitmap_index = glyph_dsc[c].bitmap_index;
         const uint8_t *bitmap_data = font->bitmap_data;
         const uint8_t *data = &bitmap_data[bitmap_index];
 
