@@ -98,7 +98,8 @@ import freetype
 first_char_init = 32
 last_char_init = 255
 
-list_char_exclude_init = "127-160, 192-221"
+#list_char_exclude_init = "127-160, 192-221"
+list_char_exclude_init = ""
 
 # Example usage (defaults parameters)
 font_name_init = "arial"
@@ -110,7 +111,7 @@ start_x = 0
 start_y = 0
 
 # letters that have a diferent w_advance:
-thin_letters = ('P','T','f','V','r','O','U','L','t','s','c','y','F')
+thin_letters = ('P','T','f','V','r','U','L','t','s','c','y','F','v')
 
 header_start = """
 /*
@@ -237,8 +238,11 @@ def generate_font_data():
         row = 0
         i = 0
 
+        offset_x_1 += offset_x
+
         if bounding_box_bool.get():
             canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, (width+offset_x_1)*pixel_size, (height+offset_y_1+offset_y)*pixel_size, width=1, outline="blue",fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1)*pixel_size, (offset_x_1 + 1)*pixel_size, (offset_y_1+1)*pixel_size, width=1,fill='red')
 
         for y in range(height):
             for x in range(width):
@@ -256,10 +260,10 @@ def generate_font_data():
         bitmap.append(row)
 
         if offset_x_1+2*width+6 <= canva_width:
-            offset_x_1 += width + 2
+            offset_x_1 += width
         else:
             offset_x_1 = 1
-            offset_y_1 += font_size + 2
+            offset_y_1 += font_size + font_size//3
 
         # Create glyph entry
         glyph_data = {
@@ -268,8 +272,9 @@ def generate_font_data():
             "ofs_y": offset_y,
             "box_w": width,
             "box_h": height,
-            "ofs_x": offset_x - 1,
-            "adv_w": width + offset_x - (1 if chr(char_code) in thin_letters else 0)
+            "ofs_x": offset_x,
+            "adv_w": width + offset_x
+            #"adv_w": width + offset_x - (1 if chr(char_code) in thin_letters else 0)
         }
         font_data.append(glyph_data)
 

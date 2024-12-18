@@ -74,7 +74,7 @@ def renderCfont(byte_list):
                     bit_index += 1
 
         if offset_x_1+2*width+6 <= canva_width:
-            offset_x_1 += width + 2
+            offset_x_1 += xDelta
         else:
             offset_x_1 = 1
             offset_y_1 += font_size + 1
@@ -188,7 +188,7 @@ def save_file(font_path, font_data):
         f.write("{\n")
         f.write(f"    .bitmap_data = {font_name}_glyph_bitmap,\n")
         f.write(f"    .glyph_dsc = {font_name}_glyph_dsc,\n")
-        f.write(f"    .name = \"{font_name}\",\n")
+        f.write(f"    .name = \"{font_name[:-2]}\",\n")
         f.write(f"    .height = {font_data['max_height']}\n")
         f.write("};\n")
 
