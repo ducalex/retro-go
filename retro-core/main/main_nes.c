@@ -137,7 +137,7 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         return RG_DIALOG_REDRAW;
     }
 
-    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, _("Default"));
+    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, _("Nofrendo"));
     if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, _("Composite"));
     if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, _("NES Classic"));
     if (pal == NES_PALETTE_NTSC)        strcpy(option->value, _("NTSC"));
@@ -203,7 +203,7 @@ void nes_main(void)
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
-    palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
+    palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, NES_PALETTE_PVM);
 
     updates[0] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
