@@ -426,7 +426,7 @@ static void options_handler(rg_gui_option_t *dest)
 static void about_handler(rg_gui_option_t *dest)
 {
     *dest++ = (rg_gui_option_t){0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb};
-    #ifdef RG_ENABLE_NETWORKING
+    #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
     *dest++ = (rg_gui_option_t){0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
     #endif
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
