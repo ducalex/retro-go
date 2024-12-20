@@ -1,0 +1,3 @@
+[submodule "components/ESP32-S3-VGA"]
+	path = components/ESP32-S3-VGA
+	url = https://github.com/bitluni/ESP32-S3-VGA.git
