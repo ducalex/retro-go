@@ -31,6 +31,8 @@ static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 
 #if RG_SCREEN_DRIVER == 0 /* ILI9341 */
 #include "drivers/display/ili9341.h"
+#elif RG_SCREEN_DRIVER == 1
+#include "drivers/display/vga.h"
 #elif RG_SCREEN_DRIVER == 99
 #include "drivers/display/sdl2.h"
 #else

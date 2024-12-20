@@ -1,9 +1,9 @@
-set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
-set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
+set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng ./../ESP32-S3-VGA/src")
+set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng ./../ESP32-S3-VGA/src")
 if (IDF_VERSION_MAJOR EQUAL 5)
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client VGA")
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client esp_psram")
 else() # esp-idf 4.1 - 4.4
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client VGA")
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client esp_psram")
 endif()
 
 register_component()
@@ -21,11 +21,20 @@ component_compile_options(
     -fdiagnostics-color=always
 )
 set_source_files_properties(
-    rg_audio.c rg_display.cpp rg_utils.c rg_surface.c libs/lodepng/lodepng.c
+    rg_audio.c rg_utils.c rg_surface.c libs/lodepng/lodepng.c
     PROPERTIES COMPILE_FLAGS
     -O2
 )
-
+set_source_files_properties(
+    rg_display.cpp ./../ESP32-S3-VGA/src/Mode.cpp ./../ESP32-S3-VGA/src/PinConfig.cpp ./../ESP32-S3-VGA/src/VGA.cpp
+    PROPERTIES COMPILE_FLAGS
+    -O3
+)
+set_source_files_properties(
+    rg_display.cpp
+    PROPERTIES COMPILE_FLAGS
+    -fpermissive
+)
 if(RG_ENABLE_NETPLAY)
     component_compile_options(-DRG_ENABLE_NETWORKING -DRG_ENABLE_NETPLAY)
 elseif(RG_ENABLE_NETWORKING)
