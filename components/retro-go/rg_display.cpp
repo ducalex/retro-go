@@ -1,3 +1,4 @@
+extern "C"{
 #include "rg_system.h"
 #include "rg_display.h"
 
@@ -132,14 +133,14 @@ static inline void write_update(const rg_surface_t *update)
                 }
                 if (format & RG_PIXEL_PALETTE)
                     RENDER_LINE(uint8_t, palette[buffer[x]])
-                else if (format == RG_PIXEL_565_LE)
+                else if (format & RG_PIXEL_565_LE)
                     RENDER_LINE(uint16_t, (buffer[x] << 8) | (buffer[x] >> 8))
                 else
                     RENDER_LINE(uint16_t, buffer[x])
 
                 if (partial)
                 {
-                    checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
+                    checksum = rg_hash((char*)(line_buffer_ptr - draw_width), draw_width * 2);
                 }
             }
 
@@ -312,7 +313,7 @@ static void display_task(void *arg)
             if (config.scaling != RG_DISPLAY_SCALING_FULL)
             {
                 if (border)
-                    rg_display_write(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
+                    rg_display_write(0, 0, border->width, border->height, 0, (const uint16_t*)border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
                     rg_display_clear(C_BLACK);
             }
@@ -348,7 +349,7 @@ rg_display_counters_t rg_display_get_counters(void)
 
 void rg_display_set_scaling(display_scaling_t scaling)
 {
-    config.scaling = RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
+    config.scaling = (display_scaling_t)RG_MIN(RG_MAX(0, scaling), RG_DISPLAY_SCALING_COUNT - 1);
     rg_settings_set_number(NS_APP, SETTING_SCALING, config.scaling);
     display.changed = true;
 }
@@ -372,7 +373,7 @@ double rg_display_get_custom_zoom(void)
 
 void rg_display_set_filter(display_filter_t filter)
 {
-    config.filter = RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
+    config.filter = (display_filter_t)RG_MIN(RG_MAX(0, filter), RG_DISPLAY_FILTER_COUNT - 1);
     rg_settings_set_number(NS_APP, SETTING_FILTER, config.filter);
     display.changed = true;
 }
@@ -384,7 +385,7 @@ display_filter_t rg_display_get_filter(void)
 
 void rg_display_set_rotation(display_rotation_t rotation)
 {
-    config.rotation = RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
+    config.rotation = (display_rotation_t)RG_MIN(RG_MAX(0, rotation), RG_DISPLAY_ROTATION_COUNT - 1);
     rg_settings_set_number(NS_APP, SETTING_SCALING, config.rotation);
     display.changed = true;
 }
@@ -469,7 +470,11 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         top += display.screen.height;
 
     // calc stride before clipping width
+#ifndef __cplusplus
     stride = RG_MAX(stride, width * 2);
+#else
+    stride = RG_MAX(stride / 2, width);
+#endif
 
     // Clipping
     width = RG_MIN(width, display.screen.width - left);
@@ -500,7 +505,7 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
         // Copy line by line because stride may not match width
         for (size_t line = 0; line < num_lines; ++line)
         {
-            uint16_t *src = (void *)buffer + ((y + line) * stride);
+            uint16_t *src = (uint16_t *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
             if (flags & RG_DISPLAY_WRITE_NOSWAP)
             {
@@ -553,27 +558,26 @@ void rg_display_init(void)
     RG_LOGI("Initialization...\n");
     // TO DO: We probably should call the setters to ensure valid values...
     config = (rg_display_config_t){
-        .backlight = rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
-        .scaling = rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_FIT),
-        .filter = rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
-        .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .rotation = (display_rotation_t)rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
+        .scaling = (display_scaling_t)rg_settings_get_number(NS_APP, SETTING_SCALING, RG_DISPLAY_SCALING_OFF),
+        .filter = (display_filter_t)rg_settings_get_number(NS_APP, SETTING_FILTER, RG_DISPLAY_FILTER_BOTH),
+        .backlight = (display_backlight_t)rg_settings_get_number(NS_GLOBAL, SETTING_BACKLIGHT, 80),
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
         .custom_zoom = rg_settings_get_number(NS_APP, SETTING_CUSTOM_ZOOM, 1.0),
     };
-    display = (rg_display_t){
-        .screen.real_width = RG_SCREEN_WIDTH,
-        .screen.real_height = RG_SCREEN_HEIGHT,
-        .screen.margin_top = RG_SCREEN_MARGIN_TOP,
-        .screen.margin_bottom = RG_SCREEN_MARGIN_BOTTOM,
-        .screen.margin_left = RG_SCREEN_MARGIN_LEFT,
-        .screen.margin_right = RG_SCREEN_MARGIN_RIGHT,
-        .screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT,
-        .screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM,
-        .changed = true,
-    };
+    display.screen.real_width = RG_SCREEN_WIDTH;
+    display.screen.real_height = RG_SCREEN_HEIGHT;
+    display.screen.margin_top = RG_SCREEN_MARGIN_TOP;
+    display.screen.margin_bottom = RG_SCREEN_MARGIN_BOTTOM;
+    display.screen.margin_left = RG_SCREEN_MARGIN_LEFT;
+    display.screen.margin_right = RG_SCREEN_MARGIN_RIGHT;
+    display.screen.width = RG_SCREEN_WIDTH - RG_SCREEN_MARGIN_LEFT - RG_SCREEN_MARGIN_RIGHT;
+    display.screen.height = RG_SCREEN_HEIGHT - RG_SCREEN_MARGIN_TOP - RG_SCREEN_MARGIN_BOTTOM;
+    display.changed = true;
     lcd_init();
     display_task_queue = rg_task_create("rg_display", &display_task, NULL, 4 * 1024, RG_TASK_PRIORITY_6, 1);
     if (config.border_file)
         load_border_file(config.border_file);
     RG_LOGI("Display ready.\n");
 }
+} // extern C

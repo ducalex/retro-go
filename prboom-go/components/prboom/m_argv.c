@@ -35,6 +35,7 @@
 // CPhipps - include the correct header
 #include "doomtype.h"
 #include "m_argv.h"
+#include "rg_system.h"
 
 int    myargc;
 const char * const * myargv; // CPhipps - not sure if ANSI C allows you to
@@ -52,7 +53,9 @@ int M_CheckParm(const char *check)
 {
   signed int i = myargc;
   while (--i>0)
-    if (!strcasecmp(check, myargv[i]))
-      return i;
+    RG_LOGI("i: %i", i);
+    RG_LOGI("argv[i] = 0x%X", (unsigned int)myargv[i]);
+    //if (!strcasecmp(check, myargv[i]))
+      //return i;
   return 0;
 }

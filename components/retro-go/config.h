@@ -1,3 +1,26 @@
+#define ESP32S3DEVKC_ONLY 1
+
+#if !defined(RG_TARGET_ESP32S3_DEVKIT_C) && ESP32S3DEVKC_ONLY
+#define RG_TARGET_ESP32S3_DEVKIT_C
+#if defined(RG_TARGET_ODROID_GO)
+#undef RG_TARGET_ODROID_GO
+#elif defined(RG_TARGET_MRGC_G32)
+#undef RG_TARGET_MRGC_G32
+#elif defined(RG_TARGET_QTPY_GAMER)
+#undef RG_TARGET_QTPY_GAMER
+#elif defined(RG_TARGET_RETRO_ESP32)
+#undef RG_TARGET_RETRO_ESP32
+#elif defined(RG_TARGET_SDL2)
+#undef RG_TARGET_SDL2
+#elif defined(RG_TARGET_MRGC_GBM)
+#undef RG_TARGET_MRGC_GBM
+#elif defined(RG_TARGET_ESPLAY_MICRO)
+#undef RG_TARGET_ESPLAY_MICRO
+#elif defined(RG_TARGET_ESPLAY_S3)
+#undef RG_TARGET_ESPLAY_S3
+#endif
+#endif
+
 #if defined(RG_TARGET_ODROID_GO)
 #include "targets/odroid-go/config.h"
 #elif defined(RG_TARGET_MRGC_G32)

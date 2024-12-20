@@ -1731,12 +1731,24 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
 int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
 {
     const rg_app_t *app = rg_system_get_app();
-    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: app->romPath, 4);
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: app->romPath, 16);
     const rg_gui_option_t choices[] = {
         {(intptr_t)&savestates->slots[0], "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {(intptr_t)&savestates->slots[1], "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {(intptr_t)&savestates->slots[2], "Slot 2", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         {(intptr_t)&savestates->slots[3], "Slot 3", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[4], "Slot 4", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[5], "Slot 5", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[6], "Slot 6", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[7], "Slot 7", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[8], "Slot 8", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[9], "Slot 9", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[10], "Slot 10", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[11], "Slot 11", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[12], "Slot 12", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[13], "Slot 13", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[14], "Slot 14", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[15], "Slot 15", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         RG_DIALOG_END
     };
     int sel = 0;
