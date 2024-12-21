@@ -11,7 +11,11 @@ struct
 } lcd_window;
 
 void lcd_init(){
-    vga.init(PinConfig(21,39,40,41,42,  16,15,7,6,5,4, 10,9,8,18,17, 47,48), Mode::MODE_320x240x60, 16);
+    if(!vga.init(PinConfig(21,39,40,41,42,  16,15,7,6,5,4, 10,9,8,18,17, 47,48), Mode::MODE_320x240x60, 16))
+    {
+        RG_LOGE("Failed to initialive vga display");
+        return;
+    }
     vga.start();
 }
 #define lcd_deinit()

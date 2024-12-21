@@ -49,14 +49,14 @@
 #define RG_GPIO_I2C_SCL             GPIO_NUM_2
 
 // Battery
-#define RG_BATTERY_DRIVER           1
+#define RG_BATTERY_DRIVER           0
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
 #define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
 // Status LED
-#define RG_GPIO_LED                 GPIO_NUM_NC
+#undef RG_GPIO_LED
 
 #define RG_GPIO_SDSPI_MISO          GPIO_NUM_14
 #define RG_GPIO_SDSPI_MOSI          GPIO_NUM_12
