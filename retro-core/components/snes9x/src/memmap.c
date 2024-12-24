@@ -626,7 +626,7 @@ void InitROM(bool Interleaved)
    Sanitize(Memory.ROMId, sizeof(Memory.ROMId));
    Sanitize(Memory.CompanyId, sizeof(Memory.CompanyId));
 
-   printf("Rom loaded: name: %s, id: %s, company: %s\n", Memory.ROMName, Memory.ROMId, Memory.CompanyId);
+   printf("Rom loaded: name: %s, id: %s, company: %s, size: %dKB\n", Memory.ROMName, Memory.ROMId, Memory.CompanyId, Memory.CalculatedSize / 1024);
    Settings.ForceHeader = Settings.ForceHiROM = Settings.ForceLoROM = Settings.ForceInterleaved = Settings.ForceNoHeader = Settings.ForceNotInterleaved = Settings.ForceInterleaved2 = false;
 }
 
