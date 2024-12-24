@@ -836,7 +836,7 @@ uint8_t S9xGetPPU(uint16_t Address)
    }
    else
    {
-      if (Settings.SRTC && Address == 2800)
+      if (Settings.SRTC && Address == 0x2800)
          return S9xGetSRTC(Address);
 
       if (Address <= 0x2fff || Address >= 0x3300)
