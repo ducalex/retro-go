@@ -60,7 +60,6 @@ void SA1ROMMap(void);
 void BSHiROMMap(void);
 void SPC7110HiROMMap(void);
 void SPC7110Sram(uint8_t);
-void SetaDSPMap(void);
 void ApplyROMFixes(void);
 void ApplyROMPatches(void);
 void DSPMap(void);

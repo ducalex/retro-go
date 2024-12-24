@@ -13,7 +13,7 @@
 #include "ppu.h"
 #include "display.h"
 #include "apu.h"
-#include "dsp1.h"
+#include "dsp.h"
 #include "srtc.h"
 
 #ifdef __W32_HEAP
@@ -447,25 +447,8 @@ void InitROM(bool Interleaved)
          Settings.DSP = 1; /* DSP1 */
    }
 
-   switch (Settings.DSP)
-   {
-      case 1: /* DSP1 */
-         SetDSP = &DSP1SetByte;
-         GetDSP = &DSP1GetByte;
-         break;
-      case 2: /* DSP2 */
-         SetDSP = &DSP2SetByte;
-         GetDSP = &DSP2GetByte;
-         break;
-      case 3: /* DSP3 */
-         /* SetDSP = &DSP3SetByte; */
-         /* GetDSP = &DSP3GetByte; */
-         break;
-      default:
-         SetDSP = NULL;
-         GetDSP = NULL;
-         break;
-   }
+   if (Settings.DSP)
+      S9xInitDSP();
 
    if(!Settings.ForceNoDSP1 && Settings.DSP)
       Settings.DSP1Master = true;
@@ -859,59 +842,6 @@ void DSPMap(void)
          map_index(0xb0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
          break;
    }
-}
-
-void SetaDSPMap(void)
-{
-   int32_t c;
-   int32_t i;
-
-   /* Banks 00->3f and 80->bf */
-   for (c = 0; c < 0x400; c += 16)
-   {
-      Memory.Map [c + 0] = Memory.Map [c + 0x800] = Memory.RAM;
-      Memory.Map [c + 1] = Memory.Map [c + 0x801] = Memory.RAM;
-      Memory.MapInfo[c + 0].Type = Memory.MapInfo[c + 0x800].Type = MAP_TYPE_RAM;
-      Memory.MapInfo[c + 1].Type = Memory.MapInfo[c + 0x801].Type = MAP_TYPE_RAM;
-
-      Memory.Map [c + 2] = Memory.Map [c + 0x802] = (uint8_t*) MAP_PPU;
-      Memory.Map [c + 3] = Memory.Map [c + 0x803] = (uint8_t*) MAP_PPU;
-      Memory.Map [c + 4] = Memory.Map [c + 0x804] = (uint8_t*) MAP_CPU;
-      Memory.Map [c + 5] = Memory.Map [c + 0x805] = (uint8_t*) MAP_CPU;
-      Memory.Map [c + 6] = Memory.Map [c + 0x806] = (uint8_t*) bytes0x2000 - 0x6000;
-      Memory.Map [c + 7] = Memory.Map [c + 0x807] = (uint8_t*) bytes0x2000 - 0x6000;
-
-      for (i = c + 8; i < c + 16; i++)
-      {
-         Memory.Map [i] = Memory.Map [i + 0x800] = &Memory.ROM [(c << 11) % Memory.CalculatedSize] - 0x8000;
-         Memory.MapInfo[i].Type = Memory.MapInfo[i + 0x800].Type = MAP_TYPE_ROM;
-      }
-   }
-
-   /* Banks 40->7f and c0->ff */
-   for (c = 0; c < 0x400; c += 16)
-   {
-      for (i = c + 8; i < c + 16; i++)
-         Memory.Map [i + 0x400] = Memory.Map [i + 0xc00] = &Memory.ROM [((c << 11) + 0x200000) % Memory.CalculatedSize] - 0x8000;
-
-      /* only upper half is ROM */
-      for (i = c + 8; i < c + 16; i++)
-         Memory.MapInfo[i + 0x400].Type = Memory.MapInfo[i + 0xC00].Type = MAP_TYPE_ROM;
-   }
-
-   memset(Memory.SRAM, 0, 0x1000);
-   for (c = 0x600; c < 0x680; c += 0x10)
-   {
-      for (i = 0; i < 0x08; i++)
-      {
-         /* Where does the SETA chip access, anyway? Please confirm this. */
-         Memory.Map[c + 0x80 + i] = (uint8_t*)MAP_SETA_DSP;
-         Memory.MapInfo[c + 0x80 + i].Type = MAP_TYPE_RAM;
-      }
-   }
-
-   MapRAM();
-   WriteProtectROM();
 }
 
 void HiROMMap(void)

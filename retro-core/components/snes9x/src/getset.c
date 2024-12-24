@@ -1,7 +1,7 @@
 /* This file is part of Snes9x. See LICENSE file. */
 
 #include "ppu.h"
-#include "dsp1.h"
+#include "dsp.h"
 #include "cpuexec.h"
 #include "obc1.h"
 
