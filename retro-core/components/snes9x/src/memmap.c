@@ -137,11 +137,11 @@ static void Sanitize(char* str, size_t bufsize)
 /**********************************************************************************************/
 bool S9xInitMemory(void)
 {
-   Memory.RAM   = (uint8_t*) calloc(RAM_SIZE, 1);
-   Memory.SRAM  = (uint8_t*) calloc(SRAM_SIZE, 1);
-   Memory.VRAM  = (uint8_t*) calloc(VRAM_SIZE, 1);
-   Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
-   Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
+   Memory.RAM   = (uint8_t*)malloc(RAM_SIZE);
+   Memory.SRAM  = (uint8_t*)malloc(SRAM_SIZE);
+   Memory.VRAM  = (uint8_t*)malloc(VRAM_SIZE);
+   Memory.ROM   = (uint8_t*)malloc(MAX_ROM_SIZE + 0x200);
+   Memory.FillRAM = (uint8_t*)malloc(0x8000);
    Memory.ROM_AllocSize = MAX_ROM_SIZE + 0x200;
 
    Memory.Map = (uint8_t**)calloc(MEMMAP_NUM_BLOCKS, sizeof(uint8_t*));
@@ -152,7 +152,7 @@ bool S9xInitMemory(void)
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
-   bytes0x2000 = (uint8_t *)calloc(0x2000, 1);
+   bytes0x2000 = (uint8_t *)malloc(0x2000);
 
    if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.Map || !Memory.MapInfo
       || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
@@ -166,66 +166,41 @@ bool S9xInitMemory(void)
 
 void S9xDeinitMemory(void)
 {
-   if (Memory.RAM)
-   {
-      free(Memory.RAM);
-      Memory.RAM = NULL;
-   }
-   if (Memory.SRAM)
-   {
-      free(Memory.SRAM);
-      Memory.SRAM = NULL;
-   }
-   if (Memory.VRAM)
-   {
-      free(Memory.VRAM);
-      Memory.VRAM = NULL;
-   }
+   free(Memory.RAM);
+   Memory.RAM = NULL;
+
+   free(Memory.SRAM);
+   Memory.SRAM = NULL;
+
+   free(Memory.VRAM);
+   Memory.VRAM = NULL;
+
    if (Memory.ROM)
-   {
       free(Memory.ROM - Memory.ROM_Offset);
-      Memory.ROM_Offset = 0;
-      Memory.ROM = NULL;
-   }
-   if (Memory.FillRAM)
-   {
-      free(Memory.FillRAM);
-      Memory.FillRAM = NULL;
-   }
-   if (Memory.Map)
-   {
-      free(Memory.Map);
-      Memory.Map = NULL;
-   }
-   if (Memory.MapInfo)
-   {
-      free(Memory.MapInfo);
-      Memory.MapInfo = NULL;
-   }
+   Memory.ROM = NULL;
+   Memory.ROM_Offset = 0;
+   Memory.ROM_AllocSize = 0;
 
-   if (IPPU.ScreenColors)
-   {
-      free(IPPU.ScreenColors);
-      IPPU.ScreenColors = NULL;
-   }
+   free(Memory.FillRAM);
+   Memory.FillRAM = NULL;
 
-   if (IPPU.TileCached)
-   {
-      free(IPPU.TileCached);
-      IPPU.TileCached = NULL;
-   }
+   free(Memory.Map);
+   Memory.Map = NULL;
 
-   if (IPPU.TileCache)
-   {
-      free(IPPU.TileCache);
-      IPPU.TileCache = NULL;
-   }
+   free(Memory.MapInfo);
+   Memory.MapInfo = NULL;
 
-   if (bytes0x2000)
-   {
-      free(bytes0x2000);
-      bytes0x2000 = NULL;
-   }
+   free(IPPU.ScreenColors);
+   IPPU.ScreenColors = NULL;
+
+   free(IPPU.TileCached);
+   IPPU.TileCached = NULL;
+
+   free(IPPU.TileCache);
+   IPPU.TileCache = NULL;
+
+   free(bytes0x2000);
+   bytes0x2000 = NULL;
 }
 
 /**********************************************************************************************/
