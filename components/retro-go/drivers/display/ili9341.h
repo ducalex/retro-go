@@ -129,8 +129,12 @@ static void spi_init(void)
 
 static void spi_deinit(void)
 {
-    spi_bus_remove_device(spi_dev);
-    spi_bus_free(RG_SCREEN_HOST);
+    // When transactions are still in flight, spi_bus_remove_device fails and spi_bus_free then crashes.
+    // The real solution would be to wait for transactions to be done, but this is simpler for now...
+    if (spi_bus_remove_device(spi_dev) == ESP_OK)
+        spi_bus_free(RG_SCREEN_HOST);
+    else
+        RG_LOGE("Failed to properly terminate SPI driver!");
 }
 
 #define ILI9341_CMD(cmd, data...)                    \

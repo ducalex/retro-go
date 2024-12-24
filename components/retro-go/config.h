@@ -66,14 +66,6 @@
 #define RG_BUILD_DATE __DATE__ " " __TIME__
 #endif
 
-// #ifndef RG_ENABLE_NETPLAY
-// #define RG_ENABLE_NETPLAY 0
-// #endif
-
-// #ifndef RG_ENABLE_PROFILING
-// #define RG_ENABLE_PROFILING 0
-// #endif
-
 #ifndef RG_APP_LAUNCHER
 #define RG_APP_LAUNCHER "launcher"
 #endif
