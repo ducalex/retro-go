@@ -12,7 +12,6 @@
 #include "cpuaddr.h"
 #include "cpuops.h"
 #include "cpumacro.h"
-#include "apu.h"
 
 
 /* ADC */

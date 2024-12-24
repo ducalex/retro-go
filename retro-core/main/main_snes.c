@@ -321,11 +321,9 @@ void snes_main(void)
     Settings.ControllerOption = SNES_JOYPAD;
     Settings.HBlankStart = (256 * Settings.H_Max) / SNES_HCOUNTER_MAX;
     Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
+    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
     Settings.DisableSoundEcho = false;
     Settings.InterpolatedSound = true;
-#ifdef USE_BLARGG_APU
-    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
-#endif
 
     if (!S9xInitDisplay())
         RG_PANIC("Display init failed!");
