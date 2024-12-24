@@ -140,9 +140,7 @@ bool S9xInitMemory(void)
    Memory.RAM   = (uint8_t*)malloc(RAM_SIZE);
    Memory.SRAM  = (uint8_t*)malloc(SRAM_SIZE);
    Memory.VRAM  = (uint8_t*)malloc(VRAM_SIZE);
-   Memory.ROM   = (uint8_t*)malloc(MAX_ROM_SIZE + 0x200);
    Memory.FillRAM = (uint8_t*)malloc(0x8000);
-   Memory.ROM_AllocSize = MAX_ROM_SIZE + 0x200;
 
    Memory.Map = (uint8_t**)calloc(MEMMAP_NUM_BLOCKS, sizeof(uint8_t*));
    Memory.MapInfo = (SMapInfo*)calloc(MEMMAP_NUM_BLOCKS, sizeof(SMapInfo));
@@ -153,6 +151,15 @@ bool S9xInitMemory(void)
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
    bytes0x2000 = (uint8_t *)malloc(0x2000);
+
+   // Try to find the biggest (commercial) ROM size that can fit in our available memory.
+   // const size_t AllocSizes[] = {0x600000, 0x400000, 0x300000, 0x280000, 0x200000, 0x100000, 0x80000, 0};
+   const size_t AllocSizes[] = {0x400000, 0x200000, 0x80000, 0};
+   for (const size_t *size = AllocSizes; *size && !Memory.ROM; ++size)
+   {
+      Memory.ROM_AllocSize = *size + 0x10000 + 0x200; // Extra 64KB for mapping purposes
+      Memory.ROM = (uint8_t *)malloc(Memory.ROM_AllocSize);
+   }
 
    if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.Map || !Memory.MapInfo
       || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
