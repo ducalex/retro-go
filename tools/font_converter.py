@@ -1,7 +1,6 @@
-from PIL import Image, ImageDraw, ImageFont, ImageOps
+from PIL import Image, ImageDraw, ImageFont
 from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
 import os
-import freetype
 
 ############################### - Data structure - ###############################
 #
@@ -241,19 +240,19 @@ def generate_font_data():
         offset_x_1 += offset_x
 
         if bounding_box_bool.get():
-            canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, (width+offset_x_1)*pixel_size, (height+offset_y_1+offset_y)*pixel_size, width=1, outline="blue",fill='') # bounding box
-            canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1)*pixel_size, (offset_x_1 + 1)*pixel_size, (offset_y_1+1)*pixel_size, width=1,fill='red')
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
 
         for y in range(height):
             for x in range(width):
                 pixel = cropped_image.getpixel((x, y))
-                if i >= 8:
+                if i == 8:
                     bitmap.append(row)
                     row = 0
                     i = 0
                 row = (row << 1) | pixel
                 if pixel:
-                    canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1+offset_y)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1+offset_y)*pixel_size+pixel_size,fill="white")
+                    canvas.create_rectangle((x+offset_x_1)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
                 i += 1
 
         row = row << 8-i # to "fill" with zero the remaining empty bits
@@ -283,7 +282,7 @@ def generate_font_data():
         # Update memory usage
         memory_usage += len(bitmap) + 8  # 8 bytes for the header per glyph
 
-    # find max width/height
+    # find max height
     max_height = 0
     for glyph in font_data:
         max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
@@ -414,10 +413,10 @@ screen_height = window.winfo_screenheight()
 # Set the window size to fill the entire screen
 window.geometry(f"{screen_width}x{screen_height}")
 
-pixel_size = 8 # pixel size on the renderer
+p_size = 8 # pixel size on the renderer
 
-canva_width = screen_width//pixel_size
-canva_height = screen_height//pixel_size-16
+canva_width = screen_width//p_size
+canva_height = screen_height//p_size-16
 
 frame = Frame(window)
 frame.pack(anchor="center", padx=10, pady=2)
@@ -427,27 +426,27 @@ choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
 choose_font_button.pack(side="left", padx=5)
 
 # Label and Entry for Font height
-Label(frame, text="Font height", height=4).pack(side="left", padx=5)
+Label(frame, text="Font height").pack(side="left", padx=5)
 font_height_input = StringVar(value=str(font_size_init))
 Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
 
 # Label and Entry for First Char
-Label(frame, text="First Char", height=4).pack(side="left", padx=5)
+Label(frame, text="First Char").pack(side="left", padx=5)
 first_char = StringVar(value=str(first_char_init))
 Entry(frame, textvariable=first_char, width=4).pack(side="left", padx=5)
 
 # Label and Entry for Last Char
-Label(frame, text="Last Char", height=4).pack(side="left", padx=5)
+Label(frame, text="Last Char").pack(side="left", padx=5)
 last_char = StringVar(value=str(last_char_init))
 Entry(frame, textvariable=last_char, width=4).pack(side="left", padx=5)
 
 # Label and Entry for Char to exclude
-Label(frame, text="Char to exclude", height=4).pack(side="left", padx=5)
+Label(frame, text="Char to exclude").pack(side="left", padx=5)
 list_char_exclude = StringVar(value=str(list_char_exclude_init))
 Entry(frame, textvariable=list_char_exclude, width=30).pack(side="left", padx=5)
 
 # Label and Entry for Font Name
-Label(frame, text="Font name (used for output)", height=4).pack(side="left", padx=5)
+Label(frame, text="Font name (used for output)").pack(side="left", padx=5)
 font_name_input = StringVar(value=str(font_name_init))
 Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
 
@@ -460,8 +459,8 @@ b1 = Button(frame, text="Generate", width=14, height=2, background="blue", foreg
 b1.pack(side="left", padx=5)
 
 frame = Frame(window).pack(anchor="w", padx=2, pady=2)
-canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
-canvas.configure(scrollregion=(0, 0, canva_width*pixel_size, canva_height*pixel_size))
+canvas = Canvas(frame, width=canva_width*p_size, height=canva_height*p_size, bg="black")
+canvas.configure(scrollregion=(0, 0, canva_width*p_size, canva_height*p_size))
 canvas.bind("<MouseWheel>", zoom)
 canvas.bind("<ButtonPress-1>", start_pan)  # Start panning
 canvas.bind("<B1-Motion>",pan_canvas)

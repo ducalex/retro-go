@@ -1,7 +1,9 @@
-from tkinter import Tk, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
+from tkinter import Tk, Button, Frame, Canvas, filedialog, Checkbutton, IntVar, Label, StringVar, Entry, DISABLED, NORMAL
 import os
 
 font_size = 14
+max_height = 0
+char_code_edit = ord('R')
 
 list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct pixels on the canva
 list_glyph_data = [] # contain font data for all glyphs
@@ -18,40 +20,37 @@ header_start = """
 
 """
 
-def renderCfont(byte_list):
+def renderCfont():
     canvas.delete("all")
-
-    # we also have to clear the matrix
-    global rect_ids
-    rect_ids = []
-    for y in range(canva_height):
-        line = [-1] * canva_width
-        rect_ids.append(line)
+    global bitmap_data
 
     global list_bbox
     list_bbox = []
-
-    # ov is the small pixel that stick to the mouse, we want to keep this one
-    global ov
-    ov = canvas.create_rectangle(0,0,pixel_size,pixel_size,fill="white")
 
     offset_x_1 = 1
     offset_y_1 = 1
 
     global list_glyph_data
 
-    for glyph in list_glyph_data:
-        bitmap_index = glyph['bitmap_index']
-        offset_y = glyph['ofs_y']
-        width = glyph['box_w']
-        height = glyph['box_h']
-        xOffset = glyph['ofs_x']
-        xDelta = glyph['adv_w']
+    # we get the char list to render (we shift the indexes by 32 because 32 first chars aren't included)
+    if list_char_render.get() != "":
+        list_char_code_render = [ord(i)-32 for i in (list_char_render.get())]
+        b2.config(state=DISABLED)
+    else:
+        list_char_code_render = [i for i in range(0, 255-32)]
+        b2.config(state=NORMAL)
 
-        bit_index = 0
+    for char_code in list_char_code_render:
+        offset_y = list_glyph_data[char_code]['ofs_y']
+        width = list_glyph_data[char_code]['box_w']
+        height = list_glyph_data[char_code]['box_h']
+        offset_x = list_glyph_data[char_code]['ofs_x']
+        xDelta = list_glyph_data[char_code]['adv_w']
+
+        offset_x_1 += offset_x
 
         if bounding_box_bool.get():
-            canvas.create_rectangle((offset_x_1)*pixel_size, (offset_y_1+offset_y)*pixel_size, (width+offset_x_1)*pixel_size, (height+offset_y_1+offset_y)*pixel_size, width=1, outline="blue",fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
 
         bbox = {
             "x0": offset_x_1,
@@ -60,20 +59,28 @@ def renderCfont(byte_list):
             "y1": height+offset_y_1+offset_y,
         }
 
-        for y in range(height):
-            for x in range(width):
-                if byte_list[bitmap_index] & 0b10000000: # Pixel(x,y) = 1
-                    rect_ids[y+offset_y_1+offset_y][x+offset_x_1] = canvas.create_rectangle((x+offset_x_1)*pixel_size, (y+offset_y_1+offset_y)*pixel_size, (x+offset_x_1)*pixel_size+pixel_size, (y+offset_y_1+offset_y)*pixel_size+pixel_size,fill="white")
+        byte_list = bitmap_data[char_code]
+        bitmap_index = 0
+        bit_index = 0
+        byte = byte_list[bitmap_index]
+        modulo_8 = (True if width*height%8 == 0 else False)
 
+        for y in range(height):
+            for x in range(width):    
+                if byte & 0b10000000: # Pixel(x,y) = 1
+                    canvas.create_rectangle((x+offset_x_1)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
+                
                 if bit_index == 7:
                     bit_index = 0
                     bitmap_index += 1
+                    if not (modulo_8 and y == height-1):
+                        byte = byte_list[bitmap_index]
 
                 else:
-                    byte_list[bitmap_index] = byte_list[bitmap_index] << 1 # we shift data[n] to get the next pixel on the most significant bit
+                    byte = byte << 1 # we shift data[n] to get the next pixel on the most significant bit
                     bit_index += 1
 
-        if offset_x_1+2*width+6 <= canva_width:
+        if offset_x_1+3*xDelta <= canva_width:
             offset_x_1 += xDelta
         else:
             offset_x_1 = 1
@@ -81,53 +88,111 @@ def renderCfont(byte_list):
 
         list_bbox.append(bbox)
 
-def generate_font_data():
-    # Initialize the font data structure
-    bitmap_data = []
 
-    for glyph_data, bbox in zip(list_glyph_data, list_bbox):
-        width, height = glyph_data['box_w'], glyph_data['box_h']
-        x0, y0 = bbox['x0'], bbox['y0']
-        
-        # Extract bitmap data
-        bitmap = []
-        row = 0
-        bit_count = 0
+def render_single_char():
+    global bitmap_data
+    canvas_1.delete("all")
 
-        for y in range(height):
-            for x in range(width):
-                # Determine pixel value
-                pixel = (1 if rect_ids[y + y0][x + x0] != -1 else 0)
+    # we also have to clear the matrix
+    global rect_ids
+    rect_ids = []
+    for y in range(40):
+        line = [-1] * 40
+        rect_ids.append(line)
 
-                # Build the row bit by bit
-                row = (row << 1) | pixel
-                bit_count += 1
+    global char_code_edit
+    char_code_edit = ord(char_to_edit.get()) - 32
+    global list_glyph_data
 
-                # Append row when full
-                if bit_count == 8:
-                    bitmap.append(row)
-                    row = 0
-                    bit_count = 0
+    # ov is the small pixel that stick to the mouse, we want to keep this one
+    global ov
+    ov = canvas_1.create_rectangle(0,0,p_size_c,p_size_c,fill="white")
 
-        # Append the remaining bits, padding with zeros if necessary
-        if bit_count > 0:
-            row <<= (8 - bit_count)  # Fill remaining bits with zeros
-            bitmap.append(row)
+    offset_y = list_glyph_data[char_code_edit]['ofs_y']
+    width = list_glyph_data[char_code_edit]['box_w']
+    height = list_glyph_data[char_code_edit]['box_h']
+    offset_x = list_glyph_data[char_code_edit]['ofs_x']
+    advance_width = list_glyph_data[char_code_edit]['adv_w']
 
-        # Update font data with the bitmap
-        bitmap_data.append(bitmap)
+    glyph_data_text = (
+        'width : ' + str(width) + '\n' +
+        'height : ' + str(height) + '\n' +
+        'offset_x : ' + str(offset_x) + '\n' +
+        'offset_y : ' + str(offset_y) + '\n' +
+        'advance_width : ' + str(advance_width))
+    output.config(text = glyph_data_text)
 
-    # find max width/height
-    max_height = 0
-    for glyph in list_glyph_data:
-        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
+    global single_bbox
+    single_bbox = (offset_x, offset_y, offset_x+width, offset_y+height)
+
+    bit_index = 0
+
+    if bounding_box_bool.get():
+        canvas_1.create_rectangle((offset_x)*p_size_c, (offset_y)*p_size_c, (width+offset_x)*p_size_c, (height+offset_y)*p_size_c, width=1, outline="red",fill='') # bounding box
+
+    byte_list = bitmap_data[char_code_edit]
+    bitmap_index = 0
+    byte = byte_list[bitmap_index]
+    modulo_8 = (True if width*height%8 == 0 else False)
+    for y in range(height):
+        for x in range(width):
+            if byte & 0b10000000: # Pixel(x,y) = 1
+                rect_ids[y+offset_y][x+offset_x] = canvas_1.create_rectangle(
+                    (x+offset_x)*p_size_c, 
+                    (y+offset_y)*p_size_c, 
+                    (x+offset_x)*p_size_c+p_size_c, 
+                    (y+offset_y)*p_size_c+p_size_c,fill="white")
+
+            if bit_index == 7:
+                bit_index = 0
+                bitmap_index += 1
+                if not (modulo_8 and y == height-1):
+                    byte = byte_list[bitmap_index]
+
+            else:
+                byte = byte << 1 # we shift data[n] to get the next pixel on the most significant bit
+                bit_index += 1
+
+
+def update_glyph_data():
+    x0, y0, x1, y1 = single_bbox
+    height = y1 - y0
+    width = x1 - x0
+    
+    global char_code_edit
+    global bitmap_data
+
+    bitmap_data[char_code_edit] = []
+
+    row = 0
+    i = 0
+    for y in range(height):
+        for x in range(width):
+            pixel = (1 if rect_ids[y + y0][x + x0] != -1 else 0)
+            if i == 8:
+                bitmap_data[char_code_edit].append(row)
+                row = 0
+                i = 0
+            row = (row << 1) | pixel
+            i += 1
+
+    row = row << 8-i # to "fill" with zero the remaining empty bits
+    bitmap_data[char_code_edit].append(row)
+
+
+def save_font():
+    global bitmap_data
+    global list_glyph_data
+    global max_height
+    global font_path
 
     save_file(font_path, {
         "bitmap": bitmap_data,
         "max_height": max_height,
         "glyphs": list_glyph_data,
     })
-    
+
+
 def save_file(font_path, font_data):
 
     font_name = os.path.splitext(os.path.basename(font_path))[0]
@@ -192,12 +257,18 @@ def save_file(font_path, font_data):
         f.write(f"    .height = {font_data['max_height']}\n")
         f.write("};\n")
 
-def extract_bytes():
+
+def extract_data():
     array_index = 0
+    global bitmap_data
+    bitmap_data = []
     byte_list = []
     global list_glyph_data
     list_glyph_data = []
     with open(font_path, 'r', encoding='ISO8859-1') as file:
+
+        # TODO: get the header
+
         inside_data_section = False
         for line in file:
             line = line.strip()
@@ -249,7 +320,13 @@ def extract_bytes():
                     elif "ofs_x" in part:
                         ofs_x = int(part.split('=')[1])
                     elif "ofs_y" in part:
-                        ofs_y = int(part.split('=')[1][1])
+                        string = ""
+                        for letter in part.split('=')[1]:
+                            if letter == '}':
+                                break
+                            string += letter
+                        ofs_y = int(string)
+
                         glyph_data = {
                         "bitmap_index": bitmap_index,
                         "adv_w": adv_w,
@@ -258,10 +335,33 @@ def extract_bytes():
                         "ofs_x": ofs_x,
                         "ofs_y": ofs_y
                         }
-                        print(glyph_data)
                         list_glyph_data.append(glyph_data)
 
-    renderCfont(byte_list)
+    # convert the byte list to an organised list for each glyph
+    bitmap_data = []
+    for glyph in list_glyph_data:
+        width = glyph['box_w']
+        height = glyph['box_h']
+        bitmap_index = glyph['bitmap_index']
+
+        if width*height != 0:
+            byte = []
+            for i in range((width*height)//8 + (1 if width*height%8 != 0 else 0)):
+                byte.append(byte_list[bitmap_index + i])
+        else:
+            byte = [0]
+
+        bitmap_data.append(byte)
+
+    # find max height
+    global max_height
+    max_height = 0
+    for glyph in list_glyph_data:
+        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
+
+    b3.config(state=NORMAL)
+    b4.config(state=NORMAL)
+
 
 def select_file():
     filetypes = (
@@ -276,28 +376,32 @@ def select_file():
 
     global font_path
     font_path = filename
+    extract_data()
+
 
 def motion(event):
     global x
     global y
     x = event.x
     y = event.y
-    if x%pixel_size != 0:
-        x-= x%pixel_size
-    if y%pixel_size != 0:
-        y-= y%pixel_size
-    canvas.itemconfig(ov, fill="White")
-    canvas.coords(ov, x, y, x+pixel_size, y+pixel_size)
+    if x%p_size_c != 0:
+        x-= x%p_size_c
+    if y%p_size_c != 0:
+        y-= y%p_size_c
+    canvas_1.itemconfig(ov, fill="White")
+    canvas_1.coords(ov, x, y, x+p_size_c, y+p_size_c)
+
 
 def click(event):
-    x_pixel = x//pixel_size
-    y_pixel = y//pixel_size
+    x_pixel = x//p_size_c
+    y_pixel = y//p_size_c
     if rect_ids[y_pixel][x_pixel] == -1:
-        rect_ids[y_pixel][x_pixel] = canvas.create_rectangle(x, y, x + pixel_size, y + pixel_size, fill="white")
+        rect_ids[y_pixel][x_pixel] = canvas_1.create_rectangle(x, y, x + p_size_c, y + p_size_c, fill="white")
     else:
-        canvas.delete(rect_ids[y_pixel][x_pixel])
+        canvas_1.delete(rect_ids[y_pixel][x_pixel])
         rect_ids[y_pixel][x_pixel] = -1
-        canvas.itemconfig(ov, fill="Black")  # Changes the fill color to black to "hide" it
+        canvas_1.itemconfig(ov, fill="Black")  # Changes the fill color to black to "hide" it
+
 
 def slide(event):
     global x
@@ -305,19 +409,19 @@ def slide(event):
     global lastrect_xy
     x = event.x
     y = event.y
-    if x%pixel_size != 0:
-        x-= x%pixel_size
-    if y%pixel_size != 0:
-        y-= y%pixel_size
-    canvas.coords(ov, x, y, x+pixel_size, y+pixel_size)
+    if x%p_size_c != 0:
+        x-= x%p_size_c
+    if y%p_size_c != 0:
+        y-= y%p_size_c
+    canvas_1.coords(ov, x, y, x+p_size_c, y+p_size_c)
 
-    x_pixel = x//pixel_size
-    y_pixel = y//pixel_size
+    x_pixel = x//p_size_c
+    y_pixel = y//p_size_c
     if rect_ids[y_pixel][x_pixel] != lastrect_xy:
         if rect_ids[y_pixel][x_pixel] == -1:
-            rect_ids[y_pixel][x_pixel] = canvas.create_rectangle(x, y, x + pixel_size, y + pixel_size, fill="white")
+            rect_ids[y_pixel][x_pixel] = canvas_1.create_rectangle(x, y, x + p_size_c, y + p_size_c, fill="white")
         else:
-            canvas.delete(rect_ids[y_pixel][x_pixel])
+            canvas_1.delete(rect_ids[y_pixel][x_pixel])
             rect_ids[y_pixel][x_pixel] = -1
         lastrect_xy = (y_pixel,x_pixel)
 
@@ -331,21 +435,27 @@ screen_height = window.winfo_screenheight()
 # Set the window size to fill the entire screen
 window.geometry(f"{screen_width}x{screen_height}")
 
-pixel_size = 8 # pixel size on the renderer
+# TODO : make it dynamic
+p_size = 8 # pixel size on the global renderer
+p_size_c = 24 # pixel size on the single char renderer
 
-canva_width = screen_width//pixel_size
-canva_height = screen_height//pixel_size-16
+char_edit_windows_width = (screen_width // 4)//p_size_c
+char_edit_windows_height = (screen_height // 2)//p_size_c
+
+canva_width = (screen_width-screen_width // 4)//p_size
+canva_height = screen_height//p_size-16
 
 frame = Frame(window)
 frame.pack(anchor="center", padx=10, pady=2)
 
 rect_ids = []  # This is gonna be used to store rectangles ids
-for y in range(canva_height):
-    line = [-1] * canva_width  # Create a new list for each row
+for y in range(40):
+    line = [-1] * 40  # Create a new list for each row
     rect_ids.append(line)
 
+########## top ##########
 # choose font button
-choose_font_button = ttk.Button(frame, text='Choose C font', command=select_file)
+choose_font_button = Button(frame, text='Choose C font', width=16, height=2, background="blue", foreground="white", command=select_file)
 choose_font_button.pack(side="left", padx=5)
 
 # Variable to hold the state of the checkbox
@@ -353,22 +463,64 @@ bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
 checkbox = Checkbutton(frame, text="Bounding box", variable=bounding_box_bool)
 checkbox.pack(side="left", padx=5)
 
-b1 = Button(frame, text="Render", width=14, height=2, background="blue", foreground="white", command=extract_bytes)
+# Label and Entry for String to render
+Label(frame, text="String to render").pack(side="left", padx=5)
+list_char_render = StringVar(value=str(""))
+Entry(frame, textvariable=list_char_render, width=50).pack(side="left", padx=5)
+
+b1 = Button(frame, text="Render", width=12, height=2, background="blue", foreground="white", command=renderCfont)
 b1.pack(side="left", padx=5)
 
-b1 = Button(frame, text="Export", width=14, height=2, background="green", foreground="white", command=generate_font_data)
-b1.pack(side="left", padx=5)
+b2 = Button(frame, text="Export", width=12, height=2, background="green", foreground="white", command=save_font)
+b2.pack(side="left", padx=5)
+########## end of top ##########
 
-frame = Frame(window).pack(anchor="w", padx=2, pady=2)
-canvas = Canvas(frame, width=canva_width*pixel_size, height=canva_height*pixel_size, bg="black")
+########## bottom ##########
+frame_bottom = Frame(window)
+frame_bottom.pack(anchor="s", padx=2, pady=2)
+
+##### left side #####
+frame_left = Frame(frame_bottom)
+frame_left.pack(anchor="center", side="left", padx=2, pady=2)
+
+# Label and Entry for Chars to render
+Label(frame_left, text="Character to edit").pack(side="top", pady=2)
+char_to_edit = StringVar(value=str("R"))
+Entry(frame_left, textvariable=char_to_edit, width=4).pack(side="top", pady=2)
+
+b3 = Button(frame_left, text="render", width=12, height=2, background="blue", foreground="white", command=render_single_char)
+b3.pack(side="top", padx=5)
+
+# display the glyph data
+Label(frame_left, text="Glyph data :").pack(side="top", pady=2)
+output = Label(frame_left, height = 5, width = 25, bg = "light cyan")
+output.pack(side="top", padx=5)
+
+b4 = Button(frame_left, text="save", width=12, height=2, background="green", foreground="white", command=update_glyph_data)
+b4.pack(side="top", padx=5)
+
+# disable buttons until a font is loaded
+b3.config(state=DISABLED)
+b4.config(state=DISABLED)
+
+canvas_1 = Canvas(frame_left, width=char_edit_windows_width*p_size_c, height=char_edit_windows_height*p_size_c, bg="black")
+canvas_1.pack(side="left", padx=5)
 
 # ov is the small pixel that 'stick' to the mouse
-ov = canvas.create_rectangle(0,0,pixel_size,pixel_size,fill="white")
+ov = canvas_1.create_rectangle(0,0,p_size_c,p_size_c,fill="white")
 
-canvas.focus_set()
-canvas.bind('<Motion>', motion)
-canvas.bind("<Button 1>",click)
-canvas.bind("<B1-Motion>",slide)
-canvas.pack(side="left", padx=5)
+canvas_1.focus_set()
+canvas_1.bind('<Motion>', motion)
+canvas_1.bind("<Button 1>",click)
+canvas_1.bind("<B1-Motion>",slide)
+##### end of left side #####
+
+##### right side #####
+frame_right = Frame(frame_bottom)
+frame_right.pack(side="right", padx=2, pady=2)
+canvas = Canvas(frame_right, width=canva_width*p_size, height=canva_height*p_size, bg="black")
+canvas.pack(anchor="n", side="left", padx=5)
+##### end of right side #####
+########## end of bottom ##########
 
 window.mainloop()
