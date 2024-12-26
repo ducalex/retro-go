@@ -2,37 +2,18 @@ from PIL import Image, ImageDraw, ImageFont
 from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
 import os
 
-############################### - Data structure - ###############################
+################################ - Font format - ################################
 #
-# 0 : Character Code
-# 1 : Adjusted Y Offset
-# 2 : Width
-# 3 : Height
-# 4 : xOffset
-# 5 : xDelta (the distance to move the cursor. Effective width of the character.)
-# 6 : Data[n]
-# 
-# example :
-# // '0' in DejaVuSans18
+# font:
+# |
+# ├── glyph_bitmap[] -> 8 bit array containing the bitmap data for all glyph
+# |
+# └── glyph_data[] -> struct that contains all the data to correctly draw the glyph
 #
-#  0    1    2    3    4    5
-#  |    |    |    |    |    |
-# 0x30,0x01,0x09,0x0D,0x01,0x0B,
-# 0x3E,0x3F,0x98,0xD8,0x3C,0x1E,0x0F,0x07,0x83,0xC1,0xE0,0xD8,0xCF,0xE3,0xE0,
-#   \___|____|____|____|____|____|____|____|____|____|____|____|____|___/
-#                                  |
-#                                  6
-# 
-########################### - Explanation of Data[n] - ###########################
+######################## - Explanation of glyph_bitmap[] - #######################
 # First, let's see an example : '!'
-# 0x21,0x04,0x03,0x09,0x00,0x03,
-# 0xFF,0xFF,0xC7,0xE0,
-#
-# - width = 0x03 = 3
-# - height = 0x09 = 9
-# - data[n] = 0xFF,0xFF,0xC7,0xE0
 # 
-# we are going to convert hex data[n] bytes to binary :
+# we are going to convert glyph_bitmap[] bytes to binary :
 # 11111111,
 # 11111111,
 # 11000111,
@@ -142,7 +123,7 @@ def get_char_list():
         if char_code not in list_char_exclude_int:
             list_char.append(char_code)
 
-    return list_char    
+    return list_char
 
 def pre_compute_adv_w_space(font_size, pil_font):
     # pre-compute the adv_w_space for control/space char

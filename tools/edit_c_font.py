@@ -4,8 +4,9 @@ import os
 font_size = 14
 max_height = 0
 char_code_edit = ord('R')
+selected_glyph = 0
 
-list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct pixels on the canva
+list_bbox = [] # ((x0, y0, x1, y1), (x0, y0, x1, y1), ...) used to find the correct glyph on the canva
 list_glyph_data = [] # contain font data for all glyphs
 
 lastrect_xy = (0,0) # used for sliding function
@@ -22,6 +23,9 @@ header_start = """
 
 def renderCfont():
     canvas.delete("all")
+    global select_box
+    select_box = canvas.create_rectangle(0,0,p_size,p_size, width=2, outline="blue")
+
     global bitmap_data
 
     global list_bbox
@@ -30,15 +34,15 @@ def renderCfont():
     offset_x_1 = 1
     offset_y_1 = 1
 
+    max_height_local = 1
+
     global list_glyph_data
 
     # we get the char list to render (we shift the indexes by 32 because 32 first chars aren't included)
     if list_char_render.get() != "":
         list_char_code_render = [ord(i)-32 for i in (list_char_render.get())]
-        b2.config(state=DISABLED)
     else:
         list_char_code_render = [i for i in range(0, 255-32)]
-        b2.config(state=NORMAL)
 
     for char_code in list_char_code_render:
         offset_y = list_glyph_data[char_code]['ofs_y']
@@ -47,17 +51,19 @@ def renderCfont():
         offset_x = list_glyph_data[char_code]['ofs_x']
         xDelta = list_glyph_data[char_code]['adv_w']
 
+        max_height_local = max(max_height_local, offset_y + height)
+
         offset_x_1 += offset_x
 
         if bounding_box_bool.get():
             canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
 
-        bbox = {
-            "x0": offset_x_1,
-            "y0": offset_y_1+offset_y,
-            "x1": width+offset_x_1,
-            "y1": height+offset_y_1+offset_y,
-        }
+        bbox = (
+            offset_x_1,
+            offset_y_1+offset_y,
+            width+offset_x_1,
+            height+offset_y_1+offset_y
+        )
 
         byte_list = bitmap_data[char_code]
         bitmap_index = 0
@@ -84,7 +90,8 @@ def renderCfont():
             offset_x_1 += xDelta
         else:
             offset_x_1 = 1
-            offset_y_1 += font_size + 1
+            offset_y_1 += max_height_local
+            max_height_local = 1
 
         list_bbox.append(bbox)
 
@@ -104,15 +111,22 @@ def render_single_char():
     char_code_edit = ord(char_to_edit.get()) - 32
     global list_glyph_data
 
-    # ov is the small pixel that stick to the mouse, we want to keep this one
-    global ov
-    ov = canvas_1.create_rectangle(0,0,p_size_c,p_size_c,fill="white")
-
     offset_y = list_glyph_data[char_code_edit]['ofs_y']
     width = list_glyph_data[char_code_edit]['box_w']
     height = list_glyph_data[char_code_edit]['box_h']
     offset_x = list_glyph_data[char_code_edit]['ofs_x']
     advance_width = list_glyph_data[char_code_edit]['adv_w']
+
+    max_size = max(width+offset_x, height+offset_y)
+    canvas_width = (screen_width // 4)     
+    canvas_height = (screen_height // 2) 
+    
+    global p_size_c
+    p_size_c = min(canvas_width, canvas_height) // max_size - 1
+
+    # ov is the small pixel that stick to the mouse, we want to keep this one
+    global ov
+    ov = canvas_1.create_rectangle(0,0,p_size_c,p_size_c,fill="white")
 
     glyph_data_text = (
         'width : ' + str(width) + '\n' +
@@ -179,12 +193,21 @@ def update_glyph_data():
     row = row << 8-i # to "fill" with zero the remaining empty bits
     bitmap_data[char_code_edit].append(row)
 
+    save_font()
+    renderCfont()
+
 
 def save_font():
     global bitmap_data
     global list_glyph_data
     global max_height
     global font_path
+
+    # find max height
+    global max_height
+    max_height = 0
+    for glyph in list_glyph_data:
+        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
 
     save_file(font_path, {
         "bitmap": bitmap_data,
@@ -353,14 +376,10 @@ def extract_data():
 
         bitmap_data.append(byte)
 
-    # find max height
-    global max_height
-    max_height = 0
-    for glyph in list_glyph_data:
-        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
-
+    b1.config(state=NORMAL)
     b3.config(state=NORMAL)
     b4.config(state=NORMAL)
+    renderCfont()
 
 
 def select_file():
@@ -380,6 +399,27 @@ def select_file():
 
 
 def motion(event):
+    x = event.x // p_size
+    y = event.y // p_size
+
+    global selected_glyph
+
+    for i in range(len(list_bbox)):
+        bbox = list_bbox[i]
+        x0, y0, x1, y1 = bbox
+        if x >= x0 and y >= y0 and x <= x1 and y <= y1:
+            canvas.coords(select_box, x0*p_size-1, y0*p_size-1, x1*p_size+1, y1*p_size+1)
+            selected_glyph = i
+
+
+def click(event):
+    global char_to_edit
+    global selected_glyph
+    char_to_edit.set(chr(selected_glyph + 32))
+    render_single_char()
+
+
+def motion_1(event):
     global x
     global y
     x = event.x
@@ -392,7 +432,7 @@ def motion(event):
     canvas_1.coords(ov, x, y, x+p_size_c, y+p_size_c)
 
 
-def click(event):
+def click_1(event):
     x_pixel = x//p_size_c
     y_pixel = y//p_size_c
     if rect_ids[y_pixel][x_pixel] == -1:
@@ -403,7 +443,7 @@ def click(event):
         canvas_1.itemconfig(ov, fill="Black")  # Changes the fill color to black to "hide" it
 
 
-def slide(event):
+def slide_1(event):
     global x
     global y
     global lastrect_xy
@@ -429,15 +469,15 @@ def slide(event):
 window = Tk()
 window.title("C font editor")
 
+# TODO : make it dynamic
+p_size = 6 # pixel size on the global renderer
+p_size_c = 24 # pixel size on the single char renderer
+
 # Get screen width and height
 screen_width = window.winfo_screenwidth()
 screen_height = window.winfo_screenheight()
 # Set the window size to fill the entire screen
 window.geometry(f"{screen_width}x{screen_height}")
-
-# TODO : make it dynamic
-p_size = 8 # pixel size on the global renderer
-p_size_c = 24 # pixel size on the single char renderer
 
 char_edit_windows_width = (screen_width // 4)//p_size_c
 char_edit_windows_height = (screen_height // 2)//p_size_c
@@ -464,15 +504,12 @@ checkbox = Checkbutton(frame, text="Bounding box", variable=bounding_box_bool)
 checkbox.pack(side="left", padx=5)
 
 # Label and Entry for String to render
-Label(frame, text="String to render").pack(side="left", padx=5)
+Label(frame, text="String to render:").pack(side="left", padx=5)
 list_char_render = StringVar(value=str(""))
 Entry(frame, textvariable=list_char_render, width=50).pack(side="left", padx=5)
 
 b1 = Button(frame, text="Render", width=12, height=2, background="blue", foreground="white", command=renderCfont)
 b1.pack(side="left", padx=5)
-
-b2 = Button(frame, text="Export", width=12, height=2, background="green", foreground="white", command=save_font)
-b2.pack(side="left", padx=5)
 ########## end of top ##########
 
 ########## bottom ##########
@@ -500,6 +537,7 @@ b4 = Button(frame_left, text="save", width=12, height=2, background="green", for
 b4.pack(side="top", padx=5)
 
 # disable buttons until a font is loaded
+b1.config(state=DISABLED)
 b3.config(state=DISABLED)
 b4.config(state=DISABLED)
 
@@ -510,9 +548,9 @@ canvas_1.pack(side="left", padx=5)
 ov = canvas_1.create_rectangle(0,0,p_size_c,p_size_c,fill="white")
 
 canvas_1.focus_set()
-canvas_1.bind('<Motion>', motion)
-canvas_1.bind("<Button 1>",click)
-canvas_1.bind("<B1-Motion>",slide)
+canvas_1.bind('<Motion>', motion_1)
+canvas_1.bind("<Button 1>",click_1)
+canvas_1.bind("<B1-Motion>",slide_1)
 ##### end of left side #####
 
 ##### right side #####
@@ -520,6 +558,11 @@ frame_right = Frame(frame_bottom)
 frame_right.pack(side="right", padx=2, pady=2)
 canvas = Canvas(frame_right, width=canva_width*p_size, height=canva_height*p_size, bg="black")
 canvas.pack(anchor="n", side="left", padx=5)
+canvas.focus_set()
+canvas.bind('<Motion>', motion)
+canvas.bind("<Button 1>",click)
+
+select_box = canvas.create_rectangle(0,0,p_size,p_size, width=2, outline="blue")
 ##### end of right side #####
 ########## end of bottom ##########
 
