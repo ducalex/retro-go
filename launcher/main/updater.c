@@ -134,7 +134,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
         rg_gui_option_t options[release->assets_count + 4];
         rg_gui_option_t *opt = options;
 
-        *opt++ = (rg_gui_option_t){0, _("Date"), release->date, RG_DIALOG_FLAG_MESSAGE, NULL};
+        *opt++ = (rg_gui_option_t){0, _("Date"), (char *)release->date, RG_DIALOG_FLAG_MESSAGE, NULL};
         *opt++ = (rg_gui_option_t){0, _("Files:"), NULL, RG_DIALOG_FLAG_MESSAGE, NULL};
 
         for (int i = 0; i < release->assets_count; i++)
