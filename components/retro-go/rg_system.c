@@ -1294,7 +1294,7 @@ bool rg_emu_save_state(uint8_t slot)
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
         char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
-        rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
+        rg_emu_screenshot(filename, rg_display_get_width() / 2, 0);
         free(filename);
         emu_update_save_slot(slot);
     }

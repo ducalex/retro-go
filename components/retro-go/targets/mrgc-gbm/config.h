@@ -22,6 +22,7 @@
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        38
+#define RG_SCREEN_MARGIN_BOTTOM     0
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
 #define RG_SCREEN_INIT()                                                                                   \

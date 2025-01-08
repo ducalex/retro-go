@@ -16,6 +16,7 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
+    int screen_safezone; // rg_rect_t
     struct
     {
         const rg_font_t *font;
@@ -102,8 +103,13 @@ static int get_vertical_position(int y_pos, int height)
 
 void rg_gui_init(void)
 {
-    gui.screen_width = rg_display_get_info()->screen.width;
-    gui.screen_height = rg_display_get_info()->screen.height;
+    gui.screen_width = rg_display_get_width();
+    gui.screen_height = rg_display_get_height();
+    #ifdef RG_SCREEN_HAS_ROUND_CORNERS
+    gui.screen_safezone = 20;
+    #else
+    gui.screen_safezone = 0;
+    #endif
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
@@ -534,15 +540,11 @@ void rg_gui_draw_icons(void)
     int bar_height = txt.height;
     int icon_height = RG_MAX(8, bar_height - 4);
     int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
-    int right = 0;
+    int right = gui.screen_safezone;
 
     if (battery.present)
     {
-        #ifdef RG_SCREEN_HAS_ROUND_CORNERS
-        right += 42; // This is to shift the battery icon a bit on the left
-        #else
-        right += 22; // Regular rectangle screen
-        #endif
+        right += 22;
 
         int width = 16;
         int height = icon_height;
@@ -600,8 +602,9 @@ void rg_gui_draw_icons(void)
 
 void rg_gui_draw_hourglass(void)
 {
-    rg_display_write_rect((gui.screen_width / 2) - (image_hourglass.width / 2),
-        (gui.screen_height / 2) - (image_hourglass.height / 2),
+    rg_display_write_rect(
+        get_horizontal_position(RG_GUI_CENTER, image_hourglass.width),
+        get_vertical_position(RG_GUI_CENTER, image_hourglass.height),
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
@@ -633,6 +636,7 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
+    // FIXME: Respect gui.safezone (draw black background full screen_width, but pad the text if needed)
     rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
     rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
