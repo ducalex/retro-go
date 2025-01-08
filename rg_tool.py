@@ -99,8 +99,10 @@ def build_image(output_file, apps, img_format="esp32", fatsize=0):
         table_bin = f.read()
 
     print("Building bootloader...")
-    run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
-    with open(os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin"), "rb") as f:
+    bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
+    if not os.path.exists(bootloader_file):
+        run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+    with open(bootloader_file, "rb") as f:
         bootloader_bin = f.read()
 
     if img_format == "esp32s3":
@@ -241,6 +243,7 @@ try:
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
         # Should probably show a warning here and ask for confirmation...
+        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
         flash_image(img_file, args.port, args.baud)
 
     if command in ["flash", "run", "profile"]:
