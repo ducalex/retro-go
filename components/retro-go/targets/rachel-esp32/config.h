@@ -1,5 +1,3 @@
-// REF: https://wiki.odroid.com/odroid_go/odroid_go
-
 // Target definition
 #define RG_TARGET_NAME             "RACHEL-ESP32"
 
@@ -55,8 +53,6 @@
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
-#define RG_GAMEPAD_ADC_MAP {\
-}
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_UP,     GPIO_NUM_7,  GPIO_PULLUP_ONLY, 0},\
     {RG_KEY_RIGHT,  GPIO_NUM_6,  GPIO_PULLUP_ONLY, 0},\
