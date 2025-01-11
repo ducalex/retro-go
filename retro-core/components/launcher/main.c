@@ -432,7 +432,7 @@ static void about_handler(rg_gui_option_t *dest)
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
 }
 
-void app_main(void)
+void launcher_main(void)
 {
     const rg_handlers_t handlers = {
         .event = &event_handler,
@@ -440,7 +440,7 @@ void app_main(void)
         .about = &about_handler,
     };
 
-    app = rg_system_init(32000, &handlers, NULL);
+    app = rg_system_reinit(32000, &handlers, NULL);
     app->configNs = "launcher";
     app->isLauncher = true;
 
