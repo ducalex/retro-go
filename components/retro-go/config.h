@@ -22,6 +22,8 @@
 #include "targets/fri3d-2024/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)
 #include "targets/byteboi-rev1/config.h"
+#elif defined(RG_TARGET_RACHEL_ESP32)
+#include "targets/rachel-esp32/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
