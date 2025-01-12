@@ -104,12 +104,23 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 #endif
 
+// These values are to prevent jitter, so that the battery icon doesn't flicker or
+// percent display doesn't oscillate between 77 and 78%, for example
 #ifndef RG_BATTERY_UPDATE_THRESHOLD
 #define RG_BATTERY_UPDATE_THRESHOLD 1.0f
 #endif
-
 #ifndef RG_BATTERY_UPDATE_THRESHOLD_VOLT
 #define RG_BATTERY_UPDATE_THRESHOLD_VOLT 0.010f
+#endif
+
+// Number of cycles the hardware state must be maintained before the change is reflected in rg_input_read_gamepad.
+// The reaction time is calculated as such: N*10ms +/- 10ms. Different hardware types have different requirements.
+// Valid range is 1-9
+#ifndef RG_GAMEPAD_DEBOUNCE_PRESS
+#define RG_GAMEPAD_DEBOUNCE_PRESS (2)
+#endif
+#ifndef RG_GAMEPAD_DEBOUNCE_RELEASE
+#define RG_GAMEPAD_DEBOUNCE_RELEASE (2)
 #endif
 
 #ifndef RG_LOG_COLORS

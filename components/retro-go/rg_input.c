@@ -20,16 +20,6 @@
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
 
-// Number of cycles the hardware state must be maintained before the change is reflected in rg_input_read_gamepad.
-// The reaction time is calculated as such: N*10ms +/- 10ms. Different hardware types have different requirements.
-// Valid range is 1-9
-#ifndef RG_GAMEPAD_DEBOUNCE_PRESS
-#define RG_GAMEPAD_DEBOUNCE_PRESS (2)
-#endif
-#ifndef RG_GAMEPAD_DEBOUNCE_RELEASE
-#define RG_GAMEPAD_DEBOUNCE_RELEASE (2)
-#endif
-
 #ifdef RG_GAMEPAD_ADC_MAP
 static rg_keymap_adc_t keymap_adc[] = RG_GAMEPAD_ADC_MAP;
 #endif
