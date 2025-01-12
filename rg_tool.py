@@ -232,8 +232,12 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
+        fw_format = os.getenv("FW_FORMAT")
         fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        if fw_format in ["odroid", "esplay"]:
+            build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        else:
+            print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
