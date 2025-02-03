@@ -1,8 +1,9 @@
 # Retro-Go 1.44 (2025-02-03)
-- User interface is now multi-language (currently english and french)!
-- New target: retro-ruler
-- New target: Byteboi rev.1
-- New target: Rachel ESP32
+- SNES: Larger ROMs are now supported (on devices with enough memory)
+- All: User interface is now multi-language (currently english and french)!
+- All: Added support for retro-ruler device
+- All: Added support for Byteboi rev.1 device
+- All: Added support for Rachel ESP32
 
 
 # Retro-Go 1.43 (2024-09-02)
