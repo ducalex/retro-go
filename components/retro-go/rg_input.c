@@ -118,7 +118,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 				oldValue[i]=value;
 			}
 		}
-	#endif
+	#else
 	for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
