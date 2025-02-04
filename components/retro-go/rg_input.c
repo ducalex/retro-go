@@ -120,12 +120,13 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 		}
 	#else
 	for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
-    {
-        const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        int value = adc_get_raw(mapping->unit, mapping->channel);
-        if (value >= mapping->min && value <= mapping->max)
-            state |= mapping->key;
-    }
+    	{
+        	const rg_keymap_adc_t *mapping = &keymap_adc[i];
+        	int value = adc_get_raw(mapping->unit, mapping->channel);
+        	if (value >= mapping->min && value <= mapping->max)
+            		state |= mapping->key;
+    	}
+	#endif
 #endif
 
 #if defined(RG_GAMEPAD_GPIO_MAP)
