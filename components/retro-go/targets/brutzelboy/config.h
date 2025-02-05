@@ -49,7 +49,7 @@
 
 
 // Input
-#define ADC_MAP_FILTER_WINDOW 150 // this is a filter value, to be sure, the adc is in stable situation (not falling or rizing)
+#define RG_GAMEPAD_ADC_MAP_FILTER_WINDOW 150 // this is a filter value, to be sure, the adc is in stable situation (not falling or rizing)
 #define RG_GAMEPAD_ADC_MAP {\
     {RG_KEY_UP,    ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 2000, 4096},\
     {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_5, ADC_ATTEN_DB_11, 1500, 1900},\
