@@ -243,7 +243,19 @@ static void update_indicators(void)
 }
 
 static void system_monitor_task(void *arg)
-{
+{   
+    rg_surface_t *osd = NULL;
+    if(!app.isLauncher)
+    {
+        osd = rg_surface_create(280, 20, RG_PIXEL_565_LE, MEM_SLOW);
+
+        // Create a rect to store the osd position and size
+        rg_rect_t osd_rect = {0, 0, 280, 20}; // Example: top-left corner
+
+        // Set the OSD surface and position
+        rg_display_set_osd_surface(osd, osd_rect);
+    }
+
     int64_t nextLoopTime = 0;
     time_t prevTime = time(NULL);
 
@@ -256,11 +268,19 @@ static void system_monitor_task(void *arg)
 
         update_statistics();
         // update_indicators(); // Implicitly called by rg_system_set_indicator below
-
         rg_battery_t battery = rg_input_read_battery();
+
+        #ifdef RG_GPIO_LED
         // TODO: The flashing should eventually be handled by update_indicators instead of here...
         rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f &&
                                                            !rg_system_get_indicator(RG_INDICATOR_POWER_LOW)));
+        #endif
+
+        if(osd){
+            rg_gui_draw_status_bars_osd(osd);
+            rg_gui_battery_indicator(osd);
+        }
+        
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
@@ -301,7 +321,7 @@ static void system_monitor_task(void *arg)
             {
                 const char *message = "App unresponsive... Hold MENU to quit!";
                 // Drawing at this point isn't safe. But the alternative is being frozen...
-                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, message, C_RED, C_BLACK, RG_TEXT_BIGGER);
+                rg_gui_draw_text(NULL, RG_GUI_CENTER, RG_GUI_CENTER, 0, message, C_RED, C_BLACK, RG_TEXT_BIGGER);
                 if (!rg_input_wait_for_key(RG_KEY_MENU, false, 2000))
                     RG_PANIC("Application terminated!"); // We're not in a nice state, don't normal exit
             }
@@ -1294,7 +1314,7 @@ bool rg_emu_save_state(uint8_t slot)
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
         char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
-        rg_emu_screenshot(filename, rg_display_get_width() / 2, 0);
+        rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
         free(filename);
         emu_update_save_slot(slot);
     }
