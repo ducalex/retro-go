@@ -245,7 +245,7 @@ static void update_indicators(void)
 static void system_monitor_task(void *arg)
 {   
     rg_surface_t *osd = NULL;
-    if(!app.isLauncher)
+    if(!app.isLauncher) // not working
     {
         osd = rg_surface_create(280, 20, RG_PIXEL_565_LE, MEM_SLOW);
 

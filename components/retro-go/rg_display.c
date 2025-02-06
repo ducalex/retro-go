@@ -40,6 +40,8 @@ static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 #include "drivers/display/dummy.h"
 #endif
 
+// TODO : make it more user-friendly -> instead of specifying a rect and a surface
+//        just specify the corner and the dimensions (width and height)
 void rg_display_set_osd_surface(rg_surface_t *surface, rg_rect_t rect)
 {
     // Free the old surface if it exists
@@ -268,6 +270,8 @@ static inline void write_update(const rg_surface_t *update)
 
         lcd_set_window(osd_rect.left + display.screen.margin_left, osd_rect.top + display.screen.margin_top, width, height);
 
+        // TODO : find a way to get the background pixels
+        // TODO : only draw the osd when the "background surface" has changed
         for (size_t y = 0; y < height;)
         {
             uint16_t *lcd_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
