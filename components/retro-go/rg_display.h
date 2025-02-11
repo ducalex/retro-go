@@ -99,8 +99,22 @@ typedef struct
 
 #include "rg_surface.h"
 
-void rg_display_set_osd_surface(rg_surface_t *surface, rg_rect_t rect);
-rg_surface_t* rg_display_get_osd_surface();
+typedef struct
+{
+    rg_surface_t *surface;
+    bool has_transparency;
+    int top, left;
+} rg_osd_t;
+
+typedef enum
+{
+    CORNER_TOP_LEFT = 0,
+    CORNER_TOP_RIGHT,
+    CORNER_BOTTOM_LEFT,
+    CORNER_BOTTOM_RIGHT
+} rg_corner_t;
+
+rg_surface_t *rg_display_init_osd(rg_corner_t corner, int width, int height, bool has_transparency);
 void rg_display_set_osd_enabled(bool enabled);
 bool rg_display_is_osd_enabled();
 void deinit_osd();

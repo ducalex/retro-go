@@ -247,13 +247,8 @@ static void system_monitor_task(void *arg)
     rg_surface_t *osd = NULL;
     if(!app.isLauncher) // not working
     {
-        osd = rg_surface_create(280, 20, RG_PIXEL_565_LE, MEM_SLOW);
-
-        // Create a rect to store the osd position and size
-        rg_rect_t osd_rect = {0, 0, 280, 20}; // Example: top-left corner
-
-        // Set the OSD surface and position
-        rg_display_set_osd_surface(osd, osd_rect);
+        // get the OSD surface
+        osd = rg_display_init_osd(CORNER_TOP_LEFT, 280, 15, 1);
     }
 
     int64_t nextLoopTime = 0;
@@ -280,7 +275,6 @@ static void system_monitor_task(void *arg)
             rg_gui_draw_status_bars_osd(osd);
             rg_gui_battery_indicator(osd);
         }
-        
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",

@@ -17,9 +17,8 @@ static int16_t map_viewport_to_source_y[RG_SCREEN_HEIGHT + 1];
 static uint32_t screen_line_checksum[RG_SCREEN_HEIGHT + 1];
 
 // OSD Surface Management
-static rg_surface_t *osd_surface = NULL;
-static rg_rect_t osd_rect; // Store the OSD's position and size
 static bool osd_enabled = false;
+static rg_osd_t osd;
 
 #define LINE_IS_REPEATED(Y) (map_viewport_to_source_y[(Y)] == map_viewport_to_source_y[(Y) - 1])
 // This is to avoid flooring a number that is approximated to .9999999 and be explicit about it
@@ -42,28 +41,53 @@ static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 
 // TODO : make it more user-friendly -> instead of specifying a rect and a surface
 //        just specify the corner and the dimensions (width and height)
-void rg_display_set_osd_surface(rg_surface_t *surface, rg_rect_t rect)
+rg_surface_t *rg_display_init_osd(rg_corner_t corner, int width, int height, bool has_transparency)
 {
-    // Free the old surface if it exists
-    if (osd_surface != NULL) {
-        rg_surface_free(osd_surface);
+    // clipping if osd > display
+    width = RG_MIN(width, display.screen.width);
+    height = RG_MIN(height, display.screen.height);
+
+    osd.has_transparency = has_transparency;
+
+    int left, top;
+    switch (corner)
+    {
+    case CORNER_TOP_LEFT:
+        left = 0;
+        top = 0;
+        break;
+    case CORNER_TOP_RIGHT:
+        left = display.screen.width - width;
+        top = 0;
+        break;
+    case CORNER_BOTTOM_LEFT:
+        left = 0;
+        top = display.screen.height - height;
+        break;
+    case CORNER_BOTTOM_RIGHT:
+        left = display.screen.width - width;
+        top = display.screen.height - height;
+        break;
+    default:
+        left = 0;
+        top = 0;
+        break;
     }
 
-    osd_surface = surface;
-    osd_rect = rect; // Store the position and size
-    if (surface != NULL)
-    { // Only clear if a surface is provided
-        uint16_t *buffer = surface->data; // Treat the buffer as 16-bit values
-        for (int i = 0; i < surface->width * surface->height; i++)
-            buffer[i] = C_TRANSPARENT; // Assign the black color directly // C_TRANSPARENT
+    osd.surface = rg_surface_create(width, height, RG_PIXEL_565_LE, MEM_SLOW);
+
+    osd.left = left;
+    osd.top = top;
+
+    if (has_transparency)
+    {   // we fill the background with the "transparent color"
+        uint16_t *buffer = osd.surface->data; // Treat the buffer as 16-bit values
+        for (int i = 0; i < osd.surface->width * osd.surface->height; i++)
+            buffer[i] = C_TRANSPARENT; // Assign the C_TRANSPARENT color directly to the background
     }
 
-    osd_enabled = (surface != NULL); // Enable OSD if surface is valid
-}
-
-rg_surface_t* rg_display_get_osd_surface()
-{
-    return osd_surface;
+    osd_enabled = 1; // Enable OSD if surface is valid
+    return osd.surface;
 }
 
 void rg_display_set_osd_enabled(bool enabled)
@@ -79,8 +103,7 @@ bool rg_display_is_osd_enabled()
 
 void deinit_osd()
 {
-    rg_surface_free(osd_surface); // Free the OSD surface
-    osd_surface = NULL;
+    rg_surface_free(osd.surface); // Free the OSD surface
     osd_enabled = false;
 }
 
@@ -253,25 +276,22 @@ static inline void write_update(const rg_surface_t *update)
         lines_remaining -= lines_to_copy;
     }
 
-    if (osd_enabled && osd_surface != NULL)
+    if (osd_enabled)
     {
         // TODO: Draw on screen display. By default it should be bottom left which is fine
         // for both virtual keyboard and info labels. Maybe make it configurable later...
-        int *buffer = osd_surface->data;
+        int *buffer = osd.surface->data;
         RG_ASSERT_ARG(buffer);
 
-        // Clipping
-        int width = RG_MIN(osd_rect.width, display.screen.width - osd_rect.left);
-        int height = RG_MIN(osd_rect.height, display.screen.height - osd_rect.top);
+        int width = osd.surface->width;
+        int height = osd.surface->height;
 
-        // This can happen when left or top is out of bound
-        if (width < 0 || height < 0)
-            return;
+        int top = osd.top;
+        int left = osd.left;
 
-        lcd_set_window(osd_rect.left + display.screen.margin_left, osd_rect.top + display.screen.margin_top, width, height);
+        lcd_set_window(osd.left + display.screen.margin_left, osd.top + display.screen.margin_top, width, height);
 
         // TODO : find a way to get the background pixels
-        // TODO : only draw the osd when the "background surface" has changed
         for (size_t y = 0; y < height;)
         {
             uint16_t *lcd_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
@@ -280,7 +300,7 @@ static inline void write_update(const rg_surface_t *update)
             // Copy line by line because stride may not match width
             for (size_t line = 0; line < num_lines; ++line)
             {
-                uint16_t *src = (void *)buffer + ((y + line) * osd_rect.width * 2);
+                uint16_t *src = (void *)buffer + ((y + line) * osd.surface->width * 2);
                 uint16_t *dst = lcd_buffer + (line * width);
                 for (size_t i = 0; i < width; ++i){
                     if(src[i] != C_TRANSPARENT)     // only overwrite pixels that aren't transparent
