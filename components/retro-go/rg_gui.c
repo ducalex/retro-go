@@ -273,8 +273,17 @@ void rg_gui_copy_buffer(rg_surface_t *dest_surface, int left, int top, int width
             uint16_t *dst = target_buffer + (top + y) * target_width + left;
             const uint16_t *src = (void *)buffer + y * stride;
             for (int x = 0; x < width; ++x)
-                if (src[x] != C_TRANSPARENT)
+                // FIXME: this is a bit wanky but basically it is used to make the difference between 
+                // drawings to the OSD and to the gui buffer wich C_TRANSPARENT are handled differently
+                if (dest_surface)
+                {
                     dst[x] = src[x];
+                }
+                else
+                {
+                    if (src[x] != C_TRANSPARENT)
+                        dst[x] = src[x];
+                }
         }
     }
     else
@@ -1931,5 +1940,6 @@ void rg_gui_draw_status_bars_osd(rg_surface_t *osd)
         (int)app->frameskip,
         (int)round(stats.busyPercent));
 
-    rg_gui_draw_text(osd, 0, RG_GUI_TOP, osd->width, header, C_WHITE, C_BLACK, 0);
+    rg_gui_draw_rect(osd, 0, RG_GUI_TOP, osd->width, osd->height, 0, 0, C_TRANSPARENT);
+    rg_gui_draw_text(osd, 0, RG_GUI_TOP, osd->width, header, C_WHITE, C_TRANSPARENT, 0);
 }
