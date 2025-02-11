@@ -280,18 +280,21 @@ static inline void write_update(const rg_surface_t *update)
     {
         // TODO: Draw on screen display. By default it should be bottom left which is fine
         // for both virtual keyboard and info labels. Maybe make it configurable later...
-        int *buffer = osd.surface->data;
+        const int *buffer = osd.surface->data;
         RG_ASSERT_ARG(buffer);
 
-        int width = osd.surface->width;
-        int height = osd.surface->height;
+        const int width = osd.surface->width;
+        const int height = osd.surface->height;
 
-        int top = osd.top;
-        int left = osd.left;
+        const int min_width = RG_MIN(draw_width, osd.surface->width);
+        const int min_height = RG_MIN(draw_height, osd.surface->height);
+
+        const int x0 = RG_MAX(draw_left, osd.left);
+        const int y0 = RG_MAX(draw_top, osd.top);
 
         lcd_set_window(osd.left + display.screen.margin_left, osd.top + display.screen.margin_top, width, height);
 
-        // TODO : find a way to get the background pixels
+        // FIXME: only redraw when background has changed
         for (size_t y = 0; y < height;)
         {
             uint16_t *lcd_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
@@ -300,11 +303,36 @@ static inline void write_update(const rg_surface_t *update)
             // Copy line by line because stride may not match width
             for (size_t line = 0; line < num_lines; ++line)
             {
-                uint16_t *src = (void *)buffer + ((y + line) * osd.surface->width * 2);
+                uint16_t *viewport   = (void *)data + map_viewport_to_source_y[y + line] * stride;
+                uint16_t *osd_buffer = (void *)buffer + (y + line) * osd.surface->width * 2;
                 uint16_t *dst = lcd_buffer + (line * width);
-                for (size_t i = 0; i < width; ++i){
-                    if(src[i] != C_TRANSPARENT)     // only overwrite pixels that aren't transparent
-                        dst[i] = (src[i] >> 8) | (src[i] << 8);
+                for (size_t i = 0; i < width; ++i)
+                {
+                    if(osd.has_transparency && osd_buffer[i] == C_TRANSPARENT)
+                    {
+                        if((y+line)>=y0 && (i-draw_left)>=x0 && (y+line)<=min_height && (i-draw_left)<=min_width)
+                        {   // the pixel is within the display surface and within the OSD
+                            switch(format)
+                            {
+                                case RG_PIXEL_PALETTE:
+                                    dst[i] = palette[viewport[map_viewport_to_source_x[i]]];
+                                    break;
+                                case RG_PIXEL_565_LE:
+                                    dst[i] = (viewport[map_viewport_to_source_x[i]] >> 8) | (viewport[map_viewport_to_source_x[i]] << 8);
+                                    break;
+                                default:
+                                    dst[i] = viewport[map_viewport_to_source_x[i]];
+                            }
+                        }
+                        else
+                        {
+                            dst[i] = 0x0000; // the ideal would be to put a "background" color
+                        }
+                    }
+                    else
+                    {
+                        dst[i] = (osd_buffer[i] >> 8) | (osd_buffer[i] << 8);
+                    }
                 }
             }
 
