@@ -7,9 +7,9 @@
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.3 to 5.2 are supported.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.4 to 5.3 are supported.
 
-_Note: As of retro-go 1.35, I use 4.3. Version 4.1 was used for 1.20 to 1.34 versions._
+_Note: As of retro-go 1.44, I use 4.4.8. I used 4.3 for 1.35 to 1.43. ESP-IDF 4.1 was used for 1.20 to 1.34 versions._
 
 ### ESP-IDF Patches
 Patching esp-idf may be required for full functionality. Patches are located in `tools/patches` and can be applied to your global esp-idf installation, they will not break your other projects/devices.
@@ -80,7 +80,11 @@ or even do nothing at all. In such cases you should use `python rg_tool.py ...` 
 
 
 ## Changing the launcher's images
-All images used by the launcher (headers, logos) are located in `launcher/main/images`. If you edit them you must run the `launcher/main/gen_images.py` script to regenerate `images.c`. Magenta (rgb(255, 0, 255) / 0xF81F) is used as the transparency color.
+All images used by the launcher (headers, logos) are located in `themes/default`. If you edit them you must run the `tools/gen_images.py` script to regenerate `launcher/main/images.c`. Refer to [THEMING.md](THEMING.md) for details about the image format.
+
+
+## Updating translations
+When adding new menu items or on-screen messages, they should be translated. Retro-Go uses a system similar to gettext where, as a developer, your only task is to wrap your strings in `_(...)`. Refer to [LOCALIZATION.md](LOCALIZATION.md) to learn how to add the actual translations.
 
 
 ## Capturing crash logs

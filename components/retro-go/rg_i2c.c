@@ -127,6 +127,15 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
     return rg_i2c_write(addr, reg, &value, 1);
 }
 
+#if RG_I2C_DRIVER == 1
+
+#define AW9523_REG_INPUT0    0x00 ///< Register for reading input values
+#define AW9523_REG_OUTPUT0   0x02 ///< Register for writing output values
+#define AW9523_REG_POLARITY0 0x04 ///< Register for polarity inversion of inputs
+#define AW9523_REG_CONFIG0   0x06 ///< Register for configuring direction
+
+#else
+
 #define AW9523_REG_CHIPID     0x10 ///< Register for hardcode chip ID
 #define AW9523_REG_SOFTRESET  0x7F ///< Register for soft resetting
 #define AW9523_REG_INPUT0     0x00 ///< Register for reading input values
@@ -135,6 +144,9 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 #define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
 #define AW9523_REG_GCR        0x11 ///< Register for general configuration
 #define AW9523_REG_LEDMODE    0x12 ///< Register for configuring const current
+
+#endif
+
 
 bool rg_i2c_gpio_init(void)
 {
@@ -145,6 +157,16 @@ bool rg_i2c_gpio_init(void)
         return false;
 
     gpio_extender_initialized = true;
+#if RG_I2C_DRIVER == 1
+    gpio_extender_address = 0x74;
+
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + 1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0, 0x00);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0 + 1, 0x00);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0,  0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1,  0xFF);
+#else
     gpio_extender_address = 0x58;
 
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
@@ -162,7 +184,7 @@ bool rg_i2c_gpio_init(void)
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE + 1, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1 << 4);
-
+#endif
     return true;
 }
 

@@ -82,8 +82,8 @@ Some emulators support loading a BIOS. The files should be placed as follows:
 ## Game & Watch
 The roms must be packed with [LCD-Game-Shrinker](https://github.com/bzhxx/LCD-Game-Shrinker) and a tutorial can be [found here](https://gist.github.com/DNA64/16fed499d6bd4664b78b4c0a9638e4ef).
 
-## Wifi
 
+## Wifi
 To use wifi you will need to create a `/retro-go/config/wifi.json` config file. You can define up to 4 different networks, then selectable in the menu. Its content should look like this:
 
 ````json
@@ -107,6 +107,7 @@ Timezone can be configured in the launcher's options menu.
 ### File manager
 You can find the IP of your device in the *about* menu of retro-go. Then on your PC navigate to
 http://192.168.x.x/ to access the file manager.
+
 
 ## External DAC (headphones)
 
@@ -154,6 +155,9 @@ You can configure automatic SRAM saving in the options menu. A longer delay will
 of losing data when powering down too quickly. Also note that when *resuming* a game, Retro-Go will give priority
 to a save state if present.
 
+### ZIP files
+Most Retro-Go applications now support ZIP files. ZIP archives should contain only one ROM file and nothing else. ZIP support also depends on available memory and larger ROMs may fail to load on some devices unfortunately.
+
 
 # Development
 If you wish to build or modify Retro-Go, you can find help in the following documents:
@@ -161,6 +165,7 @@ If you wish to build or modify Retro-Go, you can find help in the following docu
 - Build instructions in [BUILDING.md](BUILDING.md)
 - Theming instructions [THEMING.md](THEMING.md)
 - Porting instructions in [PORTING.md](PORTING.md)
+- Translating instructions in [LOCALIZATION.md](LOCALIZATION.md)
 
 
 # Acknowledgements

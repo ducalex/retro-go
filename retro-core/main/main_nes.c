@@ -9,6 +9,7 @@ static bool slowFrame = false;
 static bool nsfPlayer = false;
 static nes_t *nes;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
@@ -79,7 +80,7 @@ static rg_gui_event_t sprite_limit_cb(rg_gui_option_t *option, rg_gui_event_t ev
         ppu_setopt(PPU_LIMIT_SPRITES, spritelimit);
     }
 
-    strcpy(option->value, spritelimit ? "On " : "Off");
+    strcpy(option->value, spritelimit ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -93,7 +94,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, overscan ? "Auto" : "Off ");
+    strcpy(option->value, overscan ? _("Auto") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -113,9 +114,9 @@ static rg_gui_event_t autocrop_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    if (val == 0) strcpy(option->value, "Never ");
-    if (val == 1) strcpy(option->value, "Auto  ");
-    if (val == 2) strcpy(option->value, "Always");
+    if (val == 0) strcpy(option->value, _("Never"));
+    if (val == 1) strcpy(option->value, _("Auto"));
+    if (val == 2) strcpy(option->value, _("Always"));
 
     return RG_DIALOG_VOID;
 }
@@ -136,12 +137,12 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *option, rg_gui_event_t 
         return RG_DIALOG_REDRAW;
     }
 
-    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, "Default    ");
-    if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, "Composite  ");
-    if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, "NES Classic");
-    if (pal == NES_PALETTE_NTSC)        strcpy(option->value, "NTSC       ");
-    if (pal == NES_PALETTE_PVM)         strcpy(option->value, "PVM        ");
-    if (pal == NES_PALETTE_SMOOTH)      strcpy(option->value, "Smooth     ");
+    if (pal == NES_PALETTE_NOFRENDO)    strcpy(option->value, _("Nofrendo"));
+    if (pal == NES_PALETTE_COMPOSITE)   strcpy(option->value, _("Composite"));
+    if (pal == NES_PALETTE_NESCLASSIC)  strcpy(option->value, _("NES Classic"));
+    if (pal == NES_PALETTE_NTSC)        strcpy(option->value, _("NTSC"));
+    if (pal == NES_PALETTE_PVM)         strcpy(option->value, _("PVM"));
+    if (pal == NES_PALETTE_SMOOTH)      strcpy(option->value, _("Smooth"));
 
     return RG_DIALOG_VOID;
 }
@@ -167,16 +168,25 @@ static void nsf_draw_overlay(void)
     char song[32];
     const nsfheader_t *header = (nsfheader_t *)nes->cart->data_ptr;
     const rg_gui_option_t options[] = {
-        {0, "Name      ", (char*)header->name,      RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Artist    ", (char*)header->artist,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Copyright ", (char*)header->copyright, RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Playing   ", (char*)song,              RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Name"),      (char*)header->name,      RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Artist"),    (char*)header->artist,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Copyright"), (char*)header->copyright, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Playing"),   (char*)song,              RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
     rg_gui_draw_dialog("NSF Player", options, -1);
 }
 
+
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"),      "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Overscan"),     "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Crop sides"),   "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Sprite limit"), "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
 
 void nes_main(void)
 {
@@ -186,20 +196,14 @@ void nes_main(void)
         .reset = &reset_handler,
         .event = &event_handler,
         .screenshot = &screenshot_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Palette     ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        {0, "Overscan    ", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
-        {0, "Crop sides  ", "-", RG_DIALOG_FLAG_NORMAL, &autocrop_update_cb},
-        {0, "Sprite limit", "-", RG_DIALOG_FLAG_NORMAL, &sprite_limit_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
-    palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, 0);
+    palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, NES_PALETTE_PVM);
 
     updates[0] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
@@ -233,7 +237,6 @@ void nes_main(void)
     else if (ret < 0)
         RG_PANIC("Unsupported ROM.");
 
-    app->tickRate = nes->refresh_rate;
     nes->blit_func = blit_screen;
 
     nsfPlayer = nes->cart->type == ROM_TYPE_NSF;
@@ -251,6 +254,8 @@ void nes_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    rg_system_set_tick_rate(nes->refresh_rate);
 
     int skipFrames = 0;
 

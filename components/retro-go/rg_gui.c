@@ -16,6 +16,7 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
+    int screen_safezone; // rg_rect_t
     struct
     {
         const rg_font_t *font;
@@ -28,6 +29,7 @@ static struct
         rg_color_t item_disabled;
         rg_color_t item_message;
         rg_color_t scrollbar;
+        rg_color_t shadow;
     } style;
     char theme_name[32];
     cJSON *theme_obj;
@@ -41,6 +43,7 @@ static struct
 #define SETTING_THEME       "Theme"
 #define SETTING_WIFI_ENABLE "Enable"
 #define SETTING_WIFI_SLOT   "Slot"
+#define SETTING_LANGUAGE    "Language"
 
 static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
 {
@@ -59,8 +62,11 @@ static uint16_t *get_draw_buffer(int width, int height, rg_color_t fill_color)
     if (!gui.draw_buffer)
         RG_PANIC("Failed to allocate draw buffer!");
 
-    for (size_t i = 0; i < pixels; ++i)
-        gui.draw_buffer[i] = fill_color;
+    if (fill_color != C_NONE)
+    {
+        for (size_t i = 0; i < pixels; ++i)
+            gui.draw_buffer[i] = fill_color;
+    }
 
     return gui.draw_buffer;
 }
@@ -97,13 +103,32 @@ static int get_vertical_position(int y_pos, int height)
 
 void rg_gui_init(void)
 {
-    gui.screen_width = rg_display_get_info()->screen.width;
-    gui.screen_height = rg_display_get_info()->screen.height;
+    gui.screen_width = rg_display_get_width();
+    gui.screen_height = rg_display_get_height();
+    #ifdef RG_SCREEN_HAS_ROUND_CORNERS
+    gui.screen_safezone = 20;
+    #else
+    gui.screen_safezone = 0;
+    #endif
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
+    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
-    gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
+    gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
     gui.initialized = true;
+}
+
+bool rg_gui_set_language_id(int index)
+{
+    if (rg_localization_set_language_id(index))
+    {
+        rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
+        RG_LOGI("Language set to: %s (%d)", rg_localization_get_language_name(index), index);
+        return true;
+    }
+    rg_localization_set_language_id(RG_LANG_EN);
+    RG_LOGE("Invalid language id %d!", index);
+    return false;
 }
 
 bool rg_gui_set_theme(const char *theme_name)
@@ -118,11 +143,13 @@ bool rg_gui_set_theme(const char *theme_name)
     if (theme_name && theme_name[0])
     {
         snprintf(pathbuf, RG_PATH_MAX, "%s/%s/theme.json", RG_BASE_PATH_THEMES, theme_name);
-        void *data;
+        char *data;
         size_t data_len;
-        if (rg_storage_read_file(pathbuf, &data, &data_len, 0))
+        if (rg_storage_read_file(pathbuf, (void **)&data, &data_len, 0))
         {
-            new_theme = cJSON_Parse((char *)data);
+            new_theme = cJSON_Parse(data);
+            if (!new_theme) // Parse failure, clean the markup and try again
+                new_theme = cJSON_Parse(rg_json_fixup(data));
             free(data);
         }
         if (!new_theme)
@@ -153,6 +180,7 @@ bool rg_gui_set_theme(const char *theme_name)
     gui.style.item_disabled = rg_gui_get_theme_color("dialog", "item_disabled", C_GRAY);
     gui.style.item_message = rg_gui_get_theme_color("dialog", "item_message", C_SILVER);
     gui.style.scrollbar = rg_gui_get_theme_color("dialog", "scrollbar", C_WHITE);
+    gui.style.shadow = rg_gui_get_theme_color("dialog", "shadow", C_NONE);
 
     return true;
 }
@@ -168,6 +196,8 @@ rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color
         return default_value;
     if (strcmp(strval, "transparent") == 0)
         return C_TRANSPARENT;
+    if (strcmp(strval, "none") == 0)
+        return C_NONE;
     int intval = (int)strtol(strval, NULL, 0);
     // It is better to specify colors as RGB565 to avoid data loss, but we also accept RGB888 for convenience
     if (strlen(strval) == 8 && strval[0] == '0' && strval[1] == 'x')
@@ -238,7 +268,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     }
     else
     {
-        rg_display_write(left, top, width, height, stride, buffer, 0);
+        rg_display_write_rect(left, top, width, height, stride, buffer, 0);
     }
 }
 
@@ -248,10 +278,11 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    size_t glyph_width = font->width;
+    size_t glyph_width = 0;
 
     if (font->type == 0) // Monospace Bitmap
     {
+        glyph_width = font->width;
         if (output)
         {
             if (c >= font->chars)
@@ -273,12 +304,13 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
             }
         }
     }
-    else // Proportional
+    else if (font->type == 1) // Proportional
     {
         // Based on code by Boris Lovosevic (https://github.com/loboris)
         int charCode, adjYOffset, width, height, xOffset, xDelta;
         const uint8_t *data = font->data;
-        while (1) {
+        while (1)
+        {
             charCode = *data++;
             adjYOffset = *data++;
             width = *data++;
@@ -294,26 +326,28 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
                 data += (((width * height) - 1) / 8) + 1;
         }
 
-        if (c == charCode)
+        // If the glyph is not found, we fallback to the basic font which has most glyphs.
+        // It will be ugly, but at least the letter won't be missing...
+        if (charCode != c)
+            return get_glyph(output, &font_basic8x8, RG_MAX(8, points - 2), c);
+
+        glyph_width = RG_MAX(width, xDelta);
+        if (output)
         {
-            glyph_width = RG_MAX(width, xDelta);
-            if (output)
+            int ch = 0, mask = 0x80;
+            for (int y = 0; y < height; y++)
             {
-                int ch = 0, mask = 0x80;
-                for (int y = 0; y < height; y++)
+                output[adjYOffset + y] = 0;
+                for (int x = 0; x < width; x++)
                 {
-                    output[adjYOffset + y] = 0;
-                    for (int x = 0; x < width; x++)
+                    if (((x + (y * width)) % 8) == 0)
                     {
-                        if (((x + (y * width)) % 8) == 0)
-                        {
-                            mask = 0x80;
-                            ch = *data++;
-                        }
-                        if ((ch & mask) != 0)
-                            output[adjYOffset + y] |= (1 << (xOffset + x));
-                        mask >>= 1;
+                        mask = 0x80;
+                        ch = *data++;
                     }
+                    if ((ch & mask) != 0)
+                        output[adjYOffset + y] |= (1 << (xOffset + x));
+                    mask >>= 1;
                 }
             }
         }
@@ -417,9 +451,13 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             {
                 for (int y = 0; y < font_height; y++)
                 {
-                    uint16_t *output = &draw_buffer[(draw_width * (y + padding)) + x_offset];
-                    for (int x = 0; x < width; x++)
-                        output[x] = (bitmap[y] & (1 << x)) ? color_fg : color_bg;
+                    uint32_t row = bitmap[y];
+                    if (row != 0) // get_draw_buffer fills the bg color, nothing to do if row empty
+                    {
+                        uint16_t *output = &draw_buffer[(draw_width * (y + padding)) + x_offset];
+                        for (int x = 0; x < width; x++)
+                            output[x] = ((row >> x) & 1) ? color_fg : color_bg;
+                    }
                 }
             }
 
@@ -502,7 +540,7 @@ void rg_gui_draw_icons(void)
     int bar_height = txt.height;
     int icon_height = RG_MAX(8, bar_height - 4);
     int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
-    int right = 0;
+    int right = gui.screen_safezone;
 
     if (battery.present)
     {
@@ -564,8 +602,9 @@ void rg_gui_draw_icons(void)
 
 void rg_gui_draw_hourglass(void)
 {
-    rg_display_write((gui.screen_width / 2) - (image_hourglass.width / 2),
-        (gui.screen_height / 2) - (image_hourglass.height / 2),
+    rg_display_write_rect(
+        get_horizontal_position(RG_GUI_CENTER, image_hourglass.width),
+        get_vertical_position(RG_GUI_CENTER, image_hourglass.height),
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
@@ -597,6 +636,7 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
+    // FIXME: Respect gui.safezone (draw black background full screen_width, but pad the text if needed)
     rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
     rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
@@ -840,7 +880,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     uint32_t joystick = 0, joystick_old;
     uint64_t joystick_last = 0;
 
-    while (event != RG_DIALOG_CLOSE && event != RG_DIALOG_CANCEL)
+    while (event != RG_DIALOG_SELECT && event != RG_DIALOG_CANCEL)
     {
         // TO DO: Add acceleration!
         joystick_old = ((rg_system_timer() - joystick_last) > 300000) ? 0 : joystick;
@@ -874,7 +914,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
                 redraw = true;
             }
             else if (joystick & RG_KEY_A && active_selection) {
-                event = RG_DIALOG_CLOSE;
+                event = RG_DIALOG_SELECT;
             }
 
             joystick_last = rg_system_timer();
@@ -947,8 +987,8 @@ bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
     const rg_gui_option_t options[] = {
         {0, message, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "",      NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {1, "Yes",   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
-        {0, "No ",   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {1, _("Yes"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {0, _("No"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
         RG_DIALOG_END,
     };
     return rg_gui_dialog(title, message ? options : options + 1, default_yes ? -2 : -1) == 1;
@@ -959,7 +999,7 @@ void rg_gui_alert(const char *title, const char *message)
     const rg_gui_option_t options[] = {
         {0, message, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "",      NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {1, "OK",    NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {1, _("OK"),    NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
         RG_DIALOG_END,
     };
     rg_gui_dialog(title, message ? options : options + 1, -1);
@@ -996,17 +1036,17 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     };
 
     if (!title)
-        title = "Select file";
+        title = _("Select file");
 
     if (none_option)
     {
-        options.options[options.count++] = (rg_gui_option_t){0, "<None>", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+        options.options[options.count++] = (rg_gui_option_t){0, _("<None>"), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
         // options.options[options.count++] = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
     }
 
     if (!rg_storage_scandir(path, file_picker_cb, &options, 0) || options.count < 1)
     {
-        rg_gui_alert(title, "Folder is empty.");
+        rg_gui_alert(title, _("Folder is empty."));
         return NULL;
     }
 
@@ -1144,13 +1184,13 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     }
 
     if (mode == RG_DISPLAY_FILTER_OFF)
-        strcpy(option->value, "Off  ");
+        strcpy(option->value, _("Off"));
     if (mode == RG_DISPLAY_FILTER_HORIZ)
-        strcpy(option->value, "Horiz");
+        strcpy(option->value, _("Horiz"));
     if (mode == RG_DISPLAY_FILTER_VERT)
-        strcpy(option->value, "Vert ");
+        strcpy(option->value, _("Vert"));
     if (mode == RG_DISPLAY_FILTER_BOTH)
-        strcpy(option->value, "Both ");
+        strcpy(option->value, _("Both"));
 
     return RG_DIALOG_VOID;
 }
@@ -1173,13 +1213,13 @@ static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     }
 
     if (mode == RG_DISPLAY_SCALING_OFF)
-        strcpy(option->value, "Off  ");
+        strcpy(option->value, _("Off"));
     else if (mode == RG_DISPLAY_SCALING_FIT)
-        strcpy(option->value, "Fit ");
+        strcpy(option->value, _("Fit"));
     else if (mode == RG_DISPLAY_SCALING_FULL)
-        strcpy(option->value, "Full ");
+        strcpy(option->value, _("Full"));
     else if (mode == RG_DISPLAY_SCALING_ZOOM)
-        strcpy(option->value, "Zoom");
+        strcpy(option->value, _("Zoom"));
 
     return RG_DIALOG_VOID;
 }
@@ -1232,7 +1272,7 @@ static rg_gui_event_t led_indicator_opt_cb(rg_gui_option_t *option, rg_gui_event
     {
         rg_system_set_indicator_mask(option->arg, !rg_system_get_indicator_mask(option->arg));
     }
-    strcpy(option->value, rg_system_get_indicator_mask(option->arg) ? "On " : "Off");
+    strcpy(option->value, rg_system_get_indicator_mask(option->arg) ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1241,12 +1281,12 @@ static rg_gui_event_t led_indicator_cb(rg_gui_option_t *option, rg_gui_event_t e
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {RG_INDICATOR_SYSTEM_ACTIVITY, "System activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
-            {RG_INDICATOR_DISK_ACTIVITY, "Disk activity", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
-            {RG_INDICATOR_LOW_BATTERY, "Low battery", "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_ACTIVITY_SYSTEM, _("System activity"), "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_ACTIVITY_DISK, _("Disk activity"), "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
+            {RG_INDICATOR_POWER_LOW, _("Low battery"), "-", RG_DIALOG_FLAG_NORMAL, &led_indicator_opt_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog("LED options", options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
@@ -1256,10 +1296,10 @@ static rg_gui_event_t show_clock_cb(rg_gui_option_t *option, rg_gui_event_t even
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         gui.show_clock = !gui.show_clock;
-        rg_settings_set_number(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
+        rg_settings_set_boolean(NS_GLOBAL, SETTING_CLOCK, gui.show_clock);
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, gui.show_clock ? "On " : "Off");
+    strcpy(option->value, gui.show_clock ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1332,6 +1372,34 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t language_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    int language_id = rg_localization_get_language_id();
+
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_gui_option_t options[RG_LANG_MAX + 1];
+        for (int i = 0; i < RG_LANG_MAX; i++)
+            options[i] = (rg_gui_option_t){i, rg_localization_get_language_name(i), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+        options[RG_LANG_MAX] = (rg_gui_option_t)RG_DIALOG_END;
+
+        int sel = rg_gui_dialog(option->label, options, language_id);
+        if (sel != RG_DIALOG_CANCELLED)
+        {
+            rg_gui_set_language_id(sel);
+            if (rg_gui_confirm(_("Language changed!"), _("For these changes to take effect you must restart your device.\nrestart now?"), true))
+            {
+                rg_system_exit();
+            }
+            language_id = sel;
+        }
+        return RG_DIALOG_REDRAW;
+    }
+
+    sprintf(option->value, "%s", rg_localization_get_language_name(language_id) ?: "???");
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -1345,7 +1413,7 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
         }
     }
     char *border = rg_display_get_border();
-    sprintf(option->value, "%.9s", border ? rg_basename(border) : "None");
+    sprintf(option->value, "%.9s", border ? rg_basename(border) : _("None"));
     free(border);
     return RG_DIALOG_VOID;
 }
@@ -1355,7 +1423,7 @@ static void wifi_toggle_interactive(bool enable, int slot)
 {
     rg_network_state_t target_state = enable ? RG_NETWORK_CONNECTED : RG_NETWORK_DISCONNECTED;
     int64_t timeout = rg_system_timer() + 20 * 1000000;
-    rg_gui_draw_message(enable ? "Connecting..." : "Disconnecting...");
+    rg_gui_draw_message(enable ? _("Connecting...") : _("Disconnecting..."));
     rg_network_wifi_stop();
     if (enable)
     {
@@ -1389,7 +1457,7 @@ static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     rg_network_t info = rg_network_get_info();
     if (info.state != RG_NETWORK_CONNECTED)
-        strcpy(option->value, "Not connected");
+        strcpy(option->value, _("Not connected"));
     else if (option->arg == 0x10)
         strcpy(option->value, info.name);
     else if (option->arg == 0x11)
@@ -1404,7 +1472,7 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
     for (size_t i = 0; i < 5; i++)
     {
         rg_wifi_config_t config;
-        strncpy(labels[i], rg_network_wifi_read_config(i, &config) ? config.ssid : "(empty)", 32);
+        strncpy(labels[i], rg_network_wifi_read_config(i, &config) ? config.ssid : _("(empty)"), 32);
     }
     if (event == RG_DIALOG_ENTER)
     {
@@ -1416,10 +1484,10 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
             {4, "4", labels[4], RG_DIALOG_FLAG_NORMAL, NULL},
             RG_DIALOG_END,
         };
-        int sel = rg_gui_dialog("Wi-Fi Profile", options, slot);
+        int sel = rg_gui_dialog(option->label, options, slot);
         if (sel != RG_DIALOG_CANCELLED)
         {
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, 1);
+            rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
             rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
             wifi_toggle_interactive(true, sel);
         }
@@ -1428,7 +1496,7 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (slot >= 0 && slot < RG_COUNT(labels))
         sprintf(option->value, "%d - %s", slot, labels[slot]);
     else
-        strcpy(option->value, "none");
+        strcpy(option->value, _("none"));
     return RG_DIALOG_VOID;
 }
 
@@ -1436,7 +1504,7 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
 {
     if (event == RG_DIALOG_ENTER)
     {
-        if (rg_gui_confirm("Wi-Fi AP", "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/", true))
+        if (rg_gui_confirm(_("Wi-Fi AP"), _("Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/"), true))
         {
             wifi_toggle_interactive(true, 9000);
         }
@@ -1447,15 +1515,15 @@ static rg_gui_event_t wifi_access_point_cb(rg_gui_option_t *option, rg_gui_event
 
 static rg_gui_event_t wifi_enable_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    bool enabled = rg_settings_get_number(NS_WIFI, SETTING_WIFI_ENABLE, false);
+    bool enabled = rg_settings_get_boolean(NS_WIFI, SETTING_WIFI_ENABLE, false);
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
     {
         enabled = !enabled;
-        rg_settings_set_number(NS_WIFI, SETTING_WIFI_ENABLE, enabled);
+        rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, enabled);
         wifi_toggle_interactive(enabled, rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1));
         return RG_DIALOG_REDRAW;
     }
-    strcpy(option->value, enabled ? "On " : "Off");
+    strcpy(option->value, enabled ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -1464,112 +1532,121 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0x00, "Wi-Fi enable ",      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb  },
-            {0x01, "Wi-Fi profile",      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb },
+            {0, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
+            {0, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
             RG_DIALOG_SEPARATOR,
-            {0x02, "Wi-Fi access point", NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
+            {0, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
-            {0x10, "Network   ",         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
-            {0x11, "IP address",         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb  },
+            {0, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
+            {0, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
             RG_DIALOG_END,
         };
-        rg_gui_dialog("Wifi Options", options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
 #endif
 
+static rg_gui_event_t app_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        const rg_app_t *app = rg_system_get_app();
+        rg_gui_option_t options[16] = {0};
+        if (app->handlers.options)
+            app->handlers.options(options);
+        rg_display_force_redraw();
+        rg_gui_dialog(option->label, options, 0);
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
 void rg_gui_options_menu(void)
 {
+    rg_gui_option_t options[16] = {
+        #if RG_SCREEN_BACKLIGHT
+        {0, _("Brightness"),    "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb},
+        #endif
+        {0, _("Volume"),        "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb},
+        {0, _("Audio out"),     "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb},
+        RG_DIALOG_END,
+    };
+    const rg_gui_option_t misc_options[] = {
+        {0, _("Font type"),     "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb},
+        {0, _("Theme"),         "-", RG_DIALOG_FLAG_NORMAL, &theme_cb},
+        {0, _("Show clock"),    "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb},
+        {0, _("Timezone"),      "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb},
+        {0, _("Language"),      "-", RG_DIALOG_FLAG_NORMAL, &language_cb},
+        #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
+        {0, _("LED options"),   NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb},
+        #endif
+        #ifdef RG_ENABLE_NETWORKING
+        {0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb},
+        #endif
+        {0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
+        RG_DIALOG_END,
+    };
+    const rg_gui_option_t game_options[] = {
+        {0, _("Scaling"),       "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb},
+        {0, _("Factor"),        "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb},
+        {0, _("Filter"),        "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb},
+        {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
+        {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
+        // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
+        {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
+        RG_DIALOG_END,
+    };
+
     const rg_app_t *app = rg_system_get_app();
-    rg_gui_option_t options[24];
-    rg_gui_option_t *opt = &options[0];
-
-#ifdef RG_SCREEN_BACKLIGHT
-    *opt++ = (rg_gui_option_t){0, "Brightness", "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb};
-#endif
-    *opt++ = (rg_gui_option_t){0, "Volume    ", "-", RG_DIALOG_FLAG_NORMAL, &volume_update_cb};
-    *opt++ = (rg_gui_option_t){0, "Audio out ", "-", RG_DIALOG_FLAG_NORMAL, &audio_update_cb};
-
-    // Global settings that aren't essential to show when inside a game
     if (app->isLauncher)
-    {
-        *opt++ = (rg_gui_option_t){0, "Font type ", "-", RG_DIALOG_FLAG_NORMAL, &font_type_cb};
-        *opt++ = (rg_gui_option_t){0, "Theme     ", "-", RG_DIALOG_FLAG_NORMAL, &theme_cb};
-        *opt++ = (rg_gui_option_t){0, "Show clock", "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb};
-        *opt++ = (rg_gui_option_t){0, "Timezone  ", "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb};
-#ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
-        *opt++ = (rg_gui_option_t){0, "LED options", NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb};
-#endif
-#ifdef RG_ENABLE_NETWORKING
-        *opt++ = (rg_gui_option_t){0, "Wi-Fi options", NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb};
-#endif
-    }
-    // App settings that are shown only inside a game
+        memcpy(options + get_dialog_items_count(options), misc_options, sizeof(misc_options));
     else
-    {
-        *opt++ = (rg_gui_option_t){0, "Scaling",   "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb};
-        *opt++ = (rg_gui_option_t){0, " Factor",   "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb};
-        *opt++ = (rg_gui_option_t){0, "Filter",    "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb};
-        *opt++ = (rg_gui_option_t){0, "Border",    "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb};
-        *opt++ = (rg_gui_option_t){0, "Speed",     "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb};
-    }
-
-    size_t extra_options = get_dialog_items_count(app->options);
-    for (size_t i = 0; i < extra_options; i++)
-        *opt++ = app->options[i];
-
-    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
+        memcpy(options + get_dialog_items_count(options), game_options, sizeof(game_options));
 
     rg_audio_set_mute(true);
 
-    rg_gui_dialog("Options", options, 0);
-
+    rg_gui_dialog(_("Options"), options, 0);
     rg_settings_commit();
+
     rg_audio_set_mute(false);
 }
 
-void rg_gui_about_menu(const rg_gui_option_t *extra_options)
+void rg_gui_about_menu(void)
 {
     const rg_app_t *app = rg_system_get_app();
     bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
 
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
-        {0, "Version", (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Date   ", (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Target ", (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "Website", (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Version"), (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Date"), (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Target"), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Website"), (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
         RG_DIALOG_SEPARATOR,
-        {4, "Options ", NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
-        // {1, "View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Debug menu", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3, "Reset settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {4, _("Options"), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
+        // {1, _("View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, _("Debug menu"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3, _("Reset settings"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
 
-    size_t extra_options_count = get_dialog_items_count(extra_options);
-    if (extra_options_count > 0)
-    {
-        rg_gui_option_t *opt = options + get_dialog_items_count(options);
-        for (size_t i = 0; i < extra_options_count; i++)
-            *opt++ = extra_options[i];
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-    }
+    if (app->handlers.about)
+        app->handlers.about(options + get_dialog_items_count(options));
 
     while (true)
     {
-        switch (rg_gui_dialog("About Retro-Go", options, 4))
+        switch (rg_gui_dialog(_("About Retro-Go"), options, 4))
         {
             case 1:
                 // FIXME: This should probably be a regular dialog so that it's scrollable!
                 rg_gui_alert("Credits", RG_PROJECT_CREDITS);
                 break;
             case 2:
-                rg_gui_debug_menu(NULL);
+                rg_gui_debug_menu();
                 break;
             case 3:
-                if (rg_gui_confirm("Reset all settings?", NULL, false)) {
+                if (rg_gui_confirm(_("Reset all settings?"), NULL, false)) {
                     rg_storage_delete(RG_BASE_PATH_CACHE);
                     rg_settings_reset();
                     rg_system_restart();
@@ -1585,7 +1662,7 @@ void rg_gui_about_menu(const rg_gui_option_t *extra_options)
     }
 }
 
-void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
+void rg_gui_debug_menu(void)
 {
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
@@ -1640,16 +1717,14 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
     snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
+    snprintf(app_name, 32, "%s", rg_system_get_app()->name);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+
     rg_battery_t battery;
     if (rg_input_read_battery_raw(&battery))
-    {
         snprintf(battery_info, sizeof(battery_info), "%.2f%% | %.2fV", battery.level, battery.volts);
-    }
     else
-    {
         snprintf(battery_info, sizeof(battery_info), "N/A");
-    }
 
     rg_network_t net = rg_network_get_info();
     if (net.state == RG_NETWORK_DISABLED)
@@ -1662,8 +1737,6 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
         snprintf(network_str, 64, "%s\n%s", net.name, "disconnected");
     else
         snprintf(network_str, 64, "%s", "disconnected");
-
-    snprintf(app_name, 32, "%s", rg_system_get_app()->name);
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
@@ -1693,9 +1766,9 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options)
 
 static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
     if (event == RG_DIALOG_FOCUS_GAINED)
     {
-        rg_emu_slot_t *slot = (rg_emu_slot_t *)option->arg;
         rg_image_t *preview = NULL;
         rg_color_t color = C_BLUE;
         size_t margin = 0; // TEXT_RECT("ABC", 0).height;
@@ -1722,67 +1795,56 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
     }
     else if (event == RG_DIALOG_ENTER)
     {
-        return RG_DIALOG_CLOSE;
+        return RG_DIALOG_SELECT;
     }
     return RG_DIALOG_VOID;
     #undef draw_status
 }
 
-int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return)
+int rg_gui_savestate_menu(const char *title, const char *rom_path)
 {
-    const rg_app_t *app = rg_system_get_app();
-    rg_emu_states_t *savestates = rg_emu_get_states(rom_path ?: app->romPath, 16);
+    rg_emu_states_t *savestates = rg_emu_get_states(rom_path, 16);
     const rg_gui_option_t choices[] = {
-        {(intptr_t)&savestates->slots[0], "Slot 0", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[1], "Slot 1", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[2], "Slot 2", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[3], "Slot 3", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[4], "Slot 4", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[5], "Slot 5", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[6], "Slot 6", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[7], "Slot 7", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[8], "Slot 8", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[9], "Slot 9", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[10], "Slot 10", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[11], "Slot 11", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[12], "Slot 12", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[13], "Slot 13", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[14], "Slot 14", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
-        {(intptr_t)&savestates->slots[15], "Slot 15", NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[0], _("Slot 0"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[1], _("Slot 1"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[2], _("Slot 2"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[3], _("Slot 3"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[4], _("Slot 4"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[5], _("Slot 5"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[6], _("Slot 6"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[7], _("Slot 7"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[8], _("Slot 8"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[9], _("Slot 9"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[10], _("Slot 10"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[11], _("Slot 11"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[12], _("Slot 12"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[13], _("Slot 13"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[14], _("Slot 14"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
+        {(intptr_t)&savestates->slots[15], _("Slot 15"), NULL, RG_DIALOG_FLAG_NORMAL, &slot_select_cb},
         RG_DIALOG_END
     };
-    int sel = 0;
 
-    if (!rom_path)
-        sel = app->saveSlot;
-    else if (savestates->lastused)
-        sel = savestates->lastused->id;
-
-    intptr_t ret = rg_gui_dialog(title, choices, sel);
-    if (ret && ret != RG_DIALOG_CANCELLED)
-        sel = ((rg_emu_slot_t *)ret)->id;
-    else
-        sel = -1;
-
+    intptr_t ret = rg_gui_dialog(title, choices, savestates->lastused ? savestates->lastused->id : 0);
+    int slot = (ret == RG_DIALOG_CANCELLED) ? -1 : ((rg_emu_slot_t *)ret)->id;
     free(savestates);
-
-    return sel;
+    return slot;
 }
 
 void rg_gui_game_menu(void)
 {
+    const char *rom_path = rg_system_get_app()->romPath;
     bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
     const rg_gui_option_t choices[] = {
-        {1000, "Save & Continue", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2000, "Save & Quit    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3001, "Load game      ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3000, "Reset          ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {1000, _("Save & Continue"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2000, _("Save & Quit"),     NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3001, _("Load game"),       NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {3000, _("Reset"),           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         #ifdef RG_ENABLE_NETPLAY
-        {5000, "Netplay ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {5000, _("Netplay"),         NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         #endif
-        {5500, "Options ", NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL, NULL},
-        {6000, "About   ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {7000, "Quit    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {5500, _("Options"),         NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL, NULL},
+        {6000, _("About"),           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {7000, _("Quit"),            NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
     int slot, sel;
@@ -1791,30 +1853,28 @@ void rg_gui_game_menu(void)
 
     sel = rg_gui_dialog("Retro-Go", choices, 0);
 
-    rg_settings_commit();
-
     if (sel == 3000)
     {
         const rg_gui_option_t choices[] = {
-            {3002, "Soft reset", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {3003, "Hard reset", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {3002, _("Soft reset"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {3003, _("Hard reset"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
             RG_DIALOG_END
         };
-        sel = rg_gui_dialog("Reset Emulation?", choices, 0);
+        sel = rg_gui_dialog(_("Reset Emulation?"), choices, 0);
     }
 
     switch (sel)
     {
-        case 1000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0) rg_emu_save_state(slot); break;
-        case 2000: if ((slot = rg_gui_savestate_menu("Save", 0, 0)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
-        case 3001: if ((slot = rg_gui_savestate_menu("Load", 0, 0)) >= 0) rg_emu_load_state(slot); break;
+        case 1000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0) rg_emu_save_state(slot); break;
+        case 2000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
+        case 3001: if ((slot = rg_gui_savestate_menu(_("Load"), rom_path)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
     #ifdef RG_ENABLE_NETPLAY
         case 5000: rg_netplay_quick_start(); break;
     #endif
         case 5500: rg_gui_options_menu(); break;
-        case 6000: rg_gui_about_menu(NULL); break;
+        case 6000: rg_gui_about_menu(); break;
         case 7000: rg_system_exit(); break;
     }
 

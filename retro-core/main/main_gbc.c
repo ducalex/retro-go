@@ -3,7 +3,7 @@
 #include <sys/time.h>
 #include <gnuboy.h>
 
-static int skipFrames = 20; // The 20 is to hide startup flicker in some games
+static int skipFrames = 0;
 static bool slowFrame = false;
 
 static int video_time;
@@ -15,6 +15,7 @@ static int autoSaveSRAM_Timer = 0;
 static bool useSystemTime = true;
 static bool loadBIOSFile = false;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
@@ -79,7 +80,7 @@ static bool reset_handler(bool hard)
     gnuboy_reset(hard);
     update_rtc_time();
 
-    skipFrames = 20;
+    skipFrames = 0;
     autoSaveSRAM_Timer = 0;
 
     return true;
@@ -138,7 +139,7 @@ static rg_gui_event_t sram_autosave_cb(rg_gui_option_t *option, rg_gui_event_t e
         rg_settings_set_number(NS_APP, SETTING_SAVESRAM, autoSaveSRAM);
     }
 
-    if (autoSaveSRAM == 0) strcpy(option->value, "Off ");
+    if (autoSaveSRAM == 0) strcpy(option->value, _("Off"));
     else sprintf(option->value, "%3ds", autoSaveSRAM);
 
     return RG_DIALOG_VOID;
@@ -151,7 +152,7 @@ static rg_gui_event_t enable_bios_cb(rg_gui_option_t *option, rg_gui_event_t eve
         loadBIOSFile = !loadBIOSFile;
         rg_settings_set_number(NS_APP, SETTING_LOADBIOS, loadBIOSFile);
     }
-    strcpy(option->value, loadBIOSFile ? "Yes" : "No");
+    strcpy(option->value, loadBIOSFile ? _("Yes") : _("No"));
     return RG_DIALOG_VOID;
 }
 
@@ -186,7 +187,7 @@ static rg_gui_event_t rtc_t_update_cb(rg_gui_option_t *option, rg_gui_event_t ev
             useSystemTime = !useSystemTime;
             rg_settings_set_number(NS_APP, SETTING_SYSTIME, useSystemTime);
         }
-        strcpy(option->value, useSystemTime ? "Yes" : "No ");
+        strcpy(option->value, useSystemTime ? _("Yes") : _("No"));
     }
 
     gnuboy_set_time(d, h, m, s);
@@ -200,14 +201,14 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 {
     if (event == RG_DIALOG_ENTER) {
         const rg_gui_option_t choices[] = {
-            {'d', "Day ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'h', "Hour", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'m', "Min ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'s', "Sec ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
-            {'x', "Sync", "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'d', _("Day"),  "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'h', _("Hour"), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'m', _("Min"),  "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'s', _("Sec"),  "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
+            {'x', _("Sync"), "-", RG_DIALOG_FLAG_NORMAL, &rtc_t_update_cb},
             RG_DIALOG_END
         };
-        rg_gui_dialog("RTC config", choices, 0);
+        rg_gui_dialog(option->label, choices, 0);
     }
     int h, m;
     gnuboy_get_time(NULL, &h, &m, NULL);
@@ -231,6 +232,15 @@ static void audio_callback(void *buffer, size_t length)
     audio_time += rg_system_timer() - startTime;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"),       "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("RTC config"),    "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("SRAM autosave"), "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb};
+    *dest++ = (rg_gui_option_t){0, _("Enable BIOS"),   "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void gbc_main(void)
 {
     const rg_handlers_t handlers = {
@@ -239,16 +249,10 @@ void gbc_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Palette      ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        {0, "RTC config   ", "-", RG_DIALOG_FLAG_NORMAL, &rtc_update_cb},
-        {0, "SRAM autosave", "-", RG_DIALOG_FLAG_NORMAL, &sram_autosave_cb},
-        {0, "Enable BIOS  ", "-", RG_DIALOG_FLAG_NORMAL, &enable_bios_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
     updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
@@ -267,7 +271,7 @@ void gbc_main(void)
         RG_PANIC("Emulator init failed!");
 
     gnuboy_set_framebuffer(currentUpdate->data);
-    gnuboy_set_soundbuffer((void *)audioBuffer, sizeof(audioBuffer) / 2);
+    gnuboy_set_soundbuffer(malloc(AUDIO_BUFFER_LENGTH * 4), AUDIO_BUFFER_LENGTH);
 
     // Load ROM
     if (rg_extension_match(app->romPath, "zip"))
@@ -373,11 +377,10 @@ void gbc_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

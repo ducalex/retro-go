@@ -3,12 +3,73 @@
 #include <snes9x.h>
 #include <math.h>
 
-#include "keymap_snes.h"
+typedef struct
+{
+	char name[16];
+	struct {
+		uint16_t snes9x_mask;
+		uint16_t local_mask;
+		uint16_t mod_mask;
+	} keys[16];
+} keymap_t;
+
+static const keymap_t KEYMAPS[] = {
+	{"Type A", {
+		{SNES_A_MASK, RG_KEY_A, 0},
+		{SNES_B_MASK, RG_KEY_B, 0},
+		{SNES_X_MASK, RG_KEY_START, 0},
+		{SNES_Y_MASK, RG_KEY_SELECT, 0},
+		{SNES_TL_MASK, RG_KEY_B, RG_KEY_MENU},
+		{SNES_TR_MASK, RG_KEY_A, RG_KEY_MENU},
+		{SNES_START_MASK, RG_KEY_START, RG_KEY_MENU},
+		{SNES_SELECT_MASK, RG_KEY_SELECT, RG_KEY_MENU},
+		{SNES_UP_MASK, RG_KEY_UP, 0},
+		{SNES_DOWN_MASK, RG_KEY_DOWN, 0},
+		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
+		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
+	}},
+	{"Type B", {
+		{SNES_A_MASK, RG_KEY_START, 0},
+		{SNES_B_MASK, RG_KEY_A, 0},
+		{SNES_X_MASK, RG_KEY_SELECT, 0},
+		{SNES_Y_MASK, RG_KEY_B, 0},
+		{SNES_TL_MASK, RG_KEY_B, RG_KEY_MENU},
+		{SNES_TR_MASK, RG_KEY_A, RG_KEY_MENU},
+		{SNES_START_MASK, RG_KEY_START, RG_KEY_MENU},
+		{SNES_SELECT_MASK, RG_KEY_SELECT, RG_KEY_MENU},
+		{SNES_UP_MASK, RG_KEY_UP, 0},
+		{SNES_DOWN_MASK, RG_KEY_DOWN, 0},
+		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
+		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
+	}},
+	{"Type C", {
+		{SNES_A_MASK, RG_KEY_A, 0},
+		{SNES_B_MASK, RG_KEY_B, 0},
+		{SNES_X_MASK, 0, 0},
+		{SNES_Y_MASK, 0, 0},
+		{SNES_TL_MASK, 0, 0},
+		{SNES_TR_MASK, 0, 0},
+		{SNES_START_MASK, RG_KEY_START, 0},
+		{SNES_SELECT_MASK, RG_KEY_SELECT, 0},
+		{SNES_UP_MASK, RG_KEY_UP, 0},
+		{SNES_DOWN_MASK, RG_KEY_DOWN, 0},
+		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
+		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
+	}},
+};
+
+static const size_t KEYMAPS_COUNT = (sizeof(KEYMAPS) / sizeof(keymap_t));
+
+static const char *SNES_BUTTONS[] = {
+	"None", "None", "None", "None", "R", "L", "X", "A", "Right", "Left", "Down", "Up", "Start", "Select", "Y", "B"
+};
 
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
+static rg_audio_sample_t *audioBuffer;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
@@ -63,7 +124,7 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
         rg_settings_set_number(NS_APP, SETTING_APU_EMULATION, apu_enabled);
     }
 
-    strcpy(option->value, apu_enabled ? "On " : "Off");
+    strcpy(option->value, apu_enabled ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -73,7 +134,7 @@ static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         lowpass_filter = !lowpass_filter;
 
-    strcpy(option->value, lowpass_filter ? "On" : "Off");
+    strcpy(option->value, lowpass_filter ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -128,8 +189,8 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        const rg_gui_option_t options[20] = {
-            {-1, "Profile", "<profile name>", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
+        const rg_gui_option_t options[] = {
+            {-1, _("Profile"), "-", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
             {-2, "", NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
             {-3, "snes9x  ", "handheld", RG_DIALOG_FLAG_MESSAGE, NULL},
             {0, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
@@ -150,7 +211,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             {15, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog("Controls", options, 0);
+        rg_gui_dialog(option->label, options, 0);
         return RG_DIALOG_REDRAW;
     }
 
@@ -223,6 +284,14 @@ static void S9xAudioCallback(void)
 }
 #endif
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb};
+    *dest++ = (rg_gui_option_t){0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb};
+    *dest++ = (rg_gui_option_t){0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void snes_main(void)
 {
     const rg_handlers_t handlers = {
@@ -231,20 +300,17 @@ void snes_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
+        .options = &options_handler,
     };
-    const rg_gui_option_t options[] = {
-        {0, "Audio enable", "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
-        {0, "Audio filter", "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
-        {0, "Controls    ", "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
-        RG_DIALOG_END,
-    };
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
     updates[0]->height = SNES_HEIGHT;
     currentUpdate = updates[0];
+
+    audioBuffer = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
@@ -255,11 +321,9 @@ void snes_main(void)
     Settings.ControllerOption = SNES_JOYPAD;
     Settings.HBlankStart = (256 * Settings.H_Max) / SNES_HCOUNTER_MAX;
     Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
+    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
     Settings.DisableSoundEcho = false;
     Settings.InterpolatedSound = true;
-#ifdef USE_BLARGG_APU
-    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
-#endif
 
     if (!S9xInitDisplay())
         RG_PANIC("Display init failed!");
@@ -299,7 +363,7 @@ void snes_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = Memory.ROMFramesPerSecond;
+    rg_system_set_tick_rate(Memory.ROMFramesPerSecond);
     app->frameskip = 3;
 
     bool menuCancelled = false;
@@ -362,11 +426,10 @@ void snes_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

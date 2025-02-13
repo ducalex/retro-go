@@ -26,7 +26,7 @@ static rg_gui_event_t toggle_tab_cb(rg_gui_option_t *option, rg_gui_event_t even
     {
         tab->enabled = !tab->enabled;
     }
-    strcpy(option->value, tab->enabled ? "Show" : "Hide");
+    strcpy(option->value, tab->enabled ? _("Show") : _("Hide"));
     return RG_DIALOG_VOID;
 }
 
@@ -41,14 +41,14 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
             *opt++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-        rg_gui_dialog("Tabs Visibility", options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
 
 static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[SCROLL_MODE_COUNT] = {"Center", "Paging"};
+    const char *modes[SCROLL_MODE_COUNT] = {_("Center"), _("Paging")};
     const int max = SCROLL_MODE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.scroll_mode < 0)
@@ -67,7 +67,7 @@ static rg_gui_event_t scroll_mode_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[START_SCREEN_COUNT] = {"Auto", "Carousel", "Browser"};
+    const char *modes[START_SCREEN_COUNT] = {_("Auto"), _("Carousel"), _("Browser")};
     const int max = START_SCREEN_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.start_screen < 0)
@@ -83,7 +83,7 @@ static rg_gui_event_t start_screen_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 static rg_gui_event_t show_preview_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {"None      ", "Cover,Save", "Save,Cover", "Cover only", "Save only "};
+    const char *modes[] = {_("None"), _("Cover,Save"), _("Save,Cover"), _("Cover only"), _("Save only")};
     const int max = PREVIEW_MODE_COUNT - 1;
 
     if (event == RG_DIALOG_PREV && --gui.show_preview < 0)
@@ -120,6 +120,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
         gui.color_theme = 0;
 
     gui.color_theme %= RG_COUNT(gui.themes);
+    gui.theme = &gui.themes[gui.color_theme];
 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
         return RG_DIALOG_REDRAW;
@@ -130,7 +131,7 @@ static rg_gui_event_t color_theme_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    const char *modes[] = {"Last game", "Launcher"};
+    const char *modes[] = {_("Last game"), _("Launcher")};
     int max = 1;
 
     if (event == RG_DIALOG_PREV && --gui.startup_mode < 0)
@@ -169,32 +170,10 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
             webui_start();
         rg_settings_set_number(NS_APP, SETTING_WEBUI, enabled);
     }
-    strcpy(option->value, enabled ? "On " : "Off");
+    strcpy(option->value, enabled ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 #endif
-
-static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, "Color theme ", "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
-            {0, "Preview     ", "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
-            {0, "Scroll mode ", "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
-            {0, "Start screen", "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
-            {0, "Hide tabs   ", "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
-            #ifdef RG_ENABLE_NETWORKING
-            {0, "File server ", "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
-            #endif
-            {0, "Startup app ", "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
-            RG_DIALOG_END,
-        };
-        gui_redraw(); // clear main menu
-        rg_gui_dialog("Launcher Options", options, 0);
-    }
-    return RG_DIALOG_VOID;
-}
 
 static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
@@ -209,18 +188,6 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
     return RG_DIALOG_VOID;
 }
 
-static void show_about_menu(void)
-{
-    const rg_gui_option_t options[] = {
-        {0, "Build CRC cache", NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, "Check for updates", NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
-    #endif
-        RG_DIALOG_END,
-    };
-    rg_gui_about_menu(options);
-}
-
 static void retro_loop(void)
 {
     tab_t *tab = NULL;
@@ -232,7 +199,7 @@ static void retro_loop(void)
     int browse_last = -1;
     bool redraw_pending = true;
 
-    gui_init(app->bootType != RG_RST_RESTART);
+    gui_init(app->isColdBoot);
     applications_init();
     bookmarks_init();
 
@@ -252,7 +219,7 @@ static void retro_loop(void)
         // It's also risky to let the user do file accesses at the same time (thread safety, SPI, etc)...
         if (gui.http_lock)
         {
-            rg_gui_draw_message("HTTP Server Busy...");
+            rg_gui_draw_message(_("HTTP Server Busy..."));
             redraw_pending = true;
             rg_task_delay(100);
             continue;
@@ -280,7 +247,7 @@ static void retro_loop(void)
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
             if (joystick == RG_KEY_MENU)
-                show_about_menu();
+                rg_gui_about_menu();
             else
                 rg_gui_options_menu();
 
@@ -387,7 +354,8 @@ static void retro_loop(void)
             prev_joystick = 0;
             gui_event(TAB_IDLE, tab);
             next_idle_event = rg_system_timer() + 100000;
-            redraw_pending = true;
+            if (gui.idle_counter % 10 == 1)
+                redraw_pending = true;
         }
         else if (gui.idle_counter)
         {
@@ -422,6 +390,14 @@ static void try_migrate(void)
         rg_settings_set_number(NS_GLOBAL, "Migration", 1390);
         rg_settings_commit();
     }
+
+    if (rg_settings_get_number(NS_GLOBAL, "Migration", 0) < 1440)
+    {
+        // Bit order and default value of the indicators has changed in 1.44, reset it
+        rg_settings_set_number(NS_GLOBAL, "Indicators", (1 << RG_INDICATOR_POWER_LOW));
+        rg_settings_set_number(NS_GLOBAL, "Migration", 1440);
+        rg_settings_commit();
+    }
 }
 
 void event_handler(int event, void *arg)
@@ -430,24 +406,48 @@ void event_handler(int event, void *arg)
         gui_redraw();
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    const rg_gui_option_t options[] = {
+        {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
+        {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
+        {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
+        {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
+        {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
+        #ifdef RG_ENABLE_NETWORKING
+        {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+        #endif
+        {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
+        RG_DIALOG_END,
+    };
+    memcpy(dest, options, sizeof(options));
+}
+
+static void about_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb};
+    #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
+    *dest++ = (rg_gui_option_t){0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
+    #endif
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Launcher options", NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb},
-        RG_DIALOG_END,
+        .options = &options_handler,
+        .about = &about_handler,
     };
 
-    app = rg_system_init(32000, &handlers, options);
+    app = rg_system_init(32000, &handlers, NULL);
     app->configNs = "launcher";
     app->isLauncher = true;
 
     if (!rg_storage_ready())
     {
         rg_display_clear(C_SKY_BLUE);
-        rg_gui_alert("SD Card Error", "Storage mount failed.\nMake sure the card is FAT32.");
+        rg_gui_alert(_("SD Card Error"), _("Storage mount failed.\nMake sure the card is FAT32."));
     }
     else
     {

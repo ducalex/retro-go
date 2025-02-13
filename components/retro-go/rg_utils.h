@@ -40,6 +40,8 @@
 #define PRINTF_BINARY_32 PRINTF_BINARY_16 " " PRINTF_BINARY_16
 #define PRINTF_BINVAL_32(i) PRINTF_BINVAL_16((i) >> 16), PRINTF_BINVAL_16(i)
 
+/* String functions */
+
 /**
  * both functions give you an allocation of strlen(str) + 1 valid for the lifetime of the application
  * they cannot be freed. unique avoids keeping multiple copies of an identical string (eg a path)
@@ -47,16 +49,22 @@
 */
 const char *rg_const_string(const char *str);
 const char *rg_unique_string(const char *str);
-
 char *rg_strtolower(char *str);
 char *rg_strtoupper(char *str);
+char *rg_json_fixup(char *json);
+
+/* Paths functions */
 const char *rg_dirname(const char *path);
 const char *rg_basename(const char *path);
 const char *rg_extension(const char *filename);
 bool rg_extension_match(const char *filename, const char *extensions);
 const char *rg_relpath(const char *path);
+
+/* Hashing */
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t rg_hash(const char *buf, size_t len);
+
+/* Misc */
 void *rg_alloc(size_t size, uint32_t caps);
 // rg_usleep behaves like usleep in libc: it will sleep for *at least* `us` microseconds, but possibly more
 // due to scheduling. You should use rg_task_delay() if you don't need more than 10-15ms granularity.

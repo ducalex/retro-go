@@ -5,7 +5,6 @@
 #include "snes9x.h"
 #include "spc700.h"
 #include "apu.h"
-#include "apumem.h"
 #include "soundux.h"
 #include "cpuexec.h"
 
@@ -91,6 +90,44 @@ void S9xResetAPU()
 
    S9xResetSound(true);
    S9xSetEchoEnable(0);
+}
+
+uint8_t S9xAPUReadPort(int32_t Address)
+{
+   IAPU.APUExecuting = Settings.APUEnabled;
+   IAPU.WaitCounter++;
+
+   if (Settings.APUEnabled)
+      return APU.OutPorts [Address & 3];
+
+   CPU.BranchSkip = true;
+
+   if ((Address & 3) < 2)
+   {
+      int32_t r = rand();
+      if (r & 2)
+      {
+         if (r & 4)
+            return (Address & 3) == 1 ? 0xaa : 0xbb;
+         else
+            return (r >> 3) & 0xff;
+      }
+   }
+   else
+   {
+      int32_t r = rand();
+      if (r & 2)
+         return (r >> 3) & 0xff;
+   }
+   return Memory.FillRAM[Address];
+}
+
+void S9xAPUWritePort(int32_t Address, uint8_t Byte)
+{
+   Memory.FillRAM [Address] = Byte;
+   IAPU.RAM [(Address & 3) + 0xf4] = Byte;
+   IAPU.APUExecuting = Settings.APUEnabled;
+   IAPU.WaitCounter++;
 }
 
 void S9xSetAPUDSP(uint8_t byte)

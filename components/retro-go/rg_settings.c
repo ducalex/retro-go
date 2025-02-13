@@ -6,6 +6,7 @@
 #include <cJSON.h>
 
 static cJSON *config_root = NULL;
+static bool safe_mode = false;
 
 
 static cJSON *json_root(const char *name, bool set_dirty)
@@ -30,21 +31,25 @@ static cJSON *json_root(const char *name, bool set_dirty)
         branch = cJSON_AddObjectToObject(config_root, name);
         cJSON_AddStringToObject(branch, "namespace", name);
         cJSON_AddNumberToObject(branch, "changed", 0);
-
-        void *data; size_t data_len;
-        char pathbuf[RG_PATH_MAX];
-        snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
-        if (rg_storage_read_file(pathbuf, &data, &data_len, 0))
+        if (!safe_mode)
         {
-            cJSON *values = cJSON_Parse((char *)data);
-            if (values)
+            char *data; size_t data_len;
+            char pathbuf[RG_PATH_MAX];
+            snprintf(pathbuf, RG_PATH_MAX, "%s/%s.json", RG_BASE_PATH_CONFIG, name);
+            if (rg_storage_read_file(pathbuf, (void **)&data, &data_len, 0))
             {
-                RG_LOGI("Config file loaded: '%s'", pathbuf);
-                cJSON_AddItemToObject(branch, "values", values);
+                cJSON *values = cJSON_Parse(data);
+                if (!values) // Parse failure, clean the markup and try again
+                    values = cJSON_Parse(rg_json_fixup(data));
+                if (values)
+                {
+                    RG_LOGI("Config file loaded: '%s'", pathbuf);
+                    cJSON_AddItemToObject(branch, "values", values);
+                }
+                else
+                    RG_LOGE("Config file parsing failed: '%s'", pathbuf);
+                free(data);
             }
-            else
-                RG_LOGE("Config file parsing failed: '%s'", pathbuf);
-            free(data);
         }
     }
 
@@ -74,16 +79,17 @@ static void update_value(const char *section, const char *key, cJSON *new_value)
         cJSON_Delete(new_value);
 }
 
-void rg_settings_init(void)
+void rg_settings_init(bool _safe_mode)
 {
     config_root = cJSON_CreateObject();
+    safe_mode = _safe_mode;
     json_root(NS_GLOBAL, 0);
     json_root(NS_BOOT, 0);
 }
 
 void rg_settings_commit(void)
 {
-    if (!config_root)
+    if (!config_root || safe_mode)
         return;
 
     for (cJSON *branch = config_root->child; branch; branch = branch->next)
@@ -126,10 +132,23 @@ void rg_settings_reset(void)
     }
 }
 
+bool rg_settings_get_boolean(const char *section, const char *key, bool default_value)
+{
+    cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
+    if (cJSON_IsNumber(obj)) // Backwards compatible with plain numbers
+        return obj->valueint != 0;
+    return cJSON_IsBool(obj) ? cJSON_IsTrue(obj) : default_value;
+}
+
+void rg_settings_set_boolean(const char *section, const char *key, bool value)
+{
+    update_value(section, key, cJSON_CreateBool(value));
+}
+
 double rg_settings_get_number(const char *section, const char *key, double default_value)
 {
     cJSON *obj = cJSON_GetObjectItem(json_root(section, 0), key);
-    return obj ? obj->valuedouble : default_value;
+    return cJSON_IsNumber(obj) ? obj->valuedouble : default_value;
 }
 
 void rg_settings_set_number(const char *section, const char *key, double value)
@@ -153,4 +172,9 @@ void rg_settings_set_string(const char *section, const char *key, const char *va
 void rg_settings_delete(const char *section, const char *key)
 {
     cJSON_DeleteItemFromObject(json_root(section, 1), key);
+}
+
+bool rg_settings_exists(const char *section, const char *key)
+{
+    return cJSON_GetObjectItem(json_root(section, 0), key) != NULL;
 }

@@ -16,14 +16,15 @@ extern "C" {
 #include <esp_idf_version.h>
 #include <esp_heap_caps.h>
 #include <esp_attr.h>
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 3, 0)
-#error "Retro-Go requires ESP-IDF version 4.3.0 or newer!"
+#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(4, 4, 0)
+#error "Retro-Go requires ESP-IDF version 4.4.0 or newer!"
 #endif
 #else
 #define IRAM_ATTR
 #define RTC_NOINIT_ATTR
 #endif
 
+#include "rg_localization.h"
 #include "rg_audio.h"
 #include "rg_display.h"
 #include "rg_input.h"
@@ -92,20 +93,17 @@ typedef enum
 
 typedef enum
 {
-    RG_RST_POWERON = 0, // Cold boot
-    RG_RST_RESTART,     // Warm boot
-    RG_RST_PANIC,       // Crash
-} rg_reset_reason_t;
-
-typedef enum
-{
-    RG_INDICATOR_PANIC = 0,
-    RG_INDICATOR_LOW_BATTERY,
-    RG_INDICATOR_CHARGING,
-    RG_INDICATOR_DISK_ACTIVITY,
-    RG_INDICATOR_NETWORK_ACTIVITY,
-    RG_INDICATOR_SYSTEM_ACTIVITY,
-    RG_INDICATOR_USER_ACTIVITY,
+    // 0-3: Power indicators
+    RG_INDICATOR_POWER_NORMAL = 0,
+    RG_INDICATOR_POWER_LOW,
+    RG_INDICATOR_POWER_CHARGING,
+    // 4-15: Activity indicators
+    RG_INDICATOR_ACTIVITY_DISK = 4,
+    RG_INDICATOR_ACTIVITY_NETWORK,
+    RG_INDICATOR_ACTIVITY_SYSTEM,
+    RG_INDICATOR_ACTIVITY_USER,
+    // 30-31: Critical indicators
+    RG_INDICATOR_CRITICAL = 30,
 } rg_indicator_t;
 
 typedef enum
@@ -128,22 +126,17 @@ typedef enum
     RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
 } rg_event_t;
 
-typedef bool (*rg_state_handler_t)(const char *filename);
-typedef bool (*rg_reset_handler_t)(bool hard);
-typedef void (*rg_event_handler_t)(int event, void *data);
-typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
-typedef int  (*rg_mem_read_handler_t)(int addr);
-typedef int  (*rg_mem_write_handler_t)(int addr, int value);
-
 typedef struct
 {
-    rg_state_handler_t loadState;       // rg_emu_load_state() handler
-    rg_state_handler_t saveState;       // rg_emu_save_state() handler
-    rg_reset_handler_t reset;           // rg_emu_reset() handler
-    rg_screenshot_handler_t screenshot; // rg_emu_screenshot() handler
-    rg_event_handler_t event;           // listen to retro-go system events
-    rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
-    rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
+    bool (*loadState)(const char *filename);                         // rg_emu_load_state() handler
+    bool (*saveState)(const char *filename);                         // rg_emu_save_state() handler
+    bool (*reset)(bool hard);                                        // rg_emu_reset() handler
+    bool (*screenshot)(const char *filename, int width, int height); // rg_emu_screenshot() handler
+    void (*event)(int event, void *data);                            // listen to retro-go system events
+    int (*memRead)(int addr);                                        // Used by for cheats and debugging
+    int (*memWrite)(int addr, int value);                            // Used by for cheats and debugging
+    void (*options)(rg_gui_option_t *dest);                          // Add extra options to rg_gui_options_menu()
+    void (*about)(rg_gui_option_t *dest);                            // Add extra options to rg_gui_about_menu()
 } rg_handlers_t;
 
 typedef struct
@@ -175,23 +168,23 @@ typedef struct
     const char *configNs;
     const char *bootArgs;
     uint32_t bootFlags;
-    uint32_t bootType;
     uint32_t indicatorsMask;
     float speed;
     int sampleRate;
     int tickRate;
+    int frameTime;
     int frameskip;
     int overclock;
     int tickTimeout;
-    int availableMemory;
-    bool watchdog;
+    bool lowMemoryMode;
+    bool enWatchdog;
+    bool isColdBoot;
     bool isLauncher;
     // bool isOfficial;
     bool isRelease;
     int logLevel;
     int saveSlot;
     const char *romPath;
-    const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
 } rg_app_t;
@@ -216,8 +209,8 @@ typedef struct
     int freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused);
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
@@ -229,6 +222,8 @@ void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
 void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator_mask(rg_indicator_t indicator);
+void rg_system_set_tick_rate(int tickRate);
+int rg_system_get_tick_rate(void);
 void rg_system_set_overclock(int level);
 int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);

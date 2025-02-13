@@ -50,7 +50,7 @@ static wl_handle_t wl_handle = WL_INVALID_HANDLE;
 #if defined(RG_STORAGE_SDSPI_HOST) || defined(RG_STORAGE_SDMMC_HOST)
 static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
 {
-    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 1);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_DISK, 1);
 
     esp_err_t ret = SDCARD_DO_TRANSACTION(slot, cmdinfo);
     if (ret == ESP_ERR_NO_MEM)
@@ -58,7 +58,7 @@ static esp_err_t sdcard_do_transaction(int slot, sdmmc_command_t *cmdinfo)
         // free some memory and try again?
     }
 
-    rg_system_set_indicator(RG_INDICATOR_DISK_ACTIVITY, 0);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_DISK, 0);
     return ret;
 }
 #endif
@@ -417,7 +417,7 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(path);
 
-    size_t output_buffer_align = RG_MAX(0x400, (flags & 0xF) * 0x2000);
+    size_t output_buffer_alloc_size;
     size_t output_buffer_size;
     void *output_buffer;
     size_t file_size;
@@ -435,13 +435,16 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
 
     if (flags & RG_FILE_USER_BUFFER)
     {
+        output_buffer_alloc_size = *data_len;
         output_buffer_size = RG_MIN(*data_len, file_size);
         output_buffer = *data_out;
     }
     else
     {
+        size_t blocksize = RG_MAX(0x400, (flags & 0xF) * 0x2000);
+        output_buffer_alloc_size = (file_size + (blocksize - 1)) & ~(blocksize - 1);
         output_buffer_size = file_size;
-        output_buffer = malloc((output_buffer_size + (output_buffer_align - 1)) & ~(output_buffer_align - 1));
+        output_buffer = malloc(output_buffer_alloc_size);
     }
 
     if (!output_buffer)
@@ -461,6 +464,12 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     }
 
     fclose(fp);
+
+    // Wipe the extra allocated space, if any
+    if (output_buffer_alloc_size > output_buffer_size)
+    {
+        memset(output_buffer + output_buffer_size, 0, output_buffer_alloc_size - output_buffer_size);
+    }
 
     *data_out = output_buffer;
     *data_len = output_buffer_size;
@@ -497,7 +506,11 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
  * to do some testing to determine if the increased executable size is acceptable...
  */
 #if RG_ZIP_SUPPORT
+
+#ifdef ESP_PLATFORM
 #include <rom/miniz.h>
+#else
+#include <miniz.h>
 #endif
 
 #define ZIP_MAGIC 0x04034b50
@@ -521,7 +534,6 @@ typedef struct __attribute__((packed))
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
 {
-#if RG_ZIP_SUPPORT
     RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(zip_path);
 
@@ -627,8 +639,11 @@ _fail:
     free(decomp);
     fclose(fp);
     return false;
+}
 #else
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
+{
     RG_LOGE("ZIP support hasn't been enabled!");
     return false;
-#endif
 }
+#endif

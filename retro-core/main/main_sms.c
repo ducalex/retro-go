@@ -2,6 +2,7 @@
 
 #include <smsplus.h>
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
@@ -92,6 +93,12 @@ static rg_gui_event_t palette_update_cb(rg_gui_option_t *opt, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Palette"), "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void sms_main(void)
 {
     const rg_handlers_t handlers = {
@@ -100,13 +107,10 @@ void sms_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Palette ", "-", RG_DIALOG_FLAG_NORMAL, &palette_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
     updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
@@ -146,8 +150,6 @@ void sms_main(void)
 
     system_poweron();
 
-    app->tickRate = (sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL;
-
     updates[0]->offset = bitmap.viewport.x;
     updates[0]->width = bitmap.viewport.w;
     updates[0]->height = bitmap.viewport.h;
@@ -159,6 +161,9 @@ void sms_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
+
+    rg_system_set_tick_rate((sms.display == DISPLAY_NTSC) ? FPS_NTSC : FPS_PAL);
+    app->frameskip = 0;
 
     int skipFrames = 0;
     int colecoKey = 0;
@@ -214,7 +219,7 @@ void sms_main(void)
 
             if (joystick & RG_KEY_START)
             {
-                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, "To start, try: 1 or * or #", C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
+                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, _("To start, try: 1 or * or #"), C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
                 rg_audio_set_mute(true);
                 int key = rg_input_read_keyboard(&coleco_keyboard);
                 rg_audio_set_mute(false);
@@ -266,11 +271,10 @@ void sms_main(void)
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

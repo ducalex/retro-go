@@ -39,6 +39,11 @@ typedef struct
 
 typedef struct
 {
+    uint32_t magicWord;
+} boot_config_t;
+
+typedef struct
+{
     int32_t totalFrames, fullFrames, partFrames, ticks;
     int64_t busyTime, updateTime;
 } counters_t;
@@ -78,10 +83,12 @@ static struct
 
 // The trace will survive a software reset
 static RTC_NOINIT_ATTR panic_trace_t panicTrace;
+// static RTC_NOINIT_ATTR boot_config_t bootConfig;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
 static uint32_t indicators;
+static rg_color_t ledColor = -1;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
@@ -114,6 +121,37 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
     if (panicTrace.magicWord != RG_STRUCT_MAGIC)
         begin_panic_trace("esp_panic", NULL);
     logbuf_putc(&panicTrace, c);
+}
+
+static bool update_boot_config(const char *partition, const char *name, const char *args, uint32_t flags)
+{
+    if (app.initialized)
+    {
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
+        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
+        rg_settings_commit();
+    }
+    else
+    {
+        rg_storage_delete(RG_BASE_PATH_CONFIG "/boot.json");
+    }
+#if defined(ESP_PLATFORM)
+    // Check if the OTA settings are already correct, and if so do not call esp_ota_set_boot_partition
+    // This is simply to avoid an unecessary flash write...
+    const esp_partition_t *current = esp_ota_get_boot_partition();
+    if (partition && (!current || strncmp(current->label, partition, 16) != 0))
+    {
+        esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
+                ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
+        if (err != ESP_OK)
+        {
+            RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!", err);
+            return false;
+        }
+    }
+#endif
+    return true;
 }
 
 static void update_memory_statistics(void)
@@ -183,16 +221,25 @@ static void update_statistics(void)
 static void update_indicators(void)
 {
     uint32_t visibleIndicators = indicators & app.indicatorsMask;
-    rg_color_t ledColor = 0; // C_GREEN
+    rg_color_t newColor = 0; // C_GREEN
 
-    if (visibleIndicators & (1 << RG_INDICATOR_LOW_BATTERY))
-        ledColor = C_RED;
+    if (indicators & (3 << RG_INDICATOR_CRITICAL))
+        newColor = C_RED; // Make it flash rapidly!
+    else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
+        newColor = C_RED;
     else if (visibleIndicators)
-        ledColor = C_BLUE;
+        newColor = C_BLUE;
+
+    // In some cases it can be costly to update the LED status, skip if unchanged
+    if (newColor == ledColor)
+        return;
 
 #if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    gpio_set_level(RG_GPIO_LED, ledColor != 0);
+    // GPIO LED doesn't support colors, so any color = on
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        gpio_set_level(RG_GPIO_LED, newColor != 0);
 #endif
+    ledColor = newColor;
 }
 
 static void system_monitor_task(void *arg)
@@ -212,8 +259,8 @@ static void system_monitor_task(void *arg)
 
         rg_battery_t battery = rg_input_read_battery();
         // TODO: The flashing should eventually be handled by update_indicators instead of here...
-        rg_system_set_indicator(RG_INDICATOR_LOW_BATTERY, (battery.present && battery.level <= 2.f &&
-                                                           !rg_system_get_indicator(RG_INDICATOR_LOW_BATTERY)));
+        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f &&
+                                                           !rg_system_get_indicator(RG_INDICATOR_POWER_LOW)));
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
@@ -279,15 +326,16 @@ static void enter_recovery_mode(void)
 {
     RG_LOGW("Entering recovery mode...\n");
 
+    // FIXME: At this point we don't have valid settings, we should find way to get the user's language...
     const rg_gui_option_t options[] = {
-        {0, "Reset all settings", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {1, "Reboot to factory ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Reboot to launcher", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Reset all settings"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {1, _("Reboot to factory "), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {2, _("Reboot to launcher"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END,
     };
     while (true)
     {
-        switch (rg_gui_dialog("Recovery mode", options, -1))
+        switch (rg_gui_dialog(_("Recovery mode"), options, -1))
         {
         case 0:
             rg_storage_delete(RG_BASE_PATH_CONFIG);
@@ -325,23 +373,24 @@ static void platform_init(void)
 #endif
 }
 
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused)
 {
     if (!app.initialized)
-        return rg_system_init(sampleRate, handlers, options);
+        return rg_system_init(sampleRate, handlers, NULL);
 
     app.sampleRate = sampleRate;
     if (handlers)
         app.handlers = *handlers;
-    app.options = options;
     rg_audio_set_sample_rate(app.sampleRate);
 
     return &app;
 }
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options)
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused)
 {
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
+    bool enterRecoveryMode = false;
+    bool showCrashDialog = false;
 
     app = (rg_app_t){
         .name = RG_PROJECT_APP,
@@ -351,16 +400,17 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .configNs = RG_PROJECT_APP,
         .bootArgs = NULL,
         .bootFlags = 0,
-        .bootType = RG_RST_POWERON,
-        .indicatorsMask = 0xFFFFFFFF,
+        .indicatorsMask = (1 << RG_INDICATOR_POWER_LOW),
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
-        .frameskip = 1,
+        .frameTime = 1000000 / 60,
+        .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
         .overclock = 0,
         .tickTimeout = 3000000,
-        .availableMemory = 0,
-        .watchdog = true,
+        .lowMemoryMode = false,
+        .enWatchdog = true,
+        .isColdBoot = true,
         .isLauncher = false,
     #if RG_BUILD_RELEASE
         .isRelease = true,
@@ -369,7 +419,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
         .isRelease = false,
         .logLevel = RG_LOG_DEBUG,
     #endif
-        .options = options, // TO DO: We should make a copy of it?
     };
 
     // Do this very early, may be needed to enable serial console
@@ -377,10 +426,9 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
 
 #if defined(ESP_PLATFORM)
     esp_reset_reason_t r_reason = esp_reset_reason();
-    if (r_reason == ESP_RST_PANIC || r_reason == ESP_RST_TASK_WDT || r_reason == ESP_RST_INT_WDT)
-        app.bootType = RG_RST_PANIC;
-    else if (r_reason == ESP_RST_SW)
-        app.bootType = RG_RST_RESTART;
+    showCrashDialog = (r_reason == ESP_RST_PANIC); // || r_reason == ESP_RST_TASK_WDT ||
+                       // r_reason == ESP_RST_INT_WDT || r_reason == ESP_RST_WDT);
+    app.isColdBoot = r_reason != ESP_RST_SW;
     tasks[0] = (rg_task_t){.handle = xTaskGetCurrentTaskHandle(), .name = "main"};
 #elif defined(RG_TARGET_SDL2)
     tasks[0] = (rg_task_t){.handle = SDL_ThreadID(), .name = "main"};
@@ -398,16 +446,22 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
     {
         RG_LOGW("Button " PRINTF_BINARY_16 " being held down...\n", PRINTF_BINVAL_16(btn));
+        enterRecoveryMode = (timeout == 0);
         rg_task_delay(100);
-        if (timeout > 0)
-            continue;
-        rg_display_init();
-        rg_gui_init();
-        enter_recovery_mode();
     }
 
-    // Show alert if we've just rebooted from a panic
-    if (app.bootType == RG_RST_PANIC)
+    rg_settings_init(enterRecoveryMode || showCrashDialog);
+    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.configNs);
+    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, app.bootArgs);
+    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
+    rg_display_init();
+    rg_gui_init();
+
+    if (enterRecoveryMode)
+    {
+        enter_recovery_mode();
+    }
+    else if (showCrashDialog)
     {
         RG_LOGE("Recoverying from panic!\n");
         char message[400] = "Application crashed";
@@ -419,8 +473,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
             if (rg_system_save_trace(RG_STORAGE_ROOT "/crash.log", 1))
                 strcat(message, "\nLog saved to SD Card.");
         }
-        rg_display_init();
-        rg_gui_init();
         rg_display_clear(C_BLUE);
         rg_gui_alert("System Panic!", message);
         rg_system_exit();
@@ -428,17 +480,13 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     memset(&panicTrace, 0, sizeof(panicTrace));
     panicTraceCleared = true;
 
-    rg_settings_init();
-    app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.name);
-    app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, "");
-    app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, 0);
-    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
-    app.romPath = app.bootArgs;
-    app.isLauncher = strcmp(app.name, RG_APP_LAUNCHER) == 0; // Might be overriden after init
-    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
+    update_memory_statistics();
+    app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
-    rg_display_init();
-    rg_gui_init();
+    app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
+    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
+    app.romPath = app.bootArgs ?: ""; // For whatever reason some of our code isn't NULL-aware, sigh..
+
     rg_gui_draw_hourglass();
     rg_audio_init(sampleRate);
 
@@ -455,23 +503,18 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg
     profile->lock = rg_mutex_create();
 #endif
 
-    update_memory_statistics();
-    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
-            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
-    app.availableMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
-
-#ifdef ESP_PLATFORM
-    if (statistics.totalMemoryExt == 0)
+    if (app.lowMemoryMode)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
-        esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, RG_APP_LAUNCHER));
-#endif
+        update_boot_config(RG_APP_LAUNCHER, NULL, NULL, 0);
 
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
+    update_memory_statistics();
+    RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
+            statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
     RG_LOGI("Retro-Go ready.\n\n");
 
     return &app;
@@ -754,6 +797,17 @@ rg_stats_t rg_system_get_counters(void)
     return statistics;
 }
 
+void rg_system_set_tick_rate(int tickRate)
+{
+    app.tickRate = tickRate;
+    app.frameTime = 1000000 / (app.tickRate * app.speed);
+}
+
+int rg_system_get_tick_rate(void)
+{
+    return app.tickRate;
+}
+
 void rg_system_tick(int busyTime)
 {
     statistics.lastTick = rg_system_timer();
@@ -785,7 +839,7 @@ static void shutdown_cleanup(void)
     rg_gui_draw_hourglass();                  // ...
     rg_system_event(RG_EVENT_SHUTDOWN, NULL); // Allow apps to save their state if they want
     rg_audio_deinit();                        // Disable sound ASAP to avoid audio garbage
-    rg_system_save_time();                    // RTC might save to storage, do it before
+    // rg_system_save_time();                    // RTC might save to storage, do it before
     rg_storage_deinit();                      // Unmount storage
     rg_input_wait_for_key(RG_KEY_ALL, 0, -1); // Wait for all keys to be released (boot is sensitive to GPIO0,32,33)
     rg_input_deinit();                        // Now we can shutdown input
@@ -839,25 +893,10 @@ void rg_system_switch_app(const char *partition, const char *name, const char *a
 {
     RG_LOGI("Switching to app %s (%s)", partition ?: "-", name ?: "-");
 
-    if (app.initialized)
-    {
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
-        rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
-        rg_settings_commit();
-    }
-#if defined(ESP_PLATFORM)
-    esp_err_t err = esp_ota_set_boot_partition(esp_partition_find_first(
-            ESP_PARTITION_TYPE_APP, ESP_PARTITION_SUBTYPE_ANY, partition));
-    if (err != ESP_OK)
-    {
-        RG_LOGE("esp_ota_set_boot_partition returned 0x%02X!\n", err);
-        RG_PANIC("Unable to set boot app!");
-    }
-#elif defined(RG_TARGET_SDL2)
-    // RG_PANIC("Not implemented");
-#endif
-    rg_system_restart();
+    if (update_boot_config(partition, name, args, flags))
+        rg_system_restart();
+
+    RG_PANIC("Failed to switch app!");
 }
 
 bool rg_system_have_app(const char *app)
@@ -1162,7 +1201,7 @@ static void emu_update_save_slot(uint8_t slot)
     if (slot != last_written)
     {
         char *filename = rg_emu_get_path(RG_PATH_SAVE_STATE + 0xFF, app.romPath);
-        if (rg_storage_write_file(filename, (void *)&last_written, sizeof(last_written), 0))
+        if (rg_storage_write_file(filename, (void *)&slot, sizeof(slot), 0))
             last_written = slot;
         free(filename);
     }
@@ -1174,8 +1213,7 @@ static void emu_update_save_slot(uint8_t slot)
         app.bootFlags &= ~RG_BOOT_SLOT_MASK;
         app.bootFlags |= app.saveSlot << 4;
         app.bootFlags |= RG_BOOT_RESUME;
-        rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
-        rg_settings_commit();
+        update_boot_config(NULL, app.configNs, app.bootArgs, app.bootFlags);
     }
 
     rg_storage_commit();
@@ -1183,9 +1221,6 @@ static void emu_update_save_slot(uint8_t slot)
 
 bool rg_emu_load_state(uint8_t slot)
 {
-    if (slot == 0xFF)
-        slot = app.saveSlot;
-
     if (!app.romPath || !app.handlers.loadState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -1215,9 +1250,6 @@ bool rg_emu_load_state(uint8_t slot)
 
 bool rg_emu_save_state(uint8_t slot)
 {
-    if (slot == 0xFF)
-        slot = app.saveSlot;
-
     if (!app.romPath || !app.handlers.saveState)
     {
         RG_LOGE("No rom or handler defined...\n");
@@ -1230,7 +1262,7 @@ bool rg_emu_save_state(uint8_t slot)
 
     RG_LOGI("Saving state to '%s'.\n", filename);
 
-    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 1);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_SYSTEM, 1);
     rg_gui_draw_hourglass();
 
     if (!rg_storage_mkdir(rg_dirname(filename)))
@@ -1262,9 +1294,8 @@ bool rg_emu_save_state(uint8_t slot)
     {
         // Save succeeded, let's take a pretty screenshot for the launcher!
         char *filename = rg_emu_get_path(RG_PATH_SCREENSHOT + slot, app.romPath);
-        rg_emu_screenshot(filename, rg_display_get_info()->screen.width / 2, 0);
+        rg_emu_screenshot(filename, rg_display_get_width() / 2, 0);
         free(filename);
-
         emu_update_save_slot(slot);
     }
 
@@ -1272,7 +1303,7 @@ bool rg_emu_save_state(uint8_t slot)
     free(filename);
 
     rg_storage_commit();
-    rg_system_set_indicator(RG_INDICATOR_SYSTEM_ACTIVITY, 0);
+    rg_system_set_indicator(RG_INDICATOR_ACTIVITY_SYSTEM, 0);
 
     return success;
 }
@@ -1354,8 +1385,8 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    app.frameskip = 0;
-    app.speed = 1.f;
+    if (app.speed != 1.f)
+        rg_emu_set_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
@@ -1364,7 +1395,9 @@ bool rg_emu_reset(bool hard)
 void rg_emu_set_speed(float speed)
 {
     app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
-    app.frameskip = RG_MAX(app.frameskip, (app.speed > 1.0f) ? 2 : 0);
+    // FIXME: We need to store the actual default frameskip so we can return to it...
+    app.frameskip = (app.speed - 0.5f) * 3;
+    app.frameTime = 1000000.f / (app.tickRate * app.speed);
     rg_audio_set_sample_rate(app.sampleRate * app.speed);
     rg_system_event(RG_EVENT_SPEEDUP, NULL);
 }

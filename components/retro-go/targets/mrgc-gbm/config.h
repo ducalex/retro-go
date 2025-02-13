@@ -22,6 +22,7 @@
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        38
+#define RG_SCREEN_MARGIN_BOTTOM     0
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
 #define RG_SCREEN_INIT()                                                                                   \
@@ -92,3 +93,8 @@
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_25
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_19
 #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_4
+
+// Updater
+#define RG_UPDATER_ENABLE               1
+#define RG_UPDATER_APPLICATION          RG_APP_FACTORY
+#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/espgbm/firmware"

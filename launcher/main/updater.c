@@ -1,26 +1,22 @@
 #include <rg_system.h>
-#include "gui.h"
-
-#ifdef RG_ENABLE_NETWORKING
 #include <malloc.h>
 #include <string.h>
 #include <cJSON.h>
 
-#define GITHUB_RELEASES RG_UPDATER_GITHUB_RELEASES
-#define DOWNLOAD_LOCATION RG_UPDATER_DOWNLOAD_LOCATION
+#include "gui.h"
 
-#define NAMELENGTH 64
-
+#if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
 typedef struct
 {
-    char name[NAMELENGTH];
+    char name[64];
     char url[256];
 } asset_t;
 
 typedef struct
 {
-    char name[NAMELENGTH];
+    char name[64];
     char date[32];
+    char url[256];
     asset_t *assets;
     size_t assets_count;
 } release_t;
@@ -83,6 +79,7 @@ static bool download_file(const char *url, const char *filename)
         return false;
     }
 
+    gui_redraw();
     return true;
 }
 
@@ -123,38 +120,42 @@ static cJSON *fetch_json(const char *url)
 cleanup:
     rg_network_http_close(req);
     free(buffer);
+    gui_redraw();
     return json;
 }
 
 static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    const release_t *release = (release_t *)option->arg;
+
     if (event == RG_DIALOG_ENTER)
     {
-        release_t *release = (release_t *)option->arg;
-
+    #if defined(RG_UPDATER_APPLICATION) && defined(RG_UPDATER_DOWNLOAD_LOCATION)
         rg_gui_option_t options[release->assets_count + 4];
         rg_gui_option_t *opt = options;
 
-        *opt++ = (rg_gui_option_t){0, "Date", release->date, -1, NULL};
-        *opt++ = (rg_gui_option_t){0, "Files:", NULL, -1, NULL};
+        *opt++ = (rg_gui_option_t){0, _("Date"), (char *)release->date, RG_DIALOG_FLAG_MESSAGE, NULL};
+        *opt++ = (rg_gui_option_t){0, _("Files:"), NULL, RG_DIALOG_FLAG_MESSAGE, NULL};
 
         for (int i = 0; i < release->assets_count; i++)
-            *opt++ = (rg_gui_option_t){i, release->assets[i].name, NULL, 1, NULL};
+            *opt++ = (rg_gui_option_t){i, release->assets[i].name, NULL, RG_DIALOG_FLAG_NORMAL, NULL};
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-        int sel = rg_gui_dialog(release->name, options, -1);
+        int sel = rg_gui_dialog(release->name, options, 0);
         if (sel != RG_DIALOG_CANCELLED)
         {
             char dest_path[RG_PATH_MAX];
-            snprintf(dest_path, RG_PATH_MAX, "%s/%s", DOWNLOAD_LOCATION, release->assets[sel].name);
-            gui_redraw();
+            snprintf(dest_path, RG_PATH_MAX, "%s/%s", RG_UPDATER_DOWNLOAD_LOCATION, release->assets[sel].name);
             if (download_file(release->assets[sel].url, dest_path))
             {
-                if (rg_gui_confirm("Download complete!", "Reboot to flash?", true))
-                    rg_system_switch_app(RG_APP_UPDATER, NULL, dest_path, 0);
+                if (rg_gui_confirm(_("Download complete!"), _("Reboot to flash?"), true))
+                    rg_system_switch_app(RG_UPDATER_APPLICATION, NULL, dest_path, 0);
             }
         }
-        gui_redraw();
+    #else
+        rg_gui_alert(release->name, release->url);
+    #endif
+        return RG_DIALOG_REDRAW;
     }
 
     return RG_DIALOG_VOID;
@@ -162,28 +163,41 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
 void updater_show_dialog(void)
 {
-    cJSON *releases_json = fetch_json(GITHUB_RELEASES);
+    cJSON *releases_json = fetch_json(RG_UPDATER_GITHUB_RELEASES);
+    size_t releases_count = RG_MIN(cJSON_GetArraySize(releases_json), 10);
+    const char *dialog_title = _("Available Releases");
+    rg_gui_option_t dialog_options[releases_count + 1];
+
     if (!releases_json)
     {
-        rg_gui_alert("Connection failed", "Make sure that you are online!");
+        rg_gui_alert(dialog_title, _("Connection failed!"));
         return;
     }
-    size_t releases_count = RG_MIN(cJSON_GetArraySize(releases_json), 20);
+    if (!releases_count)
+    {
+        rg_gui_alert(dialog_title, _("Received empty list!"));
+        cJSON_Delete(releases_json);
+        return;
+    }
 
     release_t *releases = calloc(releases_count, sizeof(release_t));
+    rg_gui_option_t *opt = dialog_options;
+
     for (int i = 0; i < releases_count; ++i)
     {
         cJSON *release_json = cJSON_GetArrayItem(releases_json, i);
-        char *name = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name"));
-        char *date = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at"));
-
-        snprintf(releases[i].name, NAMELENGTH, "%s", name ?: "N/A");
-        snprintf(releases[i].date, 32, "%s", date ?: "N/A");
-
         cJSON *assets_json = cJSON_GetObjectItem(release_json, "assets");
         size_t assets_count = cJSON_GetArraySize(assets_json);
-        releases[i].assets = calloc(assets_count, sizeof(asset_t));
-        releases[i].assets_count = 0;
+        char *name = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "name"));
+        char *date = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "published_at"));
+        char *url = cJSON_GetStringValue(cJSON_GetObjectItem(release_json, "html_url"));
+
+        release_t *release = releases + i;
+        snprintf(release->name, sizeof(release->name), "%s", name ?: "N/A");
+        snprintf(release->date, sizeof(release->date), "%s", date ?: "N/A");
+        snprintf(release->url, sizeof(release->url), "%s", url ?: "N/A");
+        release->assets = calloc(assets_count, sizeof(asset_t));
+        release->assets_count = 0;
 
         for (int j = 0; j < assets_count; ++j)
         {
@@ -192,32 +206,18 @@ void updater_show_dialog(void)
             char *url = cJSON_GetStringValue(cJSON_GetObjectItem(asset_json, "browser_download_url"));
             if (name && url && rg_extension_match(name, "fw img"))
             {
-                asset_t *asset = &releases[i].assets[releases[i].assets_count++];
-                snprintf(asset->name, NAMELENGTH, "%s", name);
-                snprintf(asset->url, 256, "%s", url);
+                asset_t *asset = &release->assets[release->assets_count++];
+                snprintf(asset->name, sizeof(asset->name), "%s", name);
+                snprintf(asset->url, sizeof(asset->url), "%s", url);
             }
         }
+        *opt++ = (rg_gui_option_t){(intptr_t)release, release->name, NULL, RG_DIALOG_FLAG_NORMAL, &view_release_cb};
     }
+    *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
     cJSON_Delete(releases_json);
 
-    gui_redraw();
-
-    if (releases_count > 0)
-    {
-        rg_gui_option_t options[releases_count + 1];
-        rg_gui_option_t *opt = options;
-
-        for (int i = 0; i < releases_count; ++i)
-            *opt++ = (rg_gui_option_t){(intptr_t)&releases[i], releases[i].name, NULL, 1, &view_release_cb};
-        *opt++ = (rg_gui_option_t)RG_DIALOG_END;
-
-        rg_gui_dialog("Available Releases", options, 0);
-    }
-    else
-    {
-        rg_gui_alert("Available Releases", "Received empty list!");
-    }
+    rg_gui_dialog(dialog_title, dialog_options, 0);
 
     for (int i = 0; i < releases_count; ++i)
         free(releases[i].assets);

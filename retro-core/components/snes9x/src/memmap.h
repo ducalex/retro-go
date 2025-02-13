@@ -60,7 +60,6 @@ void SA1ROMMap(void);
 void BSHiROMMap(void);
 void SPC7110HiROMMap(void);
 void SPC7110Sram(uint8_t);
-void SetaDSPMap(void);
 void ApplyROMFixes(void);
 void ApplyROMPatches(void);
 void DSPMap(void);
@@ -83,7 +82,6 @@ enum
 
 enum
 {
-   MAX_ROM_SIZE = 0x240000,
    RAM_SIZE = 0x20000,
    SRAM_SIZE = 0x10000, // 0x20000,
    VRAM_SIZE = 0x10000,

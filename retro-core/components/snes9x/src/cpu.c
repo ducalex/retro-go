@@ -3,7 +3,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "ppu.h"
-#include "dsp1.h"
+#include "dsp.h"
 #include "cpuexec.h"
 #include "apu.h"
 #include "dma.h"
@@ -65,7 +65,8 @@ static void CommonS9xReset()
 
    S9xResetDMA();
    S9xResetAPU();
-   S9xResetDSP1();
+   if (Settings.DSP)
+      S9xResetDSP();
    if (Settings.OBC1)
       ResetOBC1();
    if (Settings.C4)

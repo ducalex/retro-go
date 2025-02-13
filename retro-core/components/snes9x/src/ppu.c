@@ -583,14 +583,7 @@ void S9xSetPPU(uint8_t Byte, uint16_t Address)
       case 0x217d:
       case 0x217e:
       case 0x217f:
-#ifndef USE_BLARGG_APU
-         Memory.FillRAM [Address] = Byte;
-         IAPU.RAM [(Address & 3) + 0xf4] = Byte;
-         IAPU.APUExecuting = Settings.APUEnabled;
-         IAPU.WaitCounter++;
-#else
-         S9xAPUWritePort(Address & 3, Byte);
-#endif /* #ifndef USE_BLARGG_APU */
+         S9xAPUWritePort(Address, Byte);
          break;
       case 0x2180:
          REGISTER_2180(Byte);
@@ -832,36 +825,7 @@ uint8_t S9xGetPPU(uint16_t Address)
       case 0x217d:
       case 0x217e:
       case 0x217f:
-#ifndef USE_BLARGG_APU
-         IAPU.APUExecuting = Settings.APUEnabled;
-         IAPU.WaitCounter++;
-
-         if (Settings.APUEnabled)
-            return APU.OutPorts [Address & 3];
-
-         CPU.BranchSkip = true;
-
-         if ((Address & 3) < 2)
-         {
-            int32_t r = rand();
-            if (r & 2)
-            {
-               if (r & 4)
-                  return (Address & 3) == 1 ? 0xaa : 0xbb;
-               else
-                  return (r >> 3) & 0xff;
-            }
-         }
-         else
-         {
-            int32_t r = rand();
-            if (r & 2)
-               return (r >> 3) & 0xff;
-         }
-         return Memory.FillRAM[Address];
-#else
-         return S9xAPUReadPort(Address & 3);
-#endif /* #ifndef USE_BLARGG_APU */
+         return S9xAPUReadPort(Address);
       case 0x2180: /* Read WRAM */
          byte = Memory.RAM [PPU.WRAM++];
          PPU.WRAM &= 0x1FFFF;
@@ -872,7 +836,7 @@ uint8_t S9xGetPPU(uint16_t Address)
    }
    else
    {
-      if (Settings.SRTC && Address == 2800)
+      if (Settings.SRTC && Address == 0x2800)
          return S9xGetSRTC(Address);
 
       if (Address <= 0x2fff || Address >= 0x3300)

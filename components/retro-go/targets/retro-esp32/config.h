@@ -98,3 +98,8 @@
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_15
 // #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
+
+// Updater
+#define RG_UPDATER_ENABLE               1
+#define RG_UPDATER_APPLICATION          RG_APP_FACTORY
+#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/odroid/firmware"

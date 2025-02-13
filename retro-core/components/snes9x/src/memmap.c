@@ -13,7 +13,7 @@
 #include "ppu.h"
 #include "display.h"
 #include "apu.h"
-#include "dsp1.h"
+#include "dsp.h"
 #include "srtc.h"
 
 #ifdef __W32_HEAP
@@ -137,12 +137,10 @@ static void Sanitize(char* str, size_t bufsize)
 /**********************************************************************************************/
 bool S9xInitMemory(void)
 {
-   Memory.RAM   = (uint8_t*) calloc(RAM_SIZE, 1);
-   Memory.SRAM  = (uint8_t*) calloc(SRAM_SIZE, 1);
-   Memory.VRAM  = (uint8_t*) calloc(VRAM_SIZE, 1);
-   Memory.ROM   = (uint8_t*) calloc(MAX_ROM_SIZE + 0x200, 1);
-   Memory.FillRAM = (uint8_t*) calloc(0x8000, 1);
-   Memory.ROM_AllocSize = MAX_ROM_SIZE + 0x200;
+   Memory.RAM   = (uint8_t*)malloc(RAM_SIZE);
+   Memory.SRAM  = (uint8_t*)malloc(SRAM_SIZE);
+   Memory.VRAM  = (uint8_t*)malloc(VRAM_SIZE);
+   Memory.FillRAM = (uint8_t*)malloc(0x8000);
 
    Memory.Map = (uint8_t**)calloc(MEMMAP_NUM_BLOCKS, sizeof(uint8_t*));
    Memory.MapInfo = (SMapInfo*)calloc(MEMMAP_NUM_BLOCKS, sizeof(SMapInfo));
@@ -152,7 +150,16 @@ bool S9xInitMemory(void)
    IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
    IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
 
-   bytes0x2000 = (uint8_t *)calloc(0x2000, 1);
+   bytes0x2000 = (uint8_t *)malloc(0x2000);
+
+   // Try to find the biggest (commercial) ROM size that can fit in our available memory.
+   // const size_t AllocSizes[] = {0x600000, 0x400000, 0x300000, 0x280000, 0x200000, 0x100000, 0x80000, 0};
+   const size_t AllocSizes[] = {0x400000, 0x200000, 0x80000, 0};
+   for (const size_t *size = AllocSizes; *size && !Memory.ROM; ++size)
+   {
+      Memory.ROM_AllocSize = *size + 0x10000 + 0x200; // Extra 64KB for mapping purposes
+      Memory.ROM = (uint8_t *)malloc(Memory.ROM_AllocSize);
+   }
 
    if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.Map || !Memory.MapInfo
       || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
@@ -166,66 +173,41 @@ bool S9xInitMemory(void)
 
 void S9xDeinitMemory(void)
 {
-   if (Memory.RAM)
-   {
-      free(Memory.RAM);
-      Memory.RAM = NULL;
-   }
-   if (Memory.SRAM)
-   {
-      free(Memory.SRAM);
-      Memory.SRAM = NULL;
-   }
-   if (Memory.VRAM)
-   {
-      free(Memory.VRAM);
-      Memory.VRAM = NULL;
-   }
+   free(Memory.RAM);
+   Memory.RAM = NULL;
+
+   free(Memory.SRAM);
+   Memory.SRAM = NULL;
+
+   free(Memory.VRAM);
+   Memory.VRAM = NULL;
+
    if (Memory.ROM)
-   {
       free(Memory.ROM - Memory.ROM_Offset);
-      Memory.ROM_Offset = 0;
-      Memory.ROM = NULL;
-   }
-   if (Memory.FillRAM)
-   {
-      free(Memory.FillRAM);
-      Memory.FillRAM = NULL;
-   }
-   if (Memory.Map)
-   {
-      free(Memory.Map);
-      Memory.Map = NULL;
-   }
-   if (Memory.MapInfo)
-   {
-      free(Memory.MapInfo);
-      Memory.MapInfo = NULL;
-   }
+   Memory.ROM = NULL;
+   Memory.ROM_Offset = 0;
+   Memory.ROM_AllocSize = 0;
 
-   if (IPPU.ScreenColors)
-   {
-      free(IPPU.ScreenColors);
-      IPPU.ScreenColors = NULL;
-   }
+   free(Memory.FillRAM);
+   Memory.FillRAM = NULL;
 
-   if (IPPU.TileCached)
-   {
-      free(IPPU.TileCached);
-      IPPU.TileCached = NULL;
-   }
+   free(Memory.Map);
+   Memory.Map = NULL;
 
-   if (IPPU.TileCache)
-   {
-      free(IPPU.TileCache);
-      IPPU.TileCache = NULL;
-   }
+   free(Memory.MapInfo);
+   Memory.MapInfo = NULL;
 
-   if (bytes0x2000)
-   {
-      free(bytes0x2000);
-      bytes0x2000 = NULL;
-   }
+   free(IPPU.ScreenColors);
+   IPPU.ScreenColors = NULL;
+
+   free(IPPU.TileCached);
+   IPPU.TileCached = NULL;
+
+   free(IPPU.TileCache);
+   IPPU.TileCache = NULL;
+
+   free(bytes0x2000);
+   bytes0x2000 = NULL;
 }
 
 /**********************************************************************************************/
@@ -465,25 +447,8 @@ void InitROM(bool Interleaved)
          Settings.DSP = 1; /* DSP1 */
    }
 
-   switch (Settings.DSP)
-   {
-      case 1: /* DSP1 */
-         SetDSP = &DSP1SetByte;
-         GetDSP = &DSP1GetByte;
-         break;
-      case 2: /* DSP2 */
-         SetDSP = &DSP2SetByte;
-         GetDSP = &DSP2GetByte;
-         break;
-      case 3: /* DSP3 */
-         /* SetDSP = &DSP3SetByte; */
-         /* GetDSP = &DSP3GetByte; */
-         break;
-      default:
-         SetDSP = NULL;
-         GetDSP = NULL;
-         break;
-   }
+   if (Settings.DSP)
+      S9xInitDSP();
 
    if(!Settings.ForceNoDSP1 && Settings.DSP)
       Settings.DSP1Master = true;
@@ -644,7 +609,7 @@ void InitROM(bool Interleaved)
    Sanitize(Memory.ROMId, sizeof(Memory.ROMId));
    Sanitize(Memory.CompanyId, sizeof(Memory.CompanyId));
 
-   printf("Rom loaded: name: %s, id: %s, company: %s\n", Memory.ROMName, Memory.ROMId, Memory.CompanyId);
+   printf("Rom loaded: name: %s, id: %s, company: %s, size: %dKB\n", Memory.ROMName, Memory.ROMId, Memory.CompanyId, Memory.CalculatedSize / 1024);
    Settings.ForceHeader = Settings.ForceHiROM = Settings.ForceLoROM = Settings.ForceInterleaved = Settings.ForceNoHeader = Settings.ForceNotInterleaved = Settings.ForceInterleaved2 = false;
 }
 
@@ -877,59 +842,6 @@ void DSPMap(void)
          map_index(0xb0, 0xbf, 0x8000, 0xffff, MAP_DSP, MAP_TYPE_I_O);
          break;
    }
-}
-
-void SetaDSPMap(void)
-{
-   int32_t c;
-   int32_t i;
-
-   /* Banks 00->3f and 80->bf */
-   for (c = 0; c < 0x400; c += 16)
-   {
-      Memory.Map [c + 0] = Memory.Map [c + 0x800] = Memory.RAM;
-      Memory.Map [c + 1] = Memory.Map [c + 0x801] = Memory.RAM;
-      Memory.MapInfo[c + 0].Type = Memory.MapInfo[c + 0x800].Type = MAP_TYPE_RAM;
-      Memory.MapInfo[c + 1].Type = Memory.MapInfo[c + 0x801].Type = MAP_TYPE_RAM;
-
-      Memory.Map [c + 2] = Memory.Map [c + 0x802] = (uint8_t*) MAP_PPU;
-      Memory.Map [c + 3] = Memory.Map [c + 0x803] = (uint8_t*) MAP_PPU;
-      Memory.Map [c + 4] = Memory.Map [c + 0x804] = (uint8_t*) MAP_CPU;
-      Memory.Map [c + 5] = Memory.Map [c + 0x805] = (uint8_t*) MAP_CPU;
-      Memory.Map [c + 6] = Memory.Map [c + 0x806] = (uint8_t*) bytes0x2000 - 0x6000;
-      Memory.Map [c + 7] = Memory.Map [c + 0x807] = (uint8_t*) bytes0x2000 - 0x6000;
-
-      for (i = c + 8; i < c + 16; i++)
-      {
-         Memory.Map [i] = Memory.Map [i + 0x800] = &Memory.ROM [(c << 11) % Memory.CalculatedSize] - 0x8000;
-         Memory.MapInfo[i].Type = Memory.MapInfo[i + 0x800].Type = MAP_TYPE_ROM;
-      }
-   }
-
-   /* Banks 40->7f and c0->ff */
-   for (c = 0; c < 0x400; c += 16)
-   {
-      for (i = c + 8; i < c + 16; i++)
-         Memory.Map [i + 0x400] = Memory.Map [i + 0xc00] = &Memory.ROM [((c << 11) + 0x200000) % Memory.CalculatedSize] - 0x8000;
-
-      /* only upper half is ROM */
-      for (i = c + 8; i < c + 16; i++)
-         Memory.MapInfo[i + 0x400].Type = Memory.MapInfo[i + 0xC00].Type = MAP_TYPE_ROM;
-   }
-
-   memset(Memory.SRAM, 0, 0x1000);
-   for (c = 0x600; c < 0x680; c += 0x10)
-   {
-      for (i = 0; i < 0x08; i++)
-      {
-         /* Where does the SETA chip access, anyway? Please confirm this. */
-         Memory.Map[c + 0x80 + i] = (uint8_t*)MAP_SETA_DSP;
-         Memory.MapInfo[c + 0x80 + i].Type = MAP_TYPE_RAM;
-      }
-   }
-
-   MapRAM();
-   WriteProtectROM();
 }
 
 void HiROMMap(void)

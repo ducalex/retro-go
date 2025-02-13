@@ -29,6 +29,25 @@ char *rg_strtoupper(char *str)
     return str;
 }
 
+char *rg_json_fixup(char *json)
+{
+    // Strip trailing commas, eg [,1,2,3] {"a":1,}
+    for (char *ptr = json, *prev = ptr; ptr && *ptr; ++ptr)
+    {
+        if ((*ptr == '}' || *ptr == ']' || *ptr == '{' || *ptr == '[' || *ptr == ',') && *prev == ',')
+        {
+            RG_LOGW("Found trailing comma at pos %d", (int)(ptr - json));
+            *prev = ' ';
+        }
+        if (*ptr != '\t' && *ptr != '\n'  && *ptr != '\r' && *ptr != ' ')
+            prev = ptr;
+    }
+
+    // TODO: We should also strip C-style comments!
+
+    return json;
+}
+
 const char *rg_dirname(const char *path)
 {
     static char buffer[100];

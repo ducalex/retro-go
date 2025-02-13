@@ -14,6 +14,7 @@ static int dpad_mapped_down;
 static int dpad_mapped_left;
 static int dpad_mapped_right;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 // static bool netplay = false;
@@ -119,10 +120,10 @@ static rg_gui_event_t rotation_cb(rg_gui_option_t *option, rg_gui_event_t event)
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, "Off  ");
-    if (rotation == RG_DISPLAY_ROTATION_AUTO)  strcpy(option->value, "Auto ");
-    if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, "Left ");
-    if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, "Right");
+    strcpy(option->value, _("Off"));
+    if (rotation == RG_DISPLAY_ROTATION_AUTO)  strcpy(option->value, _("Auto"));
+    if (rotation == RG_DISPLAY_ROTATION_LEFT)  strcpy(option->value, _("Left"));
+    if (rotation == RG_DISPLAY_ROTATION_RIGHT) strcpy(option->value, _("Right"));
 
     return RG_DIALOG_VOID;
 }
@@ -178,6 +179,12 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Rotation"), (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 extern "C" void lynx_main(void)
 {
     const rg_handlers_t handlers = {
@@ -188,21 +195,16 @@ extern "C" void lynx_main(void)
         .event = &event_handler,
         .memRead = NULL,
         .memWrite = NULL,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Rotation", (char *)"-", RG_DIALOG_FLAG_NORMAL, &rotation_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
+        .about = NULL,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
     updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
     updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
     currentUpdate = updates[0];
-
-    // The Lynx has a variable framerate but 60 is typical
-    app->tickRate = 60;
 
     // Init emulator
     lynx = new_lynx();
@@ -213,7 +215,7 @@ extern "C" void lynx_main(void)
     }
 
     gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
-    gAudioBuffer = (SWORD*)&audioBuffer;
+    gAudioBuffer = new SWORD[AUDIO_BUFFER_LENGTH * 2];
     gAudioEnabled = 1;
 
     if (app->bootFlags & RG_BOOT_RESUME)
@@ -223,7 +225,6 @@ extern "C" void lynx_main(void)
 
     set_display_mode();
 
-    float sampleTime = 1000000.f / app->sampleRate;
     long skipFrames = 0;
     bool slowFrame = false;
 
@@ -238,7 +239,6 @@ extern "C" void lynx_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
-            sampleTime = 1000000.f / (app->sampleRate * app->speed);
         }
 
         int64_t startTime = rg_system_timer();
@@ -265,20 +265,20 @@ extern "C" void lynx_main(void)
             gPrimaryFrameBuffer = (UBYTE*)currentUpdate->data;
         }
 
-        app->tickRate = AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2);
+        // The Lynx has a variable tick rate, I don't know of a better way to guess than from audio stream
+        rg_system_set_tick_rate(AUDIO_SAMPLE_RATE / (gAudioBufferPointer / 2));
         rg_system_tick(rg_system_timer() - startTime);
 
-        rg_audio_submit(audioBuffer, gAudioBufferPointer >> 1);
+        rg_audio_submit((const rg_audio_frame_t *)gAudioBuffer, gAudioBufferPointer / 2);
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
         {
-            int frameTime = ((gAudioBufferPointer / 2) * sampleTime);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
             // The Lynx uses a variable framerate so we use the count of generated audio samples as reference instead
-            else if (elapsed > frameTime + 1500)
+            else if (elapsed > app->frameTime + 1500)
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

@@ -1,7 +1,9 @@
 set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng ./../ESP32-S3-VGA/src")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng ./../ESP32-S3-VGA/src")
-if (IDF_VERSION_MAJOR EQUAL 5)
-    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client esp_psram")
+if((IDF_VERSION_MAJOR EQUAL 5) AND (IDF_VERSION_MINOR GREATER 2)) # esp-idf 5.3+
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client esp_driver_ledc driver")
+elseif(IDF_VERSION_MAJOR EQUAL 5) # esp-idf 5.0 - 5.2
+    set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client")
 else() # esp-idf 4.1 - 4.4
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client esp_psram")
 endif()

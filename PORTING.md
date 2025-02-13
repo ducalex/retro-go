@@ -1,51 +1,47 @@
-# Porting Retro-Go
+# Table of contents
+- [Prerequisites](#prerequisites)
+- [Targets](#targets)
+- [Porting](#porting)
+- [Patching](#patching)
+
+
+# Introduction
+
 This document describes the process of adding support for a new ESP32 device (what retro-go calls a *target*).
 
 
-
 # Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.3/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.3 to 5.2 are supported.
+Before doing anything, make sure that your development environment is working properly and that you can build retro-go for the default target. Please read [BUILDING.md](BUILDING.md) carefully for more information.
 
 
-Before using your own patch of retro-go, make a clean build of retro go using bare configurations
-```
-./rg_tool.py build-img launcher --target esp32s3-devkit-c
-```
+# Targets
+A target in retro-go is a set of files that describes a hardware device (drivers to use, GPIOs, button mapping, etc). Targets are folders located in `components/retro-go/targets/` and usually contain the following files:
 
-Since we aren't using other setups, like ODROID-GO, we will be building `.img` files, not `.fw`. Use `./rg_tool.py build-img` to build imgs.
+| Name          | Description |
+|---------------|-------------|
+| config.h      | This is the retro-go configuration file, it describes your hardware to retro-go |
+| env.py        | This is imported by rg_tool.py, it is used to set environment variables required by tooling, such as the esp32 chip type or baudrates or binary formats |
+| sdkconfig     | This is the esp-idf configuration file for your board/device |
 
 
-**Make sure a basic setup is working before continuing to patch the code for your setup**
-
-If it doesn't, refer to [BUILDING.md](BUILDING.md). Also check your `esp-idf` installation and make sure you have it set up in your environment (run `idf.py --version` to check)
-```
-./rg_tool.py build-img launcher --target esp32s3-devkit-c
-```
-
-# Patching
+# Porting
 Retro-Go uses reusable hardware components, so it is easy to set it up for your own hardware.
 
-
-You will find the targets (configs for each device) in `components/retro-go/targets`
-
-
-To make a base one, copy `esp32s3-devkit-c` and rename it.
+To get started, locate a target that is the most similar to your device and use it as a starting point. Clone the target's folder and give it a new name, then add your new target to `components/retro-go/config.h`.
 
 
-## config.h
+## Target files
 
+### config.h
 
-`config.h` has the bulk of your configurations.
-
+This file contains the bulk of your configurations.
 
 First, change `RG_TARGET_NAME` to match the name of your target folder.
 
-
-
-
 Most of it, you will need to figure out the correct parameters for (eg. Storage and Audio)
 
-**Display**
+
+##### Display
 
 If you aren't using the ILI9341 screen driver, you will need to change the `SCREEN_DRIVER` parameter. (Otherwise, just change the following settings and continue).
 
@@ -74,8 +70,7 @@ You will need to create that file for your display. Unfortunately, there is no o
 Make this driver in `components/retro-go/drivers/display`
 
 
-___
-**Input**
+##### Input
 
 Back in `config.h`, you will see the configuration for an I2C gamepad. If you aren't using that, you can make your own parameters based on the existing input forms in `components/retro-go/rg_input.c`
 
@@ -83,35 +78,50 @@ Back in `config.h`, you will see the configuration for an I2C gamepad. If you ar
 You can also write your own input driver for unique input forms. Just look at the existing code in `rg_input.c` and match that
 
 
-
-
 ### sdkconfig
-`sdkconfig` is used by ESP-IDF to build the code for the ESP32 itself. It is hard to manually write it all out, so you can use `menuconfig`
 
+This file is used by ESP-IDF to build the code for the ESP32 itself.
 
-For this, go back to your root folder. Build the launcher for your target (this will make sure you have the correct ESP32 board selected).
-```
-./rg_tool.py clean
-./rg_tool.py build launcher --target (YOUR TARGET)
-```
+Retro-Go, for the most part, doesn't care about the sdkconfig and its content will depend entirely the chip/board used. But there are things that you should keep in mind:
+- The main task stack size has to be at least 8KB for retro-go
+- The CPU frequency should be set to the maximum possible and power management be disabled
+- SPIRAM should be enabled and configured correctly for your device
 
+ESP-IDF provides a tool to edit it, namely `menuconfig`, but to use it in retro-go you must follow the following steps:
 
-Then `cd` into `launcher` and run `idf.py menuconfig`. Navigate to Serial Flasher Config and adjust it all to your board. Make sure to save the changes and exit.
+1. Build the launcher for your target (this will make sure you have the correct ESP32 board selected and generate a default sdkconfig)
+    - `./rg_tool.py clean`
+    - `./rg_tool.py --target my-target build launcher`
+2. Enter the launcher directory: `cd launcher`
+3. Run `idf.py menuconfig` and make the changes that you need. Make sure to save the changes and exit.
+4. Optionally test the app with the new config (but do NOT run `rg_tool.py clean` at this point, your new config will be deleted)
+    - `cd ..`
+    - `./rg_tool.py --target my-target run launcher`
+5. When you're satisfied, copy the `sdkconfig` file from the launcher to the target folder, so that it's used by all apps
+    - `cd ..`
+    - `mv  -f launcher/sdkconfig components/retro-go/targets/my-target/sdkconfig`
 
-
-Use this generated sdkconfig in your target with
-```
-cd ..
-mv  -f launcher/sdkconfig components/retro-go/targets/retrotoids/sdkconfig
-```
-This will configure ESP-IDF to run on your board
+Note that any time you modify your target's `sdkconfig` file, you must run `./rg_tool.py clean` to ensure it will be applied.
 
 
 ### env.py
-
 
 Change the target board in `env.py` to match yours
 
 
 After completing all these steps, you should be able to build your apps with `rg_tool`. See [BUILDING.md](BUILDING.md#flashing-an-image-for-the-first-time) for more info about this and flashing. **Make sure to use the steps for `.img`, NOT `.fw`**
 
+
+## Patching
+
+Not everything can be done through `config.h`. Sometimes you have to patch retro-go to add special code for your hardware. Any such modification will be harder to upstream, if that is your goal, but they are easy to perform.
+
+The build system automatically defines a constant for the target in use, eg `RG_TARGET_MY_TARGET` if your target is named `my-target` (the name is capitalized and `-` is replaced with `_`).
+
+Anywhere in retro-go you can add code wrapped in a #ifdef block that will apply only to your target:
+
+````c
+#ifdef RG_TARGET_MY_TARGET
+// do stuff
+#endif
+````

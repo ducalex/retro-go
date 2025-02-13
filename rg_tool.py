@@ -99,8 +99,10 @@ def build_image(output_file, apps, img_format="esp32", fatsize=0):
         table_bin = f.read()
 
     print("Building bootloader...")
-    run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
-    with open(os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin"), "rb") as f:
+    bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
+    if not os.path.exists(bootloader_file):
+        run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+    with open(bootloader_file, "rb") as f:
         bootloader_bin = f.read()
 
     if img_format == "esp32s3":
@@ -140,6 +142,9 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
     args.append(f"-DRG_BUILD_RELEASE={1 if is_release else 0}")
     args.append(f"-DRG_ENABLE_PROFILING={1 if with_profiling else 0}")
     args.append(f"-DRG_ENABLE_NETWORKING={0 if no_networking else 1}")
+    with open("partitions.csv", "w") as f:
+        f.write("# This table isn't used, it's just needed to avoid esp-idf build failures.\n")
+        f.write("dummy, app, ota_0, 65536, 3145728\n")
     run(args, cwd=os.path.join(os.getcwd(), app))
     print("Done.\n")
 
@@ -227,8 +232,12 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
+        fw_format = os.getenv("FW_FORMAT")
         fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        if fw_format in ["odroid", "esplay"]:
+            build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        else:
+            print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
@@ -238,6 +247,7 @@ try:
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
         # Should probably show a warning here and ask for confirmation...
+        img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
         flash_image(img_file, args.port, args.baud)
 
     if command in ["flash", "run", "profile"]:

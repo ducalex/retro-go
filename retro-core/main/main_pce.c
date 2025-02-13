@@ -18,6 +18,7 @@ static int skipFrames = 0;
 static bool drawFrame = true;
 static bool slowFrame = false;
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
@@ -34,7 +35,7 @@ static rg_gui_event_t overscan_update_cb(rg_gui_option_t *option, rg_gui_event_t
         return RG_DIALOG_REDRAW;
     }
 
-    strcpy(option->value, overscan ? "On " : "Off");
+    strcpy(option->value, overscan ? _("On") : _("Off"));
 
     return RG_DIALOG_VOID;
 }
@@ -74,7 +75,7 @@ void osd_vsync(void)
     }
 
     int64_t curtime = rg_system_timer();
-    int frameTime = 1000000 / (app->tickRate * app->speed);
+    int frameTime = app->frameTime;
     int sleep = frameTime - (curtime - lasttime);
 
     if (sleep > frameTime)
@@ -135,11 +136,12 @@ static void audioTask(void *arg)
     RG_LOGI("task started. numSamples=%d.", (int)numSamples);
     while (1)
     {
+        rg_audio_sample_t samples[numSamples];
         // TODO: Clearly we need to add a better way to remain in sync with the main task...
         while (emulationPaused)
             rg_task_yield();
-        psg_update((int16_t *)audioBuffer, numSamples, 0xFF);
-        rg_audio_submit(audioBuffer, numSamples);
+        psg_update((int16_t *)samples, numSamples, 0xFF);
+        rg_audio_submit(samples, numSamples);
     }
 }
 
@@ -179,6 +181,12 @@ static bool reset_handler(bool hard)
     return true;
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Overscan"), "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void pce_main(void)
 {
     const rg_handlers_t handlers = {
@@ -187,13 +195,10 @@ void pce_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, "Overscan", "-", RG_DIALOG_FLAG_NORMAL, &overscan_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
 
     updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
@@ -238,7 +243,7 @@ void pce_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = 60;
+    rg_system_set_tick_rate(60);
     app->frameskip = 1;
 
     emulationPaused = false;

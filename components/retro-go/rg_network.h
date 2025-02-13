@@ -8,8 +8,8 @@
 
 typedef struct
 {
-    char ssid[32];
-    char password[64];
+    char ssid[32 + 1];
+    char password[64 + 1];
     int channel;
     bool ap_mode;
 } rg_wifi_config_t;
@@ -24,7 +24,7 @@ typedef enum
 
 typedef struct
 {
-    char name[36];
+    char name[32 + 1];
     char ip_addr[16];
     int channel, rssi;
     int state;
@@ -40,8 +40,20 @@ rg_network_t rg_network_get_info(void);
 
 typedef struct
 {
-
+    int max_redirections;
+    int timeout_ms;
+    // Perform POST request
+    const void *post_data;
+    int post_len;
 } rg_http_cfg_t;
+
+#define RG_HTTP_DEFAULT_CONFIG() \
+    {                            \
+        .max_redirections = 5,   \
+        .timeout_ms = 30000,     \
+        .post_data = NULL,       \
+        .post_len = 0,           \
+    }
 
 typedef struct
 {

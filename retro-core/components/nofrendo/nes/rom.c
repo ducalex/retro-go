@@ -112,7 +112,7 @@ rom_t *rom_loadmem(uint8 *data, size_t size)
       while (entry->crc && entry->crc != rom.checksum)
          entry++;
 
-      if (entry->crc == rom.checksum)
+      if (entry->crc && entry->crc == rom.checksum)
       {
          MESSAGE_INFO("ROM: Game found in database.\n");
 

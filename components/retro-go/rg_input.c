@@ -8,6 +8,9 @@
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
 #include <driver/adc.h>
+// This is a lazy way to silence deprecation notices on some esp-idf versions...
+// This hardcoded value is the first thing to check if something stops working!
+#define ADC_ATTEN_DB_11 3
 #else
 #include <SDL2/SDL.h>
 #endif
@@ -125,10 +128,10 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 #if defined(RG_GAMEPAD_I2C_MAP)
     uint32_t buttons = 0;
-    uint8_t data[5];
-#if defined(RG_TARGET_QTPY_GAMER)
+#if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
     buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
 #else
+    uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
         buttons = ~((data[2] << 8) | data[1]);
 #endif
@@ -192,13 +195,13 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 static void input_task(void *arg)
 {
-    const uint8_t debounce_level = 0x03;
     uint8_t debounce[RG_KEY_COUNT];
     uint32_t local_gamepad_state = 0;
     uint32_t state;
     int64_t next_battery_update = 0;
 
-    memset(debounce, debounce_level, sizeof(debounce));
+    // Start the task with debounce history full to allow a button held during boot to be detected
+    memset(debounce, 0xFF, sizeof(debounce));
     input_task_running = true;
 
     while (input_task_running)
@@ -207,16 +210,16 @@ static void input_task(void *arg)
         {
             for (int i = 0; i < RG_KEY_COUNT; ++i)
             {
-                debounce[i] = ((debounce[i] << 1) | ((state >> i) & 1));
-                debounce[i] &= debounce_level;
+                uint32_t val = ((debounce[i] << 1) | ((state >> i) & 1));
+                debounce[i] = val & 0xFF;
 
-                if (debounce[i] == debounce_level) // Pressed
+                if ((val & ((1 << RG_GAMEPAD_DEBOUNCE_PRESS) - 1)) == ((1 << RG_GAMEPAD_DEBOUNCE_PRESS) - 1))
                 {
-                    local_gamepad_state |= (1 << i);
+                    local_gamepad_state |= (1 << i); // Pressed
                 }
-                else if (debounce[i] == 0x00) // Released
+                else if ((val & ((1 << RG_GAMEPAD_DEBOUNCE_RELEASE) - 1)) == 0)
                 {
-                    local_gamepad_state &= ~(1 << i);
+                    local_gamepad_state &= ~(1 << i); // Released
                 }
             }
             gamepad_state = local_gamepad_state;
@@ -277,7 +280,7 @@ void rg_input_init(void)
 #if defined(RG_GAMEPAD_I2C_MAP)
     RG_LOGI("Initializing I2C gamepad driver...");
     rg_i2c_init();
-#if defined(RG_TARGET_QTPY_GAMER)
+#if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
     rg_i2c_gpio_init();
 #endif
     UPDATE_GLOBAL_MAP(keymap_i2c);

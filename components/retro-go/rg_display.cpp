@@ -90,11 +90,12 @@ static inline void write_update(const rg_surface_t *update)
     const void *data = update->data + update->offset + (crop_top * stride) + (crop_left * RG_PIXEL_GET_SIZE(format));
     const uint16_t *palette = update->palette;
 
+    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
+
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;
     int lines_updated = 0;
     int window_top = -1;
-    bool partial = true;
 
     for (int y = 0; y < draw_height;)
     {
@@ -115,7 +116,7 @@ static inline void write_update(const rg_surface_t *update)
         uint16_t *line_buffer_ptr = line_buffer;
 
         uint32_t checksum = 0xFFFFFFFF;
-        bool need_update = !partial;
+        bool need_update = !partial_update;
 
         for (int i = 0; i < lines_to_copy; ++i)
         {
@@ -140,7 +141,7 @@ static inline void write_update(const rg_surface_t *update)
                 else
                     RENDER_LINE(uint16_t, buffer[x])
 
-                if (partial)
+                if (partial_update)
                 {
                     checksum = rg_hash((char*)(line_buffer_ptr - draw_width), draw_width * 2);
                 }
@@ -213,7 +214,7 @@ static inline void write_update(const rg_surface_t *update)
         // for both virtual keyboard and info labels. Maybe make it configurable later...
     }
 
-    if (lines_updated > display.screen.height * 0.80f)
+    if (lines_updated > draw_height * 0.80f)
         counters.fullFrames++;
     else
         counters.partFrames++;
@@ -222,6 +223,8 @@ static inline void write_update(const rg_surface_t *update)
 
 static void update_viewport_scaling(void)
 {
+    int screen_width = display.screen.width;
+    int screen_height = display.screen.height;
     int src_width = display.source.width;
     int src_height = display.source.height;
     int new_width = src_width;
@@ -229,16 +232,16 @@ static void update_viewport_scaling(void)
 
     if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
-        new_width = display.screen.width;
-        new_height = display.screen.height;
+        new_width = screen_width;
+        new_height = screen_height;
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
-        new_width = FLOAT_TO_INT(display.screen.height * ((float)src_width / src_height));
-        new_height = display.screen.height;
-        if (new_width > display.screen.width) {
-            new_width = display.screen.width;
-            new_height = FLOAT_TO_INT(display.screen.width * ((float)src_height / src_width));
+        new_width = FLOAT_TO_INT(screen_height * ((float)src_width / src_height));
+        new_height = screen_height;
+        if (new_width > screen_width) {
+            new_width = screen_width;
+            new_height = FLOAT_TO_INT(screen_width * ((float)src_height / src_width));
         }
     }
     else if (config.scaling == RG_DISPLAY_SCALING_ZOOM)
@@ -251,8 +254,8 @@ static void update_viewport_scaling(void)
     new_width &= ~1;
     new_height &= ~1;
 
-    display.viewport.left = (display.screen.width - new_width) / 2;
-    display.viewport.top = (display.screen.height - new_height) / 2;
+    display.viewport.left = (screen_width - new_width) / 2;
+    display.viewport.top = (screen_height - new_height) / 2;
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
@@ -266,9 +269,9 @@ static void update_viewport_scaling(void)
 
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
 
-    for (int x = 0; x < display.screen.width; ++x)
+    for (int x = 0; x < screen_width; ++x)
         map_viewport_to_source_x[x] = FLOAT_TO_INT(x * display.viewport.step_x);
-    for (int y = 0; y < display.screen.height; ++y)
+    for (int y = 0; y < screen_height; ++y)
         map_viewport_to_source_y[y] = FLOAT_TO_INT(y * display.viewport.step_y);
 
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f left:%d top:%d step_x:%.2f step_y:%.2f", src_width, src_height,
@@ -285,9 +288,9 @@ static bool load_border_file(const char *filename)
 
     if (filename && (border = rg_surface_load_image_file(filename, 0)))
     {
-        if (border->width != display.screen.width || border->height != display.screen.height)
+        if (border->width != rg_display_get_width() || border->height != rg_display_get_height())
         {
-            rg_surface_t *resized = rg_surface_resize(border, display.screen.width, display.screen.height);
+            rg_surface_t *resized = rg_surface_resize(border, rg_display_get_width(), rg_display_get_height());
             if (resized)
             {
                 rg_surface_free(border);
@@ -312,14 +315,15 @@ static void display_task(void *arg)
 
         if (display.changed)
         {
-            if (config.scaling != RG_DISPLAY_SCALING_FULL)
+            update_viewport_scaling();
+            // Clear the screen if the viewport doesn't cover the entire screen because garbage could remain on the sides
+            if (display.viewport.width < display.screen.width || display.viewport.height < display.screen.height)
             {
                 if (border)
-                    rg_display_write(0, 0, border->width, border->height, 0, (const uint16_t*)border->data, RG_DISPLAY_WRITE_NOSYNC);
+                    rg_display_write_rect(0, 0, border->width, border->height, 0, border->data, RG_DISPLAY_WRITE_NOSYNC);
                 else
-                    rg_display_clear(C_BLACK);
+                    rg_display_clear_except(display.viewport.left, display.viewport.top, display.viewport.width, display.viewport.height, C_BLACK);
             }
-            update_viewport_scaling();
             display.changed = false;
         }
 
@@ -347,6 +351,16 @@ const rg_display_t *rg_display_get_info(void)
 rg_display_counters_t rg_display_get_counters(void)
 {
     return counters;
+}
+
+int rg_display_get_width(void)
+{
+    return display.screen.width;
+}
+
+int rg_display_get_height(void)
+{
+    return display.screen.height;
 }
 
 void rg_display_set_scaling(display_scaling_t scaling)
@@ -461,15 +475,9 @@ bool rg_display_sync(bool block)
     return !rg_task_messages_waiting(display_task_queue);
 }
 
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
+void rg_display_write_rect(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
     RG_ASSERT_ARG(buffer);
-
-    // Offsets can be negative to indicate N pixels from the end
-    if (left < 0)
-        left += display.screen.width;
-    if (top < 0)
-        top += display.screen.height;
 
     // calc stride before clipping width
 #ifndef __cplusplus
@@ -527,25 +535,44 @@ void rg_display_write(int left, int top, int width, int height, int stride, cons
     lcd_sync();
 }
 
+void rg_display_clear_rect(int left, int top, int width, int height, uint16_t color_le)
+{
+    const uint16_t color_be = (color_le << 8) | (color_le >> 8);
+    int pixels_remaining = width * height;
+    if (pixels_remaining > 0)
+    {
+        lcd_set_window(left + display.screen.margin_left, top + display.screen.margin_top, width, height);
+        while (pixels_remaining > 0)
+        {
+            uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+            int pixels = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
+            for (size_t j = 0; j < pixels; ++j)
+                buffer[j] = color_be;
+            lcd_send_buffer(buffer, pixels);
+            pixels_remaining -= pixels;
+        }
+    }
+}
+
+void rg_display_clear_except(int left, int top, int width, int height, uint16_t color_le)
+{
+    // Clear everything except the specified area
+    // FIXME: Do not ignore left/top...
+    int left_offset = -display.screen.margin_left;
+    int top_offset = -display.screen.margin_top;
+    int horiz = (display.screen.real_width - width + 1) / 2;
+    int vert = (display.screen.real_height - height + 1) / 2;
+    rg_display_clear_rect(left_offset, top_offset, horiz, display.screen.real_height, color_le); // Left
+    rg_display_clear_rect(left_offset + horiz + width, top_offset, horiz, display.screen.real_height, color_le); // Right
+    rg_display_clear_rect(left_offset + horiz, top_offset, display.screen.real_width - horiz * 2, vert, color_le); // Top
+    rg_display_clear_rect(left_offset + horiz, top_offset + vert + height, display.screen.real_width - horiz * 2, vert, color_le); // Bottom
+}
+
 void rg_display_clear(uint16_t color_le)
 {
-    // We ignore margins here, we want to fill the entire
-    int screen_width = display.screen.real_width;
-    int screen_height = display.screen.real_height;
-
-    lcd_set_window(0, 0, screen_width, screen_height);
-
-    uint16_t color_be = (color_le << 8) | (color_le >> 8);
-    for (size_t y = 0; y < screen_height;)
-    {
-        uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
-        size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / screen_width, screen_height - y);
-        size_t pixels = screen_width * num_lines;
-        for (size_t j = 0; j < pixels; ++j)
-            buffer[j] = color_be;
-        lcd_send_buffer(buffer, pixels);
-        y += num_lines;
-    }
+    // We ignore margins here, we want to fill the entire screen
+    rg_display_clear_rect(-display.screen.margin_left, -display.screen.margin_top, display.screen.real_width,
+                          display.screen.real_height, color_le);
 }
 
 void rg_display_deinit(void)

@@ -8,6 +8,7 @@
 #include "port.h"
 #include "spc700.h"
 
+extern const uint8_t APUROM[64];
 
 typedef struct
 {
@@ -75,6 +76,8 @@ void S9xDecacheSamples(void);
 void S9xSetAPUControl(uint8_t byte);
 void S9xSetAPUDSP(uint8_t byte);
 uint8_t S9xGetAPUDSP(void);
+uint8_t S9xAPUReadPort(int32_t Address);
+void S9xAPUWritePort(int32_t Address, uint8_t Byte);
 bool S9xInitSound(int32_t buffer_ms, int32_t lag_ms);
 void S9xPrintAPUState(void);
 extern uint8_t S9xAPUCycles [256];       /* Scaled cycle lengths */

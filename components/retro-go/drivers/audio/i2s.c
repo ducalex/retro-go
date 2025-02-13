@@ -67,9 +67,7 @@ static bool driver_init(int device, int sample_rate)
         if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
-            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(4, 4, 0)
                 .mck_io_num = GPIO_NUM_NC,
-            #endif
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,
                 .ws_io_num = RG_GPIO_SND_I2S_WS,
                 .data_out_num = RG_GPIO_SND_I2S_DATA,
@@ -105,9 +103,11 @@ static bool driver_deinit(void)
     }
     else if (state.device == 1)
     {
+    #if RG_AUDIO_USE_EXT_DAC
         gpio_reset_pin(RG_GPIO_SND_I2S_BCK);
         gpio_reset_pin(RG_GPIO_SND_I2S_DATA);
         gpio_reset_pin(RG_GPIO_SND_I2S_WS);
+    #endif
     }
     #ifdef RG_GPIO_SND_AMP_ENABLE
     gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
@@ -122,17 +122,24 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
     size_t written = 0;
     size_t pos = 0;
 
-    // In speaker mode we use left and right as a differential mono output to increase resolution.
-    bool differential = state.device == 0;
+    bool use_internal_dac = state.device == 0;
 
     for (size_t i = 0; i < count; ++i)
     {
         int left = frames[i].left * volume;
         int right = frames[i].right * volume;
 
-        if (differential)
+        if (use_internal_dac)
         {
             int sample = (left + right) >> 1;
+        #if RG_AUDIO_USE_INT_DAC == 1
+            left = sample + 0x8000; // the internal DAC expects unsigned data
+            right = 0;
+        #elif RG_AUDIO_USE_INT_DAC == 2
+            left = 0; 
+            right = sample + 0x8000; // the internal DAC expects unsigned data
+        #elif RG_AUDIO_USE_INT_DAC == 3
+            // In two channel mode we use left and right as a differential mono output to increase resolution.
             if (sample > 0x7F00)
             {
                 left = 0x8000 + (sample - 0x7F00);
@@ -148,6 +155,7 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
                 left = 0x8000;
                 right = -0x8000 + sample;
             }
+        #endif
         }
 
         // Clipping   (not necessary, we have (int16 * vol) and volume is never more than 1.0)
@@ -173,7 +181,11 @@ static bool driver_set_mute(bool mute)
     i2s_zero_dma_buffer(I2S_NUM_0);
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+        #if defined(RG_TARGET_BYTEBOI_REV1)
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute);
+        #else
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+        #endif
     #elif defined(RG_TARGET_QTPY_GAMER)
         rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
         rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
