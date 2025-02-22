@@ -154,7 +154,7 @@ bool S9xInitMemory(void)
 
    // Try to find the biggest (commercial) ROM size that can fit in our available memory.
    // const size_t AllocSizes[] = {0x600000, 0x400000, 0x300000, 0x280000, 0x200000, 0x100000, 0x80000, 0};
-   const size_t AllocSizes[] = {0x400000, 0x200000, 0x80000, 0};
+   const size_t AllocSizes[] = {0x600000, 0x400000, 0x200000, 0x80000, 0};
    for (const size_t *size = AllocSizes; *size && !Memory.ROM; ++size)
    {
       Memory.ROM_AllocSize = *size + 0x10000 + 0x200; // Extra 64KB for mapping purposes
