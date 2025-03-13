@@ -297,46 +297,47 @@ static inline void write_update(const rg_surface_t *update)
         // FIXME: only redraw when background has changed
         for (size_t y = 0; y < height;)
         {
-            uint16_t *lcd_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+            uint16_t *line_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
             size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / width, height - y);
 
             // Copy line by line because stride may not match width
             for (size_t line = 0; line < num_lines; ++line)
             {
-                uint16_t *viewport   = (void *)data + map_viewport_to_source_y[y + line] * stride;
                 uint16_t *osd_buffer = (void *)buffer + (y + line) * osd.surface->width * 2;
-                uint16_t *dst = lcd_buffer + (line * width);
-                for (size_t i = 0; i < width; ++i)
-                {
-                    if(osd.has_transparency && osd_buffer[i] == C_TRANSPARENT)
-                    {
-                        if((y+line)>=y0 && (i-draw_left)>=x0 && (y+line)<=min_height && (i-draw_left)<=min_width)
-                        {   // the pixel is within the display surface and within the OSD
-                            switch(format)
-                            {
-                                case RG_PIXEL_PALETTE:
-                                    dst[i] = palette[viewport[map_viewport_to_source_x[i]]];
-                                    break;
-                                case RG_PIXEL_565_LE:
-                                    dst[i] = (viewport[map_viewport_to_source_x[i]] >> 8) | (viewport[map_viewport_to_source_x[i]] << 8);
-                                    break;
-                                default:
-                                    dst[i] = viewport[map_viewport_to_source_x[i]];
-                            }
-                        }
-                        else
-                        {
-                            dst[i] = 0x0000; // the ideal would be to put a "background" color
-                        }
+                uint16_t *dst = line_buffer + (line * width);
+
+                #define OSD_TO_SCREEN(PTR_TYPE, BACKGROUND_PIXEL) {                                  \
+                    PTR_TYPE *viewport = (PTR_TYPE *)data;                                           \
+                    if(y + line >= draw_top){                                                        \
+                        viewport += ((map_viewport_to_source_y[y + line - draw_top] * stride) >> 1); \
+                    }                                                                                \
+                    else{                                                                            \
+                        viewport += ((map_viewport_to_source_y[y + line] * stride) >> 1);            \
+                    }                                                                                \
+                    for (size_t x = 0; x < width; ++x){                                              \
+                            if(osd.has_transparency && osd_buffer[x] == C_TRANSPARENT){              \
+                                if((y+line)>=y0 && (x-draw_left)>=x0 && (y+line)<=min_height && (x-draw_left)<=min_width){\
+                                    dst[x] = BACKGROUND_PIXEL;                                       \
+                                }                                                                    \
+                                else{                                                                \
+                                    dst[x] = 0x0000;                                                 \
+                                }                                                                    \
+                            }                                                                        \
+                            else{                                                                    \
+                                dst[x] = (osd_buffer[x] >> 8) | (osd_buffer[x] << 8);                \
+                            }                                                                        \
+                        }                                                                            \
                     }
-                    else
-                    {
-                        dst[i] = (osd_buffer[i] >> 8) | (osd_buffer[i] << 8);
-                    }
-                }
+
+                if (format & RG_PIXEL_PALETTE)
+                    OSD_TO_SCREEN(uint8_t, palette[viewport[map_viewport_to_source_x[x - draw_left]]])
+                else if (format == RG_PIXEL_565_LE)
+                    OSD_TO_SCREEN(uint16_t, (viewport[map_viewport_to_source_x[x - draw_left]] >> 8) | (viewport[map_viewport_to_source_x[x - draw_left]] << 8))
+                else
+                    OSD_TO_SCREEN(uint16_t, viewport[map_viewport_to_source_x[x - draw_left]])
             }
 
-            lcd_send_buffer(lcd_buffer, width * num_lines);
+            lcd_send_buffer(line_buffer, width * num_lines);
             y += num_lines;
         }
         lcd_sync();
