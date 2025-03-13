@@ -90,7 +90,7 @@ struct rg_gui_option_s
 
 #define RG_DIALOG_CANCELLED -0x7654321
 
-#define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
+#define TEXT_RECT(text, max) rg_gui_draw_text(NULL, -(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
 bool rg_gui_set_language_id(int index);
@@ -101,11 +101,11 @@ const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
 rg_image_t *rg_gui_load_image_file(const char *path);
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
+void rg_gui_copy_buffer(rg_surface_t *dest_surface, int left, int top, int width, int height, int stride, const void *buffer);
 
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
+rg_rect_t rg_gui_draw_text(rg_surface_t *dest_surface, int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
-void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
+void rg_gui_draw_rect(rg_surface_t *dest_surface, int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_icons(void);
 void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
@@ -126,6 +126,9 @@ void rg_gui_options_menu(void);
 void rg_gui_game_menu(void);
 void rg_gui_about_menu(void);
 void rg_gui_debug_menu(void);
+
+void rg_gui_battery_indicator(rg_surface_t *osd);
+void rg_gui_draw_status_bars_osd(rg_surface_t *osd);
 
 // Creates a 565LE color from C_RGB(255, 255, 255)
 #define C_RGB(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))

@@ -99,6 +99,26 @@ typedef struct
 
 #include "rg_surface.h"
 
+typedef struct
+{
+    rg_surface_t *surface;
+    bool has_transparency;
+    int top, left;
+} rg_osd_t;
+
+typedef enum
+{
+    CORNER_TOP_LEFT = 0,
+    CORNER_TOP_RIGHT,
+    CORNER_BOTTOM_LEFT,
+    CORNER_BOTTOM_RIGHT
+} rg_corner_t;
+
+rg_surface_t *rg_display_init_osd(rg_corner_t corner, int width, int height, bool has_transparency);
+void rg_display_set_osd_enabled(bool enabled);
+bool rg_display_is_osd_enabled();
+void deinit_osd();
+
 void rg_display_init(void);
 void rg_display_deinit(void);
 void rg_display_write_rect(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags);
@@ -111,8 +131,6 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);
 const rg_display_t *rg_display_get_info(void);
-int rg_display_get_width(void);
-int rg_display_get_height(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);
