@@ -38,8 +38,8 @@ void gui_init(bool cold_boot)
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
-        .width        = rg_display_get_width(),
-        .height       = rg_display_get_height(),
+        .width        = rg_display_get_info()->screen.width,
+        .height       = rg_display_get_info()->screen.height,
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
@@ -451,7 +451,7 @@ void gui_draw_background(tab_t *tab, int shade)
     if (tab->background)
         rg_gui_draw_image(0, 0, gui.width, gui.height, false, tab->background);
     else
-        rg_gui_draw_rect(0, 0, gui.width, gui.height, 0, 0, gui.theme->background);
+        rg_gui_draw_rect(NULL, 0, 0, gui.width, gui.height, 0, 0, gui.theme->background);
 }
 
 void gui_draw_header(tab_t *tab, int offset)
@@ -465,17 +465,17 @@ void gui_draw_header(tab_t *tab, int offset)
     if (tab->banner)
         rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, tab->banner);
     else
-        rg_gui_draw_text(LOGO_WIDTH + 8, offset + 8, 0, tab->desc, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_BIGGER);
+        rg_gui_draw_text(NULL, LOGO_WIDTH + 8, offset + 8, 0, tab->desc, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_BIGGER);
 }
 
 void gui_draw_tab_indicator(void)
 {
     char buffer[64] = {0};
     memset(buffer, '-', gui.tabs_count);
-    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_DIM_GRAY, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
+    rg_gui_draw_text(NULL, RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_DIM_GRAY, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
     memset(buffer, ' ', gui.tabs_count);
     buffer[gui.selected_tab] = '-';
-    rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_SNOW, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
+    rg_gui_draw_text(NULL, RG_GUI_CENTER, RG_GUI_BOTTOM, 0, buffer, C_SNOW, C_TRANSPARENT, RG_TEXT_BIGGER|RG_TEXT_MONOSPACE);
 }
 
 void gui_draw_status(tab_t *tab)
@@ -485,8 +485,8 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
-    rg_gui_draw_text(status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(NULL, status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(NULL, status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
     rg_gui_draw_icons();
 }
 
@@ -504,7 +504,7 @@ void gui_draw_list(tab_t *tab)
     {
         char buffer[64];
         snprintf(buffer, 63, "[%s]",  tab->navpath);
-        top += rg_gui_draw_text(0, top, gui.width, buffer, gui.theme->foreground, C_TRANSPARENT, 0).height;
+        top += rg_gui_draw_text(NULL, 0, top, gui.width, buffer, gui.theme->foreground, C_TRANSPARENT, 0).height;
     }
 
     top += ((gui.height - top) - (lines * line_height)) / 2;
@@ -523,7 +523,7 @@ void gui_draw_list(tab_t *tab)
         int idx = line_offset + i;
         int selected = idx == list->cursor;
         char *label = (idx >= 0 && idx < list->length) ? list->items[idx].text : "";
-        top += rg_gui_draw_text(0, top, gui.width, label, fg[selected], bg[selected], 0).height;
+        top += rg_gui_draw_text(NULL, 0, top, gui.width, label, fg[selected], bg[selected], 0).height;
     }
 }
 

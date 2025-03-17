@@ -219,7 +219,7 @@ void sms_main(void)
 
             if (joystick & RG_KEY_START)
             {
-                rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, _("To start, try: 1 or * or #"), C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
+                rg_gui_draw_text(NULL, RG_GUI_CENTER, RG_GUI_CENTER, 0, _("To start, try: 1 or * or #"), C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
                 rg_audio_set_mute(true);
                 int key = rg_input_read_keyboard(&coleco_keyboard);
                 rg_audio_set_mute(false);

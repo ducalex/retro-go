@@ -16,7 +16,6 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
-    int screen_safezone; // rg_rect_t
     struct
     {
         const rg_font_t *font;
@@ -103,13 +102,8 @@ static int get_vertical_position(int y_pos, int height)
 
 void rg_gui_init(void)
 {
-    gui.screen_width = rg_display_get_width();
-    gui.screen_height = rg_display_get_height();
-    #ifdef RG_SCREEN_HAS_ROUND_CORNERS
-    gui.screen_safezone = 20;
-    #else
-    gui.screen_safezone = 0;
-    #endif
+    gui.screen_width = rg_display_get_info()->screen.width;
+    gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
@@ -244,26 +238,52 @@ void rg_gui_set_surface(rg_surface_t *surface)
     gui.screen_buffer = surface ? surface->data : NULL;
 }
 
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
+void rg_gui_copy_buffer(rg_surface_t *dest_surface, int left, int top, int width, int height, int stride, const void *buffer)
 {
     left = get_horizontal_position(left, width);
     top = get_vertical_position(top, height);
 
-    if (gui.screen_buffer)
+    uint16_t *target_buffer;
+    int target_width;
+    int target_height;
+
+    if (dest_surface)
+    {
+        target_buffer = dest_surface->data;
+        target_width = dest_surface->width;
+        target_height = dest_surface->height;
+    } 
+    else
+    {
+        target_buffer = gui.screen_buffer;
+        target_width = gui.screen_width;
+        target_height = gui.screen_height;
+    }
+
+    if (target_buffer)
     {
         if (stride < width)
             stride = width * 2;
 
-        width = RG_MIN(width, gui.screen_width - left);
-        height = RG_MIN(height, gui.screen_height - top);
+        width = RG_MIN(width, target_width - left);
+        height = RG_MIN(height, target_height - top);
 
         for (int y = 0; y < height; ++y)
         {
-            uint16_t *dst = gui.screen_buffer + (top + y) * gui.screen_width + left;
+            uint16_t *dst = target_buffer + (top + y) * target_width + left;
             const uint16_t *src = (void *)buffer + y * stride;
             for (int x = 0; x < width; ++x)
-                if (src[x] != C_TRANSPARENT)
+                // FIXME: this is a bit wanky but basically it is used to make the difference between 
+                // drawings to the OSD and to the gui buffer wich C_TRANSPARENT are handled differently
+                if (dest_surface)
+                {
                     dst[x] = src[x];
+                }
+                else
+                {
+                    if (src[x] != C_TRANSPARENT)
+                        dst[x] = src[x];
+                }
         }
     }
     else
@@ -364,7 +384,7 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     return glyph_width;
 }
 
-rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
+rg_rect_t rg_gui_draw_text(rg_surface_t *dest_surface, int x_pos, int y_pos, int width, const char *text, 
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
@@ -468,7 +488,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer);
+            rg_gui_copy_buffer(dest_surface, x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer);
 
         y_offset += line_height;
 
@@ -479,7 +499,8 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     return (rg_rect_t){x_pos, y_pos, draw_width, y_offset};
 }
 
-void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
+
+void rg_gui_draw_rect(rg_surface_t *dest_surface, int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color)
 {
     if (width <= 0 || height <= 0)
@@ -492,10 +513,10 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     {
         uint16_t *draw_buffer = get_draw_buffer(border_size, RG_MAX(width, height), border_color);
 
-        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, draw_buffer);                        // Top
-        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer); // Bottom
-        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, draw_buffer);                       // Left
-        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer); // Right
+        rg_gui_copy_buffer(dest_surface, x_pos, y_pos, width, border_size, 0, draw_buffer);                        // Top
+        rg_gui_copy_buffer(dest_surface, x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer); // Bottom
+        rg_gui_copy_buffer(dest_surface, x_pos, y_pos, border_size, height, 0, draw_buffer);                       // Left
+        rg_gui_copy_buffer(dest_surface, x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer); // Right
 
         x_pos += border_size;
         y_pos += border_size;
@@ -507,7 +528,7 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     {
         uint16_t *draw_buffer = get_draw_buffer(width, RG_MIN(height, 16), fill_color);
         for (int y = 0; y < height; y += 16)
-            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer);
+            rg_gui_copy_buffer(dest_surface, x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer);
     }
 }
 
@@ -516,19 +537,19 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
         rg_image_t *new_img = rg_surface_resize(img, width, height);
-        rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
+        rg_gui_copy_buffer(NULL, x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
         rg_surface_free(new_img);
     }
     else if (img)
     {
         int draw_width = width ? RG_MIN(width, img->width) : img->width;
         int draw_height = height ? RG_MIN(height, img->height) : img->height;
-        rg_gui_copy_buffer(x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data);
+        rg_gui_copy_buffer(NULL, x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data);
     }
     else // We fill a rect to show something is missing instead of abort...
     {
-        rg_gui_draw_rect(x_pos, y_pos, width, height, 2, C_RED, C_BLACK);
-        // rg_gui_draw_text(x_pos + 2, y_pos + 2, width - 4, "No image", C_DIM_GRAY, C_BLACK, 0);
+        rg_gui_draw_rect(NULL, x_pos, y_pos, width, height, 2, C_RED, C_BLACK);
+        // rg_gui_draw_text(NULL, x_pos + 2, y_pos + 2, width - 4, "No image", C_DIM_GRAY, C_BLACK, 0);
     }
 }
 
@@ -540,11 +561,15 @@ void rg_gui_draw_icons(void)
     int bar_height = txt.height;
     int icon_height = RG_MAX(8, bar_height - 4);
     int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
-    int right = gui.screen_safezone;
+    int right = 0;
 
     if (battery.present)
     {
-        right += 22;
+        #ifdef RG_SCREEN_HAS_ROUND_CORNERS
+        right += 42; // This is to shift the battery icon a bit on the left
+        #else
+        right += 22; // Regular rectangle screen
+        #endif
 
         int width = 16;
         int height = icon_height;
@@ -556,10 +581,10 @@ void rg_gui_draw_icons(void)
         rg_color_t color_border = C_SILVER;
         rg_color_t color_empty = C_BLACK;
 
-        rg_gui_draw_rect(x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
-        rg_gui_draw_rect(x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
-        rg_gui_draw_rect(x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
-        rg_gui_draw_rect(x_pos + 1 + width_fill, y_pos + 1, width - width_fill, height - 2, 0, 0, color_empty);
+        rg_gui_draw_rect(NULL, x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
+        rg_gui_draw_rect(NULL, x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
+        rg_gui_draw_rect(NULL, x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
+        rg_gui_draw_rect(NULL, x_pos + 1 + width_fill, y_pos + 1, width - width_fill, height - 2, 0, 0, color_empty);
     }
 
     if (network.state > RG_NETWORK_DISCONNECTED)
@@ -576,13 +601,13 @@ void rg_gui_draw_icons(void)
         rg_color_t color_border = (network.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
         y_pos += height * 0.6;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.4, 1, color_border, color_fill);
+        rg_gui_draw_rect(NULL, x_pos, y_pos, seg_width, height * 0.4, 1, color_border, color_fill);
         x_pos += seg_width + 2;
         y_pos -= height * 0.3;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.7, 1, color_border, color_fill);
+        rg_gui_draw_rect(NULL, x_pos, y_pos, seg_width, height * 0.7, 1, color_border, color_fill);
         x_pos += seg_width + 2;
         y_pos -= height * 0.3;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 1.0, 1, color_border, color_fill);
+        rg_gui_draw_rect(NULL, x_pos, y_pos, seg_width, height * 1.0, 1, color_border, color_fill);
     }
 
     if (gui.show_clock)
@@ -596,15 +621,14 @@ void rg_gui_draw_icons(void)
         struct tm *time = localtime(&time_sec);
 
         sprintf(buffer, "%02d:%02d", time->tm_hour, time->tm_min);
-        rg_gui_draw_text(x_pos, y_pos, 0, buffer, C_SILVER, gui.screen_buffer ? C_TRANSPARENT : C_BLACK, 0);
+        rg_gui_draw_text(NULL, x_pos, y_pos, 0, buffer, C_SILVER, gui.screen_buffer ? C_TRANSPARENT : C_BLACK, 0);
     }
 }
 
 void rg_gui_draw_hourglass(void)
 {
-    rg_display_write_rect(
-        get_horizontal_position(RG_GUI_CENTER, image_hourglass.width),
-        get_vertical_position(RG_GUI_CENTER, image_hourglass.height),
+    rg_display_write_rect((gui.screen_width / 2) - (image_hourglass.width / 2),
+        (gui.screen_height / 2) - (image_hourglass.height / 2),
         image_hourglass.width,
         image_hourglass.height,
         image_hourglass.width * 2,
@@ -636,9 +660,8 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
-    // FIXME: Respect gui.safezone (draw black background full screen_width, but pad the text if needed)
-    rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
-    rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
+    rg_gui_draw_text(NULL, 0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
+    rg_gui_draw_text(NULL, 0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
     rg_gui_draw_icons();
 }
@@ -722,8 +745,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     if (title)
     {
         int width = inner_width + row_padding_x * 2;
-        rg_gui_draw_text(x, y, width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
-        rg_gui_draw_rect(x, y + font_height, width, 6, 0, 0, gui.style.box_background);
+        rg_gui_draw_text(NULL, x, y, width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+        rg_gui_draw_rect(NULL, x, y + font_height, width, 6, 0, 0, gui.style.box_background);
         y += font_height + 6;
     }
 
@@ -778,49 +801,49 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         }
         else if (options[i].value)
         {
-            rg_gui_draw_text(xx, yy, col1_width, options[i].label, fg, bg, 0);
-            rg_gui_draw_text(xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
-            height = rg_gui_draw_text(xx + col1_width + sep_width, yy, col2_width, options[i].value, fg, bg, RG_TEXT_MULTILINE).height;
-            rg_gui_draw_rect(xx, yy + font_height, inner_width - col2_width, height - font_height, 0, 0, bg);
+            rg_gui_draw_text(NULL, xx, yy, col1_width, options[i].label, fg, bg, 0);
+            rg_gui_draw_text(NULL, xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
+            height = rg_gui_draw_text(NULL, xx + col1_width + sep_width, yy, col2_width, options[i].value, fg, bg, RG_TEXT_MULTILINE).height;
+            rg_gui_draw_rect(NULL, xx, yy + font_height, inner_width - col2_width, height - font_height, 0, 0, bg);
         }
         else
         {
-            height = rg_gui_draw_text(xx, yy, inner_width, options[i].label, fg, bg, RG_TEXT_MULTILINE).height;
+            height = rg_gui_draw_text(NULL, xx, yy, inner_width, options[i].label, fg, bg, RG_TEXT_MULTILINE).height;
         }
 
-        rg_gui_draw_rect(x, yy, row_padding_x, height, 0, 0, bg);
-        rg_gui_draw_rect(xx + inner_width, yy, row_padding_x, height, 0, 0, bg);
-        rg_gui_draw_rect(x, y, inner_width + row_padding_x * 2, row_padding_y, 0, 0, bg);
-        rg_gui_draw_rect(x, yy + height, inner_width + row_padding_x * 2, row_padding_y, 0, 0, bg);
+        rg_gui_draw_rect(NULL, x, yy, row_padding_x, height, 0, 0, bg);
+        rg_gui_draw_rect(NULL, xx + inner_width, yy, row_padding_x, height, 0, 0, bg);
+        rg_gui_draw_rect(NULL, x, y, inner_width + row_padding_x * 2, row_padding_y, 0, 0, bg);
+        rg_gui_draw_rect(NULL, x, yy + height, inner_width + row_padding_x * 2, row_padding_y, 0, 0, bg);
 
         y += height + row_padding_y * 2;
     }
 
     if (y < (box_y + box_height))
     {
-        rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui.style.box_background);
+        rg_gui_draw_rect(NULL, box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui.style.box_background);
     }
 
-    rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, gui.style.box_background, C_NONE);
-    rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.style.box_border, C_NONE);
+    rg_gui_draw_rect(NULL, box_x, box_y, box_width, box_height, box_padding, gui.style.box_background, C_NONE);
+    rg_gui_draw_rect(NULL, box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.style.box_border, C_NONE);
 
     // Basic scroll indicators are overlayed at the end...
     if (top_i > 0)
     {
         int x = box_x + box_width - 10;
         int y = box_y + box_padding + 2;
-        rg_gui_draw_rect(x + 0, y - 0, 6, 2, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 0, y - 0, 6, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
     }
 
     if (i < options_count)
     {
         int x = box_x + box_width - 10;
         int y = box_y + box_height - 6;
-        rg_gui_draw_rect(x + 0, y - 4, 6, 2, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
-        rg_gui_draw_rect(x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 0, y - 4, 6, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
+        rg_gui_draw_rect(NULL, x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
     }
 }
 
@@ -1083,7 +1106,7 @@ void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
 
     char buf[2] = {0};
 
-    rg_gui_draw_rect(x_pos, y_pos, width, height, 2, gui.style.box_border, gui.style.box_background);
+    rg_gui_draw_rect(NULL, x_pos, y_pos, width, height, 2, gui.style.box_border, gui.style.box_background);
 
     for (size_t i = 0; i < map->columns * map->rows; ++i)
     {
@@ -1092,7 +1115,7 @@ void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
         if (!map->data[i])
             continue;
         buf[0] = map->data[i];
-        rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
+        rg_gui_draw_text(NULL, x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
     }
 }
 
@@ -1794,9 +1817,9 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
             color = C_RED;
         }
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
-        rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
-        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
-        rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
+        rg_gui_draw_rect(NULL, 0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
+        rg_gui_draw_rect(NULL, border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
+        rg_gui_draw_text(NULL, border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
         rg_surface_free(preview);
     }
     else if (event == RG_DIALOG_ENTER)
@@ -1873,4 +1896,56 @@ void rg_gui_game_menu(void)
     }
 
     rg_audio_set_mute(false);
+}
+
+void rg_gui_battery_indicator(rg_surface_t *osd){
+    rg_battery_t battery = rg_input_read_battery();
+    
+    if (battery.present && battery.level < 213) // 10%
+    {
+        rg_rect_t txt = TEXT_RECT("00:00", 0);
+        int bar_height = txt.height;
+        int icon_height = RG_MAX(8, bar_height - 4);
+        int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
+        int height = icon_height;
+        int y_pos = icon_top;
+        int width = 16;
+        int width_fill = width / 100.f * battery.level;
+
+        #ifdef RG_SCREEN_HAS_ROUND_CORNERS
+        int x_pos = -42; // This is to shift the battery icon a bit on the left
+        #else
+        int x_pos = -22; // Regular rectangle screen
+        #endif
+
+        rg_color_t color_fill = C_RED;
+        rg_color_t color_border = C_SILVER;
+        rg_color_t color_empty = C_BLACK;
+
+        rg_gui_draw_rect(osd, x_pos, y_pos, width + 2, height, 1, color_border, C_NONE);
+        rg_gui_draw_rect(osd, x_pos + width + 2, y_pos + 2, 2, height - 4, 1, color_border, C_NONE);
+        rg_gui_draw_rect(osd, x_pos + 1, y_pos + 1, width_fill, height - 2, 0, 0, color_fill);
+        rg_gui_draw_rect(osd, x_pos + 1 + width_fill, y_pos + 1, width - width_fill, height - 2, 0, 0, color_empty);
+    }
+}
+
+void rg_gui_draw_status_bars_osd(rg_surface_t *osd)
+{
+    size_t max_len = osd->width / 8;
+    char header[max_len];
+
+    const rg_app_t *app = rg_system_get_app();
+    rg_stats_t stats = rg_system_get_counters();
+
+    if (!app->initialized || app->isLauncher)
+        return;
+
+    snprintf(header, max_len, "SPEED: %d%% (%d %d) / BUSY: %d%%",
+        (int)round(stats.totalFPS / app->tickRate * 100.f),
+        (int)round(stats.totalFPS),
+        (int)app->frameskip,
+        (int)round(stats.busyPercent));
+
+    rg_gui_draw_rect(osd, 0, RG_GUI_TOP, osd->width, osd->height, 0, 0, C_TRANSPARENT);
+    rg_gui_draw_text(osd, 0, RG_GUI_TOP, osd->width, header, C_WHITE, C_TRANSPARENT, 0);
 }
