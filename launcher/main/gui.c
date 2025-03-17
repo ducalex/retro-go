@@ -87,7 +87,7 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
 
 void gui_init_tab(tab_t *tab)
 {
-    if (tab->initialized)
+    if (!tab || tab->initialized)
         return;
 
     tab->initialized = true;
@@ -95,6 +95,19 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
     gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
+}
+
+void gui_deinit_tab(tab_t *tab)
+{
+    if (!tab || !tab->initialized)
+        return;
+
+    // FIXME: Maybe the other images should be freed too?
+    gui_event(TAB_DEINIT, tab);
+    gui_set_preview(tab, NULL);
+    gui_resize_list(tab, 10);
+
+    tab->initialized = false;
 }
 
 tab_t *gui_get_tab(int index)
@@ -105,10 +118,10 @@ tab_t *gui_get_tab(int index)
 void gui_invalidate(void)
 {
     for (size_t i = 0; i < gui.tabs_count; ++i)
-    {
-        if (gui.tabs[i]->initialized)
-            gui_event(TAB_RESCAN, gui.tabs[i]);
-    }
+        gui_deinit_tab(gui.tabs[i]);
+    // Kick the user out of the tab and only re-init upon manual re-entry
+    gui.browse = false;
+    // gui_init_tab(gui_get_current_tab());
 }
 
 rg_image_t *gui_get_image(const char *type, const char *subtype)

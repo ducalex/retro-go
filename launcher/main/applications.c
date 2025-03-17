@@ -50,7 +50,7 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
 
     if (app->files_count + 1 > app->files_capacity)
     {
-        size_t new_capacity = app->files_capacity * 1.5;
+        size_t new_capacity = (app->files_capacity * 1.5) + 1;
         retro_file_t *new_buf = realloc(app->files, new_capacity * sizeof(retro_file_t));
         if (!new_buf)
         {
@@ -396,16 +396,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
     retro_app_t *app = (retro_app_t *)tab->arg;
     retro_file_t *file = (retro_file_t *)(item ? item->arg : NULL);
 
-    if (event == TAB_INIT || event == TAB_RESCAN)
+    if (event == TAB_INIT)
     {
-        if (event == TAB_RESCAN && app->initialized)
-        {
-            for (size_t i = 0; i < app->files_count; ++i)
-                free((char *)app->files[i].name);
-            app->files_count = 0;
-            app->initialized = false;
-        }
-
         application_init(app);
         tab->navpath = NULL;
 
@@ -426,18 +418,24 @@ static void event_handler(gui_event_t event, tab_t *tab)
 
         tab_refresh(tab, selected ? selected->name : NULL);
     }
+    else if (event == TAB_DEINIT)
+    {
+        if (app && app->initialized)
+        {
+            for (size_t i = 0; i < app->files_count; ++i)
+                free((char *)app->files[i].name);
+            app->files_count = 0;
+            app->initialized = false;
+        }
+    }
     else if (event == TAB_REFRESH)
     {
         tab_refresh(tab, NULL);
     }
-    else if (event == TAB_ENTER || event == TAB_SCROLL)
+    else if (event == TAB_ENTER || event == TAB_LEAVE || event == TAB_SCROLL)
     {
         gui_set_status(tab, NULL, "");
         gui_set_preview(tab, NULL);
-    }
-    else if (event == TAB_LEAVE)
-    {
-        //
     }
     else if (event == TAB_IDLE)
     {
