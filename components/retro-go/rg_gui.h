@@ -119,7 +119,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int se
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
-char *rg_gui_prompt(const char *title, const char *message, const char *default_value);
+char *rg_gui_input_str(const char *title, const char *message, const char *default_value);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path);
 void rg_gui_options_menu(void);

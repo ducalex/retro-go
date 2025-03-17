@@ -1065,6 +1065,12 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
+char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
+{
+    // This will need to fully implement a proper virtual keyboard :(
+    return default_value ? strdup(default_value) : NULL;
+}
+
 void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
 {
     RG_ASSERT_ARG(map);
