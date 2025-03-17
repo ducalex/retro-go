@@ -400,7 +400,9 @@ void gui_draw_background(tab_t *tab, int shade)
 
     if (!tab->background)
     {
-        tab->background = gui_get_image("background", tab->name);
+        tab->background = gui_get_image("background", tab->name); // Try background_<tabname>.png
+        if (!tab->background)
+            tab->background = gui_get_image("background", NULL); // Fallback to a background.png
         tab->background_shade = 0;
         if (tab->background && (tab->background->width != gui.width || tab->background->height != gui.height))
         {
