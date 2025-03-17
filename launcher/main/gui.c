@@ -319,52 +319,54 @@ void gui_resize_list(tab_t *tab, int new_size)
 void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 {
     listbox_t *list = &tab->listbox;
-
-    int cur_cursor = RG_MAX(RG_MIN(list->cursor, list->length - 1), 0);
+    int list_length = list->length;
     int old_cursor = list->cursor;
+    int new_cursor = RG_MAX(RG_MIN(old_cursor, list_length - 1), 0);
 
-    if (list->length == 0)
+    if (list_length == 0)
     {
-        // cur_cursor = -1;
-        cur_cursor = 0;
+        // new_cursor = -1;
+        new_cursor = 0;
     }
     else if (mode == SCROLL_SET)
     {
-        cur_cursor = arg;
+        new_cursor = arg;
     }
     else if (mode == SCROLL_LINE)
     {
-        cur_cursor += arg;
+        new_cursor += arg;
+        // In line mode we wrap around
+        if (new_cursor > list_length - 1)
+            new_cursor = 0;
+        else if (new_cursor < 0)
+            new_cursor = list_length - 1;
     }
     else if (mode == SCROLL_PAGE)
     {
-        // int start = list->items[cur_cursor].text[0];
-        int direction = arg > 0 ? 1 : -1;
-        for (int max = max_visible_lines(tab, NULL); max > 0; --max)
-        {
-            cur_cursor += direction;
-            if (cur_cursor < 0 || cur_cursor >= list->length)
-                break;
-            // if (start != list->items[cur_cursor].text[0])
-            //     break;
-        }
+        new_cursor += arg * max_visible_lines(tab, NULL);
+        // In page mode we stop at the edges
+        if (new_cursor > list_length - 1)
+            new_cursor = list_length - 1;
+        else if (new_cursor < 0)
+            new_cursor = 0;
     }
 
-    if (cur_cursor < 0) cur_cursor = list->length - 1;
-    if (cur_cursor >= list->length) cur_cursor = 0;
+    // Check for invalid cursor
+    if (new_cursor < 0 || new_cursor > list_length - 1)
+    {
+        RG_LOGW("Invalid cursor position: %d, list length: %d", new_cursor, list_length);
+        new_cursor = 0; // -1;
+    }
 
-    list->cursor = cur_cursor;
-
-    if (list->length && list->items[list->cursor].arg)
-        sprintf(tab->status[0].left, "%d / %d", (list->cursor + 1) % 10000, list->length % 10000);
+    if (list_length > 0 && list->items[new_cursor].arg)
+        sprintf(tab->status[0].left, "%d / %d", (new_cursor + 1) % 10000, list_length % 10000);
     else
         strcpy(tab->status[0].left, "List empty");
 
-    gui_event(TAB_SCROLL, tab);
-
-    if (cur_cursor != old_cursor)
+    // if (new_cursor != old_cursor)
     {
-        gui_redraw();
+        list->cursor = new_cursor;
+        gui_event(TAB_SCROLL, tab);
     }
 }
 
