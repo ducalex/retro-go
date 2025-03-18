@@ -38,8 +38,8 @@ void gui_init(bool cold_boot)
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
-        .width        = rg_display_get_info()->screen.width,
-        .height       = rg_display_get_info()->screen.height,
+        .width        = rg_display_get_width(),
+        .height       = rg_display_get_height(),
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);

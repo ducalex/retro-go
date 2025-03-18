@@ -343,7 +343,7 @@ static inline void write_update(const rg_surface_t *update)
         lcd_sync();
     }
 
-    if (lines_updated > display.screen.height * 0.80f)
+    if (lines_updated > draw_height * 0.80f)
         counters.fullFrames++;
     else
         counters.partFrames++;
@@ -352,6 +352,8 @@ static inline void write_update(const rg_surface_t *update)
 
 static void update_viewport_scaling(void)
 {
+    int screen_width = display.screen.width;
+    int screen_height = display.screen.height;
     int src_width = display.source.width;
     int src_height = display.source.height;
     int new_width = src_width;
@@ -359,16 +361,16 @@ static void update_viewport_scaling(void)
 
     if (config.scaling == RG_DISPLAY_SCALING_FULL)
     {
-        new_width = display.screen.width;
+        new_width = screen_width;
         new_height = display.screen.height;
     }
     else if (config.scaling == RG_DISPLAY_SCALING_FIT)
     {
-        new_width = FLOAT_TO_INT(display.screen.height * ((float)src_width / src_height));
-        new_height = display.screen.height;
-        if (new_width > display.screen.width) {
-            new_width = display.screen.width;
-            new_height = FLOAT_TO_INT(display.screen.width * ((float)src_height / src_width));
+        new_width = FLOAT_TO_INT(screen_height * ((float)src_width / src_height));
+        new_height = screen_height;
+        if (new_width > screen_width) {
+            new_width = screen_width;
+            new_height = FLOAT_TO_INT(screen_width * ((float)src_height / src_width));
         }
     }
     else if (config.scaling == RG_DISPLAY_SCALING_ZOOM)
@@ -381,8 +383,8 @@ static void update_viewport_scaling(void)
     new_width &= ~1;
     new_height &= ~1;
 
-    display.viewport.left = (display.screen.width - new_width) / 2;
-    display.viewport.top = (display.screen.height - new_height) / 2;
+    display.viewport.left = (screen_width - new_width) / 2;
+    display.viewport.top = (screen_height - new_height) / 2;
     display.viewport.width = new_width;
     display.viewport.height = new_height;
 
@@ -396,9 +398,9 @@ static void update_viewport_scaling(void)
 
     memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
 
-    for (int x = 0; x < display.screen.width; ++x)
+    for (int x = 0; x < screen_width; ++x)
         map_viewport_to_source_x[x] = FLOAT_TO_INT(x * display.viewport.step_x);
-    for (int y = 0; y < display.screen.height; ++y)
+    for (int y = 0; y < screen_height; ++y)
         map_viewport_to_source_y[y] = FLOAT_TO_INT(y * display.viewport.step_y);
 
     RG_LOGI("%dx%d@%.3f => %dx%d@%.3f left:%d top:%d step_x:%.2f step_y:%.2f", src_width, src_height,
@@ -415,9 +417,9 @@ static bool load_border_file(const char *filename)
 
     if (filename && (border = rg_surface_load_image_file(filename, 0)))
     {
-        if (border->width != display.screen.width || border->height != display.screen.height)
+        if (border->width != rg_display_get_width() || border->height != rg_display_get_height())
         {
-            rg_surface_t *resized = rg_surface_resize(border, display.screen.width, display.screen.height);
+            rg_surface_t *resized = rg_surface_resize(border, rg_display_get_width(), rg_display_get_height());
             if (resized)
             {
                 rg_surface_free(border);
@@ -478,6 +480,16 @@ const rg_display_t *rg_display_get_info(void)
 rg_display_counters_t rg_display_get_counters(void)
 {
     return counters;
+}
+
+int rg_display_get_width(void)
+{
+    return display.screen.width;
+}
+
+int rg_display_get_height(void)
+{
+    return display.screen.height;
 }
 
 void rg_display_set_scaling(display_scaling_t scaling)
