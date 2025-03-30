@@ -18,7 +18,7 @@
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
-#define RG_SCREEN_WIDTH             300 // screen is technically a 280x240 but it works!
+#define RG_SCREEN_WIDTH             300 // screen is technically 280x240 but it works!
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        0
