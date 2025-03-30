@@ -18,13 +18,13 @@
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
-#define RG_SCREEN_WIDTH             280
+#define RG_SCREEN_WIDTH             300 // screen is technically a 280x240 but it works!
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_MARGIN_TOP        0
 #define RG_SCREEN_MARGIN_BOTTOM     0
 #define RG_SCREEN_MARGIN_LEFT       20
-#define RG_SCREEN_MARGIN_RIGHT      -20
+#define RG_SCREEN_MARGIN_RIGHT      0
 
 #define ST7789_MADCTL 0x36 // Memory Access Control
 #define ST7789_MADCTL_MY 0x80
