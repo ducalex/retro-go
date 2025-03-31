@@ -57,6 +57,7 @@ rg_surface_t *rg_surface_create(int width, int height, int format, uint32_t allo
     surface->width = width;
     surface->height = height;
     surface->stride = width * pixel_size;
+    // surface->pixlen = pixel_size;
     surface->format = format;
     if (data_size)
         surface->data = (void *)surface + sizeof(rg_surface_t);
@@ -220,7 +221,47 @@ rg_surface_t *rg_surface_convert(const rg_surface_t *source, int new_width, int 
 bool rg_surface_fill(rg_surface_t *dest, const rg_rect_t *rect, rg_color_t color)
 {
     CHECK_SURFACE(dest, false);
-    //
+
+    // rg_surface_t window;
+    // if (rect && create_window(dest, rect, &window))
+    //     dest = &window;
+
+    uint8_t line_buffer[dest->width * RG_PIXEL_GET_SIZE(dest->format)];
+    uint8_t *data_ptr = dest->data + dest->offset;
+
+    if (dest->format == RG_PIXEL_565_LE)
+    {
+        uint16_t *ptr = (uint16_t *)line_buffer;
+        for (size_t x = 0; x < dest->width; ++x)
+        {
+            *ptr++ = color;
+        }
+    }
+    else if (dest->format == RG_PIXEL_565_BE)
+    {
+        uint16_t *ptr = (uint16_t *)line_buffer;
+        for (size_t x = 0; x < dest->width; ++x)
+        {
+            *ptr++ = (color << 8) | (color >> 8);
+        }
+    }
+    else if (dest->format == RG_PIXEL_888)
+    {
+        uint8_t *ptr = (uint8_t *)line_buffer;
+        for (size_t x = 0; x < dest->width; ++x)
+        {
+            *ptr++ = (color & 0xF800) >> 8;
+            *ptr++ = (color & 0x07E0) >> 1;
+            *ptr++ = (color & 0x001F) << 3;
+        }
+    }
+
+    for (size_t y = 0; y < dest->height; ++y)
+    {
+        memcpy(data_ptr, line_buffer, sizeof(line_buffer));
+        data_ptr += dest->stride;
+    }
+
     return true;
 }
 
