@@ -1,6 +1,6 @@
-# Wrigley by Ampersand
+# Null-Nano by Ampersand
 - Status:
-- Design files and BOM: https://1drv.ms/u/c/66cb300826c22fa3/EZojZfojVoZEkYMEGPpkHgABedPzleWljHVV_EgfXlDRwA?e=6xxioG
+- Design files and BOM: https://github.com/DesignedbyAmpersand/Null-Nano
 
 # Hardware info
 - Module: ESP32-WROVER-E (16MB Flash)
