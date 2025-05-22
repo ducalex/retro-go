@@ -48,6 +48,17 @@ enum
 
 typedef struct
 {
+    uint8_t code;
+    uint8_t yOffset;
+    uint8_t width;
+    uint8_t height;
+    uint8_t xOffset;
+    uint8_t xDelta;
+    uint8_t data[];
+} rg_font_glyph_t;
+
+typedef struct
+{
     uint8_t type;   // 0=bitmap, 1=prop
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
