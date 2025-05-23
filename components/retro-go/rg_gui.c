@@ -761,7 +761,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
             rg_gui_draw_text(xx, yy, col1_width, options[i].label, fg, bg, 0);
             rg_gui_draw_text(xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
             height = rg_gui_draw_text(xx + col1_width + sep_width, yy, col2_width, options[i].value, fg, bg, RG_TEXT_MULTILINE).height;
-            // rg_gui_draw_rect(xx, yy + font_height, inner_width - col2_width, height - font_height, 0, 0, bg);
+            if ((height / font_height) >= 2) // Multiline value, must fill sep and label
+                rg_gui_draw_rect(xx, yy + font_height + 1, inner_width - col2_width, height - font_height, 0, 0, bg);
         }
         else
         {
