@@ -24,8 +24,8 @@
 #include "targets/byteboi-rev1/config.h"
 #elif defined(RG_TARGET_RACHEL_ESP32)
 #include "targets/rachel-esp32/config.h"
-#elif defined(RG_TARGET_WRIGLEY)
-#include "targets/wrigley/config.h"
+#elif defined(RG_TARGET_NULLNANO)
+#include "targets/nullnano/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
