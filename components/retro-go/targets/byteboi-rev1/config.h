@@ -21,10 +21,8 @@
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xEF, 0x03, 0x80, 0x02);                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc1, 0x30);                                                                         \

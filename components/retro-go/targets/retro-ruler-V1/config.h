@@ -14,7 +14,6 @@
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_HAS_ROUND_CORNERS
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
@@ -22,10 +21,8 @@
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       20
-#define RG_SCREEN_MARGIN_RIGHT      20
+#define RG_SCREEN_VISIBLE_AREA      {20, 0, 20, 0}
+#define RG_SCREEN_SAFE_AREA         {20, 0, 20, 0}
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \

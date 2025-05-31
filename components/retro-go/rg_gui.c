@@ -16,7 +16,7 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
-    int screen_safezone; // rg_rect_t
+    struct {int left, top, right, bottom;} margins;
     struct
     {
         const rg_font_t *font;
@@ -105,11 +105,9 @@ void rg_gui_init(void)
 {
     gui.screen_width = rg_display_get_width();
     gui.screen_height = rg_display_get_height();
-    #ifdef RG_SCREEN_HAS_ROUND_CORNERS
-    gui.screen_safezone = 20;
-    #else
-    gui.screen_safezone = 0;
-    #endif
+    // FIXME: RG_SCREEN_SAFE_AREA being added on top of RG_SCREEN_VISIBLE_AREA might not be super intuitive
+    //        because of how this is defined in config.h. It should be documented somewhere...
+    gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
@@ -520,7 +518,7 @@ void rg_gui_draw_icons(void)
     int bar_height = txt.height;
     int icon_height = RG_MAX(8, bar_height - 4);
     int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
-    int right = gui.screen_safezone;
+    int right = gui.margins.right;
 
     if (battery.present)
     {
@@ -616,7 +614,7 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
-    // FIXME: Respect gui.safezone (draw black background full screen_width, but pad the text if needed)
+    // FIXME: Respect gui.margins (draw black background full screen_width, but pad the text if needed)
     rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
     rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 

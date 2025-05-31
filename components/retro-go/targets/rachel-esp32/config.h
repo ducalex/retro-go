@@ -19,13 +19,11 @@
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M // SPI_MASTER_FREQ_80M
 #define RG_SCREEN_BACKLIGHT         1
-#define RG_SCREEN_WIDTH             240  //1.3 inch 240  2.4 inch 320 
+#define RG_SCREEN_WIDTH             240  //1.3 inch 240  2.4 inch 320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                                        \
     ILI9341_CMD(0x01);                                                                                                          \
     ILI9341_CMD(0x3A, 0x55);                                                                                                    \
@@ -49,7 +47,7 @@
     ILI9341_CMD(0xE0, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x32, 0x44, 0x42, 0x06, 0x0e, 0x12, 0x14, 0x17);                      \
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);                      \
     ILI9341_CMD(0x11);                                                                                                          \
-    ILI9341_CMD(0x29);     
+    ILI9341_CMD(0x29);
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types

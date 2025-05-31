@@ -142,3 +142,11 @@
 #ifndef RG_SCREEN_PARTIAL_UPDATES
 #define RG_SCREEN_PARTIAL_UPDATES 1
 #endif
+
+#ifndef RG_SCREEN_SAFE_AREA
+#define RG_SCREEN_SAFE_AREA {0, 0, 0, 0}
+#endif
+
+#ifndef RG_SCREEN_VISIBLE_AREA
+#define RG_SCREEN_VISIBLE_AREA {0, 0, 0, 0}
+#endif
