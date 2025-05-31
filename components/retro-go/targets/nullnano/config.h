@@ -14,7 +14,6 @@
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_HAS_ROUND_CORNERS
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
@@ -22,10 +21,8 @@
 #define RG_SCREEN_WIDTH             300
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       20
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {20, 0, 0, 0} // Left, Top, Right, Bottom 
+#define RG_SCREEN_SAFE_AREA         {20, 0, 20, 0} // Left, Top, Right, Bottom
 
 #define ST7789_MADCTL 0x36 // Memory Access Control
 #define ST7789_MADCTL_MY 0x80
