@@ -14,6 +14,7 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 | [fri3d-2024](targets/fri3d-2024/docs/README.md)               |   |
 | [mrgc-g32](targets/mrgc-g32/docs/README.md)                   | Official |
 | [mrgc-gbm](targets/mrgc-gbm/docs/README.md)                   |  |
+| [nullnano](targets/nullnano/docs/README.md)                   |  |
 | [odroid-go](targets/odroid-go/docs/README.md)                 | Official |
 | [qtpy-gamer](targets/qtpy-gamer/docs/README.md)               | Broken |
 | [rachel-esp32](targets/rachel-esp32/docs/README.md)           |   |
