@@ -38,7 +38,7 @@
     ILI9341_CMD(0xC1, 0x12);                                                                                                    \
     ILI9341_CMD(0xC5, 0x32, 0x3C);                                                                                              \
     ILI9341_CMD(0xC7, 0x91);                                                                                                    \
-    ILI9341_CMD(0x36, (0xA0| 0X08));                          /* 1.3 inch 0XA0|0X08  (2.4 inch  0x00|0x80) */                   \
+    ILI9341_CMD(0x36, 0xA8);                          /* 1.3 inch (MY|MV|BGR)  /  2.4 inch  (MY) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);                                                                                              \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);                                                                                              \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                                              \
