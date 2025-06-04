@@ -28,6 +28,15 @@ static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_BORDER = "DispBorder";
 static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 
+static void lcd_init(void);
+static void lcd_deinit(void);
+static void lcd_sync(void);
+static void lcd_set_rotation(int rotation);
+static void lcd_set_backlight(float percent);
+static void lcd_set_window(int left, int top, int width, int height);
+static inline uint16_t *lcd_get_buffer(size_t length);
+static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
+
 #if RG_SCREEN_DRIVER == 0 /* ILI9341 */
 #include "drivers/display/ili9341.h"
 #elif RG_SCREEN_DRIVER == 99
