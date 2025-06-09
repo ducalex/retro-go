@@ -24,6 +24,8 @@
 #include "targets/byteboi-rev1/config.h"
 #elif defined(RG_TARGET_RACHEL_ESP32)
 #include "targets/rachel-esp32/config.h"
+#elif defined(RG_TARGET_VMU)
+#include "targets/vmu/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
