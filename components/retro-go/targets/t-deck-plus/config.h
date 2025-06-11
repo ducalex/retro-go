@@ -12,14 +12,18 @@
 
 // Board-specific
 #define T_DECK_BOARD_POWER          GPIO_NUM_10
+#define T_DECK_RADIO_CS             GPIO_NUM_9
 
-// Board power pin must be turned on before SD, backlight, keyboard... can be used
-// SD fails if a pullups aren't enabled on the data pins
 #define CUSTOM_PLATFORM_INIT()                                \
-    gpio_set_pull_mode(RG_GPIO_SDSPI_MISO, GPIO_PULLUP_ONLY); \
-    gpio_set_pull_mode(RG_GPIO_SDSPI_MOSI, GPIO_PULLUP_ONLY); \
     gpio_set_direction(T_DECK_BOARD_POWER, GPIO_MODE_OUTPUT); \
-    gpio_set_level(T_DECK_BOARD_POWER, 1);                    
+    gpio_set_level(T_DECK_BOARD_POWER, 1); \
+    gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT); \
+    gpio_set_direction(T_DECK_RADIO_CS, GPIO_MODE_OUTPUT); \
+    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT); \
+    gpio_set_level(RG_GPIO_SDSPI_CS, 1); \
+    gpio_set_level(T_DECK_RADIO_CS, 1); \
+    gpio_set_level(RG_GPIO_LCD_CS, 1); \
+    gpio_set_pull_mode(RG_GPIO_SDSPI_MISO, GPIO_PULLUP_ONLY);
     
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
@@ -33,7 +37,7 @@
 #define RG_SCREEN_MARGIN_BOTTOM     0
 #define RG_SCREEN_MARGIN_LEFT       0
 #define RG_SCREEN_MARGIN_RIGHT      0
-// Hack in turning board power on in the display init function
+
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \
