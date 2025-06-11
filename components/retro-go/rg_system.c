@@ -372,9 +372,9 @@ static void platform_init(void)
         RG_PANIC("SDL Init failed!");
 #endif
 
-#if defined(CUSTOM_PLATFORM_INIT)
+#if defined(RG_CUSTOM_PLATFORM_INIT)
     RG_LOGI("Running platform-specific init...\n");
-    CUSTOM_PLATFORM_INIT();
+    RG_CUSTOM_PLATFORM_INIT();
 #endif
 }
 

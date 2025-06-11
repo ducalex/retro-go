@@ -8,27 +8,30 @@
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
-#define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
+#define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Board-specific
 #define T_DECK_BOARD_POWER          GPIO_NUM_10
 #define T_DECK_RADIO_CS             GPIO_NUM_9
+#define T_DECK_KBD_ADDRESS          0x55
+#define T_DECK_KBD_MODE_RAW_CMD     0x03
 
-#define CUSTOM_PLATFORM_INIT()                                \
+#define RG_CUSTOM_PLATFORM_INIT()                             \
     gpio_set_direction(T_DECK_BOARD_POWER, GPIO_MODE_OUTPUT); \
-    gpio_set_level(T_DECK_BOARD_POWER, 1); \
-    gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT); \
-    gpio_set_direction(T_DECK_RADIO_CS, GPIO_MODE_OUTPUT); \
-    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT); \
-    gpio_set_level(RG_GPIO_SDSPI_CS, 1); \
-    gpio_set_level(T_DECK_RADIO_CS, 1); \
-    gpio_set_level(RG_GPIO_LCD_CS, 1); \
-    gpio_set_pull_mode(RG_GPIO_SDSPI_MISO, GPIO_PULLUP_ONLY);
-    
+    gpio_set_level(T_DECK_BOARD_POWER, 1);                    \
+    gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT);   \
+    gpio_set_direction(T_DECK_RADIO_CS, GPIO_MODE_OUTPUT);    \
+    gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);     \
+    gpio_set_level(RG_GPIO_SDSPI_CS, 1);                      \
+    gpio_set_level(T_DECK_RADIO_CS, 1);                       \
+    gpio_set_level(RG_GPIO_LCD_CS, 1);                        \
+    gpio_set_pull_mode(RG_GPIO_SDSPI_MISO, GPIO_PULLUP_ONLY); \
+    rg_task_delay(50);
+
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
-#define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
+#define RG_SCREEN_SPEED             SPI_MASTER_FREQ_80M
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
@@ -59,20 +62,32 @@
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);       \
 
 // Input
-#define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_L,      GPIO_NUM_1, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_R,      GPIO_NUM_15,GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_MENU,   GPIO_NUM_0, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_UP,     GPIO_NUM_2, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_DOWN,   GPIO_NUM_3, GPIO_PULLUP_ONLY, 0},\
+#define RG_GAMEPAD_I2C_MAP { \
+    {RG_KEY_UP,     (1<<18)},\
+    {RG_KEY_RIGHT,  (1<<17)},\
+    {RG_KEY_DOWN,   (1<<20)},\
+    {RG_KEY_LEFT,   (1<<19)},\
+    {RG_KEY_SELECT, (1<<7)}, \
+    {RG_KEY_START,  (1<<30)},\
+    {RG_KEY_OPTION, (1<<31)},\
+    {RG_KEY_A,      (1<<1)}, \
+    {RG_KEY_B,      (1<<3)}, \
+    {RG_KEY_X,      (1<<0)}, \
+    {RG_KEY_Y,      (1<<21)},\
+    {RG_KEY_L,      (1<<24)},\
+    {RG_KEY_R,      (1<<14)},\
 }
 
-#define RG_RECOVERY_BTN RG_KEY_MENU
+#define RG_GAMEPAD_GPIO_MAP {                      \
+    {RG_KEY_MENU, GPIO_NUM_0, GPIO_PULLUP_ONLY, 0},\
+}
+
+#define RG_RECOVERY_BTN             RG_KEY_MENU
 
 // Battery
 #define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
-#define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_4
+#define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
@@ -89,10 +104,10 @@
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_42
 
 // SPI SD Card
-#define RG_GPIO_SDSPI_MISO GPIO_NUM_38
-#define RG_GPIO_SDSPI_MOSI GPIO_NUM_41
-#define RG_GPIO_SDSPI_CLK  GPIO_NUM_40
-#define RG_GPIO_SDSPI_CS   GPIO_NUM_39
+#define RG_GPIO_SDSPI_MISO          GPIO_NUM_38
+#define RG_GPIO_SDSPI_MOSI          GPIO_NUM_41
+#define RG_GPIO_SDSPI_CLK           GPIO_NUM_40
+#define RG_GPIO_SDSPI_CS            GPIO_NUM_39
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         7
