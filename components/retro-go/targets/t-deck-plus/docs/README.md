@@ -7,7 +7,7 @@ A modified version that can be switched to providing the realtime state of each 
 
 The modified keyboard firmware has been PR'd to the original repo, source available here (https://github.com/Xinyuan-LilyGO/T-Deck/pull/87) 
 
-See below image for the provided keyboard layout. It can be modified as desired in the target config, except for the 3 N/A keys (retro-go uses a 32bit valie to store key states, but the keyboard has 35). 
+See below image for the provided keyboard layout. It can be modified as desired in the target config, except for the 3 N/A keys (retro-go uses a 32bit value to store key states, but the keyboard has 35). 
 
 # Hardware
 - Module: ESP32-S3
