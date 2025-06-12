@@ -48,6 +48,17 @@ enum
 
 typedef struct
 {
+    uint8_t code;
+    uint8_t yOffset;
+    uint8_t width;
+    uint8_t height;
+    uint8_t xOffset;
+    uint8_t xDelta;
+    uint8_t data[];
+} rg_font_glyph_t;
+
+typedef struct
+{
     uint8_t type;   // 0=bitmap, 1=prop
     uint8_t width;  // width of largest glyph
     uint8_t height; // height of tallest glyph
@@ -100,7 +111,6 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-rg_image_t *rg_gui_load_image_file(const char *path);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
@@ -119,7 +129,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int se
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
-char *rg_gui_prompt(const char *title, const char *message, const char *default_value);
+char *rg_gui_input_str(const char *title, const char *message, const char *default_value);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path);
 void rg_gui_options_menu(void);

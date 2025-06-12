@@ -21,10 +21,9 @@
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        38
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 38, 0, 10}  /* Fullscreen for plastic case. Black bar on bottom for metal case. */
+// #define RG_SCREEN_VISIBLE_AREA      {0, 38, 0, 0}  /* Fullscreen for metal case. Cropped on bottom for plastic case. */
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                   \
     ILI9341_CMD(0xB7, 0x72);                                                                               \
     ILI9341_CMD(0xBB, 0x3d);                                                                               \
@@ -37,13 +36,6 @@
     ILI9341_CMD(0xE0, 0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19); \
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19); \
     ILI9341_CMD(0x21);
-
-// Screen margin
-// Uncomment the following line if using a plastic case
-#define RG_SCREEN_MARGIN_BOTTOM     10  // Fullscreen for plastic case. Black bar on bottom for metal case.
-
-// Uncomment the following line if using a metal case
-// #define RG_SCREEN_MARGIN_BOTTOM     0  // Fullscreen for metal case. Cropped on bottom for plastic case.
 
 // Input
 /**

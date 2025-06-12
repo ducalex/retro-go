@@ -15,7 +15,11 @@ static void event_handler(gui_event_t event, tab_t *tab)
     retro_file_t *file = (retro_file_t *)(item ? item->arg : NULL);
     // book_t *book = (book_t *)tab->arg;
 
-    if (event == TAB_INIT || event == TAB_RESCAN)
+    if (event == TAB_INIT)
+    {
+        //
+    }
+    else if (event == TAB_DEINIT)
     {
         //
     }
@@ -23,14 +27,10 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         // tab_refresh(tab);
     }
-    else if (event == TAB_ENTER || event == TAB_SCROLL)
+    else if (event == TAB_ENTER || event == TAB_LEAVE || event == TAB_SCROLL)
     {
         gui_set_status(tab, NULL, "");
         gui_set_preview(tab, NULL);
-    }
-    else if (event == TAB_LEAVE)
-    {
-        //
     }
     else if (event == TAB_IDLE)
     {

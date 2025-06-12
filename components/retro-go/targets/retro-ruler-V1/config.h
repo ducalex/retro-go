@@ -14,7 +14,6 @@
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_HAS_ROUND_CORNERS
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
@@ -22,10 +21,8 @@
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       20
-#define RG_SCREEN_MARGIN_RIGHT      20
+#define RG_SCREEN_VISIBLE_AREA      {20, 0, 20, 0}
+#define RG_SCREEN_SAFE_AREA         {20, 0, 20, 0}
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \
@@ -37,7 +34,7 @@
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(0x36, (0x40 | 0x80 | 0x08)); /* Memory Access Control */                                         \
+    ILI9341_CMD(0x36, 0xC8);                 /* Memory Access Control (MY|MX|BGR) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \

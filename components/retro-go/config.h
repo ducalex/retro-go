@@ -24,6 +24,8 @@
 #include "targets/byteboi-rev1/config.h"
 #elif defined(RG_TARGET_RACHEL_ESP32)
 #include "targets/rachel-esp32/config.h"
+#elif defined(RG_TARGET_NULLNANO)
+#include "targets/nullnano/config.h"
 #elif defined(RG_TARGET_VMU)
 #include "targets/vmu/config.h"
 #else
@@ -143,4 +145,12 @@
 
 #ifndef RG_SCREEN_PARTIAL_UPDATES
 #define RG_SCREEN_PARTIAL_UPDATES 1
+#endif
+
+#ifndef RG_SCREEN_SAFE_AREA
+#define RG_SCREEN_SAFE_AREA {0, 0, 0, 0}
+#endif
+
+#ifndef RG_SCREEN_VISIBLE_AREA
+#define RG_SCREEN_VISIBLE_AREA {0, 0, 0, 0}
 #endif
