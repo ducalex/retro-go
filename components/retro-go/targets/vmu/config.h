@@ -21,10 +21,8 @@
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            300
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        55
-#define RG_SCREEN_MARGIN_BOTTOM     30
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 55, 0, 30} // Left, Top, Right, Bottom 
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0} // Left, Top, Right, Bottom
 
 #define ST7789_MADCTL 0x36 // Memory Access Control
 #define ST7789_MADCTL_MY 0x80
