@@ -1,4 +1,4 @@
 import os
 
 os.environ["IDF_TARGET"] = "esp32s3"
-os.environ["FW_FORMAT"] = "t-deck-plus"
+os.environ["FW_FORMAT"] = "none"
