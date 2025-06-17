@@ -16,7 +16,7 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
-    int screen_safezone; // rg_rect_t
+    struct {int left, top, right, bottom;} margins;
     struct
     {
         const rg_font_t *font;
@@ -105,11 +105,9 @@ void rg_gui_init(void)
 {
     gui.screen_width = rg_display_get_width();
     gui.screen_height = rg_display_get_height();
-    #ifdef RG_SCREEN_HAS_ROUND_CORNERS
-    gui.screen_safezone = 20;
-    #else
-    gui.screen_safezone = 0;
-    #endif
+    // FIXME: RG_SCREEN_SAFE_AREA being added on top of RG_SCREEN_VISIBLE_AREA might not be super intuitive
+    //        because of how this is defined in config.h. It should be documented somewhere...
+    gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
     rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
@@ -278,66 +276,34 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
         return 0;
 
-    size_t glyph_width = 0;
+    if (points <= 0)
+        points = font->height;
 
-    if (font->type == 0) // Monospace Bitmap
+    const uint8_t *ptr = font->data;
+    const rg_font_glyph_t *glyph = (rg_font_glyph_t *)ptr;
+    while (glyph->code != c && glyph->code != 0xFF)
     {
-        glyph_width = font->width;
-        if (output)
-        {
-            if (c >= font->chars)
-            {
-                for (int y = 0; y < font->height; y++)
-                    output[y] = 0;
-            }
-            else if (font->width > 8)
-            {
-                uint16_t *pattern = (uint16_t *)font->data + (c * font->height);
-                for (int y = 0; y < font->height; y++)
-                    output[y] = pattern[y];
-            }
-            else
-            {
-                uint8_t *pattern = (uint8_t *)font->data + (c * font->height);
-                for (int y = 0; y < font->height; y++)
-                    output[y] = pattern[y];
-            }
-        }
+        if (glyph->width != 0)
+            ptr += (((glyph->width * glyph->height) - 1) / 8) + 1;
+        ptr += sizeof(rg_font_glyph_t);
+        glyph = (rg_font_glyph_t *)ptr;
     }
-    else if (font->type == 1) // Proportional
+
+    if (glyph && glyph->code == c) // Glyph found
     {
         // Based on code by Boris Lovosevic (https://github.com/loboris)
-        int charCode, adjYOffset, width, height, xOffset, xDelta;
-        const uint8_t *data = font->data;
-        while (1)
-        {
-            charCode = *data++;
-            adjYOffset = *data++;
-            width = *data++;
-            height = *data++;
-            xOffset = *data++;
-            xOffset = xOffset < 0x80 ? xOffset : -(0xFF - xOffset);
-            xDelta = *data++;
-
-            if (charCode == c || charCode == 0xFF)
-                break;
-
-            if (width != 0)
-                data += (((width * height) - 1) / 8) + 1;
-        }
-
-        // If the glyph is not found, we fallback to the basic font which has most glyphs.
-        // It will be ugly, but at least the letter won't be missing...
-        if (charCode != c)
-            return get_glyph(output, &font_basic8x8, RG_MAX(8, points - 2), c);
-
-        glyph_width = RG_MAX(width, xDelta);
+        int yOffset = glyph->yOffset;
+        int width = glyph->width;
+        int height = glyph->height;
+        int xOffset = glyph->xOffset < 0x80 ? glyph->xOffset : -(0xFF - glyph->xOffset);
+        int xDelta = glyph->xDelta;
+        const uint8_t *data = glyph->data;
         if (output)
         {
             int ch = 0, mask = 0x80;
             for (int y = 0; y < height; y++)
             {
-                output[adjYOffset + y] = 0;
+                uint32_t row = 0;
                 for (int x = 0; x < width; x++)
                 {
                     if (((x + (y * width)) % 8) == 0)
@@ -346,22 +312,34 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
                         ch = *data++;
                     }
                     if ((ch & mask) != 0)
-                        output[adjYOffset + y] |= (1 << (xOffset + x));
+                        row |= (1 << (xOffset + x));
                     mask >>= 1;
                 }
+                output[yOffset + y] = row;
+            }
+            // Vertical stretching
+            if (points != font->height)
+            {
+                float scale = (float)points / font->height;
+                for (int y = points - 1; y >= 0; y--)
+                    output[y] = output[(int)(y / scale)];
             }
         }
+        return RG_MAX(width, xDelta);
     }
-
-    // Vertical stretching
-    if (output && points && points != font->height)
+    // else if (font != &font_basic8x8) // Glyph not found, try fallback font
+    // {
+    //     return get_glyph(output, &font_basic8x8, points, c);
+    // }
+    else // Glyph not found, no fallback
     {
-        float scale = (float)points / font->height;
-        for (int y = points - 1; y >= 0; y--)
-            output[y] = output[(int)(y / scale)];
+        if (output) // draw missing box
+        {
+            for (size_t i = 0; i < points; ++i)
+                output[i] = (i & 1) ? 0xAAAAAAAA : 0x55555555;
+        }
+        return RG_MIN(font->width, 8);
     }
-
-    return glyph_width;
 }
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
@@ -540,7 +518,7 @@ void rg_gui_draw_icons(void)
     int bar_height = txt.height;
     int icon_height = RG_MAX(8, bar_height - 4);
     int icon_top = RG_MAX(0, (bar_height - icon_height - 1) / 2);
-    int right = gui.screen_safezone;
+    int right = gui.margins.right;
 
     if (battery.present)
     {
@@ -636,7 +614,7 @@ void rg_gui_draw_status_bars(void)
     else
         snprintf(footer, max_len, "Retro-Go %s", app->version);
 
-    // FIXME: Respect gui.safezone (draw black background full screen_width, but pad the text if needed)
+    // FIXME: Respect gui.margins (draw black background full screen_width, but pad the text if needed)
     rg_gui_draw_text(0, RG_GUI_TOP, gui.screen_width, header, C_WHITE, C_BLACK, 0);
     rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.screen_width, footer, C_WHITE, C_BLACK, 0);
 
@@ -781,7 +759,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
             rg_gui_draw_text(xx, yy, col1_width, options[i].label, fg, bg, 0);
             rg_gui_draw_text(xx + col1_width, yy, sep_width, ": ", fg, bg, 0);
             height = rg_gui_draw_text(xx + col1_width + sep_width, yy, col2_width, options[i].value, fg, bg, RG_TEXT_MULTILINE).height;
-            rg_gui_draw_rect(xx, yy + font_height, inner_width - col2_width, height - font_height, 0, 0, bg);
+            if ((height / font_height) >= 2) // Multiline value, must fill sep and label
+                rg_gui_draw_rect(xx, yy + font_height + 1, inner_width - col2_width, height - font_height, 0, 0, bg);
         }
         else
         {
@@ -1063,6 +1042,12 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
         free((void *)(options.options[i].arg));
 
     return filepath;
+}
+
+char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
+{
+    // This will need to fully implement a proper virtual keyboard :(
+    return default_value ? strdup(default_value) : NULL;
 }
 
 void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
@@ -1532,13 +1517,13 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
-            {0, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
-            {0, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
+            {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
+            {0x00, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
             RG_DIALOG_SEPARATOR,
-            {0, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
+            {0x00, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
-            {0, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
-            {0, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
+            {0x10, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
+            {0x11, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
             RG_DIALOG_END,
         };
         rg_gui_dialog(option->label, options, 0);

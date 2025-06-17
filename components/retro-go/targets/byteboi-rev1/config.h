@@ -21,10 +21,8 @@
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xEF, 0x03, 0x80, 0x02);                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc1, 0x30);                                                                         \
@@ -35,11 +33,11 @@
     ILI9341_CMD(0xEA, 0x00, 0x00);                                                                               \
     ILI9341_CMD(0xC0, 0x23);                 /* Power control   //VRH[5:0] */                                    \
     ILI9341_CMD(0xC1, 0x10);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
-    ILI9341_CMD(0xC5, 0x3e,0x28);           /* VCM control */                                                    \
+    ILI9341_CMD(0xC5, 0x3e,0x28);            /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x86);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(0x36, (0x20 | 0x80 | 0x08)); /* Memory Access Control */                                         \
+    ILI9341_CMD(0x36, 0xA8);                 /* Memory Access Control (MY|MV|BGR) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
-    ILI9341_CMD(0xB6, 0x08, 0xC2, 0x27);           /* Display Function Control */                                \
+    ILI9341_CMD(0xB6, 0x08, 0xC2, 0x27);     /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
     ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
     ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \

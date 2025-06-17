@@ -130,6 +130,12 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     uint32_t buttons = 0;
 #if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
     buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
+#elif defined(RG_TARGET_T_DECK_PLUS)
+    uint8_t data[5];
+    if (rg_i2c_read(T_DECK_KBD_ADDRESS, -1, &data, 5)) {
+        buttons = ((data[0] << 25) | (data[1] << 18) | (data[2] << 11) | ((data[3] & 0xF8) << 4) | (data[4]));
+        //RG_LOGI("buttons: %08lX", buttons);
+    }
 #else
     uint8_t data[5];
     if (rg_i2c_read(0x20, -1, &data, 5))
@@ -282,6 +288,8 @@ void rg_input_init(void)
     rg_i2c_init();
 #if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
     rg_i2c_gpio_init();
+#elif defined(RG_TARGET_T_DECK_PLUS)
+    rg_i2c_write_byte(T_DECK_KBD_ADDRESS, -1, T_DECK_KBD_MODE_RAW_CMD);
 #endif
     UPDATE_GLOBAL_MAP(keymap_i2c);
 #endif

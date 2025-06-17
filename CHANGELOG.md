@@ -1,8 +1,17 @@
+# Retro-Go 1.45 (2025-??-??)
+- SMS/GG: Fixe broken inputs in many games since 1.40 (#198)
+- SNES: Increased max supported ROM size on some devices
+- Launcher: Fixed network status in options menu
+- New device support: LILYGO T-Deck Plus
+- New device support: Null Nano by Ampersand
+
+
 # Retro-Go 1.44 (2025-02-03)
-- User interface is now multi-language (currently english and french)!
-- New target: retro-ruler
-- New target: Byteboi rev.1
-- New target: Rachel ESP32
+- SNES: Larger ROMs are now supported (on devices with enough memory)
+- All: User interface is now multi-language (currently english and french)!
+- New device support: Retro-Ruler
+- New device support: Byteboi rev.1
+- New device support: Rachel ESP32
 
 
 # Retro-Go 1.43 (2024-09-02)

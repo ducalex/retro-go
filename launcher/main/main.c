@@ -11,6 +11,7 @@
 
 #include "applications.h"
 #include "bookmarks.h"
+#include "browser.h"
 #include "gui.h"
 #include "webui.h"
 #include "updater.h"
@@ -202,6 +203,7 @@ static void retro_loop(void)
     gui_init(app->isColdBoot);
     applications_init();
     bookmarks_init();
+    // browser_init();
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
@@ -299,15 +301,19 @@ static void retro_loop(void)
             }
             else if (joystick == RG_KEY_UP) {
                 gui_scroll_list(tab, SCROLL_LINE, -1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_DOWN) {
                 gui_scroll_list(tab, SCROLL_LINE, 1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_LEFT) {
                 gui_scroll_list(tab, SCROLL_PAGE, -1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_RIGHT) {
                 gui_scroll_list(tab, SCROLL_PAGE, 1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_A) {
                 gui_event(TAB_ACTION, tab);

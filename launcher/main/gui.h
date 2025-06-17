@@ -22,11 +22,11 @@ typedef enum {
     TAB_BACK,
     TAB_SCROLL,
     TAB_INIT,
+    TAB_DEINIT,
     TAB_ENTER,
     TAB_LEAVE,
     TAB_IDLE,
     TAB_REFRESH,
-    TAB_RESCAN,
 } gui_event_t;
 
 typedef enum {
@@ -147,6 +147,7 @@ tab_t *gui_get_current_tab(void);
 tab_t *gui_set_current_tab(int index);
 void gui_set_status(tab_t *tab, const char *left, const char *right);
 void gui_init_tab(tab_t *tab);
+void gui_deinit_tab(tab_t *tab);
 
 rg_image_t *gui_get_image(const char *type, const char *subtype);
 

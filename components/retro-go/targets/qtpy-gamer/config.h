@@ -21,10 +21,8 @@
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        +80
-#define RG_SCREEN_MARGIN_BOTTOM     -80
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 80, 0, 80}
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()          \
     ILI9341_CMD(0x36, 0xC0); \
     ILI9341_CMD(0x21); /* Invert colors */

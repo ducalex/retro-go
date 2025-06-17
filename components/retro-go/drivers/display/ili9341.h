@@ -4,6 +4,10 @@
 #include <driver/gpio.h>
 #include <driver/ledc.h>
 
+#if defined(RG_SCREEN_ROTATE) && RG_SCREEN_ROTATE != 0
+#error "RG_SCREEN_ROTATE doesn't do anything on this driver, you have to use the 0x36 command during init!"
+#endif
+
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
