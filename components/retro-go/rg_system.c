@@ -371,6 +371,11 @@ static void platform_init(void)
     if (SDL_Init(SDL_INIT_VIDEO|SDL_INIT_AUDIO) < 0)
         RG_PANIC("SDL Init failed!");
 #endif
+
+#if defined(RG_CUSTOM_PLATFORM_INIT)
+    RG_LOGI("Running platform-specific init...\n");
+    RG_CUSTOM_PLATFORM_INIT();
+#endif
 }
 
 rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused)

@@ -26,6 +26,8 @@
 #include "targets/rachel-esp32/config.h"
 #elif defined(RG_TARGET_NULLNANO)
 #include "targets/nullnano/config.h"
+#elif defined(RG_TARGET_T_DECK_PLUS)
+#include "targets/t-deck-plus/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
