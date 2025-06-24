@@ -1,5 +1,5 @@
 // Target definition
-#define RG_TARGET_NAME             "NULLNANO"
+#define RG_TARGET_NAME             "VMU"
 
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
@@ -18,11 +18,11 @@
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
-#define RG_SCREEN_WIDTH             300
-#define RG_SCREEN_HEIGHT            240
+#define RG_SCREEN_WIDTH             240
+#define RG_SCREEN_HEIGHT            300
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_VISIBLE_AREA      {20, 0, 0, 0} // Left, Top, Right, Bottom 
-#define RG_SCREEN_SAFE_AREA         {20, 0, 20, 0} // Left, Top, Right, Bottom
+#define RG_SCREEN_VISIBLE_AREA      {0, 55, 0, 30} // Left, Top, Right, Bottom 
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0} // Left, Top, Right, Bottom
 
 #define ST7789_MADCTL 0x36 // Memory Access Control
 #define ST7789_MADCTL_MY 0x80
@@ -39,11 +39,12 @@
     ILI9341_CMD(0xCB, 0x39, 0x2c, 0x00, 0x34, 0x02);                                                             \
     ILI9341_CMD(0xF7, 0x20);                                                                                     \
     ILI9341_CMD(0xEA, 0x00, 0x00);                                                                               \
+    ILI9341_CMD(0x36, 0x60);                         /* Display Rotation */                                \
     ILI9341_CMD(0xC0, 0x1B);                 /* Power control   //VRH[5:0] */                                    \
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(ST7789_MADCTL, (ST7789_MADCTL_BGR));           				 			 \
+    ILI9341_CMD(ST7789_MADCTL, (ST7789_MADCTL_MV | ST7789_MADCTL_MX | ST7789_MADCTL_BGR));         				 \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
@@ -61,13 +62,17 @@
     {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2047},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_SELECT, GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_START,  GPIO_NUM_39, GPIO_FLOATING,    0},\
-    {RG_KEY_MENU,   GPIO_NUM_13, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_OPTION, GPIO_NUM_0,  GPIO_FLOATING,    0},\
+    {RG_KEY_MENU, GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_START, GPIO_NUM_0,  GPIO_FLOATING,    0},\
     {RG_KEY_A,      GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
     {RG_KEY_B,      GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
 }
+#define RG_GAMEPAD_VIRT_MAP {\
+    {RG_KEY_SELECT,  RG_KEY_A | RG_KEY_START},\
+    {RG_KEY_OPTION,   RG_KEY_B | RG_KEY_START},\
+}
+
+
 
 // Battery
 #define RG_BATTERY_DRIVER           1
@@ -107,4 +112,4 @@
 // Updater
 #define RG_UPDATER_ENABLE               1
 #define RG_UPDATER_APPLICATION          RG_APP_FACTORY
-#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/nullnano/firmware"
+#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/vmu/firmware"
