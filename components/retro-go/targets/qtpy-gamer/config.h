@@ -1,5 +1,5 @@
 // Target definition
-#define RG_TARGET_NAME             "QTPY ESP32"
+#define RG_TARGET_NAME             "QTPY-GAMER"
 
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
@@ -47,6 +47,10 @@
 #define RG_BATTERY_DRIVER           0
 #define RG_BATTERY_CALC_PERCENT(raw) (99)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
+
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          1   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x58
 
 // Status LED - not actually used, we've got neopixels instead :/
 // #define RG_GPIO_LED                 GPIO_NUM_NC

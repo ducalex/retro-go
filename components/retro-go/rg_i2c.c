@@ -10,8 +10,6 @@
 #endif
 
 static bool i2c_initialized = false;
-static bool gpio_extender_initialized = false;
-static uint8_t gpio_extender_address = 0x00;
 
 #define TRY(x)                 \
     if ((err = (x)) != ESP_OK) \
@@ -127,14 +125,12 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
     return rg_i2c_write(addr, reg, &value, 1);
 }
 
-#if RG_I2C_DRIVER == 1
 
-#define AW9523_REG_INPUT0    0x00 ///< Register for reading input values
-#define AW9523_REG_OUTPUT0   0x02 ///< Register for writing output values
-#define AW9523_REG_POLARITY0 0x04 ///< Register for polarity inversion of inputs
-#define AW9523_REG_CONFIG0   0x06 ///< Register for configuring direction
+#ifdef RG_I2C_GPIO_DRIVER
+static bool gpio_extender_initialized = false;
+static uint8_t gpio_extender_address = 0x00;
 
-#else
+#if RG_I2C_GPIO_DRIVER == 1     // AW9523
 
 #define AW9523_REG_CHIPID     0x10 ///< Register for hardcode chip ID
 #define AW9523_REG_SOFTRESET  0x7F ///< Register for soft resetting
@@ -144,6 +140,13 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 #define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
 #define AW9523_REG_GCR        0x11 ///< Register for general configuration
 #define AW9523_REG_LEDMODE    0x12 ///< Register for configuring const current
+
+#elif RG_I2C_GPIO_DRIVER == 2   // PCF9539
+
+#define AW9523_REG_INPUT0    0x00 ///< Register for reading input values
+#define AW9523_REG_OUTPUT0   0x02 ///< Register for writing output values
+#define AW9523_REG_POLARITY0 0x04 ///< Register for polarity inversion of inputs
+#define AW9523_REG_CONFIG0   0x06 ///< Register for configuring direction
 
 #endif
 
@@ -156,36 +159,45 @@ bool rg_i2c_gpio_init(void)
     if (!i2c_initialized && !rg_i2c_init())
         return false;
 
-    gpio_extender_initialized = true;
-#if RG_I2C_DRIVER == 1
-    gpio_extender_address = 0x74;
+#if RG_I2C_GPIO_DRIVER == 1     // AW9523
 
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0 + 1, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0,  0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1,  0xFF);
-#else
-    gpio_extender_address = 0x58;
-
+    gpio_extender_address = RG_I2C_GPIO_ADDR;
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
     rg_usleep(10 * 1000);
-
     uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
     if (id != 0x23)
     {
         RG_LOGE("AW9523 invalid ID 0x%x found", id);
         return false;
     }
-
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE + 1, 0xFF);
     rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1 << 4);
-#endif
+
+    gpio_extender_initialized = true;
     return true;
+
+#elif RG_I2C_GPIO_DRIVER == 2   // PCF9539
+
+    gpio_extender_address = RG_I2C_GPIO_ADDR;
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + 1, 0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0, 0x00);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0 + 1, 0x00);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0,  0xFF);
+    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1,  0xFF);
+
+    gpio_extender_initialized = true;
+    return true;
+
+#else
+
+    RG_LOGE("Unknown driver type");
+    return false;
+
+#endif
 }
 
 bool rg_i2c_gpio_deinit(void)
@@ -223,3 +235,4 @@ bool rg_i2c_gpio_set_level(int pin, int level)
     uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
     return rg_i2c_write_byte(gpio_extender_address, reg, level ? (val | mask) : (val & ~mask));
 }
+#endif

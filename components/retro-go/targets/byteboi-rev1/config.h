@@ -45,7 +45,6 @@
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
 
-
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
@@ -70,11 +69,14 @@
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          2   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x74
+
 // Status LED
 //#define RG_GPIO_LED                 GPIO_NUM_14
 
 // I2C BUS
-#define RG_I2C_DRIVER               1   // 0 = AW9523, 1 = PCF9539
 #define RG_GPIO_I2C_SDA             GPIO_NUM_23
 #define RG_GPIO_I2C_SCL             GPIO_NUM_22
 
