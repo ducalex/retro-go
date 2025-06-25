@@ -175,25 +175,40 @@ bool rg_i2c_gpio_init(void)
         return false;
 
     // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
-    for (size_t i = 0; i < RG_COUNT(gpio_init_sequence); ++i)
-        rg_i2c_write_byte(gpio_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]);
+    for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_init_sequence); ++i)
+    {
+        if (!rg_i2c_write_byte(gpio_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]))
+            goto fail;
+    }
 
-    // Now set all pins of all ports as inputs and clear output latches
+    // Set all pins as inputs
     for (size_t i = 0; i < RG_COUNT(gpio_direction_regs); ++i)
-        rg_i2c_gpio_configure_port(i, 0xFF, RG_GPIO_INPUT);
+    {
+        if (!rg_i2c_gpio_configure_port(i, 0xFF, RG_GPIO_INPUT))
+            goto fail;
+    }
+
+    // Clear output latches
     for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
-        rg_i2c_gpio_write_port(i, 0x00);
+    {
+        if (!rg_i2c_gpio_write_port(i, 0x00))
+            goto fail;
+    }
 
     RG_LOGI("GPIO Extender ready (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
     gpio_initialized = true;
     return true;
+fail:
+    RG_LOGE("Failed to initialize extender (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
+    gpio_initialized = false;
+    return false;
 }
 
 bool rg_i2c_gpio_deinit(void)
 {
     if (gpio_initialized)
     {
-        for (size_t i = 0; i < RG_COUNT(gpio_deinit_sequence); ++i)
+        for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_deinit_sequence); ++i)
             rg_i2c_write_byte(gpio_address, gpio_deinit_sequence[i][0], gpio_deinit_sequence[i][1]);
         // Should we reset all pins to be high impedance?
         gpio_initialized = false;
