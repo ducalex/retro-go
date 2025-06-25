@@ -9,6 +9,10 @@
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          1   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x58
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        2   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
@@ -47,10 +51,6 @@
 #define RG_BATTERY_DRIVER           0
 #define RG_BATTERY_CALC_PERCENT(raw) (99)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
-
-// GPIO Extender
-#define RG_I2C_GPIO_DRIVER          1   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
-#define RG_I2C_GPIO_ADDR            0x58
 
 
 // Status LED - not actually used, we've got neopixels instead :/

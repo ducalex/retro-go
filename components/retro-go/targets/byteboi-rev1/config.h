@@ -9,6 +9,10 @@
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          2   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x74
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        1   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
@@ -39,11 +43,12 @@
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x08, 0xC2, 0x27);     /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
-    ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
-    ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \
+    ILI9341_CMD(0xF2, 0x00);                 /* 3Gamma Function Disable */                                       \
+    ILI9341_CMD(0x26, 0x01);                 /* Gamma curve selected */                                          \
     ILI9341_CMD(0xE0, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00); \
-    ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
-
+    ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F); \
+    rg_i2c_gpio_set_direction(12, RG_GPIO_OUTPUT); /* Backlight */                                               \
+    rg_i2c_gpio_set_level(12, 0);
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
@@ -69,10 +74,6 @@
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
-// GPIO Extender
-#define RG_I2C_GPIO_DRIVER          2   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
-#define RG_I2C_GPIO_ADDR            0x74
-
 
 // Status LED
 //#define RG_GPIO_LED                 GPIO_NUM_14
@@ -87,7 +88,7 @@
 #define RG_GPIO_LCD_CLK             GPIO_NUM_26
 #define RG_GPIO_LCD_CS              GPIO_NUM_33
 #define RG_GPIO_LCD_DC              GPIO_NUM_21
-#define RG_GPIO_LCD_BCKL            GPIO_NUM_12
+// #define RG_GPIO_LCD_BCKL            GPIO_NUM_12
 #define RG_GPIO_LCD_RST             GPIO_NUM_27
 
 // SPI SD Card
