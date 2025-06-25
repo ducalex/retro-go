@@ -186,6 +186,7 @@ bool rg_i2c_gpio_init(void)
     for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
         rg_i2c_write_byte(gpio_address, gpio_output_regs[i], 0x00);
 
+    RG_LOGI("GPIO Extender ready (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
     return true;
 }
 
