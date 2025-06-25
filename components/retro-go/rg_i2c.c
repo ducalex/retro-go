@@ -127,8 +127,6 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 
 
 #ifdef RG_I2C_GPIO_DRIVER
-static bool gpio_initialized = false;
-static uint8_t gpio_address = 0x00;
 
 #if RG_I2C_GPIO_DRIVER == 1     // AW9523
 
@@ -164,6 +162,9 @@ static const uint8_t gpio_deinit_sequence[][2] = {};
 
 #endif
 
+static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
+static bool gpio_initialized = false;
+
 
 bool rg_i2c_gpio_init(void)
 {
@@ -173,20 +174,18 @@ bool rg_i2c_gpio_init(void)
     if (!i2c_initialized && !rg_i2c_init())
         return false;
 
-    gpio_address = RG_I2C_GPIO_ADDR;
-    gpio_initialized = true;
-
     // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
     for (size_t i = 0; i < RG_COUNT(gpio_init_sequence); ++i)
         rg_i2c_write_byte(gpio_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]);
 
     // Now set all pins of all ports as inputs and clear output latches
     for (size_t i = 0; i < RG_COUNT(gpio_direction_regs); ++i)
-        rg_i2c_write_byte(gpio_address, gpio_direction_regs[i], 0xFF);
+        rg_i2c_gpio_configure_port(i, 0xFF, RG_GPIO_INPUT);
     for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
-        rg_i2c_write_byte(gpio_address, gpio_output_regs[i], 0x00);
+        rg_i2c_gpio_write_port(i, 0x00);
 
     RG_LOGI("GPIO Extender ready (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
+    gpio_initialized = true;
     return true;
 }
 
@@ -202,11 +201,13 @@ bool rg_i2c_gpio_deinit(void)
     return true;
 }
 
-bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
+bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
-    uint8_t reg = gpio_direction_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_address, reg);
-    return rg_i2c_write_byte(gpio_address, reg, mode ? (val | mask) : (val & ~mask));
+    uint8_t reg = gpio_direction_regs[port & 1];
+    uint8_t value = rg_i2c_read_byte(gpio_address, reg) & ~mask;
+    if (mode == RG_GPIO_INPUT)
+        value |= mask;
+    return rg_i2c_write_byte(gpio_address, reg, value);
 }
 
 uint8_t rg_i2c_gpio_read_port(int port)
@@ -217,6 +218,11 @@ uint8_t rg_i2c_gpio_read_port(int port)
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
     return rg_i2c_write_byte(gpio_address, gpio_output_regs[port & 1], value);
+}
+
+bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
+{
+    return rg_i2c_gpio_configure_port(pin >> 3, 1 << (pin & 7), mode);
 }
 
 int rg_i2c_gpio_get_level(int pin)

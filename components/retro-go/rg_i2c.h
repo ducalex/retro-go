@@ -23,8 +23,10 @@ typedef enum
 
 bool rg_i2c_gpio_init(void);
 bool rg_i2c_gpio_deinit(void);
+bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode);
+uint8_t rg_i2c_gpio_read_port(int port);
+bool rg_i2c_gpio_write_port(int port, uint8_t value);
+// For the following functions `pin` is calculated as such: (port_num * 8) + port_pin_num
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode);
 int rg_i2c_gpio_get_level(int pin);
 bool rg_i2c_gpio_set_level(int pin, int level);
-uint8_t rg_i2c_gpio_read_port(int port);
-bool rg_i2c_gpio_write_port(int port, uint8_t value);
