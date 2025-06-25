@@ -128,41 +128,39 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 
 #ifdef RG_I2C_GPIO_DRIVER
 
-typedef struct
-{
-    uint8_t input_reg, output_reg, direction_reg;
-} gpio_port;
+typedef struct {uint8_t input_reg, output_reg, direction_reg;} _gpio_port;
+typedef struct {uint8_t reg, value;} _gpio_sequence;
 
 #if RG_I2C_GPIO_DRIVER == 1 // AW9523
 
-static const gpio_port gpio_ports[] = {
+static const _gpio_port gpio_ports[] = {
     {0x00, 0x02, 0x04}, // PORT 0
     {0x01, 0x03, 0x05}, // PORT 1
 };
-static const uint8_t gpio_init_sequence[][2] = {
+static const _gpio_sequence gpio_init_seq[] = {
     {0x7F, 0x00  }, // Software reset (is it really necessary?)
     {0x11, 1 << 4}, // Push-Pull mode
 };
-static const uint8_t gpio_deinit_sequence[][2] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
 
 #elif RG_I2C_GPIO_DRIVER == 2 // PCF9539
 
-static const gpio_port gpio_ports[] = {
+static const _gpio_port gpio_ports[] = {
     {0x00, 0x02, 0x06}, // PORT 0
     {0x01, 0x03, 0x07}, // PORT 1
 };
-static const uint8_t gpio_init_sequence[][2] = {};
-static const uint8_t gpio_deinit_sequence[][2] = {};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
 
 #elif RG_I2C_GPIO_DRIVER == 3 // MCP23017
 
 // Mappings when IOCON.BANK = 0 (which should be default on power-on)
-static const gpio_port gpio_ports[] = {
+static const _gpio_port gpio_ports[] = {
     {0x12, 0x14, 0x00}, // PORT A
     {0x13, 0x15, 0x01}, // PORT B
 };
-static const uint8_t gpio_init_sequence[][2] = {};
-static const uint8_t gpio_deinit_sequence[][2] = {};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
 
 #else
 
@@ -184,9 +182,9 @@ bool rg_i2c_gpio_init(void)
         return false;
 
     // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
-    for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_init_sequence); ++i)
+    for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_init_seq); ++i)
     {
-        if (!rg_i2c_write_byte(gpio_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]))
+        if (!rg_i2c_write_byte(gpio_address, gpio_init_seq[i].reg, gpio_init_seq[i].value))
             goto fail;
     }
 
@@ -212,8 +210,8 @@ bool rg_i2c_gpio_deinit(void)
 {
     if (gpio_initialized)
     {
-        for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_deinit_sequence); ++i)
-            rg_i2c_write_byte(gpio_address, gpio_deinit_sequence[i][0], gpio_deinit_sequence[i][1]);
+        for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_deinit_seq); ++i)
+            rg_i2c_write_byte(gpio_address, gpio_deinit_seq[i].reg, gpio_deinit_seq[i].value);
         // Should we reset all pins to be high impedance?
         gpio_initialized = false;
     }
