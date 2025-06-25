@@ -128,31 +128,39 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 
 #ifdef RG_I2C_GPIO_DRIVER
 
-#if RG_I2C_GPIO_DRIVER == 1     // AW9523
+typedef struct
+{
+    uint8_t input_reg, output_reg, direction_reg;
+} gpio_port;
 
-static const uint8_t gpio_input_regs[2] = {0x00, 0x01};
-static const uint8_t gpio_output_regs[2] = {0x02, 0x03};
-static const uint8_t gpio_direction_regs[2] = {0x04, 0x05};
+#if RG_I2C_GPIO_DRIVER == 1 // AW9523
+
+static const gpio_port gpio_ports[] = {
+    {0x00, 0x02, 0x04}, // PORT 0
+    {0x01, 0x03, 0x05}, // PORT 1
+};
 static const uint8_t gpio_init_sequence[][2] = {
-    {0x7F, 0x00},   // Software reset (is it really necessary?)
+    {0x7F, 0x00  }, // Software reset (is it really necessary?)
     {0x11, 1 << 4}, // Push-Pull mode
 };
 static const uint8_t gpio_deinit_sequence[][2] = {};
 
-#elif RG_I2C_GPIO_DRIVER == 2   // PCF9539
+#elif RG_I2C_GPIO_DRIVER == 2 // PCF9539
 
-static const uint8_t gpio_input_regs[2] = {0x00, 0x01};
-static const uint8_t gpio_output_regs[2] = {0x02, 0x03};
-static const uint8_t gpio_direction_regs[2] = {0x06, 0x07};
+static const gpio_port gpio_ports[] = {
+    {0x00, 0x02, 0x06}, // PORT 0
+    {0x01, 0x03, 0x07}, // PORT 1
+};
 static const uint8_t gpio_init_sequence[][2] = {};
 static const uint8_t gpio_deinit_sequence[][2] = {};
 
-#elif RG_I2C_GPIO_DRIVER == 3   // MCP23017
+#elif RG_I2C_GPIO_DRIVER == 3 // MCP23017
 
 // Mappings when IOCON.BANK = 0 (which should be default on power-on)
-static const uint8_t gpio_input_regs[2] = {0x12, 0x13};
-static const uint8_t gpio_output_regs[2] = {0x14, 0x15};
-static const uint8_t gpio_direction_regs[2] = {0x00, 0x01};
+static const gpio_port gpio_ports[] = {
+    {0x12, 0x14, 0x00}, // PORT A
+    {0x13, 0x15, 0x01}, // PORT B
+};
 static const uint8_t gpio_init_sequence[][2] = {};
 static const uint8_t gpio_deinit_sequence[][2] = {};
 
@@ -162,6 +170,7 @@ static const uint8_t gpio_deinit_sequence[][2] = {};
 
 #endif
 
+static uint8_t gpio_ports_count = RG_COUNT(gpio_ports);
 static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
 static bool gpio_initialized = false;
 
@@ -181,16 +190,11 @@ bool rg_i2c_gpio_init(void)
             goto fail;
     }
 
-    // Set all pins as inputs
-    for (size_t i = 0; i < RG_COUNT(gpio_direction_regs); ++i)
+    // Set all pins as inputs and clear output latches
+    for (size_t i = 0; i < gpio_ports_count; ++i)
     {
         if (!rg_i2c_gpio_configure_port(i, 0xFF, RG_GPIO_INPUT))
             goto fail;
-    }
-
-    // Clear output latches
-    for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
-    {
         if (!rg_i2c_gpio_write_port(i, 0x00))
             goto fail;
     }
@@ -218,7 +222,7 @@ bool rg_i2c_gpio_deinit(void)
 
 bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
-    uint8_t reg = gpio_direction_regs[port & 1];
+    uint8_t reg = gpio_ports[port % gpio_ports_count].direction_reg;
     uint8_t value = rg_i2c_read_byte(gpio_address, reg) & ~mask;
     if (mode == RG_GPIO_INPUT)
         value |= mask;
@@ -227,12 +231,14 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 
 uint8_t rg_i2c_gpio_read_port(int port)
 {
-    return rg_i2c_read_byte(gpio_address, gpio_input_regs[port & 1]);
+    uint8_t reg = gpio_ports[port % gpio_ports_count].input_reg;
+    return rg_i2c_read_byte(gpio_address, reg);
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
-    return rg_i2c_write_byte(gpio_address, gpio_output_regs[port & 1], value);
+    uint8_t reg = gpio_ports[port % gpio_ports_count].output_reg;
+    return rg_i2c_write_byte(gpio_address, reg, value);
 }
 
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
@@ -247,7 +253,7 @@ int rg_i2c_gpio_get_level(int pin)
 
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
-    uint8_t reg = gpio_output_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
+    uint8_t reg = gpio_ports[(pin >> 3) % gpio_ports_count].output_reg, mask = 1 << (pin & 7);
     uint8_t val = rg_i2c_read_byte(gpio_address, reg);
     return rg_i2c_write_byte(gpio_address, reg, level ? (val | mask) : (val & ~mask));
 }
