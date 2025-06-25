@@ -61,19 +61,19 @@
 
 // Input
 #define RG_GAMEPAD_I2C_MAP { \
-    {RG_KEY_UP,     (1<<18)},\
-    {RG_KEY_RIGHT,  (1<<17)},\
-    {RG_KEY_DOWN,   (1<<20)},\
-    {RG_KEY_LEFT,   (1<<19)},\
-    {RG_KEY_SELECT, (1<<7)}, \
-    {RG_KEY_START,  (1<<30)},\
-    {RG_KEY_OPTION, (1<<31)},\
-    {RG_KEY_A,      (1<<1)}, \
-    {RG_KEY_B,      (1<<3)}, \
-    {RG_KEY_X,      (1<<0)}, \
-    {RG_KEY_Y,      (1<<21)},\
-    {RG_KEY_L,      (1<<24)},\
-    {RG_KEY_R,      (1<<14)},\
+    {RG_KEY_UP,     18, 1},\
+    {RG_KEY_RIGHT,  17, 1},\
+    {RG_KEY_DOWN,   20, 1},\
+    {RG_KEY_LEFT,   19, 1},\
+    {RG_KEY_SELECT, 7,  1},\
+    {RG_KEY_START,  30, 1},\
+    {RG_KEY_OPTION, 31, 1},\
+    {RG_KEY_A,      1,  1},\
+    {RG_KEY_B,      3,  1},\
+    {RG_KEY_X,      0,  1},\
+    {RG_KEY_Y,      21, 1},\
+    {RG_KEY_L,      24, 1},\
+    {RG_KEY_R,      14, 1},\
 }
 
 #define RG_GAMEPAD_GPIO_MAP {                      \
@@ -88,6 +88,11 @@
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
+// GPIO Extender
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_ADDR            0x00
+
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_18
@@ -108,6 +113,6 @@
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_39
 
 // External I2S DAC
-#define RG_GPIO_SND_I2S_BCK         7
-#define RG_GPIO_SND_I2S_WS          5
-#define RG_GPIO_SND_I2S_DATA        6
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_7
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_5
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_6

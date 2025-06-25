@@ -43,14 +43,14 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     (1<<2)},\
-    {RG_KEY_RIGHT,  (1<<5)},\
-    {RG_KEY_DOWN,   (1<<3)},\
-    {RG_KEY_LEFT,   (1<<4)},\
-    {RG_KEY_SELECT, (1<<1)},\
-    {RG_KEY_START,  (1<<0)},\
-    {RG_KEY_A,      (1<<6)},\
-    {RG_KEY_B,      (1<<7)},\
+    {RG_KEY_UP,     2, 1},\
+    {RG_KEY_RIGHT,  5, 1},\
+    {RG_KEY_DOWN,   3, 1},\
+    {RG_KEY_LEFT,   4, 1},\
+    {RG_KEY_SELECT, 1, 1},\
+    {RG_KEY_START,  0, 1},\
+    {RG_KEY_A,      6, 1},\
+    {RG_KEY_B,      7, 1},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_L,      GPIO_NUM_40, GPIO_PULLUP_ONLY, 0},\
@@ -65,6 +65,11 @@
 #define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
+// GPIO Extender
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_ADDR            0x00
+
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_2
@@ -88,7 +93,7 @@
 #define RG_GPIO_SDSPI_D0           GPIO_NUM_17
 
 // External I2S DAC
-#define RG_GPIO_SND_I2S_BCK         38
-#define RG_GPIO_SND_I2S_WS          13
-#define RG_GPIO_SND_I2S_DATA        9
-#define RG_GPIO_SND_AMP_ENABLE      18
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_38
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_13
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_9
+#define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_18

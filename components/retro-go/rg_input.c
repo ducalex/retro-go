@@ -143,8 +143,9 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 #endif
     for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
     {
-        if ((buttons & keymap_i2c[i].src) == keymap_i2c[i].src)
-            state |= keymap_i2c[i].key;
+        const rg_keymap_i2c_t *mapping = &keymap_i2c[i];
+        if (((buttons >> mapping->num) & 1) == mapping->level)
+            state |= mapping->key;
     }
 #endif
 
@@ -285,8 +286,13 @@ void rg_input_init(void)
 
 #if defined(RG_GAMEPAD_I2C_MAP)
     RG_LOGI("Initializing I2C gamepad driver...");
-    rg_i2c_init();
-#if defined(RG_TARGET_T_DECK_PLUS)
+#if defined(RG_I2C_GPIO_DRIVER)
+    for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
+    {
+        const rg_keymap_i2c_t *mapping = &keymap_i2c[i];
+        rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT);
+    }
+#elif defined(RG_TARGET_T_DECK_PLUS)
     rg_i2c_write_byte(T_DECK_KBD_ADDRESS, -1, T_DECK_KBD_MODE_RAW_CMD);
 #endif
     UPDATE_GLOBAL_MAP(keymap_i2c);

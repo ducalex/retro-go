@@ -31,16 +31,16 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     (1<<10)},\
-    {RG_KEY_RIGHT,  (1<<12)},\
-    {RG_KEY_DOWN,   (1<<13)},\
-    {RG_KEY_LEFT,   (1<<14)},\
-    {RG_KEY_SELECT, (1<<2)},\
-    {RG_KEY_START,  (1<<4)},\
-    {RG_KEY_MENU,   (1<<11)},\
-    {RG_KEY_OPTION, (1<<5)},\
-    {RG_KEY_A,      (1<<6)},\
-    {RG_KEY_B,      (1<<7)},\
+    {RG_KEY_UP,     10, 1},\
+    {RG_KEY_RIGHT,  12, 1},\
+    {RG_KEY_DOWN,   13, 1},\
+    {RG_KEY_LEFT,   14, 1},\
+    {RG_KEY_SELECT, 2,  1},\
+    {RG_KEY_START,  4,  1},\
+    {RG_KEY_MENU,   11, 1},\
+    {RG_KEY_OPTION, 5,  1},\
+    {RG_KEY_A,      6,  1},\
+    {RG_KEY_B,      7,  1},\
 }
 
 // Battery
@@ -51,6 +51,7 @@
 // GPIO Extender
 #define RG_I2C_GPIO_DRIVER          1   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
 #define RG_I2C_GPIO_ADDR            0x58
+
 
 // Status LED - not actually used, we've got neopixels instead :/
 // #define RG_GPIO_LED                 GPIO_NUM_NC
