@@ -48,13 +48,13 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     0, 1},\
-    {RG_KEY_RIGHT,  2, 1},\
-    {RG_KEY_DOWN,   3, 1},\
-    {RG_KEY_LEFT,   1, 1},\
-    {RG_KEY_SELECT, 4, 1},\
-    {RG_KEY_A,      6, 1},\
-    {RG_KEY_B,      5, 1},\
+    {RG_KEY_UP,     0, 0},\
+    {RG_KEY_RIGHT,  2, 0},\
+    {RG_KEY_DOWN,   3, 0},\
+    {RG_KEY_LEFT,   1, 0},\
+    {RG_KEY_SELECT, 4, 0},\
+    {RG_KEY_A,      6, 0},\
+    {RG_KEY_B,      5, 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
     {RG_KEY_START,  RG_KEY_A | RG_KEY_SELECT},\

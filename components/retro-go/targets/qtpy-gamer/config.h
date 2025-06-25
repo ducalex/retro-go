@@ -31,16 +31,16 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     10, 1},\
-    {RG_KEY_RIGHT,  12, 1},\
-    {RG_KEY_DOWN,   13, 1},\
-    {RG_KEY_LEFT,   14, 1},\
-    {RG_KEY_SELECT, 2,  1},\
-    {RG_KEY_START,  4,  1},\
-    {RG_KEY_MENU,   11, 1},\
-    {RG_KEY_OPTION, 5,  1},\
-    {RG_KEY_A,      6,  1},\
-    {RG_KEY_B,      7,  1},\
+    {RG_KEY_UP,     10, 0},\
+    {RG_KEY_RIGHT,  12, 0},\
+    {RG_KEY_DOWN,   13, 0},\
+    {RG_KEY_LEFT,   14, 0},\
+    {RG_KEY_SELECT, 2,  0},\
+    {RG_KEY_START,  4,  0},\
+    {RG_KEY_MENU,   11, 0},\
+    {RG_KEY_OPTION, 5,  0},\
+    {RG_KEY_A,      6,  0},\
+    {RG_KEY_B,      7,  0},\
 }
 
 // Battery
