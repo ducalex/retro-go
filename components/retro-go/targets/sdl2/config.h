@@ -10,7 +10,7 @@
 #define RG_AUDIO_USE_SDL2           1   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            99   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            99   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
 #define RG_SCREEN_BACKLIGHT         1
