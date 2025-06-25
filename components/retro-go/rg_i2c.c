@@ -132,21 +132,31 @@ static uint8_t gpio_extender_address = 0x00;
 
 #if RG_I2C_GPIO_DRIVER == 1     // AW9523
 
-#define AW9523_REG_CHIPID     0x10 ///< Register for hardcode chip ID
-#define AW9523_REG_SOFTRESET  0x7F ///< Register for soft resetting
-#define AW9523_REG_INPUT0     0x00 ///< Register for reading input values
-#define AW9523_REG_OUTPUT0    0x02 ///< Register for writing output values
-#define AW9523_REG_CONFIG0    0x04 ///< Register for configuring direction
-#define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
-#define AW9523_REG_GCR        0x11 ///< Register for general configuration
-#define AW9523_REG_LEDMODE    0x12 ///< Register for configuring const current
+static const uint8_t gpio_input_regs[2] = {0x00, 0x01};
+static const uint8_t gpio_output_regs[2] = {0x02, 0x03};
+static const uint8_t gpio_direction_regs[2] = {0x04, 0x05};
+static const uint8_t gpio_init_sequence[][2] = {
+    {0x7F, 0x00},   // Software reset (is it really necessary?)
+    {0x11, 1 << 4}, // Push-Pull mode
+};
+static const uint8_t gpio_deinit_sequence[][2] = {};
 
 #elif RG_I2C_GPIO_DRIVER == 2   // PCF9539
 
-#define AW9523_REG_INPUT0    0x00 ///< Register for reading input values
-#define AW9523_REG_OUTPUT0   0x02 ///< Register for writing output values
-#define AW9523_REG_POLARITY0 0x04 ///< Register for polarity inversion of inputs
-#define AW9523_REG_CONFIG0   0x06 ///< Register for configuring direction
+static const uint8_t gpio_input_regs[2] = {0x00, 0x01};
+static const uint8_t gpio_output_regs[2] = {0x02, 0x03};
+static const uint8_t gpio_direction_regs[2] = {0x06, 0x07};
+static const uint8_t gpio_init_sequence[][2] = {};
+static const uint8_t gpio_deinit_sequence[][2] = {};
+
+#elif RG_I2C_GPIO_DRIVER == 3   // MCP23017
+
+// Mappings when IOCON.BANK = 0 (which should be default on power-on)
+static const uint8_t gpio_input_regs[2] = {0x12, 0x13};
+static const uint8_t gpio_output_regs[2] = {0x14, 0x15};
+static const uint8_t gpio_direction_regs[2] = {0x00, 0x01};
+static const uint8_t gpio_init_sequence[][2] = {};
+static const uint8_t gpio_deinit_sequence[][2] = {};
 
 #endif
 
@@ -159,69 +169,49 @@ bool rg_i2c_gpio_init(void)
     if (!i2c_initialized && !rg_i2c_init())
         return false;
 
-#if RG_I2C_GPIO_DRIVER == 1     // AW9523
-
     gpio_extender_address = RG_I2C_GPIO_ADDR;
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
-    rg_usleep(10 * 1000);
-    uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
-    if (id != 0x23)
-    {
-        RG_LOGE("AW9523 invalid ID 0x%x found", id);
-        return false;
-    }
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1 << 4);
-
     gpio_extender_initialized = true;
+
+    // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
+    for (size_t i = 0; i < RG_COUNT(gpio_init_sequence); ++i)
+        rg_i2c_write_byte(gpio_extender_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]);
+
+    // Now set all pins of all ports as inputs and clear output latches
+    for (size_t i = 0; i < RG_COUNT(gpio_direction_regs); ++i)
+        rg_i2c_write_byte(gpio_extender_address, gpio_direction_regs[i], 0xFF);
+    for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
+        rg_i2c_write_byte(gpio_extender_address, gpio_output_regs[i], 0x00);
+
     return true;
-
-#elif RG_I2C_GPIO_DRIVER == 2   // PCF9539
-
-    gpio_extender_address = RG_I2C_GPIO_ADDR;
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0 + 1, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0,  0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1,  0xFF);
-
-    gpio_extender_initialized = true;
-    return true;
-
-#else
-
-    RG_LOGE("Unknown driver type");
-    return false;
-
-#endif
 }
 
 bool rg_i2c_gpio_deinit(void)
 {
-    gpio_extender_initialized = false;
-    gpio_extender_address = 0;
+    if (gpio_extender_initialized)
+    {
+        for (size_t i = 0; i < RG_COUNT(gpio_deinit_sequence); ++i)
+            rg_i2c_write_byte(gpio_extender_address, gpio_deinit_sequence[i][0], gpio_deinit_sequence[i][1]);
+        // Should we reset all pins to be high impedance?
+        gpio_extender_initialized = false;
+    }
     return true;
 }
 
-bool rg_i2c_gpio_set_direction(int pin, int mode)
+bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
 {
-    uint8_t reg = AW9523_REG_CONFIG0 + (pin >> 3), mask = 1 << (pin & 7);
+    uint8_t reg = gpio_direction_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
     uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
     return rg_i2c_write_byte(gpio_extender_address, reg, mode ? (val | mask) : (val & ~mask));
 }
 
 uint8_t rg_i2c_gpio_read_port(int port)
 {
-    return rg_i2c_read_byte(gpio_extender_address, AW9523_REG_INPUT0 + port);
+    return rg_i2c_read_byte(gpio_extender_address, gpio_input_regs[port & 1]);
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
-    return rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + port, value);
+    return rg_i2c_write_byte(gpio_extender_address, gpio_output_regs[port & 1], value);
 }
 
 int rg_i2c_gpio_get_level(int pin)
@@ -231,7 +221,7 @@ int rg_i2c_gpio_get_level(int pin)
 
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
-    uint8_t reg = AW9523_REG_OUTPUT0 + (pin >> 3), mask = 1 << (pin & 7);
+    uint8_t reg = gpio_output_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
     uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
     return rg_i2c_write_byte(gpio_extender_address, reg, level ? (val | mask) : (val & ~mask));
 }
