@@ -338,7 +338,7 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
             for (size_t i = 0; i < points; ++i)
                 output[i] = (i & 1) ? 0xAAAAAAAA : 0x55555555;
         }
-        return RG_MIN(font->width, 8);
+        return font->width ?: 8;
     }
 }
 
