@@ -158,6 +158,10 @@ static const uint8_t gpio_direction_regs[2] = {0x00, 0x01};
 static const uint8_t gpio_init_sequence[][2] = {};
 static const uint8_t gpio_deinit_sequence[][2] = {};
 
+#else
+
+#error "Unknown I2C GPIO Extender driver type!"
+
 #endif
 
 
