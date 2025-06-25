@@ -127,8 +127,8 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 
 
 #ifdef RG_I2C_GPIO_DRIVER
-static bool gpio_extender_initialized = false;
-static uint8_t gpio_extender_address = 0x00;
+static bool gpio_initialized = false;
+static uint8_t gpio_address = 0x00;
 
 #if RG_I2C_GPIO_DRIVER == 1     // AW9523
 
@@ -167,36 +167,36 @@ static const uint8_t gpio_deinit_sequence[][2] = {};
 
 bool rg_i2c_gpio_init(void)
 {
-    if (gpio_extender_initialized)
+    if (gpio_initialized)
         return true;
 
     if (!i2c_initialized && !rg_i2c_init())
         return false;
 
-    gpio_extender_address = RG_I2C_GPIO_ADDR;
-    gpio_extender_initialized = true;
+    gpio_address = RG_I2C_GPIO_ADDR;
+    gpio_initialized = true;
 
     // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
     for (size_t i = 0; i < RG_COUNT(gpio_init_sequence); ++i)
-        rg_i2c_write_byte(gpio_extender_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]);
+        rg_i2c_write_byte(gpio_address, gpio_init_sequence[i][0], gpio_init_sequence[i][1]);
 
     // Now set all pins of all ports as inputs and clear output latches
     for (size_t i = 0; i < RG_COUNT(gpio_direction_regs); ++i)
-        rg_i2c_write_byte(gpio_extender_address, gpio_direction_regs[i], 0xFF);
+        rg_i2c_write_byte(gpio_address, gpio_direction_regs[i], 0xFF);
     for (size_t i = 0; i < RG_COUNT(gpio_output_regs); ++i)
-        rg_i2c_write_byte(gpio_extender_address, gpio_output_regs[i], 0x00);
+        rg_i2c_write_byte(gpio_address, gpio_output_regs[i], 0x00);
 
     return true;
 }
 
 bool rg_i2c_gpio_deinit(void)
 {
-    if (gpio_extender_initialized)
+    if (gpio_initialized)
     {
         for (size_t i = 0; i < RG_COUNT(gpio_deinit_sequence); ++i)
-            rg_i2c_write_byte(gpio_extender_address, gpio_deinit_sequence[i][0], gpio_deinit_sequence[i][1]);
+            rg_i2c_write_byte(gpio_address, gpio_deinit_sequence[i][0], gpio_deinit_sequence[i][1]);
         // Should we reset all pins to be high impedance?
-        gpio_extender_initialized = false;
+        gpio_initialized = false;
     }
     return true;
 }
@@ -204,18 +204,18 @@ bool rg_i2c_gpio_deinit(void)
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
 {
     uint8_t reg = gpio_direction_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
-    return rg_i2c_write_byte(gpio_extender_address, reg, mode ? (val | mask) : (val & ~mask));
+    uint8_t val = rg_i2c_read_byte(gpio_address, reg);
+    return rg_i2c_write_byte(gpio_address, reg, mode ? (val | mask) : (val & ~mask));
 }
 
 uint8_t rg_i2c_gpio_read_port(int port)
 {
-    return rg_i2c_read_byte(gpio_extender_address, gpio_input_regs[port & 1]);
+    return rg_i2c_read_byte(gpio_address, gpio_input_regs[port & 1]);
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
-    return rg_i2c_write_byte(gpio_extender_address, gpio_output_regs[port & 1], value);
+    return rg_i2c_write_byte(gpio_address, gpio_output_regs[port & 1], value);
 }
 
 int rg_i2c_gpio_get_level(int pin)
@@ -226,7 +226,7 @@ int rg_i2c_gpio_get_level(int pin)
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
     uint8_t reg = gpio_output_regs[(pin >> 3) & 1], mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
-    return rg_i2c_write_byte(gpio_extender_address, reg, level ? (val | mask) : (val & ~mask));
+    uint8_t val = rg_i2c_read_byte(gpio_address, reg);
+    return rg_i2c_write_byte(gpio_address, reg, level ? (val | mask) : (val & ~mask));
 }
 #endif
