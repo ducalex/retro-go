@@ -61,7 +61,7 @@ int rg_utf8_get_codepoint(const char **ptr)
 
     *ptr += 1; // Always consume the first byte
 
-    if (first_byte < 0x80)
+    if ((first_byte & 0x80) == 0x00)
     {
         return first_byte;
     }
