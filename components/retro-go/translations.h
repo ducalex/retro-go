@@ -1,9 +1,3 @@
-/**
- * IMPORTANT: This file must be opened and saved as ISO 8859-1 (Latin-1)!
- * Retro-Go does NOT understand UTF-8 or any other encoding.
- * If the following looks like gibberish, your encoding is wrong: � � � � � � � �
- */
-
 #include "rg_localization.h"
 
 static const char *language_names[RG_LANG_MAX] = {"English", "Francais"};
