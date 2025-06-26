@@ -4,7 +4,10 @@
  * This file can be edited to add fonts to retro-go.
  * There is a tool to convert ttf to prop fonts there:
  * https://github.com/loboris/ESP32_TFT_library/tree/master/tools
- * Note: The header must be removed (the first 4 bytes of data)
+ *
+ * But you will need to modify its output:
+ * - The header must be removed (the first 4 bytes of data)
+ * - All codepoints must be changed to 16bits (insert a 0x00 byte after the first byte of each character)
  */
 
 extern const rg_font_t font_basic8x8;

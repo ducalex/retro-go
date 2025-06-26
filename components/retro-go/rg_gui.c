@@ -231,8 +231,8 @@ bool rg_gui_set_font(int index)
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
-    RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
-        gui.style.font_height, (float)gui.style.font_height / font->height);
+    RG_LOGI("Font set to: %s (points=%d, scaling=%.2f)\n",
+        gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
 
     return true;
 }
@@ -273,7 +273,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int c)
 {
     // Some glyphs are always zero width
-    if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
+    if (!font || c == '\r' || c == '\n' || c == 0) // || c < 8 || c > 0xFFFF)
         return 0;
 
     if (points <= 0)
@@ -281,7 +281,8 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
 
     const uint8_t *ptr = font->data;
     const rg_font_glyph_t *glyph = (rg_font_glyph_t *)ptr;
-    while (glyph->code != c && glyph->code != 0xFF)
+    // for (size_t i = 0; i < font->chars && glyph->code && glyph->code != c; ++i)
+    while (glyph->code && glyph->code != c)
     {
         if (glyph->width != 0)
             ptr += (((glyph->width * glyph->height) - 1) / 8) + 1;
