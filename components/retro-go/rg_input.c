@@ -182,8 +182,9 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     }
     for (size_t i = 0; i < RG_COUNT(keymap_serial); ++i)
     {
-        if ((buttons & keymap_serial[i].src) == keymap_serial[i].src)
-            state |= keymap_serial[i].src;
+        const rg_keymap_serial_t *mapping = &keymap_serial[i];
+        if (((buttons >> mapping->num) & 1) == mapping->level)
+            state |= mapping->key;
     }
 #endif
 

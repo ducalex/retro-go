@@ -63,7 +63,8 @@ typedef struct
 typedef struct
 {
     rg_key_t key;
-    uint32_t src;
+    int num;    // pin (or bit) number
+    int level;  // 0-1
 } rg_keymap_serial_t;
 
 // #define RG_GAMEPAD_VIRT_MAP {{}, ...} to add virtual buttons (eg start+select = menu)
