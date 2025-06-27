@@ -233,10 +233,11 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
     return update_register(direction_reg, mask, mode != RG_GPIO_OUTPUT ? mask : 0);
 }
 
-uint8_t rg_i2c_gpio_read_port(int port)
+int rg_i2c_gpio_read_port(int port)
 {
     int reg = gpio_ports[port % gpio_ports_count].input_reg;
-    return rg_i2c_read_byte(gpio_address, reg);
+    uint8_t value = 0;
+    return rg_i2c_read(gpio_address, reg, &value, 1) ? value : -1;
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
