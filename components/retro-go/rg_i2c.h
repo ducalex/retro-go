@@ -15,10 +15,9 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value);
 // GPIO extender
 typedef enum
 {
-    RG_GPIO_INPUT = 1,
-    RG_GPIO_OUTPUT = 0,
-    RG_GPIO_ANALOG_INPUT = 1,  // No supported chip yet
-    RG_GPIO_ANALOG_OUTPUT = 0, // Not yet implemented for AW9523
+    RG_GPIO_OUTPUT,
+    RG_GPIO_INPUT,
+    RG_GPIO_INPUT_PULLUP,
 } rg_gpio_mode_t;
 
 bool rg_i2c_gpio_init(void);

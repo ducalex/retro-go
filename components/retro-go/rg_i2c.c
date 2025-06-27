@@ -128,14 +128,14 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 
 #ifdef RG_I2C_GPIO_DRIVER
 
-typedef struct {uint8_t input_reg, output_reg, direction_reg;} _gpio_port;
+typedef struct {uint8_t input_reg, output_reg, direction_reg, pullup_reg;} _gpio_port;
 typedef struct {uint8_t reg, value;} _gpio_sequence;
 
 #if RG_I2C_GPIO_DRIVER == 1 // AW9523
 
 static const _gpio_port gpio_ports[] = {
-    {0x00, 0x02, 0x04}, // PORT 0
-    {0x01, 0x03, 0x05}, // PORT 1
+    {0x00, 0x02, 0x04, 0xFF}, // PORT 0
+    {0x01, 0x03, 0x05, 0xFF}, // PORT 1
 };
 static const _gpio_sequence gpio_init_seq[] = {
     {0x7F, 0x00  }, // Software reset (is it really necessary?)
@@ -146,8 +146,8 @@ static const _gpio_sequence gpio_deinit_seq[] = {};
 #elif RG_I2C_GPIO_DRIVER == 2 // PCF9539
 
 static const _gpio_port gpio_ports[] = {
-    {0x00, 0x02, 0x06}, // PORT 0
-    {0x01, 0x03, 0x07}, // PORT 1
+    {0x00, 0x02, 0x06, 0xFF}, // PORT 0
+    {0x01, 0x03, 0x07, 0xFF}, // PORT 1
 };
 static const _gpio_sequence gpio_init_seq[] = {};
 static const _gpio_sequence gpio_deinit_seq[] = {};
@@ -156,8 +156,8 @@ static const _gpio_sequence gpio_deinit_seq[] = {};
 
 // Mappings when IOCON.BANK = 0 (which should be default on power-on)
 static const _gpio_port gpio_ports[] = {
-    {0x12, 0x14, 0x00}, // PORT A
-    {0x13, 0x15, 0x01}, // PORT B
+    {0x12, 0x14, 0x00, 0x0C}, // PORT A
+    {0x13, 0x15, 0x01, 0x0D}, // PORT B
 };
 static const _gpio_sequence gpio_init_seq[] = {};
 static const _gpio_sequence gpio_deinit_seq[] = {};
@@ -218,13 +218,19 @@ bool rg_i2c_gpio_deinit(void)
     return true;
 }
 
+static bool update_register(uint8_t reg, uint8_t clear_mask, uint8_t set_mask)
+{
+    uint8_t value = (rg_i2c_read_byte(gpio_address, reg) & ~clear_mask) | set_mask;
+    return rg_i2c_write_byte(gpio_address, reg, value);
+}
+
 bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
-    uint8_t reg = gpio_ports[port % gpio_ports_count].direction_reg;
-    uint8_t value = rg_i2c_read_byte(gpio_address, reg) & ~mask;
-    if (mode == RG_GPIO_INPUT)
-        value |= mask;
-    return rg_i2c_write_byte(gpio_address, reg, value);
+    uint8_t direction_reg = gpio_ports[port % gpio_ports_count].direction_reg;
+    uint8_t pullup_reg = gpio_ports[port % gpio_ports_count].pullup_reg;
+    if (pullup_reg != 0xFF && !update_register(pullup_reg, mask, mode == RG_GPIO_INPUT_PULLUP ? mask : 0))
+        return false;
+    return update_register(direction_reg, mask, mode != RG_GPIO_OUTPUT ? mask : 0);
 }
 
 uint8_t rg_i2c_gpio_read_port(int port)
@@ -252,7 +258,6 @@ int rg_i2c_gpio_get_level(int pin)
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
     uint8_t reg = gpio_ports[(pin >> 3) % gpio_ports_count].output_reg, mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_address, reg);
-    return rg_i2c_write_byte(gpio_address, reg, level ? (val | mask) : (val & ~mask));
+    return update_register(reg, mask, level ? mask : 0);
 }
 #endif
