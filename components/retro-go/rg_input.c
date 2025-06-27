@@ -287,6 +287,7 @@ void rg_input_init(void)
 
 #if defined(RG_GAMEPAD_I2C_MAP)
     RG_LOGI("Initializing I2C gamepad driver...");
+    rg_i2c_init();
 #if defined(RG_I2C_GPIO_DRIVER)
     for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
     {
