@@ -10,7 +10,7 @@
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
 // GPIO Extender
-#define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
 #define RG_I2C_GPIO_ADDR            0x20
 
 // Audio
