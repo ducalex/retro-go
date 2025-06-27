@@ -131,7 +131,15 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
 typedef struct {int input_reg, output_reg, direction_reg, pullup_reg;} _gpio_port;
 typedef struct {uint8_t reg, value;} _gpio_sequence;
 
-#if RG_I2C_GPIO_DRIVER == 1 // AW9523
+#if RG_I2C_GPIO_DRIVER == 0 // None/testing
+
+static const _gpio_port gpio_ports[] = {
+    {-1, -1, -1, -1},
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+
+#elif RG_I2C_GPIO_DRIVER == 1 // AW9523
 
 static const _gpio_port gpio_ports[] = {
     {0x00, 0x02, 0x04, -1}, // PORT 0

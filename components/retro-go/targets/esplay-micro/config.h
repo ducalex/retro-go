@@ -10,8 +10,8 @@
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
 // GPIO Extender
-// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
-// #define RG_I2C_GPIO_ADDR            0x00
+#define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x20
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -57,14 +57,14 @@
 // A and B silkscreen on the board are swapped relative to standard Nintendo layout
 // Temporarily unmapped menu and option. Start + Select activates menu.
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     2, 1},\
-    {RG_KEY_RIGHT,  5, 1},\
-    {RG_KEY_DOWN,   3, 1},\
-    {RG_KEY_LEFT,   4, 1},\
-    {RG_KEY_SELECT, 1, 1},\
-    {RG_KEY_START,  8, 1},\
-    {RG_KEY_A,      7, 1},\
-    {RG_KEY_B,      6, 1},\
+    {RG_KEY_UP,     2, 0},\
+    {RG_KEY_RIGHT,  5, 0},\
+    {RG_KEY_DOWN,   3, 0},\
+    {RG_KEY_LEFT,   4, 0},\
+    {RG_KEY_SELECT, 1, 0},\
+    {RG_KEY_START,  8, 0},\
+    {RG_KEY_A,      7, 0},\
+    {RG_KEY_B,      6, 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
     {RG_KEY_MENU,   RG_KEY_START | RG_KEY_SELECT},\

@@ -9,6 +9,10 @@
 #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x20
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
@@ -43,14 +47,14 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     2, 1},\
-    {RG_KEY_RIGHT,  5, 1},\
-    {RG_KEY_DOWN,   3, 1},\
-    {RG_KEY_LEFT,   4, 1},\
-    {RG_KEY_SELECT, 1, 1},\
-    {RG_KEY_START,  0, 1},\
-    {RG_KEY_A,      6, 1},\
-    {RG_KEY_B,      7, 1},\
+    {RG_KEY_UP,     2, 0},\
+    {RG_KEY_RIGHT,  5, 0},\
+    {RG_KEY_DOWN,   3, 0},\
+    {RG_KEY_LEFT,   4, 0},\
+    {RG_KEY_SELECT, 1, 0},\
+    {RG_KEY_START,  0, 0},\
+    {RG_KEY_A,      6, 0},\
+    {RG_KEY_B,      7, 0},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_L,      GPIO_NUM_40, GPIO_PULLUP_ONLY, 0},\

@@ -6,6 +6,10 @@
 #define RG_STORAGE_SDSPI_HOST       SPI2_HOST
 #define RG_STORAGE_SDSPI_SPEED      SDMMC_FREQ_DEFAULT
 
+// GPIO Extender
+#define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            T_DECK_KBD_ADDRESS
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
