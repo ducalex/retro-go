@@ -234,8 +234,10 @@ static bool update_register(int reg, uint8_t clear_mask, uint8_t set_mask)
 
 bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
-    int direction_reg = gpio_ports[port % gpio_ports_count].direction_reg;
-    int pullup_reg = gpio_ports[port % gpio_ports_count].pullup_reg;
+    if (port < 0 || port >= gpio_ports_count)
+        return false;
+    int direction_reg = gpio_ports[port].direction_reg;
+    int pullup_reg = gpio_ports[port].pullup_reg;
     if (pullup_reg != -1 && !update_register(pullup_reg, mask, mode == RG_GPIO_INPUT_PULLUP ? mask : 0))
         return false;
     return update_register(direction_reg, mask, mode != RG_GPIO_OUTPUT ? mask : 0);
@@ -243,15 +245,17 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 
 int rg_i2c_gpio_read_port(int port)
 {
-    int reg = gpio_ports[port % gpio_ports_count].input_reg;
+    if (port < 0 || port >= gpio_ports_count)
+        return -1;
     uint8_t value = 0;
-    return rg_i2c_read(gpio_address, reg, &value, 1) ? value : -1;
+    return rg_i2c_read(gpio_address, gpio_ports[port].input_reg, &value, 1) ? value : -1;
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
-    int reg = gpio_ports[port % gpio_ports_count].output_reg;
-    return rg_i2c_write_byte(gpio_address, reg, value);
+    if (port < 0 || port >= gpio_ports_count)
+        return false;
+    return rg_i2c_write(gpio_address, gpio_ports[port].output_reg, &value, 1);
 }
 
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
