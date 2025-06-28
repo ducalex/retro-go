@@ -266,7 +266,7 @@ def save_file(font_name, font_data):
         file_data += f"    .name = \"{font_name}\",\n"
         file_data += f"    .type = 1,\n"
         file_data += f"    .width = 0,\n"
-        file_data += f"    .height = {font_data['max_height']}\n"
+        file_data += f"    .height = {font_data['max_height']},\n"
         file_data += f"    .chars = {len(font_data['glyphs'])},\n"
         file_data += f"    .data = {{\n"
         for glyph in font_data["glyphs"]:
@@ -310,7 +310,7 @@ def save_file(font_name, font_data):
         file_data += f"    .bitmap_data = {normalized_name}_glyph_bitmap,\n"
         file_data += f"    .glyph_dsc = {normalized_name}_glyph_dsc,\n"
         file_data += f"    .width = 0,\n"
-        file_data += f"    .height = {font_data['max_height']}\n"
+        file_data += f"    .height = {font_data['max_height']},\n"
         file_data += f"    .name = \"{font_name}\",\n"
         file_data += "};\n"
 
