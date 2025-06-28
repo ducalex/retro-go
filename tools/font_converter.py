@@ -199,10 +199,6 @@ def generate_font_data():
 
         offset_x_1 += offset_x
 
-        if bounding_box_bool.get():
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
-
         for y in range(height):
             for x in range(width):
                 pixel = cropped_image.getpixel((x, y))
@@ -217,6 +213,10 @@ def generate_font_data():
 
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
+
+        if bounding_box_bool.get():
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
 
         if offset_x_1+2*width+6 <= canva_width:
             offset_x_1 += width
