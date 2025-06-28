@@ -146,6 +146,7 @@ def generate_font_data():
     font_data = []
     bitmap_data = dict()
     memory_usage = 0
+    max_height = 0
 
     canvas.delete("all")
     offset_x_1 = 1
@@ -239,18 +240,17 @@ def generate_font_data():
 
         # Update memory usage
         memory_usage += len(bitmap) + 8  # 8 bytes for the header per glyph
+        max_height = max(height + offset_y, max_height)
 
-    # find max height
-    max_height = 0
-    for glyph in font_data:
-        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
-
-    save_file(font_name, font_size, {
+    return (font_name, font_size, {
         "bitmap": bitmap_data,
         "glyphs": font_data,
         "memory_usage": memory_usage,
         "max_height": max_height
     })
+
+def save_font_data():
+    save_file(*generate_font_data())
 
 def save_file(font_name, font_size, font_data):
     normalized_name = f"{font_name.replace('-', '_')}{font_size}"
@@ -319,20 +319,16 @@ def save_file(font_name, font_size, font_data):
         f.write(file_data)
 
 def select_file():
-    filetypes = (
-        ('True Type Font', '*.ttf'),
-        ('All files', '*.*')
-    )
-
     filename = filedialog.askopenfilename(
-        title='Open a Font',
+        title='Load Font',
         initialdir=os.getcwd(),
-        filetypes=filetypes)
+        filetypes=(('True Type Font', '*.ttf'), ('All files', '*.*')))
 
-    font_name_input.set(os.path.basename(filename)[:-4:])
-
-    global font_path
-    font_path = filename
+    if filename:
+        font_name_input.set(os.path.basename(filename)[:-4:])
+        global font_path
+        font_path = filename
+        generate_font_data()
 
 # Function to zoom in and out on the canvas
 def zoom(event):
@@ -413,6 +409,10 @@ Checkbutton(frame, text="Old format", variable=output_old_format_bool).pack(side
 
 # Button to launch the font generation function
 b1 = Button(frame, text="Generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
+b1.pack(side="left", padx=5)
+
+# Button to launch the font exporting function
+b1 = Button(frame, text="Save", width=14, height=2, background="blue", foreground="white", command=save_font_data)
 b1.pack(side="left", padx=5)
 
 frame = Frame(window).pack(anchor="w", padx=2, pady=2)
