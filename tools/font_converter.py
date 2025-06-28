@@ -12,13 +12,13 @@ import os
 #
 ######################## - Explanation of glyph_bitmap[] - #######################
 # First, let's see an example : '!'
-# 
+#
 # we are going to convert glyph_bitmap[] bytes to binary :
 # 11111111,
 # 11111111,
 # 11000111,
 # 11100000,
-# 
+#
 # then we rearrange them :
 #  [3 bits wide]
 #       111
@@ -49,7 +49,7 @@ import os
 # 11111011
 # 11111111
 # 1111100
-# 
+#
 # We see that everything is not aligned so we add zeros ON THE LEFT :
 # ->01111101
 #   11111011
@@ -67,7 +67,7 @@ import os
 #       1110111
 # [9    1110111
 # bits  1110111     we can reconize '0' (if you squint a loooot)
-# tall] 1110111 
+# tall] 1110111
 #       1110111
 #       1111111
 #       0111110
@@ -75,54 +75,31 @@ import os
 #
 # And that's basically how characters are encoded using this tool
 
-first_char_init = 32
-last_char_init = 255
-
-#list_char_exclude_init = "127-160, 192-221"
-list_char_exclude_init = ""
-
 # Example usage (defaults parameters)
+list_char_ranges_init = "32-255" # "32-126, 160-255"
 font_name_init = "arial"
-font_path = ("arial.ttf")  # Replace with your TTF font path
 font_size_init = 11
+output_old_format_init = 0
+
+font_path = ("arial.ttf")  # Replace with your TTF font path
 
 # Variables to track panning
 start_x = 0
 start_y = 0
 
-# letters that have a diferent w_advance:
-thin_letters = ('P','T','f','V','r','U','L','t','s','c','y','F','v')
-
-header_start = """
-/*
-*  This file was generated using font_converter.py
-*  Checkout https://github.com/ducalex/retro-go/tree/dev/tools for more informations on the format
-*/
-
-#include \"../rg_gui.h\"
-
-"""
-
 def get_char_list():
-    list_char_exclude_int = []
-    if list_char_exclude.get() != '':
-        for intervals in list_char_exclude.get().split(','):
-            first = intervals.split('-')[0]
-            # we check if we the user input is a single char or an interval
-            try:
-                second = intervals.split('-')[1]
-            except IndexError:
-                list_char_exclude_int.append(int(first))
-            else:
-                second = intervals.split('-')[1]
-                for char in range(int(first), int(second)):
-                    list_char_exclude_int.append(char)
-
     list_char = []
-    for char_code in range(int(first_char.get()), int(last_char.get())):
-        if char_code not in list_char_exclude_int:
-            list_char.append(char_code)
-
+    for intervals in list_char_ranges.get().split(','):
+        first = intervals.split('-')[0]
+        # we check if we the user input is a single char or an interval
+        try:
+            second = intervals.split('-')[1]
+        except IndexError:
+            list_char.append(int(first))
+        else:
+            second = intervals.split('-')[1]
+            for char in range(int(first), int(second) + 1):
+                list_char.append(char)
     return list_char
 
 def pre_compute_adv_w_space(font_size, pil_font):
@@ -205,7 +182,7 @@ def generate_font_data():
             font_data.append(glyph_data)
             bitmap_data[char_code] = [0]
             continue  # Skip if character has no valid bounding box
-        
+
         x0, y0, x1, y1 = bbox
         width, height = x1 - x0, y1 - y0
         offset_x, offset_y = x0, y0
@@ -254,7 +231,6 @@ def generate_font_data():
             "box_h": height,
             "ofs_x": offset_x,
             "adv_w": width + offset_x
-            #"adv_w": width + offset_x - (1 if chr(char_code) in thin_letters else 0)
         }
         font_data.append(glyph_data)
 
@@ -276,65 +252,70 @@ def generate_font_data():
     })
 
 def save_file(font_name, font_data):
-    with open (font_name.replace('-', '_')+font_height_input.get()+".c", 'w', encoding='ISO8859-1') as f:
-        # Output header
-        f.write(header_start)
-        f.write(f"// Font           : {font_name}\n")
-        f.write(f"// Point Size     : {font_height_input.get()}\n")
-        f.write(f"// Memory usage   : {font_data['memory_usage']} bytes\n\n")
+    normalized_name = font_name.replace('-', '_')+font_height_input.get()
 
-        # writing bitmap data
-        f.write(f"uint8_t {font_name.replace('-', '_')+font_height_input.get()}_glyph_bitmap[] = ")
-        f.write( "{\n")
+    file_data = "#include \"../rg_gui.h\"\n\n"
+    file_data += "// File generated with font_converter.py (https://github.com/ducalex/retro-go/tree/dev/tools)\n\n"
+    file_data += f"// Font           : {font_name}\n"
+    file_data += f"// Point Size     : {font_height_input.get()}\n"
+    file_data += f"// Memory usage   : {font_data['memory_usage'] + len(font_data['glyphs']) * 7} bytes\n"
+    file_data += f"// # characters   : {len(font_data['glyphs'])}\n\n"
 
+    if output_old_format_bool.get():
+        file_data += f"const rg_font_t font_{normalized_name} = {{\n"
+        file_data += f"    .name = \"{font_name}\",\n"
+        file_data += f"    .type = 1,\n"
+        file_data += f"    .width = 0,\n"
+        file_data += f"    .height = {font_data['max_height']}\n"
+        file_data += f"    .chars = {len(font_data['glyphs'])},\n"
+        file_data += f"    .data = {{\n"
+        for glyph in font_data["glyphs"]:
+            char_code = glyph['char_code']
+            header_data = [char_code & 0xFF, char_code >> 8, glyph['ofs_y'], glyph['box_w'],
+                           glyph['box_h'], glyph['ofs_x'], glyph['adv_w']]
+            bitmap_data = font_data["bitmap"][char_code]
+            file_data += f"        /* U+{char_code:04X} '{chr(char_code)}' */\n        "
+            file_data += ", ".join([f"0x{byte:02X}" for byte in header_data])
+            file_data += f",\n        "
+            file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
+            file_data += f",\n"
+        file_data += "\n"
+        file_data += "        // Terminator\n"
+        file_data += "        0x00, 0x00,\n"
+        file_data += "    };\n"
+        file_data += "};\n"
+    else:
+        file_data += f"static const uint8_t {normalized_name}_glyph_bitmap[] = {{\n"
         bitmap_index = 0
-
         for glyph in font_data["glyphs"]:
             bitmap_data = font_data["bitmap"][glyph["char_code"]]
-
-            f.write(f"    /* {chr(glyph['char_code'])} */\n    ")
-            f.write( ",".join([f"0x{byte:02X}" for byte in bitmap_data]))
-            f.write( ",\n\n")
-
+            file_data += f"    /* U+{glyph['char_code']:04X} '{chr(glyph['char_code'])}' */\n    "
+            file_data += ",".join([f"0x{byte:02X}" for byte in bitmap_data])
+            file_data += f",\n"
             glyph["bitmap_index"] = bitmap_index
             bitmap_index += len(bitmap_data)
-
-        f.write("};\n\n")
-
-        f.write(f"static const rg_font_glyph_dsc_t {font_name.replace('-', '_')+font_height_input.get()}_glyph_dsc[] = ")
-        f.write("{\n")
-
+        file_data += "};\n\n"
+        file_data += f"static const rg_font_glyph_dsc_t {normalized_name}_glyph_dsc[] = {{\n"
         for glyph in font_data["glyphs"]:
-            f.write("    {.bitmap_index = ")
-            f.write(str(glyph["bitmap_index"]))
+            file_data += "    {"
+            file_data += f".bitmap_index = {glyph['bitmap_index']}, "
+            file_data += f".adv_w = {glyph['adv_w']}, "
+            file_data += f".box_w = {glyph['box_w']}, "
+            file_data += f".box_h = {glyph['box_h']}, "
+            file_data += f".ofs_x = {glyph['ofs_x']}, "
+            file_data += f".ofs_y = {glyph['ofs_y']}"
+            file_data += "},\n"
+        file_data += "};\n\n"
+        file_data += f"const rg_font_t font_{normalized_name} = {{\n"
+        file_data += f"    .bitmap_data = {normalized_name}_glyph_bitmap,\n"
+        file_data += f"    .glyph_dsc = {normalized_name}_glyph_dsc,\n"
+        file_data += f"    .width = 0,\n"
+        file_data += f"    .height = {font_data['max_height']}\n"
+        file_data += f"    .name = \"{font_name}\",\n"
+        file_data += "};\n"
 
-            f.write(", .adv_w = ")
-            f.write(str(glyph["adv_w"]))
-
-            f.write(", .box_w = ")
-            f.write(str(glyph["box_w"]))
-
-            f.write(", .box_h = ")
-            f.write(str(glyph["box_h"]))
-
-            f.write(", .ofs_x = ")
-            f.write(str(glyph["ofs_x"]))
-
-            f.write(", .ofs_y = ")
-            f.write(str(glyph["ofs_y"]))
-
-            f.write("},\n")
-
-        f.write("};\n\n")
-
-
-        f.write(f"const rg_font_t font_{font_name.replace('-', '_')+font_height_input.get()} = ")
-        f.write("{\n")
-        f.write(f"    .bitmap_data = {font_name.replace('-', '_')+font_height_input.get()}_glyph_bitmap,\n")
-        f.write(f"    .glyph_dsc = {font_name.replace('-', '_')+font_height_input.get()}_glyph_dsc,\n")
-        f.write(f"    .name = \"{font_name}\",\n")
-        f.write(f"    .height = {font_data['max_height']}\n")
-        f.write("};\n")
+    with open(f"{normalized_name}.c", 'w', encoding='UTF-8') as f:
+        f.write(file_data)
 
 def select_file():
     filetypes = (
@@ -362,7 +343,7 @@ def zoom(event):
 
     # Get the canvas size and adjust scale based on cursor position
     canvas.scale("all", event.x, event.y, scale, scale)
-    
+
     # Update the scroll region to reflect the new scale
     canvas.configure(scrollregion=canvas.bbox("all"))
 
@@ -411,20 +392,10 @@ Label(frame, text="Font height").pack(side="left", padx=5)
 font_height_input = StringVar(value=str(font_size_init))
 Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
 
-# Label and Entry for First Char
-Label(frame, text="First Char").pack(side="left", padx=5)
-first_char = StringVar(value=str(first_char_init))
-Entry(frame, textvariable=first_char, width=4).pack(side="left", padx=5)
-
-# Label and Entry for Last Char
-Label(frame, text="Last Char").pack(side="left", padx=5)
-last_char = StringVar(value=str(last_char_init))
-Entry(frame, textvariable=last_char, width=4).pack(side="left", padx=5)
-
-# Label and Entry for Char to exclude
-Label(frame, text="Char to exclude").pack(side="left", padx=5)
-list_char_exclude = StringVar(value=str(list_char_exclude_init))
-Entry(frame, textvariable=list_char_exclude, width=30).pack(side="left", padx=5)
+# Label and Entry for Char ranges to include
+Label(frame, text="Ranges to include").pack(side="left", padx=5)
+list_char_ranges = StringVar(value=str(list_char_ranges_init))
+Entry(frame, textvariable=list_char_ranges, width=30).pack(side="left", padx=5)
 
 # Label and Entry for Font Name
 Label(frame, text="Font name (used for output)").pack(side="left", padx=5)
@@ -434,6 +405,10 @@ Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
 Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
+
+# Variable to hold the state of the checkbox
+output_old_format_bool = IntVar(value=output_old_format_init)  # 0 for unchecked, 1 for checked
+Checkbutton(frame, text="Old format", variable=output_old_format_bool).pack(side="left", padx=10)
 
 # Button to launch the font generation function
 b1 = Button(frame, text="Generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
