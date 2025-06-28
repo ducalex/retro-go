@@ -102,22 +102,6 @@ def get_char_list():
                 list_char.append(char)
     return list_char
 
-def pre_compute_adv_w_space(font_size, pil_font):
-    # pre-compute the adv_w_space for control/space char
-    image_control_char = Image.new("1", (font_size * 2, font_size * 2), 0)
-    draw_control_char = ImageDraw.Draw(image_control_char)
-    draw_control_char.text((0, 0), chr(1), font=pil_font, fill=255)
-    pixels = image_control_char.load()  # Load the pixel data into a pixel access object
-    for x in range(image_control_char.width):
-        for y in range(image_control_char.height):
-            if pixels[x, y] >= 1:  # play with the threshold value to get the best quality
-                pixels[x, y] = 1  # Set the pixel to white
-            else:
-                pixels[x, y] = 0  # Set the pixel to black
-
-    x0, y0, x1, y1 = find_bounding_box(image_control_char)  # Get bounding box
-    return (x1 - x0 - 2)
-
 def find_bounding_box(image):
     pixels = image.load()
     width, height = image.size
@@ -152,8 +136,6 @@ def generate_font_data():
     offset_x_1 = 1
     offset_y_1 = 1
 
-    adv_w_space = pre_compute_adv_w_space(font_size, pil_font)
-
     for char_code in get_char_list():
         char = chr(char_code)
         print(f"Processing character: {char} ({char_code})")
@@ -171,23 +153,17 @@ def generate_font_data():
         bbox = find_bounding_box(image)  # Get bounding box
 
         if bbox is None: # control character / space
-            # Create glyph entry
-            glyph_data = {
-                "char_code": char_code,
-                "bitmap_index": 0,
-                "ofs_y": 0,
-                "box_w": 0,
-                "box_h": 0,
-                "ofs_x": 0,
-                "adv_w": adv_w_space,
-            }
-            font_data.append(glyph_data)
-            bitmap_data[char_code] = [0]
-            continue  # Skip if character has no valid bounding box
-
-        x0, y0, x1, y1 = bbox
-        width, height = x1 - x0, y1 - y0
-        offset_x, offset_y = x0, y0
+            width, height = 0, 0
+            offset_x, offset_y = 0, 0
+            try:
+                adv_w = draw.textlength(char, font=pil_font) + 1
+            except:
+                adv_w = 0
+        else:
+            x0, y0, x1, y1 = bbox
+            width, height = x1 - x0, y1 - y0
+            offset_x, offset_y = x0, y0
+            adv_w = width + offset_x
 
         # Crop the image to the bounding box
         cropped_image = image.crop(bbox)
@@ -219,7 +195,7 @@ def generate_font_data():
             canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
 
         if offset_x_1+2*width+6 <= canva_width:
-            offset_x_1 += width
+            offset_x_1 += adv_w - offset_x
         else:
             offset_x_1 = 1
             offset_y_1 += font_size + font_size//3
@@ -228,14 +204,15 @@ def generate_font_data():
         glyph_data = {
             "char_code": char_code,
             "bitmap_index": 0,
-            "ofs_y": offset_y,
-            "box_w": width,
-            "box_h": height,
-            "ofs_x": offset_x,
-            "adv_w": width + offset_x
+            "ofs_y": int(offset_y),
+            "box_w": int(width),
+            "box_h": int(height),
+            "ofs_x": int(offset_x),
+            "adv_w": int(adv_w)
         }
         font_data.append(glyph_data)
 
+        bitmap = bitmap[0:int((width * height) + 7 / 8)]
         bitmap_data[char_code] = bitmap
 
         # Update memory usage
@@ -278,8 +255,10 @@ def save_file(font_name, font_size, font_data):
             file_data += f"        /* U+{char_code:04X} '{chr(char_code)}' */\n        "
             file_data += ", ".join([f"0x{byte:02X}" for byte in header_data])
             file_data += f",\n        "
-            file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
-            file_data += f",\n"
+            if len(bitmap_data) > 0:
+                file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
+                file_data += f","
+            file_data += "\n"
         file_data += "\n"
         file_data += "        // Terminator\n"
         file_data += "        0x00, 0x00,\n"
@@ -291,8 +270,10 @@ def save_file(font_name, font_size, font_data):
         for glyph in font_data["glyphs"]:
             bitmap_data = font_data["bitmap"][glyph["char_code"]]
             file_data += f"    /* U+{glyph['char_code']:04X} '{chr(glyph['char_code'])}' */\n    "
-            file_data += ",".join([f"0x{byte:02X}" for byte in bitmap_data])
-            file_data += f",\n"
+            if len(bitmap_data) > 0:
+                file_data += ",".join([f"0x{byte:02X}" for byte in bitmap_data])
+                file_data += f","
+            file_data += f"\n"
             glyph["bitmap_index"] = bitmap_index
             bitmap_index += len(bitmap_data)
         file_data += "};\n\n"
