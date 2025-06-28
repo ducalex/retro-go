@@ -173,6 +173,7 @@ def generate_font_data():
             # Create glyph entry
             glyph_data = {
                 "char_code": char_code,
+                "bitmap_index": 0,
                 "ofs_y": 0,
                 "box_w": 0,
                 "box_h": 0,
@@ -244,21 +245,21 @@ def generate_font_data():
     for glyph in font_data:
         max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
 
-    save_file(font_name, {
+    save_file(font_name, font_size, {
         "bitmap": bitmap_data,
         "glyphs": font_data,
         "memory_usage": memory_usage,
         "max_height": max_height
     })
 
-def save_file(font_name, font_data):
-    normalized_name = font_name.replace('-', '_')+font_height_input.get()
+def save_file(font_name, font_size, font_data):
+    normalized_name = f"{font_name.replace('-', '_')}{font_size}"
 
     file_data = "#include \"../rg_gui.h\"\n\n"
     file_data += "// File generated with font_converter.py (https://github.com/ducalex/retro-go/tree/dev/tools)\n\n"
     file_data += f"// Font           : {font_name}\n"
-    file_data += f"// Point Size     : {font_height_input.get()}\n"
-    file_data += f"// Memory usage   : {font_data['memory_usage'] + len(font_data['glyphs']) * 7} bytes\n"
+    file_data += f"// Point Size     : {font_size}\n"
+    file_data += f"// Memory usage   : {font_data['memory_usage']} bytes\n"
     file_data += f"// # characters   : {len(font_data['glyphs'])}\n\n"
 
     if output_old_format_bool.get():
