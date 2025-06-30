@@ -39,17 +39,20 @@ typedef struct
 typedef struct
 {
     rg_key_t key;
-    int num;    // gpio_num_t
-    int pull;   // gpio_pull_mode_t
-    int level;  // 0-1
+    int num;      // gpio_num_t
+    int pullup;   // Enable pullup (if supported by pin)
+    int pulldown; // Enable pulldown (if supported by pin)
+    int level;    // 0-1
 } rg_keymap_gpio_t;
 
 // #define RG_GAMEPAD_I2C_MAP {{}, ...} to use I2C driver
 typedef struct
 {
     rg_key_t key;
-    int num;    // pin (or bit) number
-    int level;  // 0-1
+    int num;      // pin (or bit) number
+    int pullup;   // Enable pullup (if supported by chip, currently MCP23017)
+    int pulldown; // Enable pullup (if supported by chip, currently none)
+    int level;    // 0-1
 } rg_keymap_i2c_t;
 
 // #define RG_GAMEPAD_KBD_MAP {{}, ...} for Keyboard driver

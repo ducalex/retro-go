@@ -64,23 +64,22 @@
 
 // Input
 #define RG_GAMEPAD_I2C_MAP { \
-    {RG_KEY_UP,     18, 1},\
-    {RG_KEY_RIGHT,  17, 1},\
-    {RG_KEY_DOWN,   20, 1},\
-    {RG_KEY_LEFT,   19, 1},\
-    {RG_KEY_SELECT, 7,  1},\
-    {RG_KEY_START,  30, 1},\
-    {RG_KEY_OPTION, 31, 1},\
-    {RG_KEY_A,      1,  1},\
-    {RG_KEY_B,      3,  1},\
-    {RG_KEY_X,      0,  1},\
-    {RG_KEY_Y,      21, 1},\
-    {RG_KEY_L,      24, 1},\
-    {RG_KEY_R,      14, 1},\
+    {RG_KEY_UP,     .num = 18, .level = 1},\
+    {RG_KEY_RIGHT,  .num = 17, .level = 1},\
+    {RG_KEY_DOWN,   .num = 20, .level = 1},\
+    {RG_KEY_LEFT,   .num = 19, .level = 1},\
+    {RG_KEY_SELECT, .num = 7,  .level = 1},\
+    {RG_KEY_START,  .num = 30, .level = 1},\
+    {RG_KEY_OPTION, .num = 31, .level = 1},\
+    {RG_KEY_A,      .num = 1,  .level = 1},\
+    {RG_KEY_B,      .num = 3,  .level = 1},\
+    {RG_KEY_X,      .num = 0,  .level = 1},\
+    {RG_KEY_Y,      .num = 21, .level = 1},\
+    {RG_KEY_L,      .num = 24, .level = 1},\
+    {RG_KEY_R,      .num = 14, .level = 1},\
 }
-
-#define RG_GAMEPAD_GPIO_MAP {                      \
-    {RG_KEY_MENU, GPIO_NUM_0, GPIO_PULLUP_ONLY, 0},\
+#define RG_GAMEPAD_GPIO_MAP { \
+    {RG_KEY_MENU, .num = GPIO_NUM_0, .pullup = 1, .level = 0},\
 }
 
 #define RG_RECOVERY_BTN             RG_KEY_MENU

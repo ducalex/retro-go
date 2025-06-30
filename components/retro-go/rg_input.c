@@ -278,7 +278,12 @@ void rg_input_init(void)
     {
         const rg_keymap_gpio_t *mapping = &keymap_gpio[i];
         gpio_set_direction(mapping->num, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(mapping->num, mapping->pull);
+        if (mapping->pullup && mapping->pulldown)
+            gpio_set_pull_mode(mapping->num, GPIO_PULLUP_PULLDOWN);
+        else if (mapping->pullup || mapping->pulldown)
+            gpio_set_pull_mode(mapping->num, mapping->pullup ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY);
+        else
+            gpio_set_pull_mode(mapping->num, GPIO_FLOATING);
     }
     UPDATE_GLOBAL_MAP(keymap_gpio);
 #endif
@@ -290,7 +295,10 @@ void rg_input_init(void)
     for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
     {
         const rg_keymap_i2c_t *mapping = &keymap_i2c[i];
-        rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT);
+        if (mapping->pullup)
+            rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT_PULLUP);
+        else
+            rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT);
     }
 #elif defined(RG_TARGET_T_DECK_PLUS)
     rg_i2c_write_byte(T_DECK_KBD_ADDRESS, -1, T_DECK_KBD_MODE_RAW_CMD);

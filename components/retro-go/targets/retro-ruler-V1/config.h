@@ -46,21 +46,20 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_UP,     GPIO_NUM_4,  GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_DOWN,   GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_LEFT,   GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_RIGHT,  GPIO_NUM_34, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_SELECT, GPIO_NUM_13, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_START,  GPIO_NUM_35, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_A,      GPIO_NUM_14, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_B,      GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_MENU,   GPIO_NUM_25, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_OPTION, GPIO_NUM_21, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_UP,     .num = GPIO_NUM_4,  .pullup = 1, .level = 0},\
+    {RG_KEY_DOWN,   .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
+    {RG_KEY_LEFT,   .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
+    {RG_KEY_RIGHT,  .num = GPIO_NUM_34, .pullup = 1, .level = 0},\
+    {RG_KEY_SELECT, .num = GPIO_NUM_13, .pullup = 1, .level = 0},\
+    {RG_KEY_START,  .num = GPIO_NUM_35, .pullup = 1, .level = 0},\
+    {RG_KEY_A,      .num = GPIO_NUM_14, .pullup = 1, .level = 0},\
+    {RG_KEY_B,      .num = GPIO_NUM_27, .pullup = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_25, .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_21, .pullup = 1, .level = 0},\
 }
-
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_MENU,   RG_KEY_START | RG_KEY_SELECT},\
-    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+    {RG_KEY_MENU,   .src = RG_KEY_START | RG_KEY_SELECT},\
+    {RG_KEY_OPTION, .src = RG_KEY_SELECT | RG_KEY_A    },\
 }
 
 // Battery

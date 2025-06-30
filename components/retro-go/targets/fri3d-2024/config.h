@@ -69,12 +69,12 @@
 // RG_KEY_A is labelled A on the PCB
 // RG_KEY_B is labelled B on the PCB
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_SELECT, GPIO_NUM_45, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_START,  GPIO_NUM_0,  GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_OPTION, GPIO_NUM_38, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_MENU,   GPIO_NUM_41, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_A,      GPIO_NUM_39, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_B,      GPIO_NUM_40, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_SELECT, .num = GPIO_NUM_45, .pullup = 1, .level = 0},\
+    {RG_KEY_START,  .num = GPIO_NUM_0,  .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_38, .pullup = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_41, .pullup = 1, .level = 0},\
+    {RG_KEY_A,      .num = GPIO_NUM_39, .pullup = 1, .level = 0},\
+    {RG_KEY_B,      .num = GPIO_NUM_40, .pullup = 1, .level = 0},\
 }
 
 // Status LED

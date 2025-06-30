@@ -48,18 +48,18 @@
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     2, 0},\
-    {RG_KEY_RIGHT,  5, 0},\
-    {RG_KEY_DOWN,   3, 0},\
-    {RG_KEY_LEFT,   4, 0},\
-    {RG_KEY_SELECT, 1, 0},\
-    {RG_KEY_START,  0, 0},\
-    {RG_KEY_MENU,   8, 0},\
-    {RG_KEY_A,      6, 0},\
-    {RG_KEY_B,      7, 0},\
+    {RG_KEY_UP,     .num = 2, .level = 0},\
+    {RG_KEY_RIGHT,  .num = 5, .level = 0},\
+    {RG_KEY_DOWN,   .num = 3, .level = 0},\
+    {RG_KEY_LEFT,   .num = 4, .level = 0},\
+    {RG_KEY_SELECT, .num = 1, .level = 0},\
+    {RG_KEY_START,  .num = 0, .level = 0},\
+    {RG_KEY_MENU,   .num = 8, .level = 0},\
+    {RG_KEY_A,      .num = 6, .level = 0},\
+    {RG_KEY_B,      .num = 7, .level = 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+    {RG_KEY_OPTION, .src = RG_KEY_SELECT | RG_KEY_A},\
 }
 
 // Battery

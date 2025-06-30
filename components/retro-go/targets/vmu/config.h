@@ -53,14 +53,14 @@
     {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2047},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_MENU, GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_START, GPIO_NUM_0,  GPIO_FLOATING,    0},\
-    {RG_KEY_A,      GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_B,      GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_MENU,  .num = GPIO_NUM_27, .pullup = 1, .level = 0},\
+    {RG_KEY_START, .num = GPIO_NUM_0,  .pullup = 0, .level = 0},\
+    {RG_KEY_A,     .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
+    {RG_KEY_B,     .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_SELECT,  RG_KEY_A | RG_KEY_START},\
-    {RG_KEY_OPTION,   RG_KEY_B | RG_KEY_START},\
+    {RG_KEY_SELECT, .src = RG_KEY_START | RG_KEY_A},\
+    {RG_KEY_OPTION, .src = RG_KEY_START | RG_KEY_B},\
 }
 
 
