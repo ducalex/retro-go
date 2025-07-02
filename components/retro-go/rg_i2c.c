@@ -220,8 +220,9 @@ bool rg_i2c_gpio_deinit(void)
 
 static bool update_register(int reg, uint8_t clear_mask, uint8_t set_mask)
 {
-    uint8_t value = (rg_i2c_read_byte(gpio_address, reg) & ~clear_mask) | set_mask;
-    return rg_i2c_write_byte(gpio_address, reg, value);
+    uint8_t value;
+    return rg_i2c_read(gpio_address, reg, &value, 1) &&
+           rg_i2c_write_byte(gpio_address, reg, (value & ~clear_mask) | set_mask);
 }
 
 bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
@@ -239,7 +240,7 @@ int rg_i2c_gpio_read_port(int port)
 {
     if (port < 0 || port >= gpio_ports_count)
         return -1;
-    uint8_t value = 0;
+    uint8_t value;
     return rg_i2c_read(gpio_address, gpio_ports[port].input_reg, &value, 1) ? value : -1;
 }
 
