@@ -114,10 +114,10 @@ fail:
     return false;
 }
 
-uint8_t rg_i2c_read_byte(uint8_t addr, uint8_t reg)
+int rg_i2c_read_byte(uint8_t addr, uint8_t reg)
 {
-    uint8_t value = 0;
-    return rg_i2c_read(addr, reg, &value, 1) ? value : 0;
+    uint8_t value;
+    return rg_i2c_read(addr, reg, &value, 1) ? value : -1;
 }
 
 bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
@@ -168,7 +168,7 @@ static const _gpio_sequence gpio_deinit_seq[] = {};
 
 #endif
 
-static uint8_t gpio_ports_count = RG_COUNT(gpio_ports);
+static const size_t gpio_ports_count = RG_COUNT(gpio_ports);
 static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
 static bool gpio_initialized = false;
 
@@ -240,15 +240,14 @@ int rg_i2c_gpio_read_port(int port)
 {
     if (port < 0 || port >= gpio_ports_count)
         return -1;
-    uint8_t value;
-    return rg_i2c_read(gpio_address, gpio_ports[port].input_reg, &value, 1) ? value : -1;
+    return rg_i2c_read_byte(gpio_address, gpio_ports[port].input_reg);
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
     if (port < 0 || port >= gpio_ports_count)
         return false;
-    return rg_i2c_write(gpio_address, gpio_ports[port].output_reg, &value, 1);
+    return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
 }
 
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
