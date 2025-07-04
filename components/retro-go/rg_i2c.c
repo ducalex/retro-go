@@ -169,6 +169,7 @@ static const _gpio_sequence gpio_deinit_seq[] = {};
 #endif
 
 static const size_t gpio_ports_count = RG_COUNT(gpio_ports);
+static uint8_t gpio_output_values[gpio_ports_count];
 static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
 static bool gpio_initialized = false;
 
@@ -247,6 +248,7 @@ bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
     if (port < 0 || port >= gpio_ports_count)
         return false;
+    gpio_output_values[port] = value;
     return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
 }
 
@@ -262,7 +264,8 @@ int rg_i2c_gpio_get_level(int pin)
 
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
-    int reg = gpio_ports[(pin >> 3) % gpio_ports_count].output_reg, mask = 1 << (pin & 7);
-    return update_register(reg, mask, level ? mask : 0);
+    uint8_t port = (pin >> 3) % gpio_ports_count, mask = 1 << (pin & 7);
+    uint8_t value = (gpio_output_values[port] & ~mask) | (level ? mask : 0);
+    return rg_i2c_gpio_write_port(port, value);
 }
 #endif
