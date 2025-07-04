@@ -77,7 +77,6 @@ import os
 
 # Example usage (defaults parameters)
 list_char_ranges_init = "32-255" # "32-126, 160-255"
-font_name_init = "arial"
 font_size_init = 11
 output_old_format_init = 0
 
@@ -121,10 +120,14 @@ def find_bounding_box(image):
     return (x_min, y_min, x_max+1, y_max+1)
 
 def generate_font_data():
-    font_name = font_name_input.get()
     font_size = int(font_height_input.get())
+    bounding_box = bounding_box_bool.get()
+
     # Load the TTF font
     pil_font = ImageFont.truetype(font_path, font_size)
+    font_name = ' '.join(pil_font.getname())
+
+    window.title(f"Font preview: {font_name} {font_size}")
 
     # Initialize the font data structure
     font_data = []
@@ -190,7 +193,7 @@ def generate_font_data():
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
 
-        if bounding_box_bool.get():
+        if bounding_box:
             canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
             canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
 
@@ -227,10 +230,21 @@ def generate_font_data():
     })
 
 def save_font_data():
-    save_file(*generate_font_data())
+    font_name, font_size, font_data = generate_font_data()
 
-def save_file(font_name, font_size, font_data):
-    normalized_name = f"{font_name.replace('-', '_')}{font_size}"
+    filename = filedialog.asksaveasfilename(
+        title='Save Font',
+        initialdir=os.getcwd(),
+        initialfile=f"{font_name.replace('-', '_').replace(' ', '')}{font_size}",
+        defaultextension=".c",
+        filetypes=(('Retro-Go Font', '*.c'), ('All files', '*.*')))
+
+    if filename:
+        with open(filename, 'w', encoding='UTF-8') as f:
+            f.write(generate_file(font_name, font_size, font_data))
+
+def generate_file(font_name, font_size, font_data):
+    normalized_name = f"{font_name.replace('-', '_').replace(' ', '')}{font_size}"
 
     file_data = "#include \"../rg_gui.h\"\n\n"
     file_data += "// File generated with font_converter.py (https://github.com/ducalex/retro-go/tree/dev/tools)\n\n"
@@ -265,7 +279,7 @@ def save_file(font_name, font_size, font_data):
         file_data += "    };\n"
         file_data += "};\n"
     else:
-        file_data += f"static const uint8_t {normalized_name}_glyph_bitmap[] = {{\n"
+        file_data += f"static const uint8_t glyph_bitmap_table[] = {{\n"
         bitmap_index = 0
         for glyph in font_data["glyphs"]:
             bitmap_data = font_data["bitmap"][glyph["char_code"]]
@@ -277,7 +291,7 @@ def save_file(font_name, font_size, font_data):
             glyph["bitmap_index"] = bitmap_index
             bitmap_index += len(bitmap_data)
         file_data += "};\n\n"
-        file_data += f"static const rg_font_glyph_dsc_t {normalized_name}_glyph_dsc[] = {{\n"
+        file_data += f"static const rg_font_glyph_dsc_t glyph_dsc_table[] = {{\n"
         for glyph in font_data["glyphs"]:
             file_data += "    {"
             file_data += f".bitmap_index = {glyph['bitmap_index']}, "
@@ -289,15 +303,14 @@ def save_file(font_name, font_size, font_data):
             file_data += "},\n"
         file_data += "};\n\n"
         file_data += f"const rg_font_t font_{normalized_name} = {{\n"
-        file_data += f"    .bitmap_data = {normalized_name}_glyph_bitmap,\n"
-        file_data += f"    .glyph_dsc = {normalized_name}_glyph_dsc,\n"
+        file_data += f"    .bitmap_data = glyph_bitmap_table,\n"
+        file_data += f"    .glyph_dsc = glyph_dsc_table,\n"
         file_data += f"    .width = 0,\n"
         file_data += f"    .height = {font_data['max_height']},\n"
         file_data += f"    .name = \"{font_name}\",\n"
         file_data += "};\n"
 
-    with open(f"{normalized_name}.c", 'w', encoding='UTF-8') as f:
-        f.write(file_data)
+        return file_data
 
 def select_file():
     filename = filedialog.askopenfilename(
@@ -306,7 +319,6 @@ def select_file():
         filetypes=(('True Type Font', '*.ttf'), ('All files', '*.*')))
 
     if filename:
-        font_name_input.set(os.path.basename(filename)[:-4:])
         global font_path
         font_path = filename
         generate_font_data()
@@ -345,7 +357,7 @@ def pan_canvas(event):
     start_y = event.y
 
 window = Tk()
-window.title("Font preview")
+window.title("Retro-Go Font Converter")
 
 # Get screen width and height
 screen_width = window.winfo_screenwidth()
@@ -375,11 +387,6 @@ Label(frame, text="Ranges to include").pack(side="left", padx=5)
 list_char_ranges = StringVar(value=str(list_char_ranges_init))
 Entry(frame, textvariable=list_char_ranges, width=30).pack(side="left", padx=5)
 
-# Label and Entry for Font Name
-Label(frame, text="Font name (used for output)").pack(side="left", padx=5)
-font_name_input = StringVar(value=str(font_name_init))
-Entry(frame, textvariable=font_name_input, width=20).pack(side="left", padx=5)
-
 # Variable to hold the state of the checkbox
 bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
 Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
@@ -389,7 +396,7 @@ output_old_format_bool = IntVar(value=output_old_format_init)  # 0 for unchecked
 Checkbutton(frame, text="Old format", variable=output_old_format_bool).pack(side="left", padx=10)
 
 # Button to launch the font generation function
-b1 = Button(frame, text="Generate", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
+b1 = Button(frame, text="Preview", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
 b1.pack(side="left", padx=5)
 
 # Button to launch the font exporting function
