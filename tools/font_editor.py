@@ -288,7 +288,7 @@ def extract_data():
     byte_list = []
     global list_glyph_data
     list_glyph_data = []
-    with open(font_path, 'r', encoding='ISO8859-1') as file:
+    with open(font_path, 'r', encoding='UTF-8') as file:
 
         # TODO: get the header
 
