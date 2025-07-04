@@ -108,12 +108,21 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     uint32_t state = 0;
 
 #if defined(RG_GAMEPAD_ADC_MAP)
+    static int old_adc_values[RG_COUNT(keymap_adc)];
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
         int value = adc_get_raw(mapping->unit, mapping->channel);
         if (value >= mapping->min && value <= mapping->max)
+        {
+        #ifdef RG_GAMEPAD_ADC_FILTER_WINDOW
+            if (abs(old_adc_values[i] - value) < RG_GAMEPAD_ADC_FILTER_WINDOW)
+                state |= mapping->key;
+        #else
             state |= mapping->key;
+        #endif
+        }
+        old_adc_values[i] = value;
     }
 #endif
 

@@ -128,6 +128,10 @@
 #ifndef RG_GAMEPAD_DEBOUNCE_RELEASE
 #define RG_GAMEPAD_DEBOUNCE_RELEASE (2)
 #endif
+// Wait for ADC value to be stable before registering it
+#ifndef RG_GAMEPAD_ADC_FILTER_WINDOW
+// #define RG_GAMEPAD_ADC_FILTER_WINDOW (150)
+#endif
 
 #ifndef RG_LOG_COLORS
 #define RG_LOG_COLORS (1)
