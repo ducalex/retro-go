@@ -168,6 +168,10 @@ def generate_font_data():
             offset_x, offset_y = x0, y0
             adv_w = width + offset_x
 
+        if offset_x_1+adv_w+1 > canva_width:
+            offset_x_1 = 1
+            offset_y_1 += font_size + font_size//3
+
         # Crop the image to the bounding box
         cropped_image = image.crop(bbox)
 
@@ -175,8 +179,6 @@ def generate_font_data():
         bitmap = []
         row = 0
         i = 0
-
-        offset_x_1 += offset_x
 
         for y in range(height):
             for x in range(width):
@@ -187,21 +189,17 @@ def generate_font_data():
                     i = 0
                 row = (row << 1) | pixel
                 if pixel:
-                    canvas.create_rectangle((x+offset_x_1)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
+                    canvas.create_rectangle((x+offset_x_1+offset_x)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1+offset_x)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
                 i += 1
 
         row = row << 8-i # to "fill" with zero the remaining empty bits
         bitmap.append(row)
 
         if bounding_box:
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red",fill='') # bounding box
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1 + 1)*p_size, (offset_y_1+1)*p_size, width=1,fill='blue')
+            canvas.create_rectangle((offset_x_1+offset_x)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1+offset_x)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red", fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1+adv_w)*p_size, (offset_y_1+offset_y+height)*p_size, width=1, outline='blue', fill='')
 
-        if offset_x_1+2*width+6 <= canva_width:
-            offset_x_1 += adv_w - offset_x
-        else:
-            offset_x_1 = 1
-            offset_y_1 += font_size + font_size//3
+        offset_x_1 += adv_w + 1
 
         # Create glyph entry
         glyph_data = {
