@@ -115,14 +115,12 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
         int value = adc_get_raw(mapping->unit, mapping->channel);
         if (value >= mapping->min && value <= mapping->max)
         {
-        #ifdef RG_GAMEPAD_ADC_FILTER_WINDOW
             if (abs(old_adc_values[i] - value) < RG_GAMEPAD_ADC_FILTER_WINDOW)
                 state |= mapping->key;
-        #else
-            state |= mapping->key;
-        #endif
+            // else
+            //     RG_LOGD("Rejected input: %d", old_adc_values[i] - value);
+            old_adc_values[i] = value;
         }
-        old_adc_values[i] = value;
     }
 #endif
 
