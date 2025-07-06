@@ -231,8 +231,8 @@ bool rg_gui_set_font(int index)
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
-    RG_LOGI("Font set to: points=%d, scaling=%.2f\n",
-        gui.style.font_height, (float)gui.style.font_height / font->height);
+    RG_LOGI("Font set to: %s (points=%d, scaling=%.2f)\n",
+        gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
 
     return true;
 }
@@ -273,7 +273,7 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int c)
 {
     // Some glyphs are always zero width
-    if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
+    if (!font || c == '\r' || c == '\n' || c == 0) // || c < 8 || c > 0xFFFF)
         return 0;
 
     if (points <= 0)
@@ -281,7 +281,8 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
 
     const uint8_t *ptr = font->data;
     const rg_font_glyph_t *glyph = (rg_font_glyph_t *)ptr;
-    while (glyph->code != c && glyph->code != 0xFF)
+    // for (size_t i = 0; i < font->chars && glyph->code && glyph->code != c; ++i)
+    while (glyph->code && glyph->code != c)
     {
         if (glyph->width != 0)
             ptr += (((glyph->width * glyph->height) - 1) / 8) + 1;
@@ -333,12 +334,14 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
     // }
     else // Glyph not found, no fallback
     {
+        size_t box_width = font->width ?: 8;
         if (output) // draw missing box
         {
+            uint32_t mask = ~((0xFFFFFFFF << (box_width - 1)) | 1);
             for (size_t i = 0; i < points; ++i)
-                output[i] = (i & 1) ? 0xAAAAAAAA : 0x55555555;
+                output[i] = (0xAAAAAAAA << (i & 1)) & mask;
         }
-        return RG_MIN(font->width, 8);
+        return box_width;
     }
 }
 
@@ -350,6 +353,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     int monospace = ((flags & RG_TEXT_MONOSPACE) || gui.style.font->type == 0) ? gui.style.font_width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
+    // int16_t line_breaks[64], line_width_cache[64];
     const rg_font_t *font = gui.style.font;
 
     if (!text || *text == 0)
@@ -361,7 +365,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         int line_width = padding * 2;
         for (const char *ptr = text; *ptr;)
         {
-            int chr = *ptr++;
+            int chr = rg_utf8_get_codepoint(&ptr);
             line_width += monospace ?: get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
@@ -395,7 +399,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int chr = *line++;
+                int chr = rg_utf8_get_codepoint(&line);
                 int width = monospace ?: get_glyph(NULL, font, font_height, chr);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
@@ -415,13 +419,14 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         while (x_offset < draw_width)
         {
             uint32_t bitmap[32] = {0};
-            int glyph_width = get_glyph(bitmap, font, font_height, *ptr++);
+            const char *prev_ptr = ptr;
+            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_get_codepoint(&ptr));
             int width = monospace ?: glyph_width;
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
             {
                 if (flags & RG_TEXT_MULTILINE)
-                    ptr--;
+                    ptr = prev_ptr;
                 break;
             }
 

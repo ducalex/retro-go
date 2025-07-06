@@ -14,7 +14,7 @@
 #define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
@@ -38,29 +38,28 @@
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
-    ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
-    ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \
-    ILI9341_CMD(0xE0, 0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19);	 \
+    ILI9341_CMD(0xF2, 0x00);                 /* 3Gamma Function Disable */                                       \
+    ILI9341_CMD(0x26, 0x01);                 /* Gamma curve selected */                                          \
+    ILI9341_CMD(0xE0, 0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19);	     \
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19);
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_UP,     GPIO_NUM_4,  GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_DOWN,   GPIO_NUM_32, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_LEFT,   GPIO_NUM_33, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_RIGHT,  GPIO_NUM_34, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_SELECT, GPIO_NUM_13, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_START,  GPIO_NUM_35, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_A,      GPIO_NUM_14, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_B,      GPIO_NUM_27, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_MENU,   GPIO_NUM_25, GPIO_PULLUP_ONLY, 0},\
-    {RG_KEY_OPTION, GPIO_NUM_21, GPIO_PULLUP_ONLY, 0},\
+    {RG_KEY_UP,     .num = GPIO_NUM_4,  .pullup = 1, .level = 0},\
+    {RG_KEY_DOWN,   .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
+    {RG_KEY_LEFT,   .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
+    {RG_KEY_RIGHT,  .num = GPIO_NUM_34, .pullup = 1, .level = 0},\
+    {RG_KEY_SELECT, .num = GPIO_NUM_13, .pullup = 1, .level = 0},\
+    {RG_KEY_START,  .num = GPIO_NUM_35, .pullup = 1, .level = 0},\
+    {RG_KEY_A,      .num = GPIO_NUM_14, .pullup = 1, .level = 0},\
+    {RG_KEY_B,      .num = GPIO_NUM_27, .pullup = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_25, .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_21, .pullup = 1, .level = 0},\
 }
-
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_MENU,   RG_KEY_START | RG_KEY_SELECT},\
-    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+    {RG_KEY_MENU,   .src = RG_KEY_START | RG_KEY_SELECT},\
+    {RG_KEY_OPTION, .src = RG_KEY_SELECT | RG_KEY_A    },\
 }
 
 // Battery
@@ -69,6 +68,7 @@
 #define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
 
 // Status LED
 //#define RG_GPIO_LED                 GPIO_NUM_15

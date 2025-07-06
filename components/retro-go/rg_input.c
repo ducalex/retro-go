@@ -108,12 +108,19 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     uint32_t state = 0;
 
 #if defined(RG_GAMEPAD_ADC_MAP)
+    static int old_adc_values[RG_COUNT(keymap_adc)];
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
         int value = adc_get_raw(mapping->unit, mapping->channel);
         if (value >= mapping->min && value <= mapping->max)
-            state |= mapping->key;
+        {
+            if (abs(old_adc_values[i] - value) < RG_GAMEPAD_ADC_FILTER_WINDOW)
+                state |= mapping->key;
+            // else
+            //     RG_LOGD("Rejected input: %d", old_adc_values[i] - value);
+            old_adc_values[i] = value;
+        }
     }
 #endif
 
@@ -128,23 +135,28 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
 
 #if defined(RG_GAMEPAD_I2C_MAP)
     uint32_t buttons = 0;
-#if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
-    buttons = ~(rg_i2c_gpio_read_port(0) | rg_i2c_gpio_read_port(1) << 8);
+#if defined(RG_I2C_GPIO_DRIVER)
+    int data0 = rg_i2c_gpio_read_port(0), data1 = rg_i2c_gpio_read_port(1);
+    if (data0 > -1 && data1 > -1)
+    {
+        buttons = (data1 << 8) | (data0);
 #elif defined(RG_TARGET_T_DECK_PLUS)
     uint8_t data[5];
-    if (rg_i2c_read(T_DECK_KBD_ADDRESS, -1, &data, 5)) {
+    if (rg_i2c_read(T_DECK_KBD_ADDRESS, -1, &data, 5))
+    {
         buttons = ((data[0] << 25) | (data[1] << 18) | (data[2] << 11) | ((data[3] & 0xF8) << 4) | (data[4]));
-        //RG_LOGI("buttons: %08lX", buttons);
-    }
 #else
     uint8_t data[5];
-    if (rg_i2c_read(0x20, -1, &data, 5))
-        buttons = ~((data[2] << 8) | data[1]);
-#endif
-    for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
+    if (rg_i2c_read(RG_I2C_GPIO_ADDR, -1, &data, 5))
     {
-        if ((buttons & keymap_i2c[i].src) == keymap_i2c[i].src)
-            state |= keymap_i2c[i].key;
+        buttons = (data[2] << 8) | (data[1]);
+#endif
+        for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
+        {
+            const rg_keymap_i2c_t *mapping = &keymap_i2c[i];
+            if (((buttons >> mapping->num) & 1) == mapping->level)
+                state |= mapping->key;
+        }
     }
 #endif
 
@@ -181,8 +193,9 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     }
     for (size_t i = 0; i < RG_COUNT(keymap_serial); ++i)
     {
-        if ((buttons & keymap_serial[i].src) == keymap_serial[i].src)
-            state |= keymap_serial[i].src;
+        const rg_keymap_serial_t *mapping = &keymap_serial[i];
+        if (((buttons >> mapping->num) & 1) == mapping->level)
+            state |= mapping->key;
     }
 #endif
 
@@ -278,7 +291,12 @@ void rg_input_init(void)
     {
         const rg_keymap_gpio_t *mapping = &keymap_gpio[i];
         gpio_set_direction(mapping->num, GPIO_MODE_INPUT);
-        gpio_set_pull_mode(mapping->num, mapping->pull);
+        if (mapping->pullup && mapping->pulldown)
+            gpio_set_pull_mode(mapping->num, GPIO_PULLUP_PULLDOWN);
+        else if (mapping->pullup || mapping->pulldown)
+            gpio_set_pull_mode(mapping->num, mapping->pullup ? GPIO_PULLUP_ONLY : GPIO_PULLDOWN_ONLY);
+        else
+            gpio_set_pull_mode(mapping->num, GPIO_FLOATING);
     }
     UPDATE_GLOBAL_MAP(keymap_gpio);
 #endif
@@ -286,8 +304,15 @@ void rg_input_init(void)
 #if defined(RG_GAMEPAD_I2C_MAP)
     RG_LOGI("Initializing I2C gamepad driver...");
     rg_i2c_init();
-#if defined(RG_TARGET_QTPY_GAMER) || defined(RG_TARGET_BYTEBOI_REV1)
-    rg_i2c_gpio_init();
+#if defined(RG_I2C_GPIO_DRIVER)
+    for (size_t i = 0; i < RG_COUNT(keymap_i2c); ++i)
+    {
+        const rg_keymap_i2c_t *mapping = &keymap_i2c[i];
+        if (mapping->pullup)
+            rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT_PULLUP);
+        else
+            rg_i2c_gpio_set_direction(mapping->num, RG_GPIO_INPUT);
+    }
 #elif defined(RG_TARGET_T_DECK_PLUS)
     rg_i2c_write_byte(T_DECK_KBD_ADDRESS, -1, T_DECK_KBD_MODE_RAW_CMD);
 #endif

@@ -155,14 +155,9 @@ static void lcd_set_backlight(float percent)
     int error_code = 0;
 
 #if defined(RG_GPIO_LCD_BCKL)
-    #if defined(RG_TARGET_BYTEBOI_REV1)
-    rg_i2c_gpio_set_direction(RG_GPIO_LCD_BCKL, 0);
-    rg_i2c_gpio_set_level(RG_GPIO_LCD_BCKL, percent > 0 ? 0:1);
-    #else
     error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
-    #endif
 #elif defined(RG_TARGET_QTPY_GAMER)
-    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, 0);
+    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, RG_GPIO_ANALOG_OUTPUT);
     rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, level * 255);
 #endif
 
@@ -237,7 +232,7 @@ static void lcd_init(void)
     gpio_set_level(RG_GPIO_LCD_RST, 1);
     rg_usleep(10 * 1000);
 #elif defined(RG_TARGET_QTPY_GAMER)
-    rg_i2c_gpio_set_direction(AW_TFT_RESET, 0);
+    rg_i2c_gpio_set_direction(AW_TFT_RESET, RG_GPIO_OUTPUT);
     rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
     rg_usleep(100 * 1000);
     rg_i2c_gpio_set_level(AW_TFT_RESET, 1);

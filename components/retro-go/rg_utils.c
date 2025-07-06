@@ -48,6 +48,74 @@ char *rg_json_fixup(char *json)
     return json;
 }
 
+int rg_utf8_get_codepoint(const char **ptr)
+{
+    // This implementation is based solely on https://en.wikipedia.org/wiki/UTF-8#Description
+    // It's probably wrong in many ways but I'm sure it'll be good enough for us :)
+    if (!ptr)
+        return -1;
+
+    int first_byte = **ptr;
+    int codepoint = 0;
+    size_t extra_bytes = 0;
+
+    *ptr += 1; // Always consume the first byte
+
+    if ((first_byte & 0x80) == 0x00)
+    {
+        return first_byte;
+    }
+    else if ((first_byte & 0xE0) == 0xC0)
+    {
+        codepoint = first_byte & 0x1F;
+        extra_bytes = 1;
+    }
+    else if ((first_byte & 0xF0) == 0xE0)
+    {
+        codepoint = first_byte & 0x0F;
+        extra_bytes = 2;
+    }
+    else if ((first_byte & 0xF8) == 0xF0)
+    {
+        codepoint = first_byte & 0x07;
+        extra_bytes = 3;
+    }
+    else // Invalid prefix
+    {
+        RG_LOGD("Invalid utf-8 prefix");
+        return -1; // first_byte
+    }
+
+    for (size_t i = 0; i < extra_bytes; ++i)
+    {
+        int next_byte = *(*ptr + i);
+        if ((next_byte & 0xC0) != 0x80)
+        {
+            RG_LOGD("Invalid multi-byte codepoint");
+            return -1; // first_byte
+        }
+        codepoint <<= 6;
+        codepoint += next_byte & 0x3F;
+    }
+
+    *ptr += extra_bytes;
+    return codepoint;
+}
+
+size_t rg_utf8_strlen(const char *str)
+{
+    if (!str)
+        return 0;
+
+    size_t length = 0;
+    while (*str)
+    {
+        rg_utf8_get_codepoint(&str);
+        length++;
+    }
+    return length;
+}
+
 const char *rg_dirname(const char *path)
 {
     static char buffer[100];

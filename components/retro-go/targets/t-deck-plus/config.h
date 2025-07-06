@@ -6,6 +6,10 @@
 #define RG_STORAGE_SDSPI_HOST       SPI2_HOST
 #define RG_STORAGE_SDSPI_SPEED      SDMMC_FREQ_DEFAULT
 
+// GPIO Extender
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            T_DECK_KBD_ADDRESS
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
@@ -29,7 +33,7 @@
     rg_task_delay(50);
 
 // Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_80M
 #define RG_SCREEN_BACKLIGHT         1
@@ -38,7 +42,6 @@
 #define RG_SCREEN_ROTATE            0
 #define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
-
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \
@@ -50,34 +53,33 @@
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(0x36, (0x40 | 0x80 | 0x08)); /* Memory Access Control */                                         \
+    ILI9341_CMD(0x36, 0xC8);                 /* Memory Access Control (MY|MX|BGR) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
-    ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
-    ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \
+    ILI9341_CMD(0xF2, 0x00);                 /* 3Gamma Function Disable */                                       \
+    ILI9341_CMD(0x26, 0x01);                 /* Gamma curve selected */                                          \
     ILI9341_CMD(0xE0, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x32, 0x44, 0x42, 0x06, 0x0e, 0x12, 0x14, 0x17);       \
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);       \
 
 // Input
 #define RG_GAMEPAD_I2C_MAP { \
-    {RG_KEY_UP,     (1<<18)},\
-    {RG_KEY_RIGHT,  (1<<17)},\
-    {RG_KEY_DOWN,   (1<<20)},\
-    {RG_KEY_LEFT,   (1<<19)},\
-    {RG_KEY_SELECT, (1<<7)}, \
-    {RG_KEY_START,  (1<<30)},\
-    {RG_KEY_OPTION, (1<<31)},\
-    {RG_KEY_A,      (1<<1)}, \
-    {RG_KEY_B,      (1<<3)}, \
-    {RG_KEY_X,      (1<<0)}, \
-    {RG_KEY_Y,      (1<<21)},\
-    {RG_KEY_L,      (1<<24)},\
-    {RG_KEY_R,      (1<<14)},\
+    {RG_KEY_UP,     .num = 18, .level = 1},\
+    {RG_KEY_RIGHT,  .num = 17, .level = 1},\
+    {RG_KEY_DOWN,   .num = 20, .level = 1},\
+    {RG_KEY_LEFT,   .num = 19, .level = 1},\
+    {RG_KEY_SELECT, .num = 7,  .level = 1},\
+    {RG_KEY_START,  .num = 30, .level = 1},\
+    {RG_KEY_OPTION, .num = 31, .level = 1},\
+    {RG_KEY_A,      .num = 1,  .level = 1},\
+    {RG_KEY_B,      .num = 3,  .level = 1},\
+    {RG_KEY_X,      .num = 0,  .level = 1},\
+    {RG_KEY_Y,      .num = 21, .level = 1},\
+    {RG_KEY_L,      .num = 24, .level = 1},\
+    {RG_KEY_R,      .num = 14, .level = 1},\
 }
-
-#define RG_GAMEPAD_GPIO_MAP {                      \
-    {RG_KEY_MENU, GPIO_NUM_0, GPIO_PULLUP_ONLY, 0},\
+#define RG_GAMEPAD_GPIO_MAP { \
+    {RG_KEY_MENU, .num = GPIO_NUM_0, .pullup = 1, .level = 0},\
 }
 
 #define RG_RECOVERY_BTN             RG_KEY_MENU
@@ -88,6 +90,7 @@
 #define RG_BATTERY_ADC_CHANNEL      ADC1_CHANNEL_3
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
 
 // I2C BUS
 #define RG_GPIO_I2C_SDA             GPIO_NUM_18
@@ -108,6 +111,6 @@
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_39
 
 // External I2S DAC
-#define RG_GPIO_SND_I2S_BCK         7
-#define RG_GPIO_SND_I2S_WS          5
-#define RG_GPIO_SND_I2S_DATA        6
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_7
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_5
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_6

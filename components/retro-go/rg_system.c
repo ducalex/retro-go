@@ -444,6 +444,11 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     printf(" built for: %s. type: %s\n", RG_TARGET_NAME, app.isRelease ? "release" : "dev");
     printf("========================================================\n\n");
 
+#ifdef RG_I2C_GPIO_DRIVER
+    rg_i2c_init();
+    rg_i2c_gpio_init();
+#endif
+
     rg_storage_init();
     rg_input_init();
 

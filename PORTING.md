@@ -43,15 +43,15 @@ Most of it, you will need to figure out the correct parameters for (eg. Storage 
 
 ##### Display
 
-If you aren't using the ILI9341 screen driver, you will need to change the `SCREEN_DRIVER` parameter. (Otherwise, just change the following settings and continue).
+If you aren't using the ILI9341/ST7789 screen driver, you will need to change the `SCREEN_DRIVER` parameter. (Otherwise, just change the following settings and continue).
 
 
 (You will find more display configuration in the `SPI Display` section below)
 
 
-For now, only the ILI9341 is included. Increment the number. Then in `components/retro-go/rg_display.c`, find this part
+For now, only the ILI9341/ST7789 driver is included. Increment the number. Then in `components/retro-go/rg_display.c`, find this part
 ```
-#if RG_SCREEN_DRIVER == 0 /* ILI9341 */
+#if RG_SCREEN_DRIVER == 0 /* ILI9341/ST7789 */
 #include "drivers/display/ili9341.h"
 #elif RG_SCREEN_DRIVER == 99
 #include "drivers/display/sdl2.h"
@@ -61,7 +61,7 @@ For now, only the ILI9341 is included. Increment the number. Then in `components
 ```
 
 
-Add a `#elif` for your SCREEN_DRIVER. In the body, use `#include "drivers/display/(YOUR DISPLAY DRIVER).h"` (eg. `st7789.h`).
+Add a `#elif` for your RG_SCREEN_DRIVER. In the body, use `#include "drivers/display/(YOUR DISPLAY DRIVER).h"` (eg. `ssd1306.h`).
 
 
 You will need to create that file for your display. Unfortunately, there is no one-for-all way to make this. It will need the same template as the other display drivers there, but it will differ for each display. To start, check the Retro-Go issues on GitHub and try searching on Google.

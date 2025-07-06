@@ -46,25 +46,25 @@ enum
     RG_GUI_RIGHT  = 0xF58000,
 };
 
-typedef struct
+typedef struct __attribute__((packed))
 {
-    uint8_t code;
-    uint8_t yOffset;
-    uint8_t width;
-    uint8_t height;
-    uint8_t xOffset;
-    uint8_t xDelta;
-    uint8_t data[];
+    uint16_t code;      // Character codepoint
+    uint8_t yOffset;    // Bounding box vertical offset
+    uint8_t width;      // Bounding box width
+    uint8_t height;     // Bounding box height
+    uint8_t xOffset;    // Bounding box horizontal offset
+    uint8_t xDelta;     // Draw the next glyph after this width
+    uint8_t data[];     // Bitmap data of the glyph
 } rg_font_glyph_t;
 
 typedef struct
 {
-    uint8_t type;   // 0=bitmap, 1=prop
-    uint8_t width;  // width of largest glyph
-    uint8_t height; // height of tallest glyph
-    size_t chars;   // glyph count
     char name[16];
-    uint8_t data[];
+    uint8_t type;   // 0=monospace, 1=proportional
+    uint8_t width;  // median width of glyphs
+    uint8_t height; // height of tallest glyph
+    size_t  chars;  // glyph count
+    uint8_t data[]; // stream of rg_font_glyph_t (end of list indicated by an entry with 0x0000 codepoint)
 } rg_font_t;
 
 typedef struct

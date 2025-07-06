@@ -1,4 +1,4 @@
-# QTPY ESP32
+# QTPY-GAMER
 
 - Status:
 - Ref:
