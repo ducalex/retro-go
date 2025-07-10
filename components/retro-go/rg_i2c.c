@@ -162,6 +162,16 @@ static const _gpio_port gpio_ports[] = {
 static const _gpio_sequence gpio_init_seq[] = {};
 static const _gpio_sequence gpio_deinit_seq[] = {};
 
+#elif RG_I2C_GPIO_DRIVER == 4 // PCF8575
+
+static const _gpio_port gpio_ports[] = {
+    {-1, -1, -1, -1}, // PORT 0
+    {-1, -1, -1, -1}, // PORT 1
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+static rg_gpio_mode_t PCF8575_mode = -1;
+
 #else
 
 #error "Unknown I2C GPIO Extender driver type!"
@@ -230,18 +240,33 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
     if (port < 0 || port >= gpio_ports_count)
         return false;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    uint16_t temp = 0xFFFF;
+    if (mask != 0xFF && mode != PCF8575_mode)
+        RG_LOGW("PCF8575 mode cannot be set by pin. (mask is 0x%02X, expected 0xFF)", mask);
+    PCF8575_mode = mode;
+    if (mode != RG_GPIO_OUTPUT)
+        return rg_i2c_write(gpio_address, -1, &temp, 2) && rg_i2c_read(gpio_address, -1, &temp, 2);
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+#else
     int direction_reg = gpio_ports[port].direction_reg;
     int pullup_reg = gpio_ports[port].pullup_reg;
     if (pullup_reg != -1 && !update_register(pullup_reg, mask, mode == RG_GPIO_INPUT_PULLUP ? mask : 0))
         return false;
     return update_register(direction_reg, mask, mode != RG_GPIO_OUTPUT ? mask : 0);
+#endif
 }
 
 int rg_i2c_gpio_read_port(int port)
 {
     if (port < 0 || port >= gpio_ports_count)
         return -1;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    uint8_t values[2];
+    return rg_i2c_read(gpio_address, -1, &values, 2) ? values[port & 1] : -1;
+#else
     return rg_i2c_read_byte(gpio_address, gpio_ports[port].input_reg);
+#endif
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
@@ -249,7 +274,11 @@ bool rg_i2c_gpio_write_port(int port, uint8_t value)
     if (port < 0 || port >= gpio_ports_count)
         return false;
     gpio_output_values[port] = value;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    return PCF8575_mode == RG_GPIO_OUTPUT && rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+#else
     return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
+#endif
 }
 
 bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
