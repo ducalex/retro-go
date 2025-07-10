@@ -169,7 +169,7 @@ static const _gpio_sequence gpio_deinit_seq[] = {};
 #endif
 
 static const size_t gpio_ports_count = RG_COUNT(gpio_ports);
-static uint8_t gpio_output_values[gpio_ports_count];
+static uint8_t gpio_output_values[RG_COUNT(gpio_ports)];
 static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
 static bool gpio_initialized = false;
 
