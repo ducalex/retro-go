@@ -242,7 +242,7 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
         return false;
 #if RG_I2C_GPIO_DRIVER == 4 // PCF8575
     uint16_t temp = 0xFFFF;
-    if (mask != 0xFF && mode != PCF8575_mode)
+    if (mask != 0xFF && mode != PCF8575_mode && (mode == RG_GPIO_OUTPUT || PCF8575_mode == RG_GPIO_OUTPUT))
         RG_LOGW("PCF8575 mode cannot be set by pin. (mask is 0x%02X, expected 0xFF)", mask);
     PCF8575_mode = mode;
     if (mode != RG_GPIO_OUTPUT)
@@ -275,7 +275,9 @@ bool rg_i2c_gpio_write_port(int port, uint8_t value)
         return false;
     gpio_output_values[port] = value;
 #if RG_I2C_GPIO_DRIVER == 4 // PCF8575
-    return PCF8575_mode == RG_GPIO_OUTPUT && rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+    if (PCF8575_mode != RG_GPIO_OUTPUT)
+        return true; // This is consistent with other extenders, where the output latch is updated even in input mode
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
 #else
     return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
 #endif
