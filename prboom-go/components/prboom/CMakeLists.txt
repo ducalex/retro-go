@@ -13,7 +13,12 @@ rg_setup_compile_options(
     -Wno-format-overflow
     -Wno-char-subscripts
     -Wno-missing-field-initializers
-    -mfix-esp32-psram-cache-issue
     -DHAVE_CONFIG_H
     -O2
 )
+
+# Add Xtensa-specific workaround only when not targeting ESP32-P4 (RISC-V)
+if(NOT IDF_TARGET STREQUAL "esp32p4")
+    rg_setup_compile_options(-mfix-esp32-psram-cache-issue)
+endif()
+

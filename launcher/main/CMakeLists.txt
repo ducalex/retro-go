@@ -1,7 +1,11 @@
 set(COMPONENT_SRCDIRS ".")
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 register_component()
-rg_setup_compile_options(-O2 -Wno-error=format -Wno-error=char-subscripts -mfix-esp32-psram-cache-issue)
+rg_setup_compile_options(-O2 -Wno-error=format -Wno-error=char-subscripts)
+
+if(NOT IDF_TARGET STREQUAL "esp32p4")
+    rg_setup_compile_options(-mfix-esp32-psram-cache-issue)
+endif()
 
 # add_custom_command(OUTPUT images.c
 #                    COMMAND python ${COMPONENT_DIR}/gen_images.py

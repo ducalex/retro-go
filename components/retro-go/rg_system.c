@@ -1073,7 +1073,8 @@ int rg_system_get_log_level(void)
 
 void rg_system_set_overclock(int level)
 {
-#ifdef ESP_PLATFORM
+// ESP32-P4 isn't compatible with this overclock
+#if defined(ESP_PLATFORM) && !defined(RG_TARGET_ESP32_P4)
     // None of this is documented by espressif but can be found in the file rtc_clk.c
     #define I2C_BBPLL                   0x66
     #define I2C_BBPLL_ENDIV5              11
