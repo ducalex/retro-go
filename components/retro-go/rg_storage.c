@@ -12,6 +12,9 @@
 #define SDCARD_DO_TRANSACTION sdspi_host_do_transaction
 #elif defined(RG_STORAGE_SDMMC_HOST)
 #include <driver/sdmmc_host.h>
+#ifdef RG_TARGET_ESP32_P4
+#include "sd_pwr_ctrl_by_on_chip_ldo.h"
+#endif
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
 #endif
 
@@ -121,12 +124,30 @@ void rg_storage_init(void)
     RG_LOGI("Looking for SD Card using SDMMC...");
 
     sdmmc_host_t host_config = SDMMC_HOST_DEFAULT();
-    host_config.flags = SDMMC_HOST_FLAG_1BIT;
     host_config.slot = RG_STORAGE_SDMMC_HOST;
     host_config.max_freq_khz = RG_STORAGE_SDMMC_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
+#ifdef RG_TARGET_ESP32_P4
+    sd_pwr_ctrl_ldo_config_t ldo_config = {
+        .ldo_chan_id = 4,
+    };
+    sd_pwr_ctrl_handle_t pwr_ctrl_handle = NULL;
+
+    esp_err_t ret = sd_pwr_ctrl_new_on_chip_ldo(&ldo_config, &pwr_ctrl_handle);
+    if (ret != ESP_OK) {
+        RG_LOGE("Failed to create a new on-chip LDO power control driver");
+        return;
+    }
+    host_config.pwr_ctrl_handle = pwr_ctrl_handle;
+#endif
+
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
+    
+#ifdef RG_STORAGE_SDMMC_BUS_WIDTH_4_BIT
+    slot_config.width = 4;
+    host_config.flags = SDMMC_HOST_FLAG_4BIT;
+#else
     slot_config.width = 1;
 #if SOC_SDMMC_USE_GPIO_MATRIX /* Only the esp32-s3 routes SDMMC through the GPIO matrix */
     slot_config.clk = RG_GPIO_SDMMC_CLK;
