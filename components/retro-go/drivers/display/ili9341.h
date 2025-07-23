@@ -250,10 +250,6 @@ static void lcd_init(void)
     ILI9341_CMD(0x11);  // Exit Sleep
     rg_usleep(10 * 1000);// Wait 10ms after sleep out
     ILI9341_CMD(0x29);  // Display on
-
-    rg_display_clear(C_BLACK);
-    rg_usleep(10 * 1000);
-    lcd_set_backlight(config.backlight);
 }
 
 static void lcd_deinit(void)
