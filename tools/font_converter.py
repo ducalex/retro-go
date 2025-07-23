@@ -76,9 +76,8 @@ import os
 # And that's basically how characters are encoded using this tool
 
 # Example usage (defaults parameters)
-list_char_ranges_init = "32-255" # "32-126, 160-255"
+list_char_ranges_init = "32-126, 160-255"
 font_size_init = 11
-output_old_format_init = 0
 
 font_path = ("arial.ttf")  # Replace with your TTF font path
 
@@ -204,7 +203,6 @@ def generate_font_data():
         # Create glyph entry
         glyph_data = {
             "char_code": char_code,
-            "bitmap_index": 0,
             "ofs_y": int(offset_y),
             "box_w": int(width),
             "box_h": int(height),
@@ -213,7 +211,7 @@ def generate_font_data():
         }
         font_data.append(glyph_data)
 
-        bitmap = bitmap[0:int((width * height) + 7 / 8)]
+        bitmap = bitmap[0:int((width * height + 7) / 8)]
         bitmap_data[char_code] = bitmap
 
         # Update memory usage
@@ -250,65 +248,32 @@ def generate_file(font_name, font_size, font_data):
     file_data += f"// Point Size     : {font_size}\n"
     file_data += f"// Memory usage   : {font_data['memory_usage']} bytes\n"
     file_data += f"// # characters   : {len(font_data['glyphs'])}\n\n"
-
-    if output_old_format_bool.get():
-        file_data += f"const rg_font_t font_{normalized_name} = {{\n"
-        file_data += f"    .name = \"{font_name}\",\n"
-        file_data += f"    .type = 1,\n"
-        file_data += f"    .width = 0,\n"
-        file_data += f"    .height = {font_data['max_height']},\n"
-        file_data += f"    .chars = {len(font_data['glyphs'])},\n"
-        file_data += f"    .data = {{\n"
-        for glyph in font_data["glyphs"]:
-            char_code = glyph['char_code']
-            header_data = [char_code & 0xFF, char_code >> 8, glyph['ofs_y'], glyph['box_w'],
-                           glyph['box_h'], glyph['ofs_x'], glyph['adv_w']]
-            bitmap_data = font_data["bitmap"][char_code]
-            file_data += f"        /* U+{char_code:04X} '{chr(char_code)}' */\n        "
-            file_data += ", ".join([f"0x{byte:02X}" for byte in header_data])
-            file_data += f",\n        "
-            if len(bitmap_data) > 0:
-                file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
-                file_data += f","
-            file_data += "\n"
+    file_data += f"const rg_font_t font_{normalized_name} = {{\n"
+    file_data += f"    .name = \"{font_name}\",\n"
+    file_data += f"    .type = 1,\n"
+    file_data += f"    .width = 0,\n"
+    file_data += f"    .height = {font_data['max_height']},\n"
+    file_data += f"    .chars = {len(font_data['glyphs'])},\n"
+    file_data += f"    .data = {{\n"
+    for glyph in font_data["glyphs"]:
+        char_code = glyph['char_code']
+        header_data = [char_code & 0xFF, char_code >> 8, glyph['ofs_y'], glyph['box_w'],
+                        glyph['box_h'], glyph['ofs_x'], glyph['adv_w']]
+        bitmap_data = font_data["bitmap"][char_code]
+        file_data += f"        /* U+{char_code:04X} '{chr(char_code)}' */\n        "
+        file_data += ", ".join([f"0x{byte:02X}" for byte in header_data])
+        file_data += f",\n        "
+        if len(bitmap_data) > 0:
+            file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
+            file_data += f","
         file_data += "\n"
-        file_data += "        // Terminator\n"
-        file_data += "        0x00, 0x00,\n"
-        file_data += "    };\n"
-        file_data += "};\n"
-    else:
-        file_data += f"static const uint8_t glyph_bitmap_table[] = {{\n"
-        bitmap_index = 0
-        for glyph in font_data["glyphs"]:
-            bitmap_data = font_data["bitmap"][glyph["char_code"]]
-            file_data += f"    /* U+{glyph['char_code']:04X} '{chr(glyph['char_code'])}' */\n    "
-            if len(bitmap_data) > 0:
-                file_data += ",".join([f"0x{byte:02X}" for byte in bitmap_data])
-                file_data += f","
-            file_data += f"\n"
-            glyph["bitmap_index"] = bitmap_index
-            bitmap_index += len(bitmap_data)
-        file_data += "};\n\n"
-        file_data += f"static const rg_font_glyph_dsc_t glyph_dsc_table[] = {{\n"
-        for glyph in font_data["glyphs"]:
-            file_data += "    {"
-            file_data += f".bitmap_index = {glyph['bitmap_index']}, "
-            file_data += f".adv_w = {glyph['adv_w']}, "
-            file_data += f".box_w = {glyph['box_w']}, "
-            file_data += f".box_h = {glyph['box_h']}, "
-            file_data += f".ofs_x = {glyph['ofs_x']}, "
-            file_data += f".ofs_y = {glyph['ofs_y']}"
-            file_data += "},\n"
-        file_data += "};\n\n"
-        file_data += f"const rg_font_t font_{normalized_name} = {{\n"
-        file_data += f"    .bitmap_data = glyph_bitmap_table,\n"
-        file_data += f"    .glyph_dsc = glyph_dsc_table,\n"
-        file_data += f"    .width = 0,\n"
-        file_data += f"    .height = {font_data['max_height']},\n"
-        file_data += f"    .name = \"{font_name}\",\n"
-        file_data += "};\n"
+    file_data += "\n"
+    file_data += "        // Terminator\n"
+    file_data += "        0x00, 0x00,\n"
+    file_data += "    };\n"
+    file_data += "};\n"
 
-        return file_data
+    return file_data
 
 def select_file():
     filename = filedialog.askopenfilename(
@@ -354,60 +319,58 @@ def pan_canvas(event):
     start_x = event.x
     start_y = event.y
 
-window = Tk()
-window.title("Retro-Go Font Converter")
 
-# Get screen width and height
-screen_width = window.winfo_screenwidth()
-screen_height = window.winfo_screenheight()
-# Set the window size to fill the entire screen
-window.geometry(f"{screen_width}x{screen_height}")
+if __name__ == "__main__":
+    window = Tk()
+    window.title("Retro-Go Font Converter")
 
-p_size = 8 # pixel size on the renderer
+    # Get screen width and height
+    screen_width = window.winfo_screenwidth()
+    screen_height = window.winfo_screenheight()
+    # Set the window size to fill the entire screen
+    window.geometry(f"{screen_width}x{screen_height}")
 
-canva_width = screen_width//p_size
-canva_height = screen_height//p_size-16
+    p_size = 8 # pixel size on the renderer
 
-frame = Frame(window)
-frame.pack(anchor="center", padx=10, pady=2)
+    canva_width = screen_width//p_size
+    canva_height = screen_height//p_size-16
 
-# choose font button (file picker)
-choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
-choose_font_button.pack(side="left", padx=5)
+    frame = Frame(window)
+    frame.pack(anchor="center", padx=10, pady=2)
 
-# Label and Entry for Font height
-Label(frame, text="Font height").pack(side="left", padx=5)
-font_height_input = StringVar(value=str(font_size_init))
-Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
+    # choose font button (file picker)
+    choose_font_button = ttk.Button(frame, text='Choose font', command=select_file)
+    choose_font_button.pack(side="left", padx=5)
 
-# Label and Entry for Char ranges to include
-Label(frame, text="Ranges to include").pack(side="left", padx=5)
-list_char_ranges = StringVar(value=str(list_char_ranges_init))
-Entry(frame, textvariable=list_char_ranges, width=30).pack(side="left", padx=5)
+    # Label and Entry for Font height
+    Label(frame, text="Font height").pack(side="left", padx=5)
+    font_height_input = StringVar(value=str(font_size_init))
+    Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
 
-# Variable to hold the state of the checkbox
-bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
-Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
+    # Label and Entry for Char ranges to include
+    Label(frame, text="Ranges to include").pack(side="left", padx=5)
+    list_char_ranges = StringVar(value=str(list_char_ranges_init))
+    Entry(frame, textvariable=list_char_ranges, width=30).pack(side="left", padx=5)
 
-# Variable to hold the state of the checkbox
-output_old_format_bool = IntVar(value=output_old_format_init)  # 0 for unchecked, 1 for checked
-Checkbutton(frame, text="Old format", variable=output_old_format_bool).pack(side="left", padx=10)
+    # Variable to hold the state of the checkbox
+    bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
+    Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
 
-# Button to launch the font generation function
-b1 = Button(frame, text="Preview", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
-b1.pack(side="left", padx=5)
+    # Button to launch the font generation function
+    b1 = Button(frame, text="Preview", width=14, height=2, background="blue", foreground="white", command=generate_font_data)
+    b1.pack(side="left", padx=5)
 
-# Button to launch the font exporting function
-b1 = Button(frame, text="Save", width=14, height=2, background="blue", foreground="white", command=save_font_data)
-b1.pack(side="left", padx=5)
+    # Button to launch the font exporting function
+    b1 = Button(frame, text="Save", width=14, height=2, background="blue", foreground="white", command=save_font_data)
+    b1.pack(side="left", padx=5)
 
-frame = Frame(window).pack(anchor="w", padx=2, pady=2)
-canvas = Canvas(frame, width=canva_width*p_size, height=canva_height*p_size, bg="black")
-canvas.configure(scrollregion=(0, 0, canva_width*p_size, canva_height*p_size))
-canvas.bind("<MouseWheel>", zoom)
-canvas.bind("<ButtonPress-1>", start_pan)  # Start panning
-canvas.bind("<B1-Motion>",pan_canvas)
-canvas.focus_set()
-canvas.pack(fill="both", expand=True)
+    frame = Frame(window).pack(anchor="w", padx=2, pady=2)
+    canvas = Canvas(frame, width=canva_width*p_size, height=canva_height*p_size, bg="black")
+    canvas.configure(scrollregion=(0, 0, canva_width*p_size, canva_height*p_size))
+    canvas.bind("<MouseWheel>", zoom)
+    canvas.bind("<ButtonPress-1>", start_pan)  # Start panning
+    canvas.bind("<B1-Motion>",pan_canvas)
+    canvas.focus_set()
+    canvas.pack(fill="both", expand=True)
 
-window.mainloop()
+    window.mainloop()
