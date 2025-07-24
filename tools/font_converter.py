@@ -108,7 +108,7 @@ def find_bounding_box(image):
 
     for y in range(height):
         for x in range(width):
-            if pixels[x, y] == 1:  # Looking for 'on' pixels
+            if pixels[x, y] >= 1:  # Looking for 'on' pixels
                 x_min = min(x_min, x)
                 y_min = min(y_min, y)
                 x_max = max(x_max, x)
@@ -121,6 +121,7 @@ def find_bounding_box(image):
 def generate_font_data():
     font_size = int(font_height_input.get())
     bounding_box = bounding_box_bool.get()
+    enforce_font_size = enforce_font_size_bool.get()
 
     # Load the TTF font
     pil_font = ImageFont.truetype(font_path, font_size)
@@ -146,12 +147,6 @@ def generate_font_data():
         draw = ImageDraw.Draw(image)
         draw.text((1, 0), char, font=pil_font, fill=255)
 
-        pixels = image.load()
-
-        for x in range(image.width):
-            for y in range(image.height):
-                pixels[x, y] = (1 if pixels[x, y] >= 1 else 0)
-
         bbox = find_bounding_box(image)  # Get bounding box
 
         if bbox is None: # control character / space
@@ -171,10 +166,19 @@ def generate_font_data():
             offset_x_1 = 1
             offset_y_1 += font_size + font_size//3
 
-        # Crop the image to the bounding box
-        cropped_image = image.crop(bbox)
+        # Shift or crop glyphs that would be drawn beyond font_size. Most glyphs are not affected by this.
+        # If enforce_font_size is false, then max_height will be calculated at the end and the font might
+        # be taller than requested.
+        if enforce_font_size and offset_y + height > font_size:
+            print(f"    font_size exceeded: {offset_y+height}")
+            if font_size - height >= 0:
+                offset_y = font_size - height
+            else:
+                offset_y = 0
+                height = font_size
 
         # Extract bitmap data
+        cropped_image = image.crop(bbox)
         bitmap = []
         row = 0
         i = 0
@@ -186,6 +190,7 @@ def generate_font_data():
                     bitmap.append(row)
                     row = 0
                     i = 0
+                pixel = 1 if cropped_image.getpixel((x, y)) else 0
                 row = (row << 1) | pixel
                 if pixel:
                     canvas.create_rectangle((x+offset_x_1+offset_x)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1+offset_x)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
@@ -346,6 +351,10 @@ if __name__ == "__main__":
     Label(frame, text="Font height").pack(side="left", padx=5)
     font_height_input = StringVar(value=str(font_size_init))
     Entry(frame, textvariable=font_height_input, width=4).pack(side="left", padx=5)
+
+    # Variable to hold the state of the checkbox
+    enforce_font_size_bool = IntVar()  # 0 for unchecked, 1 for checked
+    Checkbutton(frame, text="Enforce size", variable=enforce_font_size_bool).pack(side="left", padx=5)
 
     # Label and Entry for Char ranges to include
     Label(frame, text="Ranges to include").pack(side="left", padx=5)
