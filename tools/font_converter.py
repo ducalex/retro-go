@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw, ImageFont
 from tkinter import Tk, Label, Entry, StringVar, Button, Frame, Canvas, filedialog, ttk, Checkbutton, IntVar
 import os
+import re
 
 ################################ - Font format - ################################
 #
@@ -118,26 +119,13 @@ def find_bounding_box(image):
         return None
     return (x_min, y_min, x_max+1, y_max+1)
 
-def generate_font_data():
-    font_size = int(font_height_input.get())
-    bounding_box = bounding_box_bool.get()
-    enforce_font_size = enforce_font_size_bool.get()
-
+def load_ttf_font(font_path, font_size):
     # Load the TTF font
+    enforce_font_size = enforce_font_size_bool.get()
     pil_font = ImageFont.truetype(font_path, font_size)
+
     font_name = ' '.join(pil_font.getname())
-
-    window.title(f"Font preview: {font_name} {font_size}")
-
-    # Initialize the font data structure
     font_data = []
-    bitmap_data = dict()
-    memory_usage = 0
-    max_height = 0
-
-    canvas.delete("all")
-    offset_x_1 = 1
-    offset_y_1 = 1
 
     for char_code in get_char_list():
         char = chr(char_code)
@@ -162,10 +150,6 @@ def generate_font_data():
             offset_x, offset_y = x0, y0
             adv_w = width + offset_x
 
-        if offset_x_1+adv_w+1 > canva_width:
-            offset_x_1 = 1
-            offset_y_1 += font_size + font_size//3
-
         # Shift or crop glyphs that would be drawn beyond font_size. Most glyphs are not affected by this.
         # If enforce_font_size is false, then max_height will be calculated at the end and the font might
         # be taller than requested.
@@ -182,28 +166,17 @@ def generate_font_data():
         bitmap = []
         row = 0
         i = 0
-
         for y in range(height):
             for x in range(width):
-                pixel = cropped_image.getpixel((x, y))
                 if i == 8:
                     bitmap.append(row)
                     row = 0
                     i = 0
                 pixel = 1 if cropped_image.getpixel((x, y)) else 0
                 row = (row << 1) | pixel
-                if pixel:
-                    canvas.create_rectangle((x+offset_x_1+offset_x)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1+offset_x)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
                 i += 1
-
-        row = row << 8-i # to "fill" with zero the remaining empty bits
-        bitmap.append(row)
-
-        if bounding_box:
-            canvas.create_rectangle((offset_x_1+offset_x)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1+offset_x)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red", fill='') # bounding box
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1+adv_w)*p_size, (offset_y_1+offset_y+height)*p_size, width=1, outline='blue', fill='')
-
-        offset_x_1 += adv_w + 1
+        bitmap.append(row << 8-i) # to "fill" with zero the remaining empty bits
+        bitmap = bitmap[0:int((width * height + 7) / 8)]
 
         # Create glyph entry
         glyph_data = {
@@ -212,22 +185,109 @@ def generate_font_data():
             "box_w": int(width),
             "box_h": int(height),
             "ofs_x": int(offset_x),
-            "adv_w": int(adv_w)
+            "adv_w": int(adv_w),
+            "bitmap": bitmap,
         }
         font_data.append(glyph_data)
 
-        bitmap = bitmap[0:int((width * height + 7) / 8)]
-        bitmap_data[char_code] = bitmap
+    return (font_name, font_size, font_data)
 
-        # Update memory usage
-        memory_usage += len(bitmap) + 8  # 8 bytes for the header per glyph
-        max_height = max(height + offset_y, max_height)
+def load_c_font(file_path):
+    # Load the C font
+    font_name = "Unknown"
+    font_size = 0
+    font_data = []
+
+    with open(file_path, 'r', encoding='UTF-8') as file:
+        text = file.read()
+        text = re.sub('//.*?$|/\*.*?\*/', '', text, flags=re.S|re.MULTILINE)
+        text = re.sub('[\n\r\t\s]+', ' ', text)
+        # FIXME: Handle parse errors...
+        if m := re.search('\.name\s*=\s*"(.+)",', text):
+            font_name = m.group(1)
+        if m := re.search('\.height\s*=\s*(\d+),', text):
+            font_size = int(m.group(1))
+        if m := re.search('\.data\s*=\s*\{(.+?)\}', text):
+            hexdata = [int(h, base=16) for h in re.findall('0x[0-9A-Fa-f]{2}', text)]
+
+    while len(hexdata):
+        char_code = hexdata[0] | (hexdata[1] << 8)
+        if not char_code:
+            break
+        ofs_y = hexdata[2]
+        box_w = hexdata[3]
+        box_h = hexdata[4]
+        ofs_x = hexdata[5]
+        adv_w = hexdata[6]
+        bitmap = hexdata[7:int((box_w * box_h + 7) / 8) + 7]
+
+        glyph_data = {
+            "char_code": char_code,
+            "ofs_y": ofs_y,
+            "box_w": box_w,
+            "box_h": box_h,
+            "ofs_x": ofs_x,
+            "adv_w": adv_w,
+            "bitmap": bitmap,
+        }
+        font_data.append(glyph_data)
+
+        hexdata = hexdata[7 + len(bitmap):]
+
+    return (font_name, font_size, font_data)
+
+def generate_font_data():
+    if font_path.endswith(".c"):
+        font_name, font_size, font_data = load_c_font(font_path)
+    else:
+        font_name, font_size, font_data = load_ttf_font(font_path, int(font_height_input.get()))
+
+    max_height = max(font_size, max(g["ofs_y"] + g["box_h"] for g in font_data))
+    memory_usage = sum(len(g["bitmap"]) + 8 for g in font_data)
+
+    window.title(f"Font preview: {font_name} {font_size}")
+    font_height_input.set(font_size)
+
+    bounding_box = bounding_box_bool.get()
+
+    canvas.delete("all")
+    offset_x_1 = 1
+    offset_y_1 = 1
+
+    for glyph_data in font_data:
+        offset_y = glyph_data["ofs_y"]
+        width = glyph_data["box_w"]
+        height = glyph_data["box_h"]
+        offset_x = glyph_data["ofs_x"]
+        adv_w = glyph_data["adv_w"]
+
+        if offset_x_1+adv_w+1 > canva_width:
+            offset_x_1 = 1
+            offset_y_1 += max_height + 1
+
+        byte_index = 0
+        byte_value = 0
+        bit_index = 0
+        for y in range(height):
+            for x in range(width):
+                if bit_index == 0:
+                    byte_value = glyph_data["bitmap"][byte_index]
+                    byte_index += 1
+                if byte_value & (1 << 7-bit_index):
+                    canvas.create_rectangle((x+offset_x_1+offset_x)*p_size, (y+offset_y_1+offset_y)*p_size, (x+offset_x_1+offset_x)*p_size+p_size, (y+offset_y_1+offset_y)*p_size+p_size,fill="white")
+                bit_index += 1
+                bit_index %= 8
+
+        if bounding_box:
+            canvas.create_rectangle((offset_x_1+offset_x)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1+offset_x)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red", fill='') # bounding box
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1+adv_w)*p_size, (offset_y_1+offset_y+height)*p_size, width=1, outline='blue', fill='')
+
+        offset_x_1 += adv_w + 1
 
     return (font_name, font_size, {
-        "bitmap": bitmap_data,
         "glyphs": font_data,
         "memory_usage": memory_usage,
-        "max_height": max_height
+        "max_height": max_height,
     })
 
 def save_font_data():
@@ -242,9 +302,9 @@ def save_font_data():
 
     if filename:
         with open(filename, 'w', encoding='UTF-8') as f:
-            f.write(generate_file(font_name, font_size, font_data))
+            f.write(generate_c_font(font_name, font_size, font_data))
 
-def generate_file(font_name, font_size, font_data):
+def generate_c_font(font_name, font_size, font_data):
     normalized_name = f"{font_name.replace('-', '_').replace(' ', '')}{font_size}"
 
     file_data = "#include \"../rg_gui.h\"\n\n"
@@ -264,12 +324,11 @@ def generate_file(font_name, font_size, font_data):
         char_code = glyph['char_code']
         header_data = [char_code & 0xFF, char_code >> 8, glyph['ofs_y'], glyph['box_w'],
                         glyph['box_h'], glyph['ofs_x'], glyph['adv_w']]
-        bitmap_data = font_data["bitmap"][char_code]
         file_data += f"        /* U+{char_code:04X} '{chr(char_code)}' */\n        "
         file_data += ", ".join([f"0x{byte:02X}" for byte in header_data])
         file_data += f",\n        "
-        if len(bitmap_data) > 0:
-            file_data += ", ".join([f"0x{byte:02X}" for byte in bitmap_data])
+        if len(glyph["bitmap"]) > 0:
+            file_data += ", ".join([f"0x{byte:02X}" for byte in glyph["bitmap"]])
             file_data += f","
         file_data += "\n"
     file_data += "\n"
@@ -284,7 +343,7 @@ def select_file():
     filename = filedialog.askopenfilename(
         title='Load Font',
         initialdir=os.getcwd(),
-        filetypes=(('True Type Font', '*.ttf'), ('All files', '*.*')))
+        filetypes=(('True Type Font', '*.ttf'), ('Retro-Go Font', '*.c'), ('All files', '*.*')))
 
     if filename:
         global font_path
