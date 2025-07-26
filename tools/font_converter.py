@@ -242,12 +242,10 @@ def generate_font_data():
     else:
         font_name, font_size, font_data = load_ttf_font(font_path, int(font_height_input.get()))
 
-    max_height = max(font_size, max(g["ofs_y"] + g["box_h"] for g in font_data))
-    memory_usage = sum(len(g["bitmap"]) + 8 for g in font_data)
-
     window.title(f"Font preview: {font_name} {font_size}")
     font_height_input.set(font_size)
 
+    max_height = max(font_size, max(g["ofs_y"] + g["box_h"] for g in font_data))
     bounding_box = bounding_box_bool.get()
 
     canvas.delete("all")
@@ -284,11 +282,7 @@ def generate_font_data():
 
         offset_x_1 += adv_w + 1
 
-    return (font_name, font_size, {
-        "glyphs": font_data,
-        "memory_usage": memory_usage,
-        "max_height": max_height,
-    })
+    return (font_name, font_size, font_data)
 
 def save_font_data():
     font_name, font_size, font_data = generate_font_data()
@@ -306,21 +300,23 @@ def save_font_data():
 
 def generate_c_font(font_name, font_size, font_data):
     normalized_name = f"{font_name.replace('-', '_').replace(' ', '')}{font_size}"
+    max_height = max(font_size, max(g["ofs_y"] + g["box_h"] for g in font_data))
+    memory_usage = sum(len(g["bitmap"]) + 8 for g in font_data)
 
     file_data = "#include \"../rg_gui.h\"\n\n"
     file_data += "// File generated with font_converter.py (https://github.com/ducalex/retro-go/tree/dev/tools)\n\n"
     file_data += f"// Font           : {font_name}\n"
     file_data += f"// Point Size     : {font_size}\n"
-    file_data += f"// Memory usage   : {font_data['memory_usage']} bytes\n"
-    file_data += f"// # characters   : {len(font_data['glyphs'])}\n\n"
+    file_data += f"// Memory usage   : {memory_usage} bytes\n"
+    file_data += f"// # characters   : {len(font_data)}\n\n"
     file_data += f"const rg_font_t font_{normalized_name} = {{\n"
     file_data += f"    .name = \"{font_name}\",\n"
     file_data += f"    .type = 1,\n"
     file_data += f"    .width = 0,\n"
-    file_data += f"    .height = {font_data['max_height']},\n"
-    file_data += f"    .chars = {len(font_data['glyphs'])},\n"
+    file_data += f"    .height = {max_height},\n"
+    file_data += f"    .chars = {len(font_data)},\n"
     file_data += f"    .data = {{\n"
-    for glyph in font_data["glyphs"]:
+    for glyph in font_data:
         char_code = glyph['char_code']
         header_data = [char_code & 0xFF, char_code >> 8, glyph['ofs_y'], glyph['box_w'],
                         glyph['box_h'], glyph['ofs_x'], glyph['adv_w']]

@@ -3,7 +3,6 @@ from font_converter import load_c_font, generate_c_font
 import os
 
 font_size = 14
-max_height = 0
 char_code_edit = ord('R')
 selected_glyph = 0
 
@@ -186,22 +185,10 @@ def update_glyph_data():
 
 def save_font():
     global list_glyph_data
-    global max_height
     global font_path
-
-    # find max height
-    global max_height
-    max_height = 0
-    for glyph in list_glyph_data:
-        max_height = max(glyph['box_h'] + glyph['ofs_y'], max_height)
-
     font_name = os.path.splitext(os.path.basename(font_path))[0]
     with open(font_path, 'w', encoding='UTF-8') as f:
-        f.write(generate_c_font(font_name, font_size, {
-            "glyphs": list_glyph_data,
-            "memory_usage": 999,
-            "max_height": max_height,
-        }))
+        f.write(generate_c_font(font_name, font_size, list_glyph_data.values()))
 
 
 def extract_data():
