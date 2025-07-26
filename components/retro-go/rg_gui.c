@@ -21,7 +21,6 @@ static struct
     {
         const rg_font_t *font;
         int font_height;
-        int font_width;
         rg_color_t box_background;
         rg_color_t box_header;
         rg_color_t box_border;
@@ -227,7 +226,6 @@ bool rg_gui_set_font(int index)
     gui.font_index = index;
     gui.style.font = font;
     gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
-    gui.style.font_width = font->width ?: 8;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
@@ -348,13 +346,13 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
+    const rg_font_t *font = gui.style.font;
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
-    int monospace = ((flags & RG_TEXT_MONOSPACE) || gui.style.font->type == 0) ? gui.style.font_width : 0;
+    int monospace = ((flags & RG_TEXT_MONOSPACE) || font->type == 0) ? font->width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
     // int16_t line_breaks[64], line_width_cache[64];
-    const rg_font_t *font = gui.style.font;
 
     if (!text || *text == 0)
         text = " ";

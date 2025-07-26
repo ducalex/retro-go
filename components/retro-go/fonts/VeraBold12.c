@@ -8,7 +8,7 @@
 const rg_font_t font_VeraBold12 = {
     .name = "VeraBold",
     .type = 1,
-    .width = 12,
+    .width = 0,
     .height = 12,
     .chars = 95,
     .data = {
