@@ -334,7 +334,7 @@ def generate_c_font(font_name, font_size, font_data):
     file_data += "\n"
     file_data += "        // Terminator\n"
     file_data += "        0x00, 0x00,\n"
-    file_data += "    };\n"
+    file_data += "    },\n"
     file_data += "};\n"
 
     return file_data
