@@ -1073,7 +1073,7 @@ int rg_system_get_log_level(void)
 
 void rg_system_set_overclock(int level)
 {
-#ifdef ESP_PLATFORM
+#if defined(ESP_PLATFORM) && CONFIG_IDF_TARGET_ESP32
     // None of this is documented by espressif but can be found in the file rtc_clk.c
     #define I2C_BBPLL                   0x66
     #define I2C_BBPLL_ENDIV5              11
@@ -1149,6 +1149,8 @@ void rg_system_set_overclock(int level)
     // overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
 
     // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
+#else
+    RG_LOGE("Overclock not supported on this platform!");
 #endif
 
     app.overclock = level;
