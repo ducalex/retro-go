@@ -49,10 +49,6 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "Choisissez un fichier",
     },
     {
-        [RG_LANG_EN] = "Off",
-        [RG_LANG_FR] = "Off",
-    },
-    {
         [RG_LANG_EN] = "Language",
         [RG_LANG_FR] = "Langue",
     },
@@ -62,11 +58,11 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "For these changes to take effect you must restart your device.\nrestart now?",
-        [RG_LANG_FR] = "Pour que ces changements prennent effet, vous devez redemmarer votre appareil.\nRedemmarer maintenant ?",
+        [RG_LANG_FR] = "Pour que ces changements prennent effet, vous devez redémmarer votre appareil.\nRedémmarer maintenant ?",
     },
     {
         [RG_LANG_EN] = "Wi-Fi profile",
-        [RG_LANG_FR] = "Profile Wi-Fi",
+        [RG_LANG_FR] = "Profil Wi-Fi",
     },
     {
         [RG_LANG_EN] = "Language",
@@ -82,7 +78,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Reset all settings?",
-        [RG_LANG_FR] = "Reset tous les parametres",
+        [RG_LANG_FR] = "Reset tous les paramètres",
     },
     {
         [RG_LANG_EN] = "Initializing...",
@@ -138,7 +134,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Input",
-        [RG_LANG_FR] = "Entree",
+        [RG_LANG_FR] = "Entrée",
     },
     {
         [RG_LANG_EN] = "Crop",
@@ -178,19 +174,19 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Download complete!",
-        [RG_LANG_FR] = "Telechargement termine",
+        [RG_LANG_FR] = "Téléchargement terminé",
     },
     {
         [RG_LANG_EN] = "Reboot to flash?",
-        [RG_LANG_FR] = "Redemarrer",
+        [RG_LANG_FR] = "Redémarrer",
     },
     {
         [RG_LANG_EN] = "Available Releases",
-        [RG_LANG_FR] = "Maj disponibles",
+        [RG_LANG_FR] = "Maj disponible",
     },
     {
         [RG_LANG_EN] = "Received empty list!",
-        [RG_LANG_FR] = "Liste vide recue",
+        [RG_LANG_FR] = "Liste vide reçue",
     },
     {
         [RG_LANG_EN] = "Gamma Boost",
@@ -226,7 +222,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "RTC config",
-        [RG_LANG_FR] = "Congig RTC",
+        [RG_LANG_FR] = "Config RTC",
     },
     {
         [RG_LANG_EN] = "SRAM autosave",
@@ -262,7 +258,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Crop sides",
-        [RG_LANG_FR] = "Couper les cotes",
+        [RG_LANG_FR] = "Couper les côtés",
     },
     {
         [RG_LANG_EN] = "Sprite limit",
@@ -278,11 +274,15 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Profile",
-        [RG_LANG_FR] = "Profile",
+        [RG_LANG_FR] = "Profil",
+    },
+    {
+        [RG_LANG_EN] = "<profile name>",
+        [RG_LANG_FR] = "<nom du profil>",
     },
     {
         [RG_LANG_EN] = "Controls",
-        [RG_LANG_FR] = "Controles",
+        [RG_LANG_FR] = "Contrôles",
     },
     {
         [RG_LANG_EN] = "Audio enable",
@@ -347,23 +347,19 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "System activity",
-        [RG_LANG_FR] = "Activite systeme",
+        [RG_LANG_FR] = "Activité système",
     },
     {
         [RG_LANG_EN] = "Disk activity",
-        [RG_LANG_FR] = "Activite stockage",
+        [RG_LANG_FR] = "Activité stockage",
     },
     {
         [RG_LANG_EN] = "Low battery",
-        [RG_LANG_FR] = "Battery basse",
+        [RG_LANG_FR] = "Batterie basse",
     },
     {
         [RG_LANG_EN] = "Default",
-        [RG_LANG_FR] = "Default",
-    },
-    {
-        [RG_LANG_EN] = "none",
-        [RG_LANG_FR] = "Aucun",
+        [RG_LANG_FR] = "Défaut",
     },
     {
         [RG_LANG_EN] = "<None>",
@@ -373,7 +369,7 @@ static const char *translations[][RG_LANG_MAX] =
     // Wifi
     {
         [RG_LANG_EN] = "Not connected",
-        [RG_LANG_FR] = "Non connecte",
+        [RG_LANG_FR] = "Non connecté",
     },
     {
         [RG_LANG_EN] = "Connecting...",
@@ -393,7 +389,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Start access point?\n\nSSID: retro-go\nPassword: retro-go\n\nBrowse: http://192.168.4.1/",
-        [RG_LANG_FR] = "Demarrer point d'acces?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/",
+        [RG_LANG_FR] = "Démarrer point d'accès?\n\nSSID: retro-go\nPassword: retro-go\n\nAdresse: http://192.168.4.1/",
     },
     {
         [RG_LANG_EN] = "Wi-Fi enable",
@@ -401,11 +397,11 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Wi-Fi access point",
-        [RG_LANG_FR] = "Point d'acces WiFi",
+        [RG_LANG_FR] = "Point d'accès WiFi",
     },
     {
         [RG_LANG_EN] = "Network",
-        [RG_LANG_FR] = "Reseau",
+        [RG_LANG_FR] = "Réseau",
     },
     {
         [RG_LANG_EN] = "IP address",
@@ -415,7 +411,7 @@ static const char *translations[][RG_LANG_MAX] =
     // retro-go settings
     {
         [RG_LANG_EN] = "Brightness",
-        [RG_LANG_FR] = "Luminosite",
+        [RG_LANG_FR] = "Luminosité",
     },
     {
         [RG_LANG_EN] = "Volume",
@@ -431,7 +427,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Theme",
-        [RG_LANG_FR] = "Theme",
+        [RG_LANG_FR] = "Thème",
     },
     {
         [RG_LANG_EN] = "Show clock",
@@ -479,7 +475,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Target",
-        [RG_LANG_FR] = "Cible",
+        [RG_LANG_FR] = "Appareil",
     },
     {
         [RG_LANG_EN] = "Website",
@@ -499,7 +495,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Reset settings",
-        [RG_LANG_FR] = "Reset parametres",
+        [RG_LANG_FR] = "Reset paramètres",
     },
 
     // save slot
@@ -582,6 +578,10 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_EN] = "Hide",
         [RG_LANG_FR] = "Cacher",
     },
+    {
+        [RG_LANG_EN] = "Tabs Visibility",
+        [RG_LANG_FR] = "Visibilitée onglets",
+    },
 
     // scroll modes
     {
@@ -641,20 +641,24 @@ static const char *translations[][RG_LANG_MAX] =
 
     // launcher options
     {
+        [RG_LANG_EN] = "Launcher Options",
+        [RG_LANG_FR] = "Options du lanceur",
+    },
+    {
         [RG_LANG_EN] = "Color theme",
         [RG_LANG_FR] = "Couleurs",
     },
     {
         [RG_LANG_EN] = "Preview",
-        [RG_LANG_FR] = "Apercu",
+        [RG_LANG_FR] = "Aperçu",
     },
     {
         [RG_LANG_EN] = "Scroll mode",
-        [RG_LANG_FR] = "Mode defilement",
+        [RG_LANG_FR] = "Mode défilement",
     },
     {
         [RG_LANG_EN] = "Start screen",
-        [RG_LANG_FR] = "Ecran demarrage",
+        [RG_LANG_FR] = "Ecran démarrage",
     },
     {
         [RG_LANG_EN] = "Hide tabs",
@@ -666,7 +670,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Startup app",
-        [RG_LANG_FR] = "App demarrage",
+        [RG_LANG_FR] = "App démarrage",
     },
     {
         [RG_LANG_EN] = "Build CRC cache",
@@ -674,7 +678,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Check for updates",
-        [RG_LANG_FR] = "Check for updates",
+        [RG_LANG_FR] = "Verifier mise à jour",
     },
     {
         [RG_LANG_EN] = "HTTP Server Busy...",
@@ -686,7 +690,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Storage mount failed.\nMake sure the card is FAT32.",
-        [RG_LANG_FR] = "Erreur montage SD.\nVerifiez que la carte est en FAT32.",
+        [RG_LANG_FR] = "Erreur carte SD.\nLa carte est bien en FAT32 ?",
     },
     // end of main.c
 
@@ -719,7 +723,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "File not found",
-        [RG_LANG_FR] = "Fichier non present",
+        [RG_LANG_FR] = "Fichier non présent",
     },
 
     // rom options
@@ -749,7 +753,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "File properties",
-        [RG_LANG_FR] = "Propriete",
+        [RG_LANG_FR] = "Propriétés fichier",
     },
     {
         [RG_LANG_EN] = "Delete selected file?",
@@ -780,7 +784,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Properties",
-        [RG_LANG_FR] = "Proprietes",
+        [RG_LANG_FR] = "Propriétés",
     },
     {
         [RG_LANG_EN] = "Resume",
@@ -804,11 +808,11 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Reset all settings",
-        [RG_LANG_FR] = "Reset parametres",
+        [RG_LANG_FR] = "Reset paramètres",
     },
     {
         [RG_LANG_EN] = "Reboot to factory ",
-        [RG_LANG_FR] = "Redemarrer usine",
+        [RG_LANG_FR] = "Redémarrer usine",
     },
     {
         [RG_LANG_EN] = "Reboot to launcher",
@@ -816,11 +820,11 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Recovery mode",
-        [RG_LANG_FR] = "Mode de recuperation",
+        [RG_LANG_FR] = "Mode de recupération",
     },
     {
         [RG_LANG_EN] = "System Panic!",
-        [RG_LANG_FR] = "Plantage systeme!",
+        [RG_LANG_FR] = "Plantage système!",
     },
     {
         [RG_LANG_EN] = "Save failed",
