@@ -198,14 +198,17 @@ def load_ttf_font(font_path, font_size):
     # but there are some things we can do to reduce the discrepency without affecting the look.
     max_height = max(g["ofs_y"] + g["box_h"] for g in font_data)
     if max_height > font_size:
-        # If there's a consistent excess of top padding across all glyphs, we can remove it
         min_ofs_y = min((g["ofs_y"] if g["box_h"] > 0 else 1000) for g in font_data)
-        if min_ofs_y > 0:
-            for key, glyph in enumerate(font_data):
-                if glyph["ofs_y"] >= min_ofs_y:
-                    font_data[key]["ofs_y"] -= min_ofs_y
-        # TODO: In some fonts like Vera and DejaVu we can shift _ and | to gain an extra pixel
-        #        I did it manually in the fonts bundled with retro go but we probably add some fancy logic instead
+        for key, glyph in enumerate(font_data):
+            offset = glyph["ofs_y"]
+            # If there's a consistent excess of top padding across all glyphs, we can remove it
+            if min_ofs_y > 0 and offset >= min_ofs_y:
+                offset -= min_ofs_y
+            # In some fonts like Vera and DejaVu we can shift _ and | to gain an extra pixel
+            if chr(glyph["char_code"]) in ["_", "|"] and offset + glyph["box_h"] > font_size and offset > 0:
+                offset -= 1
+            font_data[key]["ofs_y"] = offset
+
         max_height = max(g["ofs_y"] + g["box_h"] for g in font_data)
 
     print(f"Glyphs: {len(font_data)}, font_size: {font_size}, max_height: {max_height}")
