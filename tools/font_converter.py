@@ -191,6 +191,15 @@ def load_ttf_font(font_path, font_size):
         }
         font_data.append(glyph_data)
 
+    # Some fonts have too much padding at the top, it increases line height for no reason
+    # We can remove it without affecting the look when it's consistent across the set
+    min_ofs_y = min((g["ofs_y"] if g["box_h"] > 0 else 1000) for g in font_data)
+    if min_ofs_y > 0:
+        print(f"Trimming {min_ofs_y} from ofs_y");
+        for key, glyph in enumerate(font_data):
+            if glyph["ofs_y"] >= min_ofs_y:
+                font_data[key]["ofs_y"] -= min_ofs_y
+
     return (font_name, font_size, font_data)
 
 def load_c_font(file_path):
