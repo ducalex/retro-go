@@ -129,11 +129,11 @@ def load_ttf_font(font_path, font_size):
 
     for char_code in get_char_list():
         char = chr(char_code)
-        print(f"Processing character: {char} ({char_code})")
 
         image = Image.new("1", (font_size * 2, font_size * 2), 0) # generate mono bmp, 0 = black color
         draw = ImageDraw.Draw(image)
-        draw.text((0, 0), char, font=pil_font, fill=255)
+        # Draw at pos 1 otherwise some glyphs are clipped. we remove the added offset below
+        draw.text((1, 0), char, font=pil_font, fill=255)
 
         bbox = find_bounding_box(image)  # Get bounding box
 
@@ -144,6 +144,8 @@ def load_ttf_font(font_path, font_size):
             x0, y0, x1, y1 = bbox
             width, height = x1 - x0, y1 - y0
             offset_x, offset_y = x0, y0
+            if offset_x:
+                offset_x -= 1
 
         try: # Get the real glyph width including padding on the right that the box will remove
             adv_w = int(draw.textlength(char, font=pil_font))
@@ -191,14 +193,22 @@ def load_ttf_font(font_path, font_size):
         }
         font_data.append(glyph_data)
 
-    # Some fonts have too much padding at the top, it increases line height for no reason
-    # We can remove it without affecting the look when it's consistent across the set
-    min_ofs_y = min((g["ofs_y"] if g["box_h"] > 0 else 1000) for g in font_data)
-    if min_ofs_y > 0:
-        print(f"Trimming {min_ofs_y} from ofs_y");
-        for key, glyph in enumerate(font_data):
-            if glyph["ofs_y"] >= min_ofs_y:
-                font_data[key]["ofs_y"] -= min_ofs_y
+    # The font render glyphs at font_size but they can shift them up or down which will cause the max_height
+    # to exceed font_size. It's not desirable to remove the padding entirely (the "enforce" option above), 
+    # but there are some things we can do to reduce the discrepency without affecting the look.
+    max_height = max(g["ofs_y"] + g["box_h"] for g in font_data)
+    if max_height > font_size:
+        # If there's a consistent excess of top padding across all glyphs, we can remove it
+        min_ofs_y = min((g["ofs_y"] if g["box_h"] > 0 else 1000) for g in font_data)
+        if min_ofs_y > 0:
+            for key, glyph in enumerate(font_data):
+                if glyph["ofs_y"] >= min_ofs_y:
+                    font_data[key]["ofs_y"] -= min_ofs_y
+        # TODO: In some fonts like Vera and DejaVu we can shift _ and | to gain an extra pixel
+        #        I did it manually in the fonts bundled with retro go but we probably add some fancy logic instead
+        max_height = max(g["ofs_y"] + g["box_h"] for g in font_data)
+
+    print(f"Glyphs: {len(font_data)}, font_size: {font_size}, max_height: {max_height}")
 
     return (font_name, font_size, font_data)
 
