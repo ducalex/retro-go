@@ -278,7 +278,7 @@ def generate_font_data():
 
         if bounding_box:
             canvas.create_rectangle((offset_x_1+offset_x)*p_size, (offset_y_1+offset_y)*p_size, (width+offset_x_1+offset_x)*p_size, (height+offset_y_1+offset_y)*p_size, width=1, outline="red", fill='') # bounding box
-            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1+adv_w)*p_size, (offset_y_1+offset_y+height)*p_size, width=1, outline='blue', fill='')
+            canvas.create_rectangle((offset_x_1)*p_size, (offset_y_1)*p_size, (offset_x_1+adv_w)*p_size, (offset_y_1+max_height)*p_size, width=1, outline='blue', fill='')
 
         offset_x_1 += adv_w + 1
 
