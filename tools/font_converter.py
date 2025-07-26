@@ -133,21 +133,22 @@ def load_ttf_font(font_path, font_size):
 
         image = Image.new("1", (font_size * 2, font_size * 2), 0) # generate mono bmp, 0 = black color
         draw = ImageDraw.Draw(image)
-        draw.text((1, 0), char, font=pil_font, fill=255)
+        draw.text((0, 0), char, font=pil_font, fill=255)
 
         bbox = find_bounding_box(image)  # Get bounding box
 
         if bbox is None: # control character / space
             width, height = 0, 0
             offset_x, offset_y = 0, 0
-            try:
-                adv_w = draw.textlength(char, font=pil_font) + 1
-            except:
-                adv_w = 0
         else:
             x0, y0, x1, y1 = bbox
             width, height = x1 - x0, y1 - y0
             offset_x, offset_y = x0, y0
+
+        try: # Get the real glyph width including padding on the right that the box will remove
+            adv_w = int(draw.textlength(char, font=pil_font))
+            adv_w = max(adv_w, width + offset_x)
+        except:
             adv_w = width + offset_x
 
         # Shift or crop glyphs that would be drawn beyond font_size. Most glyphs are not affected by this.
@@ -417,7 +418,7 @@ if __name__ == "__main__":
     Entry(frame, textvariable=list_char_ranges, width=30).pack(side="left", padx=5)
 
     # Variable to hold the state of the checkbox
-    bounding_box_bool = IntVar()  # 0 for unchecked, 1 for checked
+    bounding_box_bool = IntVar(value=1)  # 0 for unchecked, 1 for checked
     Checkbutton(frame, text="Bounding box", variable=bounding_box_bool).pack(side="left", padx=10)
 
     # Button to launch the font generation function
