@@ -102,7 +102,7 @@ void rg_gui_init(void)
     gui.screen_height = rg_display_get_info()->screen.height;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERABOLD_11));
+    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_11));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_number(NS_GLOBAL, SETTING_CLOCK, 0);
     gui.initialized = true;
@@ -215,12 +215,12 @@ bool rg_gui_set_font(int index)
 
     gui.font_index = index;
     gui.style.font = font;
-    gui.style.font_height = font->height;
-    gui.style.font_width = font->width ?: 8;
+    gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
-    RG_LOGI("Font set to: points=%d\n", gui.style.font_height);
+    RG_LOGI("Font set to: %s (height=%d, scaling=%.2f)\n",
+        gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
 
     return true;
 }
@@ -261,55 +261,76 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int c)
 {
     // Some glyphs are always zero width
-    if (!font || c == '\r' || c == '\n' || c < 8 || c > 254)
+    if (!font || c == '\r' || c == '\n' || c == 0) // || c < 8 || c > 0xFFFF)
         return 0;
 
-    c -= 32; // we didn't included the first 32 control chars in the fonts
+    if (points <= 0)
+        points = font->height;
 
-    // getting the glyph width :
-    const rg_font_glyph_dsc_t *glyph_dsc = font->glyph_dsc;
-    size_t glyph_width = glyph_dsc[c].adv_w;
-
-    if (output)
+    const uint8_t *ptr = font->data;
+    const rg_font_glyph_t *glyph = (rg_font_glyph_t *)ptr;
+    // for (size_t i = 0; i < font->chars && glyph->code && glyph->code != c; ++i)
+    while (glyph->code && glyph->code != c)
     {
-        // getting the rest of the glyph data to draw it
-        uint8_t width, height;
-        int8_t xOffset, yOffset;
+        if (glyph->width != 0)
+            ptr += (((glyph->width * glyph->height) - 1) / 8) + 1;
+        ptr += sizeof(rg_font_glyph_t);
+        glyph = (rg_font_glyph_t *)ptr;
+    }
 
-        width = glyph_dsc[c].box_w;
-        height = glyph_dsc[c].box_h;
-        xOffset = glyph_dsc[c].ofs_x;
-        yOffset = glyph_dsc[c].ofs_y-2;
-
-        uint16_t bitmap_index = glyph_dsc[c].bitmap_index;
-        const uint8_t *bitmap_data = font->bitmap_data;
-        const uint8_t *data = &bitmap_data[bitmap_index];
-
-        int ch = 0, mask = 0x80;
-        for (int y = 0; y < height; y++)
+    if (glyph && glyph->code == c) // Glyph found
+    {
+        // Based on code by Boris Lovosevic (https://github.com/loboris)
+        int yOffset = glyph->yOffset;
+        int width = glyph->width;
+        int height = glyph->height;
+        int xOffset = glyph->xOffset < 0x80 ? glyph->xOffset : -(0xFF - glyph->xOffset);
+        int xDelta = glyph->xDelta;
+        const uint8_t *data = glyph->data;
+        if (output)
         {
-            output[yOffset + y] = 0;
-            for (int x = 0; x < width; x++)
+            int ch = 0, mask = 0x80;
+            for (int y = 0; y < height; y++)
             {
-                if (((x + (y * width)) % 8) == 0)
+                uint32_t row = 0;
+                for (int x = 0; x < width; x++)
                 {
-                    mask = 0x80;
-                    ch = *data++;
+                    if (((x + (y * width)) % 8) == 0)
+                    {
+                        mask = 0x80;
+                        ch = *data++;
+                    }
+                    if ((ch & mask) != 0)
+                        row |= (1 << (xOffset + x));
+                    mask >>= 1;
                 }
-                if ((ch & mask) != 0)
-                    output[yOffset + y] |= (1 << (xOffset + x));
-                mask >>= 1;
+                output[yOffset + y] = row;
+            }
+            // Vertical stretching
+            if (points != font->height)
+            {
+                float scale = (float)points / font->height;
+                for (int y = points - 1; y >= 0; y--)
+                    output[y] = output[(int)(y / scale)];
             }
         }
-        // Vertical stretching
-        if (points && points != font->height)
-        {
-            float scale = (float)points / font->height;
-            for (int y = points - 1; y >= 0; y--)
-                output[y] = output[(int)(y / scale)];
-        }
+        return RG_MAX(width, xDelta);
     }
-    return glyph_width;
+    // else if (font != &font_basic8x8) // Glyph not found, try fallback font
+    // {
+    //     return get_glyph(output, &font_basic8x8, points, c);
+    // }
+    else // Glyph not found, no fallback
+    {
+        size_t box_width = font->width ?: 8;
+        if (output) // draw missing box
+        {
+            uint32_t mask = ~((0xFFFFFFFF << (box_width - 1)) | 1);
+            for (size_t i = 0; i < points; ++i)
+                output[i] = (0xAAAAAAAA << (i & 1)) & mask;
+        }
+        return box_width;
+    }
 }
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
@@ -317,7 +338,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 {
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
     int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
-    int monospace = ((flags & RG_TEXT_MONOSPACE)) ? gui.style.font_width : 0;
+    int monospace = ((flags & RG_TEXT_MONOSPACE) || font->type == 0) ? font->width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
     const rg_font_t *font = gui.style.font;
@@ -1810,9 +1831,9 @@ void rg_gui_game_menu(void)
 
     switch (sel)
     {
-        case 1000: if ((slot = rg_gui_savestate_menu(_("Save"), 0, 0)) >= 0) rg_emu_save_state(slot); break;
-        case 2000: if ((slot = rg_gui_savestate_menu(_("Save"), 0, 0)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
-        case 3001: if ((slot = rg_gui_savestate_menu(_("Load"), 0, 0)) >= 0) rg_emu_load_state(slot); break;
+        case 1000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0) rg_emu_save_state(slot); break;
+        case 2000: if ((slot = rg_gui_savestate_menu(_("Save"), rom_path)) >= 0 && rg_emu_save_state(slot)) rg_system_exit(); break;
+        case 3001: if ((slot = rg_gui_savestate_menu(_("Load"), rom_path)) >= 0) rg_emu_load_state(slot); break;
         case 3002: rg_emu_reset(false); break;
         case 3003: rg_emu_reset(true); break;
     #ifdef RG_ENABLE_NETPLAY
