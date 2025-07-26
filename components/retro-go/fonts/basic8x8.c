@@ -28,7 +28,7 @@
 // # characters : 191
 
 const rg_font_t font_basic8x8 = {
-    .name = "Basic",
+    .name = "Basic 8",
     .type = 0,
     .width = 8,
     .height = 8,

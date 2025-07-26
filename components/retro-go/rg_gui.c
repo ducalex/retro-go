@@ -109,7 +109,7 @@ void rg_gui_init(void)
     gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_12));
+    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_11));
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
     gui.initialized = true;
@@ -229,7 +229,7 @@ bool rg_gui_set_font(int index)
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
-    RG_LOGI("Font set to: %s (points=%d, scaling=%.2f)\n",
+    RG_LOGI("Font set to: %s (height=%d, scaling=%.2f)\n",
         gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
 
     return true;
@@ -1338,7 +1338,10 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
         return RG_DIALOG_REDRAW;
     if (event == RG_DIALOG_NEXT && rg_gui_set_font(gui.font_index + 1))
         return RG_DIALOG_REDRAW;
-    sprintf(option->value, "%s %d", gui.style.font->name, gui.style.font_height);
+    if (gui.style.font_height != gui.style.font->height)
+        sprintf(option->value, "%s (%d)", gui.style.font->name, gui.style.font_height);
+    else
+        sprintf(option->value, "%s", gui.style.font->name);
     return RG_DIALOG_VOID;
 }
 
