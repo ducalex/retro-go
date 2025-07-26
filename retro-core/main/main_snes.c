@@ -66,8 +66,10 @@ static const char *SNES_BUTTONS[] = {
 
 #define AUDIO_LOW_PASS_RANGE ((60 * 65536) / 100)
 
+static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
+static rg_audio_sample_t *audioBuffer;
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
@@ -187,8 +189,8 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
 {
     if (event == RG_DIALOG_ENTER)
     {
-        const rg_gui_option_t options[20] = {
-            {-1, _("Profile"), _("<profile name>"), RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
+        const rg_gui_option_t options[] = {
+            {-1, _("Profile"), "-", RG_DIALOG_FLAG_NORMAL, &change_keymap_cb},
             {-2, "", NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
             {-3, "snes9x  ", "handheld", RG_DIALOG_FLAG_MESSAGE, NULL},
             {0, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
@@ -209,7 +211,7 @@ static rg_gui_event_t menu_keymap_cb(rg_gui_option_t *option, rg_gui_event_t eve
             {15, "-", "-", RG_DIALOG_FLAG_HIDDEN, &change_keymap_cb},
             RG_DIALOG_END,
         };
-        rg_gui_dialog(_("Controls"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
         return RG_DIALOG_REDRAW;
     }
 
@@ -282,6 +284,14 @@ static void S9xAudioCallback(void)
 }
 #endif
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb};
+    *dest++ = (rg_gui_option_t){0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb};
+    *dest++ = (rg_gui_option_t){0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void snes_main(void)
 {
     const rg_handlers_t handlers = {
@@ -290,20 +300,17 @@ void snes_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
+        .options = &options_handler,
     };
-    const rg_gui_option_t options[] = {
-        {0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &apu_toggle_cb},
-        {0, _("Audio filter"), "-", RG_DIALOG_FLAG_NORMAL, &lowpass_filter_cb},
-        {0, _("Controls"),     "-", RG_DIALOG_FLAG_NORMAL, &menu_keymap_cb},
-        RG_DIALOG_END,
-    };
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
     updates[0]->height = SNES_HEIGHT;
     currentUpdate = updates[0];
+
+    audioBuffer = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
@@ -314,11 +321,9 @@ void snes_main(void)
     Settings.ControllerOption = SNES_JOYPAD;
     Settings.HBlankStart = (256 * Settings.H_Max) / SNES_HCOUNTER_MAX;
     Settings.SoundPlaybackRate = AUDIO_SAMPLE_RATE;
+    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
     Settings.DisableSoundEcho = false;
     Settings.InterpolatedSound = true;
-#ifdef USE_BLARGG_APU
-    Settings.SoundInputRate = AUDIO_SAMPLE_RATE;
-#endif
 
     if (!S9xInitDisplay())
         RG_PANIC("Display init failed!");
@@ -358,7 +363,7 @@ void snes_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = Memory.ROMFramesPerSecond;
+    rg_system_set_tick_rate(Memory.ROMFramesPerSecond);
     app->frameskip = 3;
 
     bool menuCancelled = false;
@@ -421,11 +426,10 @@ void snes_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

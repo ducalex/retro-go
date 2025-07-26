@@ -126,22 +126,17 @@ typedef enum
     RG_EVENT_SLEEP        = RG_EVENT_TYPE_POWER | 2,
 } rg_event_t;
 
-typedef bool (*rg_state_handler_t)(const char *filename);
-typedef bool (*rg_reset_handler_t)(bool hard);
-typedef void (*rg_event_handler_t)(int event, void *data);
-typedef bool (*rg_screenshot_handler_t)(const char *filename, int width, int height);
-typedef int  (*rg_mem_read_handler_t)(int addr);
-typedef int  (*rg_mem_write_handler_t)(int addr, int value);
-
 typedef struct
 {
-    rg_state_handler_t loadState;       // rg_emu_load_state() handler
-    rg_state_handler_t saveState;       // rg_emu_save_state() handler
-    rg_reset_handler_t reset;           // rg_emu_reset() handler
-    rg_screenshot_handler_t screenshot; // rg_emu_screenshot() handler
-    rg_event_handler_t event;           // listen to retro-go system events
-    rg_mem_read_handler_t memRead;      // Used by for cheats and debugging
-    rg_mem_write_handler_t memWrite;    // Used by for cheats and debugging
+    bool (*loadState)(const char *filename);                         // rg_emu_load_state() handler
+    bool (*saveState)(const char *filename);                         // rg_emu_save_state() handler
+    bool (*reset)(bool hard);                                        // rg_emu_reset() handler
+    bool (*screenshot)(const char *filename, int width, int height); // rg_emu_screenshot() handler
+    void (*event)(int event, void *data);                            // listen to retro-go system events
+    int (*memRead)(int addr);                                        // Used by for cheats and debugging
+    int (*memWrite)(int addr, int value);                            // Used by for cheats and debugging
+    void (*options)(rg_gui_option_t *dest);                          // Add extra options to rg_gui_options_menu()
+    void (*about)(rg_gui_option_t *dest);                            // Add extra options to rg_gui_about_menu()
 } rg_handlers_t;
 
 typedef struct
@@ -177,6 +172,7 @@ typedef struct
     float speed;
     int sampleRate;
     int tickRate;
+    int frameTime;
     int frameskip;
     int overclock;
     int tickTimeout;
@@ -189,7 +185,6 @@ typedef struct
     int logLevel;
     int saveSlot;
     const char *romPath;
-    const rg_gui_option_t *options;
     rg_handlers_t handlers;
     bool initialized;
 } rg_app_t;
@@ -214,8 +209,8 @@ typedef struct
     int freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, const rg_gui_option_t *options);
+rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused);
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
@@ -227,6 +222,8 @@ void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
 void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator_mask(rg_indicator_t indicator);
+void rg_system_set_tick_rate(int tickRate);
+int rg_system_get_tick_rate(void);
 void rg_system_set_overclock(int level);
 int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);

@@ -506,7 +506,11 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
  * to do some testing to determine if the increased executable size is acceptable...
  */
 #if RG_ZIP_SUPPORT
+
+#if defined(ESP_PLATFORM) && ESP_IDF_VERSION_MAJOR < 5
 #include <rom/miniz.h>
+#else
+#include <miniz.h>
 #endif
 
 #define ZIP_MAGIC 0x04034b50
@@ -530,7 +534,6 @@ typedef struct __attribute__((packed))
 
 bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
 {
-#if RG_ZIP_SUPPORT
     RG_ASSERT_ARG(data_out && data_len);
     CHECK_PATH(zip_path);
 
@@ -636,8 +639,11 @@ _fail:
     free(decomp);
     fclose(fp);
     return false;
+}
 #else
+bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data_out, size_t *data_len, uint32_t flags)
+{
     RG_LOGE("ZIP support hasn't been enabled!");
     return false;
-#endif
 }
+#endif

@@ -38,8 +38,8 @@ void gui_init(bool cold_boot)
         .start_screen = rg_settings_get_number(NS_APP, SETTING_START_SCREEN, START_SCREEN_AUTO),
         .show_preview = rg_settings_get_number(NS_APP, SETTING_SHOW_PREVIEW, PREVIEW_MODE_SAVE_COVER),
         .scroll_mode  = rg_settings_get_number(NS_APP, SETTING_SCROLL_MODE, SCROLL_MODE_CENTER),
-        .width        = rg_display_get_info()->screen.width,
-        .height       = rg_display_get_info()->screen.height,
+        .width        = rg_display_get_width(),
+        .height       = rg_display_get_height(),
     };
     // Auto: Show carousel on cold boot, browser on warm boot (after cleanly exiting an emulator)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
@@ -87,7 +87,7 @@ tab_t *gui_add_tab(const char *name, const char *desc, void *arg, void *event_ha
 
 void gui_init_tab(tab_t *tab)
 {
-    if (tab->initialized)
+    if (!tab || tab->initialized)
         return;
 
     tab->initialized = true;
@@ -95,6 +95,19 @@ void gui_init_tab(tab_t *tab)
 
     gui_event(TAB_INIT, tab);
     gui_scroll_list(tab, SCROLL_SET, tab->listbox.cursor);
+}
+
+void gui_deinit_tab(tab_t *tab)
+{
+    if (!tab || !tab->initialized)
+        return;
+
+    // FIXME: Maybe the other images should be freed too?
+    gui_event(TAB_DEINIT, tab);
+    gui_set_preview(tab, NULL);
+    gui_resize_list(tab, 10);
+
+    tab->initialized = false;
 }
 
 tab_t *gui_get_tab(int index)
@@ -105,10 +118,10 @@ tab_t *gui_get_tab(int index)
 void gui_invalidate(void)
 {
     for (size_t i = 0; i < gui.tabs_count; ++i)
-    {
-        if (gui.tabs[i]->initialized)
-            gui_event(TAB_RESCAN, gui.tabs[i]);
-    }
+        gui_deinit_tab(gui.tabs[i]);
+    // Kick the user out of the tab and only re-init upon manual re-entry
+    gui.browse = false;
+    // gui_init_tab(gui_get_current_tab());
 }
 
 rg_image_t *gui_get_image(const char *type, const char *subtype)
@@ -306,52 +319,54 @@ void gui_resize_list(tab_t *tab, int new_size)
 void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 {
     listbox_t *list = &tab->listbox;
-
-    int cur_cursor = RG_MAX(RG_MIN(list->cursor, list->length - 1), 0);
+    int list_length = list->length;
     int old_cursor = list->cursor;
+    int new_cursor = RG_MAX(RG_MIN(old_cursor, list_length - 1), 0);
 
-    if (list->length == 0)
+    if (list_length == 0)
     {
-        // cur_cursor = -1;
-        cur_cursor = 0;
+        // new_cursor = -1;
+        new_cursor = 0;
     }
     else if (mode == SCROLL_SET)
     {
-        cur_cursor = arg;
+        new_cursor = arg;
     }
     else if (mode == SCROLL_LINE)
     {
-        cur_cursor += arg;
+        new_cursor += arg;
+        // In line mode we wrap around
+        if (new_cursor > list_length - 1)
+            new_cursor = 0;
+        else if (new_cursor < 0)
+            new_cursor = list_length - 1;
     }
     else if (mode == SCROLL_PAGE)
     {
-        // int start = list->items[cur_cursor].text[0];
-        int direction = arg > 0 ? 1 : -1;
-        for (int max = max_visible_lines(tab, NULL); max > 0; --max)
-        {
-            cur_cursor += direction;
-            if (cur_cursor < 0 || cur_cursor >= list->length)
-                break;
-            // if (start != list->items[cur_cursor].text[0])
-            //     break;
-        }
+        new_cursor += arg * max_visible_lines(tab, NULL);
+        // In page mode we stop at the edges
+        if (new_cursor > list_length - 1)
+            new_cursor = list_length - 1;
+        else if (new_cursor < 0)
+            new_cursor = 0;
     }
 
-    if (cur_cursor < 0) cur_cursor = list->length - 1;
-    if (cur_cursor >= list->length) cur_cursor = 0;
+    // Check for invalid cursor
+    if (new_cursor < 0 || new_cursor > list_length - 1)
+    {
+        RG_LOGW("Invalid cursor position: %d, list length: %d", new_cursor, list_length);
+        new_cursor = 0; // -1;
+    }
 
-    list->cursor = cur_cursor;
-
-    if (list->length && list->items[list->cursor].arg)
-        sprintf(tab->status[0].left, "%d / %d", (list->cursor + 1) % 10000, list->length % 10000);
+    if (list_length > 0 && list->items[new_cursor].arg)
+        sprintf(tab->status[0].left, "%d / %d", (new_cursor + 1) % 10000, list_length % 10000);
     else
         strcpy(tab->status[0].left, "List empty");
 
-    gui_event(TAB_SCROLL, tab);
-
-    if (cur_cursor != old_cursor)
+    // if (new_cursor != old_cursor)
     {
-        gui_redraw();
+        list->cursor = new_cursor;
+        gui_event(TAB_SCROLL, tab);
     }
 }
 
@@ -400,7 +415,9 @@ void gui_draw_background(tab_t *tab, int shade)
 
     if (!tab->background)
     {
-        tab->background = gui_get_image("background", tab->name);
+        tab->background = gui_get_image("background", tab->name); // Try background_<tabname>.png
+        if (!tab->background)
+            tab->background = gui_get_image("background", NULL); // Fallback to a background.png
         tab->background_shade = 0;
         if (tab->background && (tab->background->width != gui.width || tab->background->height != gui.height))
         {

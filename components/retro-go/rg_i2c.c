@@ -10,8 +10,6 @@
 #endif
 
 static bool i2c_initialized = false;
-static bool gpio_extender_initialized = false;
-static uint8_t gpio_extender_address = 0x00;
 
 #define TRY(x)                 \
     if ((err = (x)) != ESP_OK) \
@@ -116,10 +114,10 @@ fail:
     return false;
 }
 
-uint8_t rg_i2c_read_byte(uint8_t addr, uint8_t reg)
+int rg_i2c_read_byte(uint8_t addr, uint8_t reg)
 {
-    uint8_t value = 0;
-    return rg_i2c_read(addr, reg, &value, 1) ? value : 0;
+    uint8_t value;
+    return rg_i2c_read(addr, reg, &value, 1) ? value : -1;
 }
 
 bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
@@ -127,89 +125,167 @@ bool rg_i2c_write_byte(uint8_t addr, uint8_t reg, uint8_t value)
     return rg_i2c_write(addr, reg, &value, 1);
 }
 
-#if RG_I2C_DRIVER == 1
 
-#define AW9523_REG_INPUT0    0x00 ///< Register for reading input values
-#define AW9523_REG_OUTPUT0   0x02 ///< Register for writing output values
-#define AW9523_REG_POLARITY0 0x04 ///< Register for polarity inversion of inputs
-#define AW9523_REG_CONFIG0   0x06 ///< Register for configuring direction
+#ifdef RG_I2C_GPIO_DRIVER
+
+typedef struct {int input_reg, output_reg, direction_reg, pullup_reg;} _gpio_port;
+typedef struct {uint8_t reg, value;} _gpio_sequence;
+
+#if RG_I2C_GPIO_DRIVER == 1 // AW9523
+
+static const _gpio_port gpio_ports[] = {
+    {0x00, 0x02, 0x04, -1}, // PORT 0
+    {0x01, 0x03, 0x05, -1}, // PORT 1
+};
+static const _gpio_sequence gpio_init_seq[] = {
+    {0x7F, 0x00  }, // Software reset (is it really necessary?)
+    {0x11, 1 << 4}, // Push-Pull mode
+};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+
+#elif RG_I2C_GPIO_DRIVER == 2 // PCF9539
+
+static const _gpio_port gpio_ports[] = {
+    {0x00, 0x02, 0x06, -1}, // PORT 0
+    {0x01, 0x03, 0x07, -1}, // PORT 1
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+
+#elif RG_I2C_GPIO_DRIVER == 3 // MCP23017
+
+// Mappings when IOCON.BANK = 0 (which should be default on power-on)
+static const _gpio_port gpio_ports[] = {
+    {0x12, 0x14, 0x00, 0x0C}, // PORT A
+    {0x13, 0x15, 0x01, 0x0D}, // PORT B
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+
+#elif RG_I2C_GPIO_DRIVER == 4 // PCF8575
+
+static const _gpio_port gpio_ports[] = {
+    {-1, -1, -1, -1}, // PORT 0
+    {-1, -1, -1, -1}, // PORT 1
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+static rg_gpio_mode_t PCF8575_mode = -1;
 
 #else
 
-#define AW9523_REG_CHIPID     0x10 ///< Register for hardcode chip ID
-#define AW9523_REG_SOFTRESET  0x7F ///< Register for soft resetting
-#define AW9523_REG_INPUT0     0x00 ///< Register for reading input values
-#define AW9523_REG_OUTPUT0    0x02 ///< Register for writing output values
-#define AW9523_REG_CONFIG0    0x04 ///< Register for configuring direction
-#define AW9523_REG_INTENABLE0 0x06 ///< Register for enabling interrupt
-#define AW9523_REG_GCR        0x11 ///< Register for general configuration
-#define AW9523_REG_LEDMODE    0x12 ///< Register for configuring const current
+#error "Unknown I2C GPIO Extender driver type!"
 
 #endif
+
+static const size_t gpio_ports_count = RG_COUNT(gpio_ports);
+static uint8_t gpio_output_values[RG_COUNT(gpio_ports)];
+static uint8_t gpio_address = RG_I2C_GPIO_ADDR;
+static bool gpio_initialized = false;
 
 
 bool rg_i2c_gpio_init(void)
 {
-    if (gpio_extender_initialized)
+    if (gpio_initialized)
         return true;
 
     if (!i2c_initialized && !rg_i2c_init())
         return false;
 
-    gpio_extender_initialized = true;
-#if RG_I2C_DRIVER == 1
-    gpio_extender_address = 0x74;
-
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_POLARITY0 + 1, 0x00);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0,  0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1,  0xFF);
-#else
-    gpio_extender_address = 0x58;
-
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_SOFTRESET, 0);
-    rg_usleep(10 * 1000);
-
-    uint8_t id = rg_i2c_read_byte(gpio_extender_address, AW9523_REG_CHIPID);
-    if (id != 0x23)
+    // Configure extender-specific registers if needed (disable open-drain, interrupts, inversion, etc)
+    for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_init_seq); ++i)
     {
-        RG_LOGE("AW9523 invalid ID 0x%x found", id);
-        return false;
+        if (!rg_i2c_write_byte(gpio_address, gpio_init_seq[i].reg, gpio_init_seq[i].value))
+            goto fail;
     }
 
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_CONFIG0 + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_LEDMODE + 1, 0xFF);
-    rg_i2c_write_byte(gpio_extender_address, AW9523_REG_GCR, 1 << 4);
-#endif
+    // Set all pins as inputs and clear output latches
+    for (size_t i = 0; i < gpio_ports_count; ++i)
+    {
+        if (!rg_i2c_gpio_configure_port(i, 0xFF, RG_GPIO_INPUT))
+            goto fail;
+        if (!rg_i2c_gpio_write_port(i, 0x00))
+            goto fail;
+    }
+
+    RG_LOGI("GPIO Extender ready (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
+    gpio_initialized = true;
     return true;
+fail:
+    RG_LOGE("Failed to initialize extender (driver:%d, addr:0x%02X).", RG_I2C_GPIO_DRIVER, gpio_address);
+    gpio_initialized = false;
+    return false;
 }
 
 bool rg_i2c_gpio_deinit(void)
 {
-    gpio_extender_initialized = false;
-    gpio_extender_address = 0;
+    if (gpio_initialized)
+    {
+        for (size_t i = 0; (int)i < (int)RG_COUNT(gpio_deinit_seq); ++i)
+            rg_i2c_write_byte(gpio_address, gpio_deinit_seq[i].reg, gpio_deinit_seq[i].value);
+        // Should we reset all pins to be high impedance?
+        gpio_initialized = false;
+    }
     return true;
 }
 
-bool rg_i2c_gpio_set_direction(int pin, int mode)
+static bool update_register(int reg, uint8_t clear_mask, uint8_t set_mask)
 {
-    uint8_t reg = AW9523_REG_CONFIG0 + (pin >> 3), mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
-    return rg_i2c_write_byte(gpio_extender_address, reg, mode ? (val | mask) : (val & ~mask));
+    uint8_t value;
+    return rg_i2c_read(gpio_address, reg, &value, 1) &&
+           rg_i2c_write_byte(gpio_address, reg, (value & ~clear_mask) | set_mask);
 }
 
-uint8_t rg_i2c_gpio_read_port(int port)
+bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
-    return rg_i2c_read_byte(gpio_extender_address, AW9523_REG_INPUT0 + port);
+    if (port < 0 || port >= gpio_ports_count)
+        return false;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    uint16_t temp = 0xFFFF;
+    if (mask != 0xFF && mode != PCF8575_mode && (mode == RG_GPIO_OUTPUT || PCF8575_mode == RG_GPIO_OUTPUT))
+        RG_LOGW("PCF8575 mode cannot be set by pin. (mask is 0x%02X, expected 0xFF)", mask);
+    PCF8575_mode = mode;
+    if (mode != RG_GPIO_OUTPUT)
+        return rg_i2c_write(gpio_address, -1, &temp, 2) && rg_i2c_read(gpio_address, -1, &temp, 2);
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+#else
+    int direction_reg = gpio_ports[port].direction_reg;
+    int pullup_reg = gpio_ports[port].pullup_reg;
+    if (pullup_reg != -1 && !update_register(pullup_reg, mask, mode == RG_GPIO_INPUT_PULLUP ? mask : 0))
+        return false;
+    return update_register(direction_reg, mask, mode != RG_GPIO_OUTPUT ? mask : 0);
+#endif
+}
+
+int rg_i2c_gpio_read_port(int port)
+{
+    if (port < 0 || port >= gpio_ports_count)
+        return -1;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    uint8_t values[2];
+    return rg_i2c_read(gpio_address, -1, &values, 2) ? values[port & 1] : -1;
+#else
+    return rg_i2c_read_byte(gpio_address, gpio_ports[port].input_reg);
+#endif
 }
 
 bool rg_i2c_gpio_write_port(int port, uint8_t value)
 {
-    return rg_i2c_write_byte(gpio_extender_address, AW9523_REG_OUTPUT0 + port, value);
+    if (port < 0 || port >= gpio_ports_count)
+        return false;
+    gpio_output_values[port] = value;
+#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
+    if (PCF8575_mode != RG_GPIO_OUTPUT)
+        return true; // This is consistent with other extenders, where the output latch is updated even in input mode
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+#else
+    return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
+#endif
+}
+
+bool rg_i2c_gpio_set_direction(int pin, rg_gpio_mode_t mode)
+{
+    return rg_i2c_gpio_configure_port(pin >> 3, 1 << (pin & 7), mode);
 }
 
 int rg_i2c_gpio_get_level(int pin)
@@ -219,7 +295,8 @@ int rg_i2c_gpio_get_level(int pin)
 
 bool rg_i2c_gpio_set_level(int pin, int level)
 {
-    uint8_t reg = AW9523_REG_OUTPUT0 + (pin >> 3), mask = 1 << (pin & 7);
-    uint8_t val = rg_i2c_read_byte(gpio_extender_address, reg);
-    return rg_i2c_write_byte(gpio_extender_address, reg, level ? (val | mask) : (val & ~mask));
+    uint8_t port = (pin >> 3) % gpio_ports_count, mask = 1 << (pin & 7);
+    uint8_t value = (gpio_output_values[port] & ~mask) | (level ? mask : 0);
+    return rg_i2c_gpio_write_port(port, value);
 }
+#endif

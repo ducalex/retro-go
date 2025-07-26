@@ -10,17 +10,15 @@
 #define RG_AUDIO_USE_SDL2           1   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            99   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            99   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              0
 #define RG_SCREEN_SPEED             0
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        0
-#define RG_SCREEN_MARGIN_BOTTOM     0
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()
 
 // Input

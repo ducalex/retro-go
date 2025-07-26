@@ -9,7 +9,7 @@ static void lcd_init(void)
 {
     window = SDL_CreateWindow("Retro-Go", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT, 0);
     surface = SDL_GetWindowSurface(window);
-    canvas = SDL_CreateRGBSurfaceWithFormat(0, display.screen.width, display.screen.height, 16, SDL_PIXELFORMAT_RGB565);
+    canvas = SDL_CreateRGBSurfaceWithFormat(0, RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT, 16, SDL_PIXELFORMAT_RGB565);
 }
 
 static void lcd_deinit(void)

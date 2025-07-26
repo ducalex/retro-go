@@ -189,6 +189,14 @@ static void event_handler(int event, void *arg)
     }
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("YM2612 audio "), "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("SN76489 audio"), "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Z80 emulation"), "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -197,15 +205,10 @@ void app_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("YM2612 audio "), "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb},
-        {0, _("SN76489 audio"), "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb},
-        {0, _("Z80 emulation"), "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb},
-        RG_DIALOG_END
+        .options = &options_handler,
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, options);
+    app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, NULL);
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
@@ -253,7 +256,7 @@ void app_main(void)
         rg_emu_load_state(app->saveSlot);
     }
 
-    app->tickRate = 60;
+    rg_system_set_tick_rate(60);
     app->frameskip = 3;
 
     extern unsigned char gwenesis_vdp_regs[0x20];
@@ -402,11 +405,10 @@ void app_main(void)
 
         if (skipFrames == 0)
         {
-            int frameTime = 1000000 / (app->tickRate * app->speed);
             int elapsed = rg_system_timer() - startTime;
             if (app->frameskip > 0)
                 skipFrames = app->frameskip;
-            else if (elapsed > frameTime + 1500) // Allow some jitter
+            else if (elapsed > app->frameTime + 1500) // Allow some jitter
                 skipFrames = 1; // (elapsed / frameTime)
             else if (drawFrame && slowFrame)
                 skipFrames = 1;

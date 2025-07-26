@@ -190,9 +190,7 @@ typedef struct
 
    /* Sound options */
    uint32_t SoundPlaybackRate;
-#ifdef USE_BLARGG_APU
    uint32_t SoundInputRate;
-#endif
    bool     TraceSoundDSP;
    bool     EightBitConsoleSound; /* due to caching, this needs S9xSetEightBitConsoleSound() */
    int32_t  SoundBufferSize;

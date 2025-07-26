@@ -1,12 +1,9 @@
 #include "shared.h"
 
-rg_audio_sample_t audioBuffer[AUDIO_BUFFER_LENGTH];
-rg_app_t *app;
-
 
 void app_main(void)
 {
-    app = rg_system_init(AUDIO_SAMPLE_RATE, NULL, NULL);
+    rg_app_t *app = rg_system_init(AUDIO_SAMPLE_RATE, NULL, NULL);
 
     RG_LOGI("configNs=%s", app->configNs);
 

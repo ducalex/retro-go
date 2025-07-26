@@ -15,8 +15,8 @@ typedef enum
     RG_DIALOG_FOCUS_GAINED,
     RG_DIALOG_FOCUS_LOST,
 
+    RG_DIALOG_SELECT,
     RG_DIALOG_CANCEL,
-    RG_DIALOG_CLOSE,
     RG_DIALOG_REDRAW,
     RG_DIALOG_VOID,
 
@@ -111,7 +111,6 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-rg_image_t *rg_gui_load_image_file(const char *path);
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
@@ -130,13 +129,13 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int se
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
-char *rg_gui_prompt(const char *title, const char *message, const char *default_value);
+char *rg_gui_input_str(const char *title, const char *message, const char *default_value);
 
-int rg_gui_savestate_menu(const char *title, const char *rom_path, bool quick_return);
+int rg_gui_savestate_menu(const char *title, const char *rom_path);
 void rg_gui_options_menu(void);
 void rg_gui_game_menu(void);
-void rg_gui_about_menu(const rg_gui_option_t *extra_options);
-void rg_gui_debug_menu(const rg_gui_option_t *extra_options);
+void rg_gui_about_menu(void);
+void rg_gui_debug_menu(void);
 
 // Creates a 565LE color from C_RGB(255, 255, 255)
 #define C_RGB(r, g, b) ((((r) >> 3) << 11) | (((g) >> 2) << 5) | (((b) & 0x1F)))
@@ -145,7 +144,7 @@ void rg_gui_debug_menu(const rg_gui_option_t *extra_options);
 /* -- µGUI COLORS                                                                -- */
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */
 /* -------------------------------------------------------------------------------- */
-enum colors565
+enum colors565 // rg_color_t
 {
     C_MAROON                   = 0x8000,
     C_DARK_RED                 = 0x8800,
@@ -286,7 +285,7 @@ enum colors565
     C_GAINSBORO                = 0xDEDB,
     C_WHITE_SMOKE              = 0xF7BE,
     C_WHITE                    = 0xFFFF,
-    // C_TRANSPARENT              = -1,
-    C_TRANSPARENT              = C_MAGENTA,
-    C_NONE = -1,
+
+    C_TRANSPARENT = C_MAGENTA, // -1,
+    C_NONE = -2,
 };

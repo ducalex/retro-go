@@ -121,6 +121,10 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "Unknown status...",
     },
     {
+        [RG_LANG_EN] = "On",
+        [RG_LANG_FR] = "On",
+    },
+    {
         [RG_LANG_EN] = "Keyboard",
         [RG_LANG_FR] = "Clavier",
     },
@@ -155,6 +159,10 @@ static const char *translations[][RG_LANG_MAX] =
     {
         [RG_LANG_EN] = "Launcher options",
         [RG_LANG_FR] = "Options du lanceur",
+    },
+    {
+        [RG_LANG_EN] = "Emulator options",
+        [RG_LANG_FR] = "Options emulateur",
     },
     {
         [RG_LANG_EN] = "Date",
@@ -203,6 +211,10 @@ static const char *translations[][RG_LANG_MAX] =
     {
         [RG_LANG_EN] = "Sync",
         [RG_LANG_FR] = "Synchro",
+    },
+    {
+        [RG_LANG_EN] = "RTC config",
+        [RG_LANG_FR] = "Congig RTC",
     },
     {
         [RG_LANG_EN] = "Palette",
@@ -468,6 +480,10 @@ static const char *translations[][RG_LANG_MAX] =
     {
         [RG_LANG_EN] = "Website",
         [RG_LANG_FR] = "Site Web",
+    },
+    {
+        [RG_LANG_EN] = "Options",
+        [RG_LANG_FR] = "Options",
     },
     {
         [RG_LANG_EN] = "View credits",

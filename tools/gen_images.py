@@ -2,12 +2,12 @@ import os, sys, glob, textwrap
 
 # This scripts should be run to update images.c when you edit images
 
-os.chdir(sys.path[0])
+# os.chdir(sys.path[0])
 
 output = '#include "gui.h"\n\n'
 refs = ""
 
-for file in sorted(glob.glob("images/*.png")):
+for file in sorted(glob.glob("themes/default/*.png")):
     with open(file, "rb") as f:
         data = f.read()
         size = len(data)
@@ -26,5 +26,5 @@ for file in sorted(glob.glob("images/*.png")):
 
 output += "\nconst binfile_t *builtin_images[] = {%s\n0\n};\n" % refs
 
-with open("images.c", "w", newline="") as f:
+with open("launcher/main/images.c", "w", newline="") as f:
     f.write(output)

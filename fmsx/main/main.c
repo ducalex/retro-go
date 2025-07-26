@@ -399,16 +399,6 @@ static rg_gui_event_t input_select_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t fmsx_menu_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        InMenu = 2;
-        return RG_DIALOG_CANCEL;
-    }
-    return RG_DIALOG_VOID;
-}
-
 static void audioTask(void *arg)
 {
     RG_LOGI("task started");
@@ -420,6 +410,13 @@ static void audioTask(void *arg)
     }
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb};
+    *dest++ = (rg_gui_option_t){0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -428,17 +425,12 @@ void app_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Input"), "-", RG_DIALOG_FLAG_NORMAL, &input_select_cb},
-        {0, _("Crop"),  "-", RG_DIALOG_FLAG_NORMAL, &crop_select_cb},
-        // {0, "fMSX Menu", NULL, RG_DIALOG_FLAG_NORMAL, &fmsx_menu_cb},
-        RG_DIALOG_END,
+        .options = &options_handler,
     };
 
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, options);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
     // This is probably not right, but the emulator outputs 440 samples per frame??
-    app->tickRate = 55;
+    rg_system_set_tick_rate(55);
 
     updates[0] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);
     updates[1] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);

@@ -79,8 +79,8 @@ typedef struct
     struct
     {
         int real_width, real_height; // Real physical resolution
-        int margin_top, margin_bottom, margin_left, margin_right;
         int width, height; // Visible resolution (minus margins)
+        struct {int left, top, right, bottom;} margins;
         int format;
     } screen;
     struct
@@ -101,7 +101,9 @@ typedef struct
 
 void rg_display_init(void);
 void rg_display_deinit(void);
-void rg_display_write(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags);
+void rg_display_write_rect(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags);
+void rg_display_clear_rect(int left, int top, int width, int height, uint16_t color_le);
+void rg_display_clear_except(int left, int top, int width, int height, uint16_t color_le);
 void rg_display_clear(uint16_t color_le);
 bool rg_display_sync(bool block);
 void rg_display_force_redraw(void);
@@ -109,6 +111,8 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags);
 
 rg_display_counters_t rg_display_get_counters(void);
 const rg_display_t *rg_display_get_info(void);
+int rg_display_get_width(void);
+int rg_display_get_height(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);

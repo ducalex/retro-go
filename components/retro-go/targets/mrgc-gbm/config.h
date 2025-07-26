@@ -9,21 +9,25 @@
 #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
+// GPIO Extender
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+#define RG_I2C_GPIO_ADDR            0x20
+
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341
+#define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_MARGIN_TOP        38
-#define RG_SCREEN_MARGIN_LEFT       0
-#define RG_SCREEN_MARGIN_RIGHT      0
+#define RG_SCREEN_VISIBLE_AREA      {0, 38, 0, 10}  /* Fullscreen for plastic case. Black bar on bottom for metal case. */
+// #define RG_SCREEN_VISIBLE_AREA      {0, 38, 0, 0}  /* Fullscreen for metal case. Cropped on bottom for plastic case. */
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                   \
     ILI9341_CMD(0xB7, 0x72);                                                                               \
     ILI9341_CMD(0xBB, 0x3d);                                                                               \
@@ -37,13 +41,6 @@
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19); \
     ILI9341_CMD(0x21);
 
-// Screen margin
-// Uncomment the following line if using a plastic case
-#define RG_SCREEN_MARGIN_BOTTOM     10  // Fullscreen for plastic case. Black bar on bottom for metal case.
-
-// Uncomment the following line if using a metal case
-// #define RG_SCREEN_MARGIN_BOTTOM     0  // Fullscreen for metal case. Cropped on bottom for plastic case.
-
 // Input
 /**
  * The Stock firmware, left to right is:    Start,  Select, Menu,   Power
@@ -52,24 +49,25 @@
  */
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_I2C_MAP {\
-    {RG_KEY_UP,     (1<<2)},\
-    {RG_KEY_RIGHT,  (1<<5)},\
-    {RG_KEY_DOWN,   (1<<3)},\
-    {RG_KEY_LEFT,   (1<<4)},\
-    {RG_KEY_SELECT, (1<<0)},\
-    {RG_KEY_START,  (1<<1)},\
-    {RG_KEY_MENU,   (1<<8)},\
-    {RG_KEY_A,      (1<<6)},\
-    {RG_KEY_B,      (1<<7)},\
+    {RG_KEY_UP,     .num = 2, .level = 0},\
+    {RG_KEY_RIGHT,  .num = 5, .level = 0},\
+    {RG_KEY_DOWN,   .num = 3, .level = 0},\
+    {RG_KEY_LEFT,   .num = 4, .level = 0},\
+    {RG_KEY_SELECT, .num = 0, .level = 0},\
+    {RG_KEY_START,  .num = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = 8, .level = 0},\
+    {RG_KEY_A,      .num = 6, .level = 0},\
+    {RG_KEY_B,      .num = 7, .level = 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_OPTION, RG_KEY_SELECT | RG_KEY_A},\
+    {RG_KEY_OPTION, .src = RG_KEY_SELECT | RG_KEY_A},\
 }
 
 // Battery
 #define RG_BATTERY_DRIVER           2
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) - 170) / 30.f * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) (128 * 3.3f / (raw))
+
 
 // Status LED (Does not seem to be mappable)
 // #define RG_GPIO_LED                 GPIO_NUM_13 // From OG Firmware
@@ -92,3 +90,8 @@
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_25
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_19
 #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_4
+
+// Updater
+#define RG_UPDATER_ENABLE               1
+#define RG_UPDATER_APPLICATION          RG_APP_FACTORY
+#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/espgbm/firmware"

@@ -62,16 +62,15 @@ typedef struct
 /* Needed by ILLUSION OF GAIA */
 #define ONE_APU_CYCLE 21
 
+void APUExecute(void);
+
 #define APU_EXECUTE1() \
-{ \
-    APU.Cycles += S9xAPUCycles [*IAPU.PC]; \
-    (*S9xApuOpcodes[*IAPU.PC]) (); \
-}
+APUExecute();
 
 #define APU_EXECUTE() \
 if (IAPU.APUExecuting) \
     while (APU.Cycles <= CPU.Cycles) \
-       APU_EXECUTE1();
+      APUExecute();
 
 #endif
 #endif

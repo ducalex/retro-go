@@ -5,22 +5,23 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 
 # Supported Devices
 
-I develop and test mainly on the [ODROID-GO](targets/odroid-go/docs/README.md). I occasionally test on the [MRGC-G32](targets/mrgc-g32/docs/README.md) as well. All other devices have various degrees of support.
-
-| Name                                                  | Status |
-|-------------------------------------------------------|--------|
+| Name                                                          | Notes |
+|---------------------------------------------------------------|--------|
 | [byteboi-rev1](targets/byteboi-rev1/docs/README.md)           |   |
 | [esp32s3-devkit-c](targets/esp32s3-devkit-c/docs/README.md)   |   |
-| [esplay-micro](targets/esplay-micro/docs/README.md)   |   |
-| [esplay-s3](targets/esplay-s3/docs/README.md)         |   |
-| [fri3d-2024](targets/fri3d-2024/docs/README.md)       |   |
-| [mrgc-g32](targets/mrgc-g32/docs/README.md)           |   |
-| [mrgc-gbm](targets/mrgc-gbm/docs/README.md)           |   |
-| [odroid-go](targets/odroid-go/docs/README.md)         |   |
-| [qtpy-gamer](targets/qtpy-gamer/docs/README.md)       |   |
-| [retro-esp32](targets/retro-esp32/docs/README.md)     |   |
-| [retro-ruler](targets/retro-ruler-V1/docs/README.md)  |   |
-| [sdl2](targets/sdl2/docs/README.md)                   |   |
+| [esplay-micro](targets/esplay-micro/docs/README.md)           |   |
+| [esplay-s3](targets/esplay-s3/docs/README.md)                 | Broken |
+| [fri3d-2024](targets/fri3d-2024/docs/README.md)               |   |
+| [mrgc-g32](targets/mrgc-g32/docs/README.md)                   | Official |
+| [mrgc-gbm](targets/mrgc-gbm/docs/README.md)                   |  |
+| [nullnano](targets/nullnano/docs/README.md)                   |  |
+| [odroid-go](targets/odroid-go/docs/README.md)                 | Official |
+| [qtpy-gamer](targets/qtpy-gamer/docs/README.md)               | Broken |
+| [rachel-esp32](targets/rachel-esp32/docs/README.md)           |   |
+| [retro-esp32](targets/retro-esp32/docs/README.md)             |   |
+| [retro-ruler](targets/retro-ruler-V1/docs/README.md)          |   |
+| [sdl2](targets/sdl2/docs/README.md)                           | Broken |
+| [t-deck-plus](targets/t-deck-plus/docs/README.md)             |  |
 
 
 # Credits

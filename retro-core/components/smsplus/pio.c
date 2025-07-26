@@ -61,7 +61,7 @@ static io_state *io_current = &io_control;
   It also means that for compatibility, it defaults to an input-only state (ie. with all the low bits set) on startup.
 */
 
-static void update(int i, int j)
+static void update(int i)
 {
   /* Common control: pin direction */
   io_control.tr_dir[0]   = (i & 0x01) ? PIN_DIR_IN : PIN_DIR_OUT;
@@ -69,7 +69,7 @@ static void update(int i, int j)
   io_control.tr_dir[1]   = (i & 0x04) ? PIN_DIR_IN : PIN_DIR_OUT;
   io_control.th_dir[1]   = (i & 0x08) ? PIN_DIR_IN : PIN_DIR_OUT;
 
-  if (j == 1)
+  if (sms.territory == 1)
   {
     /* Programmable output state (Export machines only) */
     io_control.tr_level[0] = (i & 0x01) ? PIN_LVL_HI : (i & 0x10) ? PIN_LVL_HI : PIN_LVL_LO;
@@ -122,8 +122,10 @@ void pio_ctrl_w(uint8 data)
   th_level[0] = io_current->th_level[0];
   th_level[1] = io_current->th_level[1];
 
+  // Update control mapping
+  update(data);
+
   /* HCounter is latched on TH Low->High transition */
-  update(sms.territory, data);
   if ((io_current->th_dir[0]   == PIN_DIR_IN) &&
        (io_current->th_level[0] == PIN_LVL_HI) &&
        (th_level[0] == PIN_LVL_LO)

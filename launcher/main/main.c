@@ -11,6 +11,7 @@
 
 #include "applications.h"
 #include "bookmarks.h"
+#include "browser.h"
 #include "gui.h"
 #include "webui.h"
 #include "updater.h"
@@ -41,7 +42,7 @@ static rg_gui_event_t toggle_tabs_cb(rg_gui_option_t *option, rg_gui_event_t eve
             *opt++ = (rg_gui_option_t){i, gui.tabs[i]->name, "...", 1, &toggle_tab_cb};
         *opt++ = (rg_gui_option_t)RG_DIALOG_END;
 
-        rg_gui_dialog(_("Tabs Visibility"), options, 0);
+        rg_gui_dialog(option->label, options, 0);
     }
     return RG_DIALOG_VOID;
 }
@@ -175,28 +176,6 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
 }
 #endif
 
-static rg_gui_event_t launcher_options_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
-            {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
-            {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
-            {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
-            {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
-            #ifdef RG_ENABLE_NETWORKING
-            {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
-            #endif
-            {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
-            RG_DIALOG_END,
-        };
-        gui_redraw(); // clear main menu
-        rg_gui_dialog(_("Launcher Options"), options, 0);
-    }
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
@@ -208,18 +187,6 @@ static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t 
         crc_cache_prebuild();
     }
     return RG_DIALOG_VOID;
-}
-
-static void show_about_menu(void)
-{
-    const rg_gui_option_t options[] = {
-        {0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb},
-    #ifdef RG_ENABLE_NETWORKING
-        {0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb},
-    #endif
-        RG_DIALOG_END,
-    };
-    rg_gui_about_menu(options);
 }
 
 static void retro_loop(void)
@@ -236,6 +203,7 @@ static void retro_loop(void)
     gui_init(app->isColdBoot);
     applications_init();
     bookmarks_init();
+    // browser_init();
 
 #ifdef RG_ENABLE_NETWORKING
     rg_network_init();
@@ -281,7 +249,7 @@ static void retro_loop(void)
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
             if (joystick == RG_KEY_MENU)
-                show_about_menu();
+                rg_gui_about_menu();
             else
                 rg_gui_options_menu();
 
@@ -333,15 +301,19 @@ static void retro_loop(void)
             }
             else if (joystick == RG_KEY_UP) {
                 gui_scroll_list(tab, SCROLL_LINE, -1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_DOWN) {
                 gui_scroll_list(tab, SCROLL_LINE, 1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_LEFT) {
                 gui_scroll_list(tab, SCROLL_PAGE, -1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_RIGHT) {
                 gui_scroll_list(tab, SCROLL_PAGE, 1);
+                redraw_pending = true;
             }
             else if (joystick == RG_KEY_A) {
                 gui_event(TAB_ACTION, tab);
@@ -440,17 +412,41 @@ void event_handler(int event, void *arg)
         gui_redraw();
 }
 
+static void options_handler(rg_gui_option_t *dest)
+{
+    const rg_gui_option_t options[] = {
+        {0, _("Color theme"),  "-", RG_DIALOG_FLAG_NORMAL, &color_theme_cb},
+        {0, _("Preview"),      "-", RG_DIALOG_FLAG_NORMAL, &show_preview_cb},
+        {0, _("Scroll mode"),  "-", RG_DIALOG_FLAG_NORMAL, &scroll_mode_cb},
+        {0, _("Start screen"), "-", RG_DIALOG_FLAG_NORMAL, &start_screen_cb},
+        {0, _("Hide tabs"),    "-", RG_DIALOG_FLAG_NORMAL, &toggle_tabs_cb},
+        #ifdef RG_ENABLE_NETWORKING
+        {0, _("File server"),  "-", RG_DIALOG_FLAG_NORMAL, &webui_switch_cb},
+        #endif
+        {0, _("Startup app"),  "-", RG_DIALOG_FLAG_NORMAL, &startup_app_cb},
+        RG_DIALOG_END,
+    };
+    memcpy(dest, options, sizeof(options));
+}
+
+static void about_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb};
+    #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
+    *dest++ = (rg_gui_option_t){0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
+    #endif
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
         .event = &event_handler,
-    };
-    const rg_gui_option_t options[] = {
-        {0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &launcher_options_cb},
-        RG_DIALOG_END,
+        .options = &options_handler,
+        .about = &about_handler,
     };
 
-    app = rg_system_init(32000, &handlers, options);
+    app = rg_system_init(32000, &handlers, NULL);
     app->configNs = "launcher";
     app->isLauncher = true;
 

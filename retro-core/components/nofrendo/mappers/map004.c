@@ -167,7 +167,7 @@ static void map_init(rom_t *cart)
         if (cart->chr_rom_banks > 0)
         {
             MESSAGE_INFO("Using MMC3 variant, growing CHR-RAM to match CHR-ROM...\n");
-            cart->chr_ram = realloc(cart->chr_ram, 0x2000 * cart->chr_ram_banks);
+            cart->chr_ram = realloc(cart->chr_ram, 0x2000 * cart->chr_rom_banks);
             cart->chr_ram_banks = cart->chr_rom_banks;
             // This will prevent re-triggering on reset as well as make CHR_ANY=>CHR_RAM
             cart->chr_rom_banks = 0;

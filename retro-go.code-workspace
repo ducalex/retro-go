@@ -19,6 +19,12 @@
 			"path": "retro-core"
 		},
 		{
+			"path": "themes"
+		},
+		{
+			"path": "tools"
+		},
+		{
 			"path": ".",
 			"name": "root"
 		}
@@ -91,5 +97,8 @@
 		"files.watcherExclude": {
 			"**/build/**": true,
 		},
+		"clangd.arguments": [
+			"--compile-commands-dir=${workspaceFolder}/build"
+		],
 	}
 }

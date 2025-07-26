@@ -3,7 +3,7 @@
 #include "snes9x.h"
 #include "memmap.h"
 #include "ppu.h"
-#include "dsp1.h"
+#include "dsp.h"
 #include "cpuexec.h"
 #include "apu.h"
 #include "dma.h"
@@ -21,7 +21,6 @@ SoundStatus so;
 #endif
 
 SSettings Settings;
-SDSP1 DSP1;
 
 int32_t OpAddress = 0;
 

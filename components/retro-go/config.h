@@ -22,6 +22,16 @@
 #include "targets/fri3d-2024/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)
 #include "targets/byteboi-rev1/config.h"
+#elif defined(RG_TARGET_RACHEL_ESP32)
+#include "targets/rachel-esp32/config.h"
+#elif defined(RG_TARGET_NULLNANO)
+#include "targets/nullnano/config.h"
+#elif defined(RG_TARGET_T_DECK_PLUS)
+#include "targets/t-deck-plus/config.h"
+#elif defined(RG_TARGET_VMU)
+#include "targets/vmu/config.h"
+#elif defined(RG_TARGET_CROKPOCKET)
+#include "targets/crokpocket/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"
@@ -66,14 +76,6 @@
 #define RG_BUILD_DATE __DATE__ " " __TIME__
 #endif
 
-// #ifndef RG_ENABLE_NETPLAY
-// #define RG_ENABLE_NETPLAY 0
-// #endif
-
-// #ifndef RG_ENABLE_PROFILING
-// #define RG_ENABLE_PROFILING 0
-// #endif
-
 #ifndef RG_APP_LAUNCHER
 #define RG_APP_LAUNCHER "launcher"
 #endif
@@ -82,21 +84,16 @@
 #define RG_APP_FACTORY NULL
 #endif
 
-#ifndef RG_APP_UPDATER
-#define RG_APP_UPDATER RG_APP_FACTORY
-// #define RG_APP_UPDATER "updater"
+#ifndef RG_UPDATER_ENABLE
+#define RG_UPDATER_ENABLE 1
 #endif
+
+// If either of the following isn't defined then the updater will only perform version *checks*, not self-update
+// #define RG_UPDATER_APPLICATION       RG_APP_FACTORY
+// #define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
 
 #ifndef RG_UPDATER_GITHUB_RELEASES
-#define RG_UPDATER_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases"
-#endif
-
-#ifndef RG_UPDATER_DOWNLOAD_LOCATION
-#if defined(RG_TARGET_ODROID_GO)
-#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
-#else
-#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/espgbc/firmware"
-#endif
+#define RG_UPDATER_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases?per_page=10"
 #endif
 
 #ifndef RG_PATH_MAX
@@ -115,12 +112,27 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) (0)
 #endif
 
+// These values are to prevent jitter, so that the battery icon doesn't flicker or
+// percent display doesn't oscillate between 77 and 78%, for example
 #ifndef RG_BATTERY_UPDATE_THRESHOLD
 #define RG_BATTERY_UPDATE_THRESHOLD 1.0f
 #endif
-
 #ifndef RG_BATTERY_UPDATE_THRESHOLD_VOLT
 #define RG_BATTERY_UPDATE_THRESHOLD_VOLT 0.010f
+#endif
+
+// Number of cycles the hardware state must be maintained before the change is reflected in rg_input_read_gamepad.
+// The reaction time is calculated as such: N*10ms +/- 10ms. Different hardware types have different requirements.
+// Valid range is 1-9
+#ifndef RG_GAMEPAD_DEBOUNCE_PRESS
+#define RG_GAMEPAD_DEBOUNCE_PRESS (2)
+#endif
+#ifndef RG_GAMEPAD_DEBOUNCE_RELEASE
+#define RG_GAMEPAD_DEBOUNCE_RELEASE (2)
+#endif
+// Wait for ADC value to be stable before registering it (values of 50 - 250 are typically good)
+#ifndef RG_GAMEPAD_ADC_FILTER_WINDOW
+#define RG_GAMEPAD_ADC_FILTER_WINDOW (150)
 #endif
 
 #ifndef RG_LOG_COLORS
@@ -135,12 +147,18 @@
 #endif
 #endif
 
-#ifdef ESP_PLATFORM
+#ifndef RG_ZIP_SUPPORT
 #define RG_ZIP_SUPPORT 1
-#else
-#define RG_ZIP_SUPPORT 0
 #endif
 
 #ifndef RG_SCREEN_PARTIAL_UPDATES
 #define RG_SCREEN_PARTIAL_UPDATES 1
+#endif
+
+#ifndef RG_SCREEN_SAFE_AREA
+#define RG_SCREEN_SAFE_AREA {0, 0, 0, 0}
+#endif
+
+#ifndef RG_SCREEN_VISIBLE_AREA
+#define RG_SCREEN_VISIBLE_AREA {0, 0, 0, 0}
 #endif
