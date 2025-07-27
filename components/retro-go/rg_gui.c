@@ -299,6 +299,7 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
         const uint8_t *data = glyph->data;
         if (output)
         {
+            memset(output, 0, points * 4);
             int ch = 0, mask = 0x80;
             for (int y = 0; y < height; y++)
             {
@@ -416,7 +417,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 
         while (x_offset < draw_width)
         {
-            uint32_t bitmap[32] = {0};
+            uint32_t bitmap[font_height];
             const char *prev_ptr = ptr;
             int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_get_codepoint(&ptr));
             int width = monospace ?: glyph_width;
