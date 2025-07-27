@@ -641,7 +641,7 @@ void gui_load_preview(tab_t *tab)
     if (!tab->preview && file->checksum && (show_missing_cover || errors))
     {
         RG_LOGI("No image found for '%s'\n", file->name);
-        gui_set_status(tab, NULL, errors ? "Bad cover" : "No cover");
+        gui_set_status(tab, NULL, "");
         // gui_draw_status(tab);
         // tab->preview = gui_get_image("cover", file->app);
     }
