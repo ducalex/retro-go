@@ -471,6 +471,12 @@ void gui_draw_header(tab_t *tab, int offset)
     if (!tab->logo)
         tab->logo = gui_get_image("logo", tab->name);
 
+    if (offset == 0)
+    {
+        rg_gui_draw_text(0, 0, 0, tab->desc, C_SNOW, C_TRANSPARENT, RG_TEXT_BIGGER);
+        return;
+    }
+
     rg_gui_draw_image(0, offset, LOGO_WIDTH, HEADER_HEIGHT, false, tab->logo);
     if (tab->banner)
         rg_gui_draw_image(LOGO_WIDTH + 1, offset + 8, 0, HEADER_HEIGHT - 8, false, tab->banner);
@@ -490,13 +496,11 @@ void gui_draw_tab_indicator(void)
 
 void gui_draw_status(tab_t *tab)
 {
-    const int status_x = LOGO_WIDTH + 12;
-    const int status_y = HEADER_HEIGHT - 16;
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
-    rg_gui_draw_text(status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.width, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
+    rg_gui_draw_text(0, RG_GUI_BOTTOM, gui.width, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
     rg_gui_draw_icons();
 }
 
@@ -506,7 +510,7 @@ void gui_draw_list(tab_t *tab)
     rg_color_t bg[2] = {gui.theme->list.standard_bg, gui.theme->list.selected_bg};
 
     const listbox_t *list = &tab->listbox;
-    int line_height, top = HEADER_HEIGHT + 6;
+    int line_height, top = 20;
     int lines = max_visible_lines(tab, &line_height);
     int line_offset = 0;
 
