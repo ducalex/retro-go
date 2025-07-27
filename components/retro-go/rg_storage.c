@@ -72,21 +72,6 @@ void rg_storage_init(void)
 
     RG_LOGI("Looking for SD Card using SDSPI...");
 
-    sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
-    host_config.slot = RG_STORAGE_SDSPI_HOST;
-    host_config.max_freq_khz = RG_STORAGE_SDSPI_SPEED;
-    host_config.do_transaction = &sdcard_do_transaction;
-
-    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
-    slot_config.host_id = RG_STORAGE_SDSPI_HOST;
-    slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
-
-    esp_vfs_fat_mount_config_t mount_config = {
-        .format_if_mount_failed = false,
-        .max_files = 4,
-        .allocation_unit_size = 0,
-    };
-
     spi_bus_config_t bus_cfg = {
         .mosi_io_num = RG_GPIO_SDSPI_MOSI,
         .miso_io_num = RG_GPIO_SDSPI_MISO,
@@ -98,6 +83,32 @@ void rg_storage_init(void)
     esp_err_t err = spi_bus_initialize(RG_STORAGE_SDSPI_HOST, &bus_cfg, SPI_DMA_CH_AUTO);
     if (err != ESP_OK) // check but do not abort, let esp_vfs_fat_sdspi_mount decide
         RG_LOGW("SPI bus init failed (0x%x)", err);
+
+    sdmmc_host_t host_config = SDSPI_HOST_DEFAULT();
+    host_config.slot = RG_STORAGE_SDSPI_HOST;
+    host_config.max_freq_khz = RG_STORAGE_SDSPI_SPEED;
+    host_config.do_transaction = &sdcard_do_transaction;
+
+    sdspi_device_config_t slot_config = SDSPI_DEVICE_CONFIG_DEFAULT();
+    slot_config.host_id = RG_STORAGE_SDSPI_HOST;
+    slot_config.gpio_cs = RG_GPIO_SDSPI_CS;
+
+    // If we're using esp-idf >= 5.0 and the SPI bus is not shared, we must keep the SD card selected
+    // to work around slow accesses. (https://github.com/espressif/esp-idf/issues/10493)
+#ifdef RG_STORAGE_SDSPI_HOLD_CS /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0) */
+    if (RG_STORAGE_SDSPI_HOST != RG_SCREEN_HOST && RG_GPIO_SDSPI_CS != GPIO_NUM_NC)
+    {
+        gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_SDSPI_CS, 0);
+        slot_config.gpio_cs = GPIO_NUM_NC;
+    }
+#endif
+
+    esp_vfs_fat_mount_config_t mount_config = {
+        .format_if_mount_failed = false,
+        .max_files = 4,
+        .allocation_unit_size = 0,
+    };
 
     err = esp_vfs_fat_sdspi_mount(RG_STORAGE_ROOT, &host_config, &slot_config, &mount_config, &card_handle);
     if (err == ESP_ERR_TIMEOUT || err == ESP_ERR_INVALID_RESPONSE || err == ESP_ERR_INVALID_CRC)
