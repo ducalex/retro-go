@@ -95,14 +95,11 @@ void rg_storage_init(void)
 
     // If we're using esp-idf >= 5.0 and the SPI bus is not shared, we must keep the SD card selected
     // to work around slow accesses. (https://github.com/espressif/esp-idf/issues/10493)
-#ifdef RG_STORAGE_SDSPI_HOLD_CS /* ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0) */
-    if (RG_STORAGE_SDSPI_HOST != RG_SCREEN_HOST && RG_GPIO_SDSPI_CS != GPIO_NUM_NC)
-    {
-        gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT);
-        gpio_set_level(RG_GPIO_SDSPI_CS, 0);
-        slot_config.gpio_cs = GPIO_NUM_NC;
-    }
-#endif
+    #ifdef RG_STORAGE_SDSPI_HOLD_CS
+    gpio_set_direction(slot_config.gpio_cs, GPIO_MODE_OUTPUT);
+    gpio_set_level(slot_config.gpio_cs, 0);
+    slot_config.gpio_cs = GPIO_NUM_NC;
+    #endif
 
     esp_vfs_fat_mount_config_t mount_config = {
         .format_if_mount_failed = false,
