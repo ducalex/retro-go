@@ -52,11 +52,16 @@ optimized to reduce their cpu, memory, and flash needs without reducing compatib
   2. Power up the device while holding down MENU (the volume knob).
   3. Select retro-go in the files list and flash it.
 
-### Generic ESP32
-This method is intended to be used when .fw support isn't available (when [porting to a new device](PORTING.md)) or undesirable (devices with smaller flash).
-  1. Build a .img file (refer to [Building Retro-Go](BUILDING.md))
-  2. Flash the image: `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
-      _Note: Your particular device may require extra steps (like holding a button during power up), different esptool flags, or modifying base.sdkconfig._
+### Other devices
+  1. Download the .img for your device from the [release page](https://github.com/ducalex/retro-go/releases/).
+  2. Connect your device to a computer with a USB cable.
+  3. Flash the image with esptool:
+     - [Command line](https://github.com/espressif/esptool/releases/): Run `esptool.py write_flash --flash_size detect 0x0 retro-go_*.img`
+     - [Web version](https://espressif.github.io/esptool-js/): Connect your device, click Erase Flash, then select your .img file and set address to 0x0, finally click Program)
+
+Your particular device may require extra steps (like holding a button during power up) or different esptool flags or a special cable. If the above steps fail, you might need to ask the manufacturer for instructions on how to flash new firmware!
+
+If your device is not already supported or if a prebuilt version isn't available for it you can check the [development section](#Development) for more information on how to build for your device.
 
 
 # Usage
