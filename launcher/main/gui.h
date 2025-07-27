@@ -169,3 +169,4 @@ void gui_draw_header(tab_t *tab, int offset);
 void gui_draw_status(tab_t *tab);
 void gui_draw_list(tab_t *tab);
 void gui_draw_tab_indicator(void);
+void gui_draw_preview(tab_t *tab);
