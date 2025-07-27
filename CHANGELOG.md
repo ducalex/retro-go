@@ -2,9 +2,10 @@
 - SMS/GG: Fixe broken inputs in many games since 1.40 (#198)
 - SNES: Increased max supported ROM size on some devices
 - Launcher: Fixed network status in options menu
+- All: Improved D-PAD input accuracy on some devices
+- All: French translation now has accents
 - New device support: LILYGO T-Deck Plus
 - New device support: Null Nano by Ampersand
-
 
 # Retro-Go 1.44 (2025-02-03)
 - SNES: Larger ROMs are now supported (on devices with enough memory)
