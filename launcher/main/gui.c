@@ -382,11 +382,16 @@ void gui_redraw(void)
     }
     else if (gui.browse)
     {
-        gui_draw_background(tab, 4);
+        bool large_preview = tab->preview && tab->preview->width >= 200;
+        if (tab->preview && large_preview)
+            rg_gui_draw_image(0, 0, gui.width, gui.height, true, tab->preview);
+        else
+            gui_draw_background(tab, 4);
         gui_draw_header(tab, 0);
         gui_draw_status(tab);
         gui_draw_list(tab);
-        gui_draw_preview(tab);
+        if (tab->preview && !large_preview)
+            gui_draw_preview(tab);
     }
     else
     {
