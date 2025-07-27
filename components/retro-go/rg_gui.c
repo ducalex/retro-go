@@ -392,7 +392,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     {
         int x_offset = padding;
 
-        if (flags & (RG_TEXT_ALIGN_LEFT|RG_TEXT_ALIGN_CENTER))
+        if (flags & (RG_TEXT_ALIGN_RIGHT|RG_TEXT_ALIGN_CENTER))
         {
             // Find the current line's text width
             const char *line = ptr;
@@ -406,7 +406,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             }
             if (flags & RG_TEXT_ALIGN_CENTER)
                 x_offset = (draw_width - x_offset) / 2;
-            else if (flags & RG_TEXT_ALIGN_LEFT)
+            else if (flags & RG_TEXT_ALIGN_RIGHT)
                 x_offset = draw_width - x_offset;
         }
 

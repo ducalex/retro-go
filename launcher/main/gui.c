@@ -490,8 +490,8 @@ void gui_draw_status(tab_t *tab)
     char *txt_left = tab->status[tab->status[1].left[0] ? 1 : 0].left;
     char *txt_right = tab->status[tab->status[1].right[0] ? 1 : 0].right;
 
-    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
-    rg_gui_draw_text(status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(status_x, status_y, gui.width - status_x, txt_right, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_RIGHT);
+    rg_gui_draw_text(status_x, status_y, 0, txt_left, gui.theme->foreground, C_TRANSPARENT, RG_TEXT_ALIGN_LEFT);
     rg_gui_draw_icons();
 }
 
