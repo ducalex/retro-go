@@ -9,6 +9,7 @@ typedef enum
 {
     RG_LANG_EN = 0,
     RG_LANG_FR,
+    RG_LANG_CHS,
   //RG_LANG_ES,
 
     RG_LANG_MAX
