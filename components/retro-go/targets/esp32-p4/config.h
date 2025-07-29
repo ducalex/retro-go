@@ -13,7 +13,7 @@ The GPIOs were chosen arbitrarily, but you can choose whatever you want thanks t
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
-#define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
+#define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
@@ -74,13 +74,18 @@ ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x
 
 // SDMMC SD Card
 // We use the default pins for SDMMC on the ESP32-P4 ie:
-#define RG_GPIO_SDSPI_CLK GPIO_NUM_43
+#define RG_GPIO_SDSPI_CLK    GPIO_NUM_43
 #define RG_GPIO_SDSPI_CMD	 GPIO_NUM_44
 #define RG_GPIO_SDSPI_D0	 GPIO_NUM_39
 #define RG_GPIO_SDSPI_D1	 GPIO_NUM_40
 #define RG_GPIO_SDSPI_D2	 GPIO_NUM_41
 #define RG_GPIO_SDSPI_D3	 GPIO_NUM_42
 
+// External I2S DAC
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_48
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_49
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_46
+#define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_47
 
 // Updater
 #define RG_UPDATER_ENABLE               0
