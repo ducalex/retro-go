@@ -108,6 +108,9 @@ def build_image(output_file, apps, img_format="esp32", fatsize=0):
     if img_format == "esp32s3":
         image_data[0x0000:0x0000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin
+    elif img_format == "esp32p4":
+        image_data[0x2000:0x2000+len(bootloader_bin)] = bootloader_bin
+        image_data[0x8000:0x8000+len(table_bin)] = table_bin
     else:
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin

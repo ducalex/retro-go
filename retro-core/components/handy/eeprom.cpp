@@ -8,7 +8,7 @@
 #include "system.h"
 #include "eeprom.h"
 
-CEEPROM::CEEPROM(UBYTE typ)
+CEEPROM::CEEPROM(UBYTE type)
 {
    *filename=0;
    memset(romdata, 0xff, sizeof(romdata));
