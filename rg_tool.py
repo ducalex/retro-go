@@ -8,6 +8,7 @@ import sys
 import re
 import os
 
+IDF_TARGET = os.getenv("IDF_TARGET", "esp32")
 IDF_PATH = os.getenv("IDF_PATH")
 if not IDF_PATH:
     exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
@@ -29,6 +30,7 @@ try:
     ).decode().rstrip()
 except:
     PROJECT_VER = "unknown"
+FW_FORMAT = "none"
 
 if os.name == 'nt':
     IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
@@ -151,7 +153,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
 
 
 def flash_app(app, port, baudrate=1152000):
-    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_CHIP", IDF_TARGET)
     os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
@@ -164,7 +166,7 @@ def flash_app(app, port, baudrate=1152000):
 
 
 def flash_image(image_file, port, baudrate=1152000):
-    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_CHIP", IDF_TARGET)
     os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     print(f"Flashing image file '{image_file}' to {port}")
@@ -205,16 +207,21 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
-    os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
-
 if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
+        prev_idf_target = os.getenv("IDF_TARGET")
         exec(f.read())
+         # Detect if env.py modified os.environ[IDF_TARGET] instead of IDF_TARGET (old behavior)
+        if os.getenv("IDF_TARGET") != prev_idf_target:
+            IDF_TARGET = os.getenv("IDF_TARGET")
+
+if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
+    os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
+os.putenv("IDF_TARGET", IDF_TARGET)
 
 command = args.command
 if "all" in args.apps:
-    apps = os.getenv("DEFAULT_APPS", DEFAULT_APPS).split() or list(PROJECT_APPS.keys())
+    apps = DEFAULT_APPS.split() or list(PROJECT_APPS.keys())
 else:
     apps = [app for app in PROJECT_APPS.keys() if app in apps]
 
@@ -235,17 +242,16 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        fw_format = os.getenv("FW_FORMAT")
-        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        if fw_format in ["odroid", "esplay"]:
-            build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        if FW_FORMAT in ["odroid", "esplay"]:
+            fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+            build_firmware(fw_file, apps, FW_FORMAT, args.fatsize)
         else:
             print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
         img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+        build_image(img_file, apps, IDF_TARGET, args.fatsize)
 
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
