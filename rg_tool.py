@@ -226,7 +226,7 @@ command = args.command
 if "all" in args.apps:
     apps = DEFAULT_APPS.split() or list(PROJECT_APPS.keys())
 else:
-    apps = [app for app in PROJECT_APPS.keys() if app in apps]
+    apps = [app for app in PROJECT_APPS.keys() if app in args.apps]
 
 try:
     if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
