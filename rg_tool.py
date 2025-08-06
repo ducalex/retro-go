@@ -8,21 +8,12 @@ import sys
 import re
 import os
 
-IDF_TARGET = os.getenv("IDF_TARGET", "esp32")
-IDF_PATH = os.getenv("IDF_PATH")
-if not IDF_PATH:
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-
-TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
-for t in glob.glob("components/retro-go/targets/*/config.h"):
-    TARGETS.append(os.path.basename(os.path.dirname(t)))
-
-DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
+DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
 DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go gwenesis fmsx")
-PROJECT_NAME = "Retro-Go"
-PROJECT_ICON = "assets/icon.raw"
+PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
+PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
   'launcher':     [0, 0, 983040],
@@ -32,6 +23,9 @@ PROJECT_APPS = {
   'fmsx':         [0, 0, 589824],
   'gbsp':         [0, 0, 589824],
 }
+# PROJECT_APPS = {}
+# for t in glob.glob("*/CMakeLists.txt"):
+#     PROJECT_APPS[os.path.basename(os.path.dirname(t))] = [0, 0, 0]
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
         "git describe --tags --abbrev=5 --dirty --always", shell=True
@@ -39,6 +33,15 @@ try:
 except:
     PROJECT_VER = "unknown"
 FW_FORMAT = "none"
+
+TARGETS = []
+for t in glob.glob("components/retro-go/targets/*/config.h"):
+    TARGETS.append(os.path.basename(os.path.dirname(t)))
+
+IDF_TARGET = os.getenv("IDF_TARGET", "esp32")
+IDF_PATH = os.getenv("IDF_PATH")
+if not IDF_PATH:
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 if os.name == 'nt':
     IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
