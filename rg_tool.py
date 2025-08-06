@@ -30,6 +30,7 @@ PROJECT_APPS = {
   'prboom-go':    [0, 0, 786432],
   'gwenesis':     [0, 0, 983040],
   'fmsx':         [0, 0, 589824],
+#   'gbsp':         [0, 0, 589824],
 }
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(

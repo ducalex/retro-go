@@ -1,0 +1,46 @@
+
+LIBRETRO_COMM_DIR := $(CORE_DIR)/libretro/libretro-common
+INCFLAGS   := -I$(CORE_DIR)/libretro -I$(LIBRETRO_COMM_DIR)/include  -I$(CORE_DIR)/
+
+SOURCES_ASM := $(CORE_DIR)/bios_data.S
+
+SOURCES_CC := $(CORE_DIR)/video.cc \
+              $(CORE_DIR)/cpu.cc
+
+SOURCES_C := $(CORE_DIR)/main.c \
+             $(CORE_DIR)/gba_memory.c \
+             $(CORE_DIR)/savestate.c \
+             $(CORE_DIR)/input.c \
+             $(CORE_DIR)/sound.c \
+             $(CORE_DIR)/cheats.c \
+             $(CORE_DIR)/memmap.c \
+             $(CORE_DIR)/serial.c \
+             $(CORE_DIR)/gbp.c \
+             $(CORE_DIR)/rfu.c \
+             $(CORE_DIR)/libretro/libretro.c \
+             $(CORE_DIR)/gba_cc_lut.c \
+             $(LIBRETRO_COMM_DIR)/compat/compat_posix_string.c \
+             $(LIBRETRO_COMM_DIR)/compat/compat_strl.c \
+             $(LIBRETRO_COMM_DIR)/compat/fopen_utf8.c \
+             $(LIBRETRO_COMM_DIR)/encodings/encoding_utf.c \
+             $(LIBRETRO_COMM_DIR)/file/file_path.c \
+             $(LIBRETRO_COMM_DIR)/file/file_path_io.c \
+             $(LIBRETRO_COMM_DIR)/streams/file_stream.c \
+             $(LIBRETRO_COMM_DIR)/string/stdstring.c \
+             $(LIBRETRO_COMM_DIR)/time/rtime.c \
+             $(LIBRETRO_COMM_DIR)/vfs/vfs_implementation.c
+
+ifeq ($(HAVE_DYNAREC), 1)
+  SOURCES_C += $(CORE_DIR)/cpu_threaded.c
+  ifeq ($(CPU_ARCH), x86_32)
+    SOURCES_ASM += $(CORE_DIR)/x86/x86_stub.S
+  else ifeq ($(CPU_ARCH), arm)
+    SOURCES_ASM += $(CORE_DIR)/arm/arm_stub.S
+  else ifeq ($(CPU_ARCH), arm64)
+    SOURCES_ASM += $(CORE_DIR)/arm/arm64_stub.S
+  else ifeq ($(CPU_ARCH), mips)
+    SOURCES_ASM += $(CORE_DIR)/mips/mips_stub.S
+  endif
+endif
+
+
