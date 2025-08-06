@@ -19,6 +19,7 @@ for t in glob.glob("components/retro-go/targets/*/config.h"):
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
+DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
 PROJECT_ICON = os.getenv("PROJECT_ICON", "icon.raw")
 PROJECT_APPS = {}
@@ -204,16 +205,18 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-command = args.command
-apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
-
-
 if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
     os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
 
 if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
     with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
         exec(f.read())
+
+command = args.command
+if "all" in args.apps:
+    apps = os.getenv("DEFAULT_APPS", DEFAULT_APPS).split() or list(PROJECT_APPS.keys())
+else:
+    apps = [app for app in PROJECT_APPS.keys() if app in apps]
 
 try:
     if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
