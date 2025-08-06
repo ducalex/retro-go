@@ -20,7 +20,7 @@ for t in glob.glob("components/retro-go/targets/*/config.h"):
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "")
+DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go gwenesis fmsx")
 PROJECT_NAME = "Retro-Go"
 PROJECT_ICON = "assets/icon.raw"
 PROJECT_APPS = {
@@ -30,7 +30,7 @@ PROJECT_APPS = {
   'prboom-go':    [0, 0, 786432],
   'gwenesis':     [0, 0, 983040],
   'fmsx':         [0, 0, 589824],
-#   'gbsp':         [0, 0, 589824],
+  'gbsp':         [0, 0, 589824],
 }
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
