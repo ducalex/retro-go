@@ -11,7 +11,13 @@ This document describes the process of adding support for a new ESP32 device (wh
 
 
 # Prerequisites
-Before doing anything, make sure that your development environment is working properly and that you can build retro-go for the default target. Please read [BUILDING.md](BUILDING.md) carefully for more information.
+
+## Hardware prerequisites
+Retro-Go will run on any device that use an esp32 chip (including variants like s2, s3, p4), as long as it has PSRAM (also called SPIRAM or external RAM). You will also need a serial cable (most esp32 devices expose the serial interface over USB).
+
+
+## Software prerequisites
+You will need a working installation of esp-idf. Retro-Go supports many versions, refer to [BUILDING.md](BUILDING.md) for more information. If you are new to esp-idf/esp32 development, you might want to try flashing a few sample programs to your device to make sure that everything works, before attempting a complicated project like retro-go.
 
 
 # Targets
@@ -34,25 +40,26 @@ To get started, locate a target that is the most similar to your device and use 
 
 ### config.h
 
-This file contains the bulk of your configurations.
+This file contains the bulk of your configurations. There is currently no exhaustive documentation of all the options you can define in this file, but you can refer to odroid-go's config.h that contains most of them.
 
-First, change `RG_TARGET_NAME` to match the name of your target folder.
+Don't forget to change `RG_TARGET_NAME` to match the name of your target folder.
 
-Most of it, you will need to figure out the correct parameters for (eg. Storage and Audio)
+#### Display
 
+Retro-Go has a single output driver: ILI9341/ST7789. Thankfully most screens out there use this controller!
 
-##### Display
-
-If you aren't using the ILI9341/ST7789 screen driver, you will need to change the `SCREEN_DRIVER` parameter. (Otherwise, just change the following settings and continue).
-
-
-(You will find more display configuration in the `SPI Display` section below)
+You will need to define the correct pinout (RG_GPIO_LCD_*) and the corrent init sequence (RG_SCREEN_INIT). To find the required sequence of commands you can refer to other example code meant for your display/device.
 
 
-For now, only the ILI9341/ST7789 driver is included. Increment the number. Then in `components/retro-go/rg_display.c`, find this part
-```
+If you aren't using the ILI9341/ST7789 screen driver, you will need to write your own.
+
+You can clone `components/retro-go/drivers/ili9341.h` to use as a starting point. Don't forget to add it to the top of `rg_display.c`:
+
+```c
 #if RG_SCREEN_DRIVER == 0 /* ILI9341/ST7789 */
 #include "drivers/display/ili9341.h"
+#elif RG_SCREEN_DRIVER == 2             // <--
+#include "drivers/display/my-driver.h"  // <--
 #elif RG_SCREEN_DRIVER == 99
 #include "drivers/display/sdl2.h"
 #else
@@ -60,22 +67,16 @@ For now, only the ILI9341/ST7789 driver is included. Increment the number. Then 
 #endif
 ```
 
+#### Input
 
-Add a `#elif` for your RG_SCREEN_DRIVER. In the body, use `#include "drivers/display/(YOUR DISPLAY DRIVER).h"` (eg. `ssd1306.h`).
+Retro-Go has five input drivers:
+- GPIO: This is a button connected to a pin of the esp32
+- ADC:  This is usually used with a voltage divider to put multiple buttons on a single esp32 pin
+- I2C:  Also known as a GPIO extender, retro-go supports many chips (AW9523, PCF9539, MCP23017, PCF8575)
+- Shift register: Like a SNES controller or a 74HC165
+- Virtual: If your device doesn't have enough button, you can map combos to the missing keys. eg start+select = menu
 
-
-You will need to create that file for your display. Unfortunately, there is no one-for-all way to make this. It will need the same template as the other display drivers there, but it will differ for each display. To start, check the Retro-Go issues on GitHub and try searching on Google.
-
-
-Make this driver in `components/retro-go/drivers/display`
-
-
-##### Input
-
-Back in `config.h`, you will see the configuration for an I2C gamepad. If you aren't using that, you can make your own parameters based on the existing input forms in `components/retro-go/rg_input.c`
-
-
-You can also write your own input driver for unique input forms. Just look at the existing code in `rg_input.c` and match that
+You can combine any of them by defining the appropriate `RG_GAMEPAD_*_MAP` in your `config.h`. Refer to `rg_input.h` or other targets to see how configuration is done.
 
 
 ### sdkconfig

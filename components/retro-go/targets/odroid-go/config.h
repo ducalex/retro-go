@@ -65,13 +65,6 @@
     {RG_KEY_A,      .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
     {RG_KEY_B,      .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
 }
-// #define RG_GAMEPAD_I2C_MAP {\
-//     {RG_KEY_A,      .num = 6, .pullup = 1, .level = 0},\
-//     {RG_KEY_B,      .num = 7, .pullup = 1, .level = 0},\
-// }
-// #define RG_GAMEPAD_VIRT_MAP {\
-//     {RG_KEY_MENU, .src = RG_KEY_SELECT|RG_KEY_START},\
-// }
 
 // Battery
 #define RG_BATTERY_DRIVER           1
