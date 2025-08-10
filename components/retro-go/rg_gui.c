@@ -1054,7 +1054,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
     return default_value ? strdup(default_value) : NULL;
 }
 
-void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
+void rg_gui_draw_keyboard(const rg_keyboard_layout_t *map, size_t cursor)
 {
     RG_ASSERT_ARG(map);
 
@@ -1072,9 +1072,9 @@ void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
     {
         int x = x_pos + 8 + (i % map->columns) * 16;
         int y = y_pos + 8 + (i / map->columns) * 16;
-        if (!map->data[i])
+        if (!map->layout[i])
             continue;
-        buf[0] = map->data[i];
+        buf[0] = map->layout[i];
         rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
     }
 }
