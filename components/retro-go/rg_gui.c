@@ -1048,17 +1048,17 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
+typedef struct {
+    const char *layout;
+    int columns;
+    int rows;
+    bool is_upper;
+    bool is_symbols;
+} keyboard_layout_t;
+
 void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer, 
                                   const void *layout_ptr, int cursor_pos)
 {
-    typedef struct {
-        const char *layout;
-        int columns;
-        int rows;
-        bool is_upper;
-        bool is_symbols;
-    } keyboard_layout_t;
-
     const keyboard_layout_t *current_layout = (const keyboard_layout_t *)layout_ptr;
     
     const int key_width = 28;
@@ -1143,14 +1143,6 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
 {
     // Virtual keyboard implementation for Wi-Fi credential input
-    typedef struct {
-        const char *layout;
-        int columns;
-        int rows;
-        bool is_upper;
-        bool is_symbols;
-    } keyboard_layout_t;
-
     static const keyboard_layout_t layouts[] = {
         // Lowercase letters
         {
