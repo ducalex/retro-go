@@ -3,6 +3,10 @@
 #include <snes9x.h>
 #include <math.h>
 
+// #define FRAME_DOUBLE_BUFFERING
+// #define AUDIO_DOUBLE_BUFFERING
+#define USE_AUDIO_TASK
+
 typedef struct
 {
 	char name[16];
@@ -69,7 +73,15 @@ static const char *SNES_BUTTONS[] = {
 static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
-static rg_audio_sample_t *audioBuffer;
+static rg_audio_sample_t *audioBuffers[2];
+static rg_audio_sample_t *currentAudioBuffer;
+
+#ifdef USE_AUDIO_TASK
+static rg_mutex_t *audio_mutex;
+static rg_task_t *audio_task_handle;
+static volatile bool audio_processing = false;
+static volatile bool audio_shutdown = false;
+#endif
 
 static bool apu_enabled = true;
 static bool lowpass_filter = false;
@@ -274,13 +286,36 @@ void JustifierButtons(uint32_t *justifiers)
     (void)justifiers;
 }
 
-#ifdef USE_BLARGG_APU
-static void S9xAudioCallback(void)
+static inline void mix_samples(int32_t count)
 {
-    S9xFinalizeSamples();
-    size_t available_samples = S9xGetSampleCount();
-    S9xMixSamples((void *)audioBuffer, available_samples);
-    rg_audio_submit(audioBuffer, available_samples >> 1);
+    currentAudioBuffer = audioBuffers[currentAudioBuffer == audioBuffers[0]];
+    if (lowpass_filter)
+        S9xMixSamplesLowPass((void *)currentAudioBuffer, count, AUDIO_LOW_PASS_RANGE);
+    else
+        S9xMixSamples((void *)currentAudioBuffer, count);
+}
+
+#ifdef USE_AUDIO_TASK
+static void audio_task(void *arg)
+{
+    while (!audio_shutdown)
+    {
+        // Lock the mutex to safely access shared data
+        if (audio_processing && rg_mutex_take(audio_mutex, 5))
+        {
+            // Re-check flag after acquiring lock
+            if (audio_processing)
+            {
+                mix_samples(AUDIO_BUFFER_LENGTH << 1);
+                rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
+                audio_processing = false; // Signal that we are done
+            }
+            rg_mutex_give(audio_mutex);
+        }
+        rg_task_delay(1); // Yield to prevent watchdog timeout and busy-waiting
+    }
+    rg_mutex_free(audio_mutex);
+    audio_mutex = NULL;
 }
 #endif
 
@@ -304,13 +339,35 @@ void snes_main(void)
     };
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
+    // Load settings
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
 
+    // Allocate surfaces and audio buffers
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
     updates[0]->height = SNES_HEIGHT;
+#ifdef FRAME_DOUBLE_BUFFERING
+    updates[1] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
+    updates[1]->height = SNES_HEIGHT;
+#else
+    updates[1] = updates[0];
+#endif
     currentUpdate = updates[0];
 
-    audioBuffer = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+#ifdef AUDIO_DOUBLE_BUFFERING
+    audioBuffers[0] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+    audioBuffers[1] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+#else
+    audioBuffers[0] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+    audioBuffers[1] = audioBuffers[0];
+#endif
+    currentAudioBuffer = audioBuffers[0];
+
+#ifdef USE_AUDIO_TASK
+    // Set up multicore audio
+    audio_mutex = rg_mutex_create();
+    audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
+    RG_ASSERT(audio_mutex && audio_task_handle, "Failed to create audio task!");
+#endif
 
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
@@ -340,6 +397,8 @@ void snes_main(void)
     if (!S9xInitGFX())
         RG_PANIC("Graphics init failed!");
 
+    S9xSetPlaybackRate(Settings.SoundPlaybackRate);
+
     const char *filename = app->romPath;
 
     if (rg_extension_match(filename, "zip"))
@@ -351,12 +410,6 @@ void snes_main(void)
 
     if (!LoadROM(filename))
         RG_PANIC("ROM loading failed!");
-
-#ifdef USE_BLARGG_APU
-    S9xSetSamplesAvailableCallback(S9xAudioCallback);
-#else
-    S9xSetPlaybackRate(Settings.SoundPlaybackRate);
-#endif
 
     if (app->bootFlags & RG_BOOT_RESUME)
     {
@@ -404,24 +457,34 @@ void snes_main(void)
 
         S9xMainLoop();
 
+    #ifdef USE_AUDIO_TASK
+        if (rg_mutex_take(audio_mutex, 5))
+        {
+            audio_processing = apu_enabled;
+            rg_mutex_give(audio_mutex);
+        }
+    #endif
+
         if (drawFrame)
         {
             slowFrame = !rg_display_sync(false);
             rg_display_submit(currentUpdate, 0);
+            currentUpdate = updates[currentUpdate == updates[0]];
         }
 
-    #ifndef USE_BLARGG_APU
-        if (apu_enabled && lowpass_filter)
-            S9xMixSamplesLowPass((void *)audioBuffer, AUDIO_BUFFER_LENGTH << 1, AUDIO_LOW_PASS_RANGE);
-        else if (apu_enabled)
-            S9xMixSamples((void *)audioBuffer, AUDIO_BUFFER_LENGTH << 1);
-    #endif
-
-        rg_system_tick(rg_system_timer() - startTime);
-
-    #ifndef USE_BLARGG_APU
+    #ifndef USE_AUDIO_TASK
         if (apu_enabled)
-            rg_audio_submit(audioBuffer, AUDIO_BUFFER_LENGTH);
+        {
+            mix_samples(AUDIO_BUFFER_LENGTH << 1);
+            rg_system_tick(rg_system_timer() - startTime);
+            rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
+        }
+        else
+        {
+            rg_system_tick(rg_system_timer() - startTime);
+        }
+    #else
+        rg_system_tick(rg_system_timer() - startTime);
     #endif
 
         if (skipFrames == 0)
@@ -439,4 +502,8 @@ void snes_main(void)
             skipFrames--;
         }
     }
+
+#ifdef USE_AUDIO_TASK
+    audio_shutdown = true;
+#endif
 }
