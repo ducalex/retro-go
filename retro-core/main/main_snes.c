@@ -290,9 +290,9 @@ static inline void mix_samples(int32_t count)
 {
     currentAudioBuffer = audioBuffers[currentAudioBuffer == audioBuffers[0]];
     if (lowpass_filter)
-        S9xMixSamplesLowPass((void *)currentAudioBuffer, count, AUDIO_LOW_PASS_RANGE);
+        S9xMixSamplesLowPass((int16_t *)currentAudioBuffer, count, AUDIO_LOW_PASS_RANGE);
     else
-        S9xMixSamples((void *)currentAudioBuffer, count);
+        S9xMixSamples((int16_t *)currentAudioBuffer, count);
 }
 
 #ifdef USE_AUDIO_TASK
