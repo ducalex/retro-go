@@ -132,6 +132,28 @@ bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out)
     return true;
 }
 
+bool rg_network_wifi_write_config(int slot, const rg_wifi_config_t *config)
+{
+    if (slot < 0 || slot > 99 || !config)
+        return false;
+
+    char key_ssid[16], key_password[16], key_channel[16], key_mode[16];
+
+    snprintf(key_ssid, 16, "%s%d", SETTING_WIFI_SSID, slot);
+    snprintf(key_password, 16, "%s%d", SETTING_WIFI_PASSWORD, slot);
+    snprintf(key_channel, 16, "%s%d", SETTING_WIFI_CHANNEL, slot);
+    snprintf(key_mode, 16, "%s%d", SETTING_WIFI_MODE, slot);
+
+    RG_LOGD("Writing to '%s' (slot %d)\n", key_ssid, slot);
+
+    rg_settings_set_string(NS_WIFI, key_ssid, config->ssid);
+    rg_settings_set_string(NS_WIFI, key_password, config->password);
+    rg_settings_set_number(NS_WIFI, key_channel, config->channel);
+    rg_settings_set_number(NS_WIFI, key_mode, config->ap_mode);
+
+    return true;
+}
+
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config)
 {
 #ifdef RG_ENABLE_NETWORKING

@@ -123,6 +123,8 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
 void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor);
+void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer, 
+                                  const void *layout_ptr, int cursor_pos);
 void rg_gui_draw_message(const char *format, ...);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
