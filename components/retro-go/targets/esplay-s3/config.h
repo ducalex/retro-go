@@ -87,10 +87,10 @@
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_39
 #define RG_GPIO_LCD_RST             GPIO_NUM_3
 
-// SPI SD Card
-#define RG_GPIO_SDSPI_CMD          GPIO_NUM_14
-#define RG_GPIO_SDSPI_CLK          GPIO_NUM_21
-#define RG_GPIO_SDSPI_D0           GPIO_NUM_17
+// SDMMC SD Card
+#define RG_GPIO_SDMMC_CMD           GPIO_NUM_14
+#define RG_GPIO_SDMMC_CLK           GPIO_NUM_21
+#define RG_GPIO_SDMMC_D0            GPIO_NUM_17
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_38

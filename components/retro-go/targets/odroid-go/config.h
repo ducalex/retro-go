@@ -46,6 +46,8 @@
     ILI9341_CMD(0x26, 0x01);                 /* Gamma curve selected */                                          \
     ILI9341_CMD(0xE0, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00); \
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
+#define RG_SCREEN_DEINIT() \
+    /* Nothing to do */
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
@@ -63,6 +65,13 @@
     {RG_KEY_A,      .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
     {RG_KEY_B,      .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
 }
+// #define RG_GAMEPAD_I2C_MAP {\
+//     {RG_KEY_A,      .num = 6, .pullup = 1, .level = 0},\
+//     {RG_KEY_B,      .num = 7, .pullup = 1, .level = 0},\
+// }
+// #define RG_GAMEPAD_VIRT_MAP {\
+//     {RG_KEY_MENU, .src = RG_KEY_SELECT|RG_KEY_START},\
+// }
 
 // Battery
 #define RG_BATTERY_DRIVER           1
@@ -94,6 +103,14 @@
 #define RG_GPIO_SDSPI_CLK           GPIO_NUM_18
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_22
 
+// SDMMC SD Card
+// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_14
+// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_21
+// #define RG_GPIO_SDMMC_D0            GPIO_NUM_17
+// #define RG_GPIO_SDMMC_D1            GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_D2            GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_D3            GPIO_NUM_NC
+
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_4
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
@@ -104,3 +121,6 @@
 #define RG_UPDATER_ENABLE               1
 #define RG_UPDATER_APPLICATION          RG_APP_FACTORY
 #define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/odroid/firmware"
+
+// Miscellaneous config
+// See components/retro-go/config.h for more things you can define here!

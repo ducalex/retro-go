@@ -128,12 +128,18 @@ void rg_storage_init(void)
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
     slot_config.width = 1;
-#if SOC_SDMMC_USE_GPIO_MATRIX
-    slot_config.clk = RG_GPIO_SDSPI_CLK;
-    slot_config.cmd = RG_GPIO_SDSPI_CMD;
-    slot_config.d0 = RG_GPIO_SDSPI_D0;
+#if SOC_SDMMC_USE_GPIO_MATRIX /* Only the esp32-s3 routes SDMMC through the GPIO matrix */
+    slot_config.clk = RG_GPIO_SDMMC_CLK;
+    slot_config.cmd = RG_GPIO_SDMMC_CMD;
+    slot_config.d0 = RG_GPIO_SDMMC_D0;
+#if defined(RG_GPIO_SDMMC_D1) && defined(RG_GPIO_SDMMC_D2) && defined(RG_GPIO_SDMMC_D3)
+    slot_config.d1 = RG_GPIO_SDMMC_D1;
+    slot_config.d2 = RG_GPIO_SDMMC_D2;
+    slot_config.d3 = RG_GPIO_SDMMC_D3;
+#else
     // d1 and d3 normally not used in width=1 but sdmmc_host_init_slot saves them, so just in case
     slot_config.d1 = slot_config.d3 = -1;
+#endif
 #endif
 
     esp_vfs_fat_mount_config_t mount_config = {
