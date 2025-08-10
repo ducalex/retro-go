@@ -91,6 +91,7 @@ static keymap_t keymap;
 
 static const char *SETTING_KEYMAP = "keymap";
 static const char *SETTING_APU_EMULATION = "apu";
+static const char *SETTING_APU_FILTER = "filter";
 // --- MAIN
 
 static void update_keymap(int id)
@@ -144,7 +145,10 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
 static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
         lowpass_filter = !lowpass_filter;
+        rg_settings_set_number(NS_APP, SETTING_APU_FILTER, lowpass_filter);
+    }
 
     strcpy(option->value, lowpass_filter ? _("On") : _("Off"));
 
@@ -341,6 +345,8 @@ void snes_main(void)
 
     // Load settings
     apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
+    lowpass_filter = rg_settings_get_number(NS_APP, SETTING_APU_FILTER, 0);
+    update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     // Allocate surfaces and audio buffers
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
@@ -371,8 +377,6 @@ void snes_main(void)
     audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
     RG_ASSERT(audio_mutex && audio_task_handle, "Failed to create audio task!");
 #endif
-
-    update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     Settings.CyclesPercentage = 100;
     Settings.H_Max = SNES_CYCLES_PER_SCANLINE;
