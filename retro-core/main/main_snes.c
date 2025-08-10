@@ -5,7 +5,7 @@
 
 // #define FRAME_DOUBLE_BUFFERING
 // #define AUDIO_DOUBLE_BUFFERING
-#define USE_AUDIO_TASK
+// #define USE_AUDIO_TASK
 
 typedef struct
 {
