@@ -362,6 +362,9 @@ void snes_main(void)
 #endif
     currentAudioBuffer = audioBuffers[0];
 
+    if (!updates[0] || !updates[1] || !audioBuffers[0] || !audioBuffers[1])
+        RG_PANIC("Failed to allocate buffers!");
+
 #ifdef USE_AUDIO_TASK
     // Set up multicore audio
     audio_mutex = rg_mutex_create();
