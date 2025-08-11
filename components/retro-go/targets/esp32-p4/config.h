@@ -1,5 +1,6 @@
 /* Configuration for the ESP32-P4 dev board
-The GPIOs were chosen arbitrarily, but you can choose whatever you want thanks to the I/O MUX
+ * The GPIOs were chosen arbitrarily, but you can choose whatever you want thanks to the I/O MUX
+ * command to build: python rg_tool.py --target esp32-p4 build-img --no-networking
 */
 
 // Target definition
