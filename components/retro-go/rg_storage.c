@@ -143,17 +143,13 @@ void rg_storage_init(void)
 #endif
 
     sdmmc_slot_config_t slot_config = SDMMC_SLOT_CONFIG_DEFAULT();
-    
-#ifdef RG_STORAGE_SDMMC_BUS_WIDTH_4_BIT
-    slot_config.width = 4;
-    host_config.flags = SDMMC_HOST_FLAG_4BIT;
-#else
     slot_config.width = 1;
 #if SOC_SDMMC_USE_GPIO_MATRIX /* Only the esp32-s3 routes SDMMC through the GPIO matrix */
     slot_config.clk = RG_GPIO_SDMMC_CLK;
     slot_config.cmd = RG_GPIO_SDMMC_CMD;
     slot_config.d0 = RG_GPIO_SDMMC_D0;
 #if defined(RG_GPIO_SDMMC_D1) && defined(RG_GPIO_SDMMC_D2) && defined(RG_GPIO_SDMMC_D3)
+    slot_config.width = 4;
     slot_config.d1 = RG_GPIO_SDMMC_D1;
     slot_config.d2 = RG_GPIO_SDMMC_D2;
     slot_config.d3 = RG_GPIO_SDMMC_D3;

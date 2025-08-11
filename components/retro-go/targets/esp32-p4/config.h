@@ -9,7 +9,6 @@ The GPIOs were chosen arbitrarily, but you can choose whatever you want thanks t
 #define RG_STORAGE_ROOT               "/sd"
 #define RG_STORAGE_SDMMC_HOST         1
 #define RG_STORAGE_SDMMC_SPEED        SDMMC_FREQ_HIGHSPEED
-#define RG_STORAGE_SDMMC_BUS_WIDTH_4_BIT
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -74,20 +73,15 @@ ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x
 
 // SDMMC SD Card
 // We use the default pins for SDMMC on the ESP32-P4 ie:
-#define RG_GPIO_SDSPI_CLK    GPIO_NUM_43
-#define RG_GPIO_SDSPI_CMD	 GPIO_NUM_44
-#define RG_GPIO_SDSPI_D0	 GPIO_NUM_39
-#define RG_GPIO_SDSPI_D1	 GPIO_NUM_40
-#define RG_GPIO_SDSPI_D2	 GPIO_NUM_41
-#define RG_GPIO_SDSPI_D3	 GPIO_NUM_42
+#define RG_GPIO_SDMMC_CLK    GPIO_NUM_43
+#define RG_GPIO_SDMMC_CMD	 GPIO_NUM_44
+#define RG_GPIO_SDMMC_D0	 GPIO_NUM_39
+#define RG_GPIO_SDMMC_D1	 GPIO_NUM_40
+#define RG_GPIO_SDMMC_D2	 GPIO_NUM_41
+#define RG_GPIO_SDMMC_D3	 GPIO_NUM_42
 
 // External I2S DAC
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_48
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_49
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_46
 #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_47
-
-// Updater
-#define RG_UPDATER_ENABLE               0
-#define RG_UPDATER_APPLICATION          RG_APP_FACTORY
-#define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/odroid/firmware"
