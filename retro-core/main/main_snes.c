@@ -5,7 +5,7 @@
 
 // #define FRAME_DOUBLE_BUFFERING
 // #define AUDIO_DOUBLE_BUFFERING
-// #define USE_AUDIO_TASK
+#define USE_AUDIO_TASK
 
 typedef struct
 {
@@ -77,10 +77,7 @@ static rg_audio_sample_t *audioBuffers[2];
 static rg_audio_sample_t *currentAudioBuffer;
 
 #ifdef USE_AUDIO_TASK
-static rg_mutex_t *audio_mutex;
 static rg_task_t *audio_task_handle;
-static volatile bool audio_processing = false;
-static volatile bool audio_shutdown = false;
 #endif
 
 static bool apu_enabled = true;
@@ -302,24 +299,14 @@ static inline void mix_samples(int32_t count)
 #ifdef USE_AUDIO_TASK
 static void audio_task(void *arg)
 {
-    while (!audio_shutdown)
+    rg_task_msg_t msg;
+    while (rg_task_receive(&msg))
     {
-        // Lock the mutex to safely access shared data
-        if (audio_processing && rg_mutex_take(audio_mutex, 5))
-        {
-            // Re-check flag after acquiring lock
-            if (audio_processing)
-            {
-                mix_samples(AUDIO_BUFFER_LENGTH << 1);
-                rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
-                audio_processing = false; // Signal that we are done
-            }
-            rg_mutex_give(audio_mutex);
-        }
-        rg_task_delay(1); // Yield to prevent watchdog timeout and busy-waiting
+        if (msg.type == RG_TASK_MSG_STOP)
+            break;
+        mix_samples(AUDIO_BUFFER_LENGTH << 1);
+        rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
     }
-    rg_mutex_free(audio_mutex);
-    audio_mutex = NULL;
 }
 #endif
 
@@ -373,9 +360,8 @@ void snes_main(void)
 
 #ifdef USE_AUDIO_TASK
     // Set up multicore audio
-    audio_mutex = rg_mutex_create();
     audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
-    RG_ASSERT(audio_mutex && audio_task_handle, "Failed to create audio task!");
+    RG_ASSERT(audio_task_handle, "Failed to create audio task!");
 #endif
 
     Settings.CyclesPercentage = 100;
@@ -465,10 +451,10 @@ void snes_main(void)
         S9xMainLoop();
 
     #ifdef USE_AUDIO_TASK
-        if (rg_mutex_take(audio_mutex, 5))
+        if (apu_enabled)
         {
-            audio_processing = apu_enabled;
-            rg_mutex_give(audio_mutex);
+            rg_task_msg_t msg = {0};
+            rg_task_send(audio_task_handle, &msg);
         }
     #endif
 
@@ -509,8 +495,4 @@ void snes_main(void)
             skipFrames--;
         }
     }
-
-#ifdef USE_AUDIO_TASK
-    audio_shutdown = true;
-#endif
 }
