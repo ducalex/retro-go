@@ -12,7 +12,7 @@
 #define SDCARD_DO_TRANSACTION sdspi_host_do_transaction
 #elif defined(RG_STORAGE_SDMMC_HOST)
 #include <driver/sdmmc_host.h>
-#ifdef RG_TARGET_ESP32_P4
+#ifdef CONFIG_IDF_TARGET_ESP32P4
 #include "sd_pwr_ctrl_by_on_chip_ldo.h"
 #endif
 #define SDCARD_DO_TRANSACTION sdmmc_host_do_transaction
@@ -128,7 +128,7 @@ void rg_storage_init(void)
     host_config.max_freq_khz = RG_STORAGE_SDMMC_SPEED;
     host_config.do_transaction = &sdcard_do_transaction;
 
-#ifdef RG_TARGET_ESP32_P4
+#ifdef CONFIG_IDF_TARGET_ESP32P4
     sd_pwr_ctrl_ldo_config_t ldo_config = {
         .ldo_chan_id = 4,
     };
