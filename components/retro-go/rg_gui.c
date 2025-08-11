@@ -1046,19 +1046,11 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
-typedef struct {
-    const char *layout;
-    int columns;
-    int rows;
-    bool is_upper;
-    bool is_symbols;
-} keyboard_layout_t;
-
 void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer, 
                                   const void *layout_ptr, int cursor_pos)
 {
-    const keyboard_layout_t *current_layout = (const keyboard_layout_t *)layout_ptr;
-    
+    const rg_keyboard_layout_t *current_layout = (const rg_keyboard_layout_t *)layout_ptr;
+
     const int key_width = 28;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
@@ -1141,7 +1133,7 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
 {
     // Virtual keyboard implementation for Wi-Fi credential input
-    static const keyboard_layout_t layouts[] = {
+    static const rg_keyboard_layout_t layouts[] = {
         // Lowercase letters
         {
             .layout = "1234567890"
@@ -1186,7 +1178,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
     int input_length = strlen(input_buffer);
     bool cancelled = false;
 
-    const keyboard_layout_t *current_layout = &layouts[layout_idx];
+    const rg_keyboard_layout_t *current_layout = &layouts[layout_idx];
 
     // Follow the same pattern as rg_gui_dialog
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
