@@ -4,6 +4,8 @@
 
 #include <gwenesis.h>
 
+#define USE_CORE1_TASK
+
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
@@ -29,6 +31,10 @@ static bool sn76489_enabled = true;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_app_t *app;
+
+#ifdef USE_CORE1_TASK
+static rg_task_t *core1_task_handle;
+#endif
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
@@ -197,6 +203,26 @@ static void options_handler(rg_gui_option_t *dest)
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
 }
 
+#ifdef USE_CORE1_TASK
+static void core1_task(void *arg)
+{
+    rg_task_msg_t msg;
+    while (rg_task_receive(&msg))
+    {
+        if (msg.type == RG_TASK_MSG_STOP)
+            break;
+        if (msg.type == 1) // Sync
+            continue;
+        int target_cycles = msg.dataInt >> 9;
+        int scan_line = msg.dataInt & 0x1FF;
+        gwenesis_SN76489_run(target_cycles);
+        ym2612_run(target_cycles);
+        if (scan_line != 0x1FF)
+            gwenesis_vdp_render_line(scan_line);
+    }
+}
+#endif
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -225,6 +251,12 @@ void app_main(void)
     // updates[1]->height = 240;
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
+
+#ifdef USE_CORE1_TASK
+    // Set up multicore audio
+    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
+    RG_ASSERT(core1_task_handle, "Failed to create core1 task!");
+#endif
 
     RG_LOGI("Genesis start\n");
 
@@ -324,6 +356,12 @@ void app_main(void)
             m68k_run(system_clock + VDP_CYCLES_PER_LINE);
             z80_run(system_clock + VDP_CYCLES_PER_LINE);
 
+        #ifdef USE_CORE1_TASK
+            int packet = ((system_clock + VDP_CYCLES_PER_LINE) << 9)
+                       | ((drawFrame && scan_line < screen_height) ? scan_line : 0x1FF);
+            rg_task_msg_t msg = {.type = 0, .dataInt = packet};
+            rg_task_send(core1_task_handle, &msg);
+        #else
             /* Audio */
             /*  GWENESIS_AUDIO_ACCURATE:
             *    =1 : cycle accurate mode. audio is refreshed when CPUs are performing a R/W access
@@ -337,6 +375,7 @@ void app_main(void)
             /* Video */
             if (drawFrame && scan_line < screen_height)
                 gwenesis_vdp_render_line(scan_line); /* render scan_line */
+        #endif
 
             // On these lines, the line counter interrupt is reloaded
             if ((scan_line == 0) || (scan_line > screen_height)) {
@@ -373,6 +412,13 @@ void app_main(void)
 
             system_clock += VDP_CYCLES_PER_LINE;
         }
+
+    #ifdef USE_CORE1_TASK
+        // Make sure all our previous messages have been processed before we continue
+        rg_task_msg_t msg = {.type = 1, .dataInt = 0};
+        rg_task_send(core1_task_handle, &msg);
+        rg_task_send(core1_task_handle, &msg);
+     #endif
 
         /* Audio
         * synchronize YM2612 and SN76489 to system_clock
