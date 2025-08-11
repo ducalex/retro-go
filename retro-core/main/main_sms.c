@@ -6,15 +6,10 @@ static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
-const rg_keyboard_map_t coleco_keyboard = {
+const rg_keyboard_layout_t coleco_keyboard = {
+    .layout = "123" "456" "789" "*0#",
     .columns = 3,
     .rows = 4,
-    .data = {
-        '1', '2', '3',
-        '4', '5', '6',
-        '7', '8', '9',
-        '*', '0', '#',
-    },
 };
 
 static const char *SETTING_PALETTE = "palette";

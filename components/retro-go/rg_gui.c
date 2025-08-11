@@ -551,20 +551,18 @@ void rg_gui_draw_icons(void)
         int width = 16;
         int height = icon_height;
         int seg_width = (width - 2 - 2) / 3;
+        int seg_height = height / 3;
         int x_pos = -right;
-        int y_pos = icon_top;
+        int y_pos = icon_top + height;
 
         rg_color_t color_fill = (network.state == RG_NETWORK_CONNECTED) ? C_GREEN : C_NONE;
         rg_color_t color_border = (network.state == RG_NETWORK_CONNECTED) ? C_SILVER : C_DIM_GRAY;
 
-        y_pos += height * 0.6;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.4, 1, color_border, color_fill);
+        rg_gui_draw_rect(x_pos, y_pos - seg_height * 1, seg_width, seg_height * 1, 1, color_border, color_fill);
         x_pos += seg_width + 2;
-        y_pos -= height * 0.3;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 0.7, 1, color_border, color_fill);
+        rg_gui_draw_rect(x_pos, y_pos - seg_height * 2, seg_width, seg_height * 2, 1, color_border, color_fill);
         x_pos += seg_width + 2;
-        y_pos -= height * 0.3;
-        rg_gui_draw_rect(x_pos, y_pos, seg_width, height * 1.0, 1, color_border, color_fill);
+        rg_gui_draw_rect(x_pos, y_pos - seg_height * 3, seg_width, seg_height * 3, 1, color_border, color_fill);
     }
 
     if (gui.show_clock)
@@ -1306,7 +1304,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
     return input_length > 0 ? strdup(input_buffer) : NULL;
 }
 
-void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
+void rg_gui_draw_keyboard(const rg_keyboard_layout_t *map, size_t cursor)
 {
     RG_ASSERT_ARG(map);
 
@@ -1324,9 +1322,9 @@ void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor)
     {
         int x = x_pos + 8 + (i % map->columns) * 16;
         int y = y_pos + 8 + (i / map->columns) * 16;
-        if (!map->data[i])
+        if (!map->layout[i])
             continue;
-        buf[0] = map->data[i];
+        buf[0] = map->layout[i];
         rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
     }
 }

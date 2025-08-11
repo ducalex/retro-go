@@ -432,18 +432,16 @@ const char *rg_input_get_key_mapping(rg_key_t key)
     return NULL;
 }
 
-const rg_keyboard_map_t virtual_map1 = {
+const rg_keyboard_layout_t virtual_map1 = {
+    .layout = "0123456789"
+              "ABCDEFGHIJ"
+              "KLMNOPQRST"
+              "UVWXYZ ,. ",
     .columns = 10,
     .rows = 4,
-    .data = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-        'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-        'U', 'V', 'W', 'X', 'Y', 'Z', ' ', ',', '.', ' ',
-    }
 };
 
-int rg_input_read_keyboard(const rg_keyboard_map_t *map)
+int rg_input_read_keyboard(const rg_keyboard_layout_t *map)
 {
     int cursor = -1;
     int count = map->columns * map->rows;
@@ -459,7 +457,7 @@ int rg_input_read_keyboard(const rg_keyboard_map_t *map)
         int prev_cursor = cursor;
 
         if (joystick & RG_KEY_A)
-            return map->data[cursor];
+            return map->layout[cursor];
         if (joystick & RG_KEY_B)
             break;
 
