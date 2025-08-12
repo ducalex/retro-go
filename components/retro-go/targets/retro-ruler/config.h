@@ -20,7 +20,7 @@
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_80M
-#define RG_SCREEN_BACKLIGHT         0
+#define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
@@ -77,6 +77,7 @@ ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x
 #define RG_GPIO_LCD_CLK             GPIO_NUM_12
 #define RG_GPIO_LCD_CS              GPIO_NUM_10
 #define RG_GPIO_LCD_DC              GPIO_NUM_9
+#define RG_GPIO_LCD_BCKL            GPIO_NUM_14
 #define RG_GPIO_LCD_RST             GPIO_NUM_NC
 
 // SPI SD Card
