@@ -120,6 +120,7 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     {
         yfm_enabled = !yfm_enabled;
         rg_settings_set_number(NS_APP, SETTING_YFM_EMULATION, yfm_enabled);
+        memset(gwenesis_ym2612_buffer, 0, sizeof(gwenesis_ym2612_buffer));
     }
     strcpy(option->value, yfm_enabled ? _("On") : _("Off"));
 
@@ -132,6 +133,7 @@ static rg_gui_event_t sn76489_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     {
         sn76489_enabled = !sn76489_enabled;
         rg_settings_set_number(NS_APP, SETTING_SN76489_EMULATION, sn76489_enabled);
+        memset(gwenesis_sn76489_buffer, 0, sizeof(gwenesis_sn76489_buffer));
     }
     strcpy(option->value, sn76489_enabled ? _("On") : _("Off"));
 
@@ -444,10 +446,8 @@ void app_main(void)
 
         rg_system_tick(rg_system_timer() - startTime);
 
-        if (yfm_enabled || z80_enabled) {
-            // TODO: Mix in gwenesis_sn76489_buffer
-            rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
-        }
+        // TODO: Mix in gwenesis_sn76489_buffer
+        rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
 
         if (skipFrames == 0)
         {
