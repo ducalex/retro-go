@@ -149,7 +149,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
             if (download_file(release->assets[sel].url, dest_path))
             {
                 if (rg_gui_confirm(_("Download complete!"), _("Reboot to flash?"), true))
-                    rg_system_switch_app(RG_UPDATER_APPLICATION, NULL, dest_path, 0);
+                    rg_system_switch_app(RG_UPDATER_APPLICATION, NULL, dest_path, 0, 0);
             }
         }
     #else

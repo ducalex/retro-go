@@ -129,14 +129,9 @@ static void application_start(retro_file_t *file, int load_state)
     char *part = strdup(file->app->partition);
     char *name = strdup(file->app->short_name);
     char *path = strdup(get_file_path(file));
-    int flags = (gui.startup_mode ? RG_BOOT_ONCE : 0);
-    if (load_state != -1)
-    {
-        flags |= RG_BOOT_RESUME;
-        flags |= (load_state << 4) & RG_BOOT_SLOT_MASK;
-    }
+    int flags = (gui.startup_mode ? RG_BOOT_ONCE : 0) | (load_state != -1 ? RG_BOOT_RESUME : 0);
     bookmark_add(BOOK_TYPE_RECENT, file); // This could relocate *file, but we no longer need it
-    rg_system_switch_app(part, name, path, flags);
+    rg_system_switch_app(part, name, path, load_state, flags);
 }
 
 static uint32_t crc_read_file(retro_file_t *file, bool interactive)

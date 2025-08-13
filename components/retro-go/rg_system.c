@@ -95,6 +95,7 @@ static rg_task_t tasks[8];
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
+static const char *SETTING_BOOT_SLOT = "BootSlot";
 static const char *SETTING_BOOT_FLAGS = "BootFlags";
 static const char *SETTING_TIMEZONE = "Timezone";
 static const char *SETTING_INDICATOR_MASK = "Indicators";
@@ -123,12 +124,13 @@ IRAM_ATTR void esp_panic_putchar_hook(char c)
     logbuf_putc(&panicTrace, c);
 }
 
-static bool update_boot_config(const char *partition, const char *name, const char *args, uint32_t flags)
+static bool update_boot_config(const char *partition, const char *name, const char *args, int save_slot, uint32_t flags)
 {
     if (app.initialized)
     {
         rg_settings_set_string(NS_BOOT, SETTING_BOOT_NAME, name);
         rg_settings_set_string(NS_BOOT, SETTING_BOOT_ARGS, args);
+        rg_settings_set_number(NS_BOOT, SETTING_BOOT_SLOT, save_slot);
         rg_settings_set_number(NS_BOOT, SETTING_BOOT_FLAGS, flags);
         rg_settings_commit();
     }
@@ -348,7 +350,7 @@ static void enter_recovery_mode(void)
             rg_storage_delete(RG_BASE_PATH_CACHE);
             break;
         case 1:
-            rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
+            rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0, 0);
         case 2:
         default:
             rg_system_exit();
@@ -470,6 +472,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     app.configNs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_NAME, app.configNs);
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, app.bootArgs);
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
+    app.saveSlot = rg_settings_get_number(NS_BOOT, SETTING_BOOT_SLOT, app.saveSlot);
     rg_display_init();
     rg_gui_init();
 
@@ -500,7 +503,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     app.lowMemoryMode = statistics.totalMemoryExt == 0;
 
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
-    app.saveSlot = (app.bootFlags & RG_BOOT_SLOT_MASK) >> 4;
     app.romPath = app.bootArgs ?: ""; // For whatever reason some of our code isn't NULL-aware, sigh..
 
     rg_gui_draw_hourglass();
@@ -523,7 +525,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     if (app.bootFlags & RG_BOOT_ONCE)
-        update_boot_config(RG_APP_LAUNCHER, NULL, NULL, 0);
+        update_boot_config(RG_APP_LAUNCHER, NULL, NULL, 0, 0);
 
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
@@ -902,14 +904,14 @@ void rg_system_restart(void)
 void rg_system_exit(void)
 {
     RG_LOGW("Exiting application!");
-    rg_system_switch_app(RG_APP_LAUNCHER, 0, 0, 0);
+    rg_system_switch_app(RG_APP_LAUNCHER, NULL, NULL, 0, 0);
 }
 
-void rg_system_switch_app(const char *partition, const char *name, const char *args, uint32_t flags)
+void rg_system_switch_app(const char *partition, const char *name, const char *args, int save_slot, uint32_t flags)
 {
     RG_LOGI("Switching to app %s (%s)", partition ?: "-", name ?: "-");
 
-    if (update_boot_config(partition, name, args, flags))
+    if (update_boot_config(partition, name, args, save_slot, flags))
         rg_system_restart();
 
     RG_PANIC("Failed to switch app!");
@@ -1227,12 +1229,7 @@ static void emu_update_save_slot(uint8_t slot)
 
     // Set bootflags to resume from this state on next boot
     if ((app.bootFlags & RG_BOOT_ONCE) == 0)
-    {
-        app.bootFlags &= ~RG_BOOT_SLOT_MASK;
-        app.bootFlags |= app.saveSlot << 4;
-        app.bootFlags |= RG_BOOT_RESUME;
-        update_boot_config(NULL, app.configNs, app.bootArgs, app.bootFlags);
-    }
+        update_boot_config(NULL, app.configNs, app.bootArgs, app.saveSlot, app.bootFlags | RG_BOOT_RESUME);
 
     rg_storage_commit();
 }

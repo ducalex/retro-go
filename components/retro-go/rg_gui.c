@@ -1731,7 +1731,7 @@ void rg_gui_debug_menu(void)
     switch (rg_gui_dialog("Debugging", options, 0))
     {
     case 1:
-        rg_system_switch_app(RG_APP_FACTORY, 0, 0, 0);
+        rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0, 0);
         break;
     case 2:
         rg_storage_delete(RG_BASE_PATH_CACHE);

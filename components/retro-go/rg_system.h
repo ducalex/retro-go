@@ -57,13 +57,7 @@ typedef enum
     RG_BOOT_RESET     = 0x04,
     RG_BOOT_NETPLAY   = 0x08,
     RG_BOOT_MODE_MASK = 0x0F,
-    // bits 4-7: slot
-    RG_BOOT_SLOT0     = 0x00,
-    RG_BOOT_SLOT1     = 0x10,
-    RG_BOOT_SLOT2     = 0x20,
-    RG_BOOT_SLOT3     = 0x30,
-    RG_BOOT_SLOT_MASK = 0xF0,
-    // bits 8-31: unused...
+    // bits 4-31: unused...
 } rg_boot_flags_t;
 
 // RG_TASK_PRIORITY_1 is the same as the main task's. Anything
@@ -216,7 +210,7 @@ void rg_system_shutdown(void) __attribute__((noreturn));
 void rg_system_sleep(void) __attribute__((noreturn));
 void rg_system_restart(void) __attribute__((noreturn));
 void rg_system_exit(void) __attribute__((noreturn));
-void rg_system_switch_app(const char *part, const char *name, const char *args, uint32_t flags) __attribute__((noreturn));
+void rg_system_switch_app(const char *part, const char *name, const char *args, int save_slot, uint32_t flags) __attribute__((noreturn));
 bool rg_system_have_app(const char *app);
 void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
