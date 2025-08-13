@@ -76,6 +76,7 @@
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_2
+// #define RG_GPIO_LED_INVERT          // Uncomment if the LED is active LOW
 
 // I2C BUS
 // #define RG_GPIO_I2C_SDA             GPIO_NUM_15
@@ -88,6 +89,7 @@
 #define RG_GPIO_LCD_CS              GPIO_NUM_5
 #define RG_GPIO_LCD_DC              GPIO_NUM_21
 #define RG_GPIO_LCD_BCKL            GPIO_NUM_14
+// #define RG_GPIO_LCD_BCKL_INVERT     // Uncomment if the LED is active LOW
 // #define RG_GPIO_LCD_RST           GPIO_NUM_NC
 
 // SPI SD Card

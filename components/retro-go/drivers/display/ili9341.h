@@ -204,17 +204,20 @@ static void lcd_init(void)
 #ifdef RG_GPIO_LCD_BCKL
     // Initialize backlight at 0% to avoid the lcd reset flash
     ledc_timer_config(&(ledc_timer_config_t){
-        .duty_resolution = LEDC_TIMER_13_BIT,
-        .freq_hz = 5000,
         .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_13_BIT,
         .timer_num = LEDC_TIMER_0,
+        .freq_hz = 5000,
     });
     ledc_channel_config(&(ledc_channel_config_t){
-        .channel = LEDC_CHANNEL_0,
-        .duty = 0,
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
         .timer_sel = LEDC_TIMER_0,
+        .duty = 0,
+    #ifdef RG_GPIO_LCD_BCKL_INVERT
+        .flags.output_invert = 1,
+    #endif
     });
     ledc_fade_func_install(0);
 #endif

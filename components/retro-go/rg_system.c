@@ -234,12 +234,18 @@ static void update_indicators(void)
     if (newColor == ledColor)
         return;
 
-#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    // GPIO LED doesn't support colors, so any color = on
-    if (RG_GPIO_LED != GPIO_NUM_NC)
-        gpio_set_level(RG_GPIO_LED, newColor != 0);
-#endif
     ledColor = newColor;
+
+#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
+    if (RG_GPIO_LED == GPIO_NUM_NC)
+        return;
+    // GPIO LED doesn't support colors, so any color = on
+    int value = newColor != 0;
+    #ifdef RG_GPIO_LED_INVERT
+        value = !value;
+    #endif
+    gpio_set_level(RG_GPIO_LED, value);
+#endif
 }
 
 static void system_monitor_task(void *arg)
