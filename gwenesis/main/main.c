@@ -32,9 +32,9 @@ static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_app_t *app;
 
-#ifdef USE_CORE1_TASK
 static rg_task_t *core1_task_handle;
-#endif
+static bool core1_task_rendering = true;
+static bool core1_task_sound = true;
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
@@ -197,33 +197,55 @@ static void event_handler(int event, void *arg)
     }
 }
 
-static void options_handler(rg_gui_option_t *dest)
+static rg_gui_event_t core1_rendering_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    *dest++ = (rg_gui_option_t){0, _("YM2612 audio "), "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb};
-    *dest++ = (rg_gui_option_t){0, _("SN76489 audio"), "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb};
-    *dest++ = (rg_gui_option_t){0, _("Z80 emulation"), "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb};
-    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        core1_task_rendering = !core1_task_rendering;
+    strcpy(option->value, core1_task_rendering ? _("On") : _("Off"));
+    return RG_DIALOG_VOID;
 }
 
-#ifdef USE_CORE1_TASK
+static rg_gui_event_t core1_sound_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        core1_task_sound = !core1_task_sound;
+    strcpy(option->value, core1_task_sound ? _("On") : _("Off"));
+    return RG_DIALOG_VOID;
+}
+
 static void core1_task(void *arg)
 {
     rg_task_msg_t msg;
     while (rg_task_receive(&msg))
     {
-        if (msg.type == RG_TASK_MSG_STOP)
-            break;
-        if (msg.type == 1) // Sync
-            continue;
-        int target_cycles = msg.dataInt >> 9;
-        int scan_line = msg.dataInt & 0x1FF;
-        gwenesis_SN76489_run(target_cycles);
-        ym2612_run(target_cycles);
-        if (scan_line != 0x1FF)
-            gwenesis_vdp_render_line(scan_line);
+        switch (msg.type)
+        {
+            case 1: // Rendering
+                gwenesis_vdp_render_line(msg.dataInt);
+                break;
+            case 2: // Sound
+                gwenesis_SN76489_run(msg.dataInt);
+                ym2612_run(msg.dataInt);
+                break;
+            case RG_TASK_MSG_STOP:
+                return;
+            default: // Sync/no-op
+                continue;
+        }
     }
 }
-#endif
+
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("YM2612 audio "), "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("SN76489 audio"), "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Z80 emulation"), "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb};
+
+    *dest++ = (rg_gui_option_t){0, _("Render on core 1"), "-", RG_DIALOG_FLAG_NORMAL, &core1_rendering_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Sound on core 1"),  "-", RG_DIALOG_FLAG_NORMAL, &core1_sound_update_cb};
+
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
 
 void app_main(void)
 {
@@ -291,7 +313,7 @@ void app_main(void)
     }
 
     rg_system_set_tick_rate(60);
-    app->frameskip = 3;
+    app->frameskip = 2;
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
@@ -358,26 +380,31 @@ void app_main(void)
             m68k_run(system_clock + VDP_CYCLES_PER_LINE);
             z80_run(system_clock + VDP_CYCLES_PER_LINE);
 
-        #ifdef USE_CORE1_TASK
-            int packet = ((system_clock + VDP_CYCLES_PER_LINE) << 9)
-                       | ((drawFrame && scan_line < screen_height) ? scan_line : 0x1FF);
-            rg_task_msg_t msg = {.type = 0, .dataInt = packet};
-            rg_task_send(core1_task_handle, &msg);
-        #else
             /* Audio */
             /*  GWENESIS_AUDIO_ACCURATE:
             *    =1 : cycle accurate mode. audio is refreshed when CPUs are performing a R/W access
             *    =0 : line  accurate mode. audio is refreshed every lines.
             */
             if (GWENESIS_AUDIO_ACCURATE == 0) {
-                gwenesis_SN76489_run(system_clock + VDP_CYCLES_PER_LINE);
-                ym2612_run(system_clock + VDP_CYCLES_PER_LINE);
+                if (core1_task_sound)
+                {
+                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 2, .dataInt = system_clock + VDP_CYCLES_PER_LINE});
+                }
+                else
+                {
+                    gwenesis_SN76489_run(system_clock + VDP_CYCLES_PER_LINE);
+                    ym2612_run(system_clock + VDP_CYCLES_PER_LINE);
+                }
             }
 
             /* Video */
             if (drawFrame && scan_line < screen_height)
-                gwenesis_vdp_render_line(scan_line); /* render scan_line */
-        #endif
+            {
+                if (core1_task_rendering)
+                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 1, .dataInt = scan_line});
+                else
+                    gwenesis_vdp_render_line(scan_line); /* render scan_line */
+            }
 
             // On these lines, the line counter interrupt is reloaded
             if ((scan_line == 0) || (scan_line > screen_height)) {
@@ -415,12 +442,12 @@ void app_main(void)
             system_clock += VDP_CYCLES_PER_LINE;
         }
 
-    #ifdef USE_CORE1_TASK
         // Make sure all our previous messages have been processed before we continue
-        rg_task_msg_t msg = {.type = 1, .dataInt = 0};
-        rg_task_send(core1_task_handle, &msg);
-        rg_task_send(core1_task_handle, &msg);
-     #endif
+        if (core1_task_rendering || core1_task_sound)
+        {
+            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
+            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
+        }
 
         /* Audio
         * synchronize YM2612 and SN76489 to system_clock
