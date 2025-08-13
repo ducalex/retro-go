@@ -278,7 +278,7 @@ void app_main(void)
 
 #ifdef USE_CORE1_TASK
     // Set up multicore audio
-    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
+    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 4096, RG_TASK_PRIORITY_6, 1);
     RG_ASSERT(core1_task_handle, "Failed to create core1 task!");
 #endif
 
