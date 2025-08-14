@@ -1061,14 +1061,15 @@ bool rg_system_get_indicator_mask(rg_indicator_t indicator)
 bool rg_system_set_led_color(rg_color_t color)
 {
     ledColor = color;
-#if defined(RG_GPIO_LED) && defined(RG_GPIO_LED_INVERT)
-    return RG_GPIO_LED != GPIO_NUM_NC && gpio_set_level(RG_GPIO_LED, !(color > 0)) == ESP_OK;
-#elif defined(RG_GPIO_LED)
-    // GPIO LED doesn't support colors, so any color = on
-    return RG_GPIO_LED != GPIO_NUM_NC && gpio_set_level(RG_GPIO_LED, (color > 0)) == ESP_OK;
-#else
-    return true;
+#if defined(RG_GPIO_LED)
+    int value = color > 0; // GPIO LED doesn't support colors, so any color = on
+    #if defined(RG_GPIO_LED_INVERT)
+    value = !value;
+    #endif
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        return gpio_set_level(RG_GPIO_LED, value) == ESP_OK;
 #endif
+    return true;
 }
 
 rg_color_t rg_system_get_led_color(void)
