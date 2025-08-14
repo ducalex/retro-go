@@ -10,7 +10,7 @@
 static rg_task_t *display_task_queue;
 static rg_display_counters_t counters;
 static rg_display_config_t config;
-static rg_surface_t *osd;
+// static rg_surface_t *osd;
 static rg_surface_t *border;
 static rg_display_t display;
 static int16_t map_viewport_to_source_x[RG_SCREEN_WIDTH + 1];
@@ -212,12 +212,6 @@ static inline void write_update(const rg_surface_t *update)
         }
 
         lines_remaining -= lines_to_copy;
-    }
-
-    if (osd != NULL)
-    {
-        // TODO: Draw on screen display. By default it should be bottom left which is fine
-        // for both virtual keyboard and info labels. Maybe make it configurable later...
     }
 
     if (lines_updated > draw_height * 0.80f)

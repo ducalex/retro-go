@@ -216,6 +216,8 @@ void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
 void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator_mask(rg_indicator_t indicator);
+bool rg_system_set_led_color(rg_color_t color);
+rg_color_t rg_system_get_led_color(void);
 void rg_system_set_tick_rate(int tickRate);
 int rg_system_get_tick_rate(void);
 void rg_system_set_overclock(int level);
