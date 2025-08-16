@@ -1046,10 +1046,254 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
+void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer, 
+                                  const void *layout_ptr, int cursor_pos)
+{
+    const rg_keyboard_layout_t *current_layout = (const rg_keyboard_layout_t *)layout_ptr;
+
+    const int key_width = 28;
+    const int key_height = 20;
+    const int keyboard_width = current_layout->columns * key_width;
+    const int keyboard_height = current_layout->rows * key_height;
+    const int keyboard_x = (gui.screen_width - keyboard_width) / 2;
+    const int keyboard_y = gui.screen_height - keyboard_height - 40;
+    const int input_box_height = 30;
+    const int input_box_y = keyboard_y - input_box_height - 10;
+    
+    // Clear background using same method as rg_gui_draw_dialog
+    rg_gui_draw_rect(0, 0, gui.screen_width, gui.screen_height, 0, C_NONE, gui.style.box_background);
+
+    // Draw title similar to dialog title
+    if (title)
+    {
+        rg_gui_draw_text(0, 10, gui.screen_width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+    }
+
+    // Draw message similar to dialog message
+    if (message)
+    {
+        rg_gui_draw_text(0, title ? 35 : 10, gui.screen_width, message, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+    }
+
+    // Draw input box with same styling as dialog
+    rg_gui_draw_rect(keyboard_x, input_box_y, keyboard_width, input_box_height, 2, gui.style.box_border, C_WHITE);
+    
+    // Add blinking cursor to input display
+    char display_text[140];
+    static uint32_t blink_timer = 0;
+    static bool show_cursor = true;
+    uint32_t current_time = rg_system_timer() / 1000000; // Convert to seconds
+    if (current_time - blink_timer > 1) // Blink every second
+    {
+        show_cursor = !show_cursor;
+        blink_timer = current_time;
+    }
+    
+    snprintf(display_text, sizeof(display_text), "%s%s", input_buffer, show_cursor ? "_" : " ");
+    rg_gui_draw_text(keyboard_x + 5, input_box_y + 5, keyboard_width - 10, display_text, C_BLACK, C_WHITE, 0);
+
+    // Draw keyboard container with same border style as dialog
+    rg_gui_draw_rect(keyboard_x - 2, keyboard_y - 2, keyboard_width + 4, keyboard_height + 4, 2, gui.style.box_border, gui.style.box_background);
+
+    // Draw keyboard keys
+    for (int row = 0; row < current_layout->rows; row++)
+    {
+        for (int col = 0; col < current_layout->columns; col++)
+        {
+            int key_idx = row * current_layout->columns + col;
+            int x = keyboard_x + col * key_width;
+            int y = keyboard_y + row * key_height;
+            char key = current_layout->layout[key_idx];
+            
+            bool is_selected = (cursor_pos == key_idx);
+            // Use same color scheme as dialog items
+            rg_color_t bg_color = is_selected ? gui.style.item_standard : gui.style.box_background;
+            rg_color_t fg_color = is_selected ? gui.style.box_background : gui.style.item_standard;
+            rg_color_t border_color = is_selected ? gui.style.item_standard : gui.style.box_border;
+
+            // Draw key with same border style as dialog
+            rg_gui_draw_rect(x + 1, y + 1, key_width - 2, key_height - 2, 1, border_color, bg_color);
+
+            // Draw key character
+            char key_str[4] = {key, '\0'};
+            if (key == ' ')
+                strcpy(key_str, "SP");
+            rg_gui_draw_text(x + 2, y + 2, key_width - 4, key_str, fg_color, bg_color, RG_TEXT_ALIGN_CENTER);
+        }
+    }
+
+    // Draw instructions at bottom like dialog
+    const char *layout_name = current_layout->is_symbols ? "SYM" : (current_layout->is_upper ? "ABC" : "abc");
+    char instructions[200];
+    snprintf(instructions, sizeof(instructions), 
+            "A=Type  B=Backspace  SELECT=%s  START=OK  MENU/OPT=Cancel", layout_name);
+    rg_gui_draw_text(0, gui.screen_height - 15, gui.screen_width, instructions, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+}
+
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
 {
-    // This will need to fully implement a proper virtual keyboard :(
-    return default_value ? strdup(default_value) : NULL;
+    // Virtual keyboard implementation for Wi-Fi credential input
+    static const rg_keyboard_layout_t layouts[] = {
+        // Lowercase letters
+        {
+            .layout = "1234567890"
+                     "qwertyuiop"
+                     "asdfghjkl "
+                     "zxcvbnm.,?",
+            .columns = 10,
+            .rows = 4,
+            .is_upper = false,
+            .is_symbols = false
+        },
+        // Uppercase letters
+        {
+            .layout = "1234567890"
+                     "QWERTYUIOP"
+                     "ASDFGHJKL "
+                     "ZXCVBNM.,?",
+            .columns = 10,
+            .rows = 4,
+            .is_upper = true,
+            .is_symbols = false
+        },
+        // Symbols
+        {
+            .layout = "!@#$%^&*()"
+                     "[]{}|\\:;\"'"
+                     "<>?/+=_-~ "
+                     "1234567890",
+            .columns = 10,
+            .rows = 4,
+            .is_upper = false,
+            .is_symbols = true
+        }
+    };
+
+    char input_buffer[128] = {0};
+    if (default_value)
+        strncpy(input_buffer, default_value, sizeof(input_buffer) - 1);
+
+    int cursor_pos = 0; // Position in keyboard grid
+    int layout_idx = 0; // Current keyboard layout
+    int input_length = strlen(input_buffer);
+    bool cancelled = false;
+
+    const rg_keyboard_layout_t *current_layout = &layouts[layout_idx];
+
+    // Follow the same pattern as rg_gui_dialog
+    rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
+    rg_task_delay(80);
+
+    uint32_t joystick = 0, joystick_old;
+    uint64_t joystick_last = 0;
+    bool redraw = true;
+
+    while (true)
+    {
+        // Handle input similar to rg_gui_dialog
+        joystick_old = ((rg_system_timer() - joystick_last) > 300000) ? 0 : joystick;
+        joystick = rg_input_read_gamepad();
+
+        if (joystick ^ joystick_old)
+        {
+            if (joystick & RG_KEY_LEFT)
+            {
+                cursor_pos--;
+                if (cursor_pos < 0)
+                    cursor_pos = (current_layout->columns * current_layout->rows) - 1;
+                redraw = true;
+            }
+            else if (joystick & RG_KEY_RIGHT)
+            {
+                cursor_pos++;
+                if (cursor_pos >= current_layout->columns * current_layout->rows)
+                    cursor_pos = 0;
+                redraw = true;
+            }
+            else if (joystick & RG_KEY_UP)
+            {
+                cursor_pos -= current_layout->columns;
+                if (cursor_pos < 0)
+                    cursor_pos += current_layout->columns * current_layout->rows;
+                redraw = true;
+            }
+            else if (joystick & RG_KEY_DOWN)
+            {
+                cursor_pos += current_layout->columns;
+                if (cursor_pos >= current_layout->columns * current_layout->rows)
+                    cursor_pos -= current_layout->columns * current_layout->rows;
+                redraw = true;
+            }
+            else if (joystick & RG_KEY_A)
+            {
+                char key = current_layout->layout[cursor_pos];
+                if (input_length < sizeof(input_buffer) - 1)
+                {
+                    input_buffer[input_length++] = key;
+                    input_buffer[input_length] = '\0';
+                    redraw = true;
+                }
+            }
+            else if (joystick & RG_KEY_B)
+            {
+                // Backspace
+                if (input_length > 0)
+                {
+                    input_buffer[--input_length] = '\0';
+                    redraw = true;
+                }
+            }
+            else if (joystick & RG_KEY_SELECT)
+            {
+                // Toggle between layouts (Shift/Symbols)
+                if (current_layout->is_symbols)
+                {
+                    layout_idx = 0; // Back to lowercase
+                }
+                else if (current_layout->is_upper)
+                {
+                    layout_idx = 2; // Switch to symbols
+                }
+                else
+                {
+                    layout_idx = 1; // Switch to uppercase
+                }
+                current_layout = &layouts[layout_idx];
+                cursor_pos = 0;
+                redraw = true;
+            }
+            else if (joystick & RG_KEY_START)
+            {
+                // OK/Enter - confirm input
+                break;
+            }
+            else if (joystick & (RG_KEY_MENU | RG_KEY_OPTION))
+            {
+                // Cancel
+                cancelled = true;
+                break;
+            }
+
+            joystick_last = rg_system_timer();
+        }
+
+        if (redraw)
+        {
+            rg_gui_draw_virtual_keyboard(title, message, input_buffer, current_layout, cursor_pos);
+            redraw = false;
+        }
+
+        rg_task_delay(20);
+        rg_system_tick(0);
+    }
+
+    rg_input_wait_for_key(joystick, false, 1000);
+    rg_display_force_redraw();
+
+    if (cancelled)
+        return NULL;
+
+    return input_length > 0 ? strdup(input_buffer) : NULL;
 }
 
 void rg_gui_draw_keyboard(const rg_keyboard_layout_t *map, size_t cursor)
@@ -1446,6 +1690,13 @@ static void wifi_toggle_interactive(bool enable, int slot)
 static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     rg_network_t info = rg_network_get_info();
+    
+    if (event == RG_DIALOG_UPDATE || event == RG_DIALOG_INIT)
+    {
+        // Force refresh of network info on update events
+        info = rg_network_get_info();
+    }
+    
     if (info.state != RG_NETWORK_CONNECTED)
         strcpy(option->value, _("Not connected"));
     else if (option->arg == 0x10)
@@ -1455,15 +1706,215 @@ static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    int slot = option->arg;
+    
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_wifi_config_t config;
+        if (!rg_network_wifi_read_config(slot, &config))
+        {
+            rg_gui_alert(_("Error"), _("No network configuration found in this slot"));
+            return RG_DIALOG_VOID;
+        }
+
+        char title[50];
+        snprintf(title, sizeof(title), "Slot %d: %.15s", slot, config.ssid);
+
+        const rg_gui_option_t slot_options[] = {
+            {1, _("Connect"),      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {2, _("Edit SSID"),    NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {3, _("Edit Password"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {4, _("Delete"),       NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            RG_DIALOG_END,
+        };
+
+        int action = rg_gui_dialog(title, slot_options, 0);
+        
+        switch (action)
+        {
+            case 1: // Connect
+                rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
+                rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
+                wifi_toggle_interactive(true, slot);
+                break;
+                
+            case 2: // Edit SSID
+            {
+                char *new_ssid = rg_gui_input_str(_("Edit SSID"), _("Enter new network name:"), config.ssid);
+                if (new_ssid && strlen(new_ssid) > 0)
+                {
+                    strncpy(config.ssid, new_ssid, sizeof(config.ssid) - 1);
+                    config.ssid[sizeof(config.ssid) - 1] = '\0';
+                    rg_network_wifi_write_config(slot, &config);
+                    rg_settings_commit();
+                    rg_gui_alert(_("Success"), _("SSID updated"));
+                }
+                free(new_ssid);
+                break;
+            }
+            
+            case 3: // Edit Password
+            {
+                char *new_password = rg_gui_input_str(_("Edit Password"), _("Enter new password:"), config.password);
+                if (new_password)
+                {
+                    strncpy(config.password, new_password, sizeof(config.password) - 1);
+                    config.password[sizeof(config.password) - 1] = '\0';
+                    rg_network_wifi_write_config(slot, &config);
+                    rg_settings_commit();
+                    rg_gui_alert(_("Success"), _("Password updated"));
+                }
+                free(new_password);
+                break;
+            }
+            
+            case 4: // Delete
+                if (rg_gui_confirm(_("Delete Network"), _("Are you sure you want to delete this network configuration?"), false))
+                {
+                    char key[16];
+                    snprintf(key, sizeof(key), "ssid%d", slot);
+                    rg_settings_delete(NS_WIFI, key);
+                    snprintf(key, sizeof(key), "password%d", slot);
+                    rg_settings_delete(NS_WIFI, key);
+                    snprintf(key, sizeof(key), "channel%d", slot);
+                    rg_settings_delete(NS_WIFI, key);
+                    snprintf(key, sizeof(key), "mode%d", slot);
+                    rg_settings_delete(NS_WIFI, key);
+                    rg_settings_commit();
+                    rg_gui_alert(_("Success"), _("Network configuration deleted"));
+                }
+                break;
+        }
+        
+        return RG_DIALOG_REDRAW;
+    }
+    
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_manage_networks_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        char slot_labels[5][60];
+        rg_gui_option_t slot_options[6];
+        
+        for (size_t i = 0; i < 5; i++)
+        {
+            rg_wifi_config_t config;
+            if (rg_network_wifi_read_config(i, &config))
+                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: %.25s", (int)i, config.ssid);
+            else
+                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: (empty)", (int)i);
+                
+            slot_options[i] = (rg_gui_option_t){i, slot_labels[i], NULL, 
+                rg_network_wifi_read_config(i, &config) ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, 
+                &wifi_manage_slot_cb};
+        }
+        slot_options[5] = (rg_gui_option_t)RG_DIALOG_END;
+
+        rg_gui_dialog(_("Manage Networks"), slot_options, 0);
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t wifi_add_network_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        // Get SSID from user
+        char *ssid = rg_gui_input_str(_("Wi-Fi SSID"), _("Enter network name:"), "");
+        if (!ssid || strlen(ssid) == 0)
+        {
+            free(ssid);
+            rg_gui_alert(_("Error"), _("SSID cannot be empty"));
+            return RG_DIALOG_REDRAW;
+        }
+
+        // Get password from user
+        char *password = rg_gui_input_str(_("Wi-Fi Password"), _("Enter password (leave empty for open network):"), "");
+        if (!password)
+            password = strdup("");
+
+        // Select slot to save to
+        char slot_labels[5][50];
+        for (size_t i = 0; i < 5; i++)
+        {
+            rg_wifi_config_t config;
+            if (rg_network_wifi_read_config(i, &config))
+                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: %s", (int)i, config.ssid);
+            else
+                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: (empty)", (int)i);
+        }
+
+        const rg_gui_option_t slot_options[] = {
+            {0, slot_labels[0], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {1, slot_labels[1], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {2, slot_labels[2], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {3, slot_labels[3], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {4, slot_labels[4], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            RG_DIALOG_END,
+        };
+
+        int selected_slot = rg_gui_dialog(_("Select Slot"), slot_options, 0);
+        if (selected_slot == RG_DIALOG_CANCELLED)
+        {
+            free(ssid);
+            free(password);
+            return RG_DIALOG_REDRAW;
+        }
+
+        // Save the configuration
+        rg_wifi_config_t new_config = {0};
+        strncpy(new_config.ssid, ssid, sizeof(new_config.ssid) - 1);
+        strncpy(new_config.password, password, sizeof(new_config.password) - 1);
+        new_config.channel = 0; // Auto
+        new_config.ap_mode = false;
+
+        if (rg_network_wifi_write_config(selected_slot, &new_config))
+        {
+            // Commit settings
+            rg_settings_commit();
+
+            // Ask if user wants to connect now
+            char confirm_msg[150];
+            snprintf(confirm_msg, sizeof(confirm_msg), 
+                    "Network saved to slot %d.\n\nConnect now?", selected_slot);
+            
+            if (rg_gui_confirm(_("Network Saved"), confirm_msg, true))
+            {
+                rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
+                rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, selected_slot);
+                wifi_toggle_interactive(true, selected_slot);
+            }
+        }
+        else
+        {
+            rg_gui_alert(_("Error"), _("Failed to save network configuration"));
+        }
+
+        free(ssid);
+        free(password);
+        return RG_DIALOG_REDRAW;
+    }
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1);
     char labels[5][40] = {0};
+    
+    // Always refresh the labels, especially on UPDATE events
     for (size_t i = 0; i < 5; i++)
     {
         rg_wifi_config_t config;
         strncpy(labels[i], rg_network_wifi_read_config(i, &config) ? config.ssid : _("(empty)"), 32);
     }
+    
     if (event == RG_DIALOG_ENTER)
     {
         const rg_gui_option_t options[] = {
@@ -1483,6 +1934,8 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
         }
         return RG_DIALOG_REDRAW;
     }
+    
+    // Update the displayed value
     if (slot >= 0 && slot < RG_COUNT(labels))
         sprintf(option->value, "%d - %s", slot, labels[slot]);
     else
@@ -1524,6 +1977,8 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
         const rg_gui_option_t options[] = {
             {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
             {0x00, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
+            {0x00, _("Add new network"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_add_network_cb },
+            {0x00, _("Manage networks"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_manage_networks_cb },
             RG_DIALOG_SEPARATOR,
             {0x00, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
