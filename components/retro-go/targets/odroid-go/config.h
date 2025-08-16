@@ -33,9 +33,9 @@
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_22
 // #define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
-// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_14
-// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_21
-// #define RG_GPIO_SDMMC_D0            GPIO_NUM_17
+// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_15
+// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_14
+// #define RG_GPIO_SDMMC_D0            GPIO_NUM_2
 // #define RG_GPIO_SDMMC_D1            GPIO_NUM_NC
 // #define RG_GPIO_SDMMC_D2            GPIO_NUM_NC
 // #define RG_GPIO_SDMMC_D3            GPIO_NUM_NC
