@@ -33,11 +33,14 @@ typedef struct
 bool rg_network_init(void);
 void rg_network_deinit(void);
 bool rg_network_wifi_set_config(const rg_wifi_config_t *config);
-bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out);
-bool rg_network_wifi_write_config(int slot, const rg_wifi_config_t *config);
 bool rg_network_wifi_start(void);
 void rg_network_wifi_stop(void);
 rg_network_t rg_network_get_info(void);
+
+// Configuration slots management
+bool rg_network_wifi_read_config(int slot, rg_wifi_config_t *out);
+bool rg_network_wifi_write_config(int slot, const rg_wifi_config_t *config);
+bool rg_network_wifi_delete_config(int slot);
 
 typedef struct
 {

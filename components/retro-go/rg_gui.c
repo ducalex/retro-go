@@ -1702,7 +1702,7 @@ static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t eve
 static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int slot = option->arg;
-    
+
     if (event == RG_DIALOG_ENTER)
     {
         rg_wifi_config_t config;
@@ -1724,7 +1724,7 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
         };
 
         int action = rg_gui_dialog(title, slot_options, 0);
-        
+
         switch (action)
         {
             case 1: // Connect
@@ -1732,7 +1732,7 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
                 rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, slot);
                 wifi_toggle_interactive(true, slot);
                 break;
-                
+
             case 2: // Edit SSID
             {
                 char *new_ssid = rg_gui_input_str(_("Edit SSID"), _("Enter new network name:"), config.ssid);
@@ -1747,7 +1747,7 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
                 free(new_ssid);
                 break;
             }
-            
+
             case 3: // Edit Password
             {
                 char *new_password = rg_gui_input_str(_("Edit Password"), _("Enter new password:"), config.password);
@@ -1762,28 +1762,20 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
                 free(new_password);
                 break;
             }
-            
+
             case 4: // Delete
                 if (rg_gui_confirm(_("Delete Network"), _("Are you sure you want to delete this network configuration?"), false))
                 {
-                    char key[16];
-                    snprintf(key, sizeof(key), "ssid%d", slot);
-                    rg_settings_delete(NS_WIFI, key);
-                    snprintf(key, sizeof(key), "password%d", slot);
-                    rg_settings_delete(NS_WIFI, key);
-                    snprintf(key, sizeof(key), "channel%d", slot);
-                    rg_settings_delete(NS_WIFI, key);
-                    snprintf(key, sizeof(key), "mode%d", slot);
-                    rg_settings_delete(NS_WIFI, key);
+                    rg_network_wifi_delete_config(slot);
                     rg_settings_commit();
                     rg_gui_alert(_("Success"), _("Network configuration deleted"));
                 }
                 break;
         }
-        
+
         return RG_DIALOG_REDRAW;
     }
-    
+
     return RG_DIALOG_VOID;
 }
 
