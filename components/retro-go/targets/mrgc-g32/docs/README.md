@@ -9,7 +9,7 @@
 - STM32F071cbu7 (Apparently buttons, charging, LED, backlight?)
 - NXP 1334A (I2S DAC)
 - CS5082E (Power controller)
-- P8302E (Amplifier)
+- PAM8302E (Amplifier)
 - YT280S002 (ILI9341 LCD)
 
  * IO35 - MENU BTN

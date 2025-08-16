@@ -136,7 +136,7 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
             left = sample + 0x8000; // the internal DAC expects unsigned data
             right = 0;
         #elif RG_AUDIO_USE_INT_DAC == 2
-            left = 0; 
+            left = 0;
             right = sample + 0x8000; // the internal DAC expects unsigned data
         #elif RG_AUDIO_USE_INT_DAC == 3
             // In two channel mode we use left and right as a differential mono output to increase resolution.
@@ -181,10 +181,10 @@ static bool driver_set_mute(bool mute)
     i2s_zero_dma_buffer(I2S_NUM_0);
     #if defined(RG_GPIO_SND_AMP_ENABLE)
         gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        #if defined(RG_TARGET_BYTEBOI_REV1)
-            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute);
+        #ifdef RG_GPIO_SND_AMP_ENABLE_INVERT
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 1 : 0);
         #else
-            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, !mute);
+            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
         #endif
     #elif defined(RG_TARGET_QTPY_GAMER)
         rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);

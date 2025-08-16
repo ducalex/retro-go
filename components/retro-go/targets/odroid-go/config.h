@@ -15,7 +15,7 @@
 /****************************************************************************
  * I2C / GPIO Extender                                                      *
  ****************************************************************************/
-// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017, 4 = PCF8575
 // #define RG_I2C_GPIO_ADDR            0x00
 // #define RG_GPIO_I2C_SDA             GPIO_NUM_15
 // #define RG_GPIO_I2C_SCL             GPIO_NUM_4
@@ -51,6 +51,7 @@
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_15
 // #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
+// #define RG_GPIO_SND_AMP_ENABLE_INVERT // Uncomment if the mute = HIGH
 
 
 /****************************************************************************
@@ -121,7 +122,7 @@
 /****************************************************************************
  * Battery                                                                  *
  ****************************************************************************/
-#define RG_BATTERY_DRIVER           1
+#define RG_BATTERY_DRIVER           1   // 1 = ADC, 2 = MRGC
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
 #define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_0
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
