@@ -1690,13 +1690,6 @@ static void wifi_toggle_interactive(bool enable, int slot)
 static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     rg_network_t info = rg_network_get_info();
-    
-    if (event == RG_DIALOG_UPDATE || event == RG_DIALOG_INIT)
-    {
-        // Force refresh of network info on update events
-        info = rg_network_get_info();
-    }
-    
     if (info.state != RG_NETWORK_CONNECTED)
         strcpy(option->value, _("Not connected"));
     else if (option->arg == 0x10)
@@ -1906,38 +1899,9 @@ static rg_gui_event_t wifi_add_network_cb(rg_gui_option_t *option, rg_gui_event_
 static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int slot = rg_settings_get_number(NS_WIFI, SETTING_WIFI_SLOT, -1);
-    char labels[5][40] = {0};
-    
-    // Always refresh the labels, especially on UPDATE events
-    for (size_t i = 0; i < 5; i++)
-    {
-        rg_wifi_config_t config;
-        strncpy(labels[i], rg_network_wifi_read_config(i, &config) ? config.ssid : _("(empty)"), 32);
-    }
-    
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, "0", labels[0], RG_DIALOG_FLAG_NORMAL, NULL},
-            {1, "1", labels[1], RG_DIALOG_FLAG_NORMAL, NULL},
-            {2, "2", labels[2], RG_DIALOG_FLAG_NORMAL, NULL},
-            {3, "3", labels[3], RG_DIALOG_FLAG_NORMAL, NULL},
-            {4, "4", labels[4], RG_DIALOG_FLAG_NORMAL, NULL},
-            RG_DIALOG_END,
-        };
-        int sel = rg_gui_dialog(option->label, options, slot);
-        if (sel != RG_DIALOG_CANCELLED)
-        {
-            rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
-            rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, sel);
-            wifi_toggle_interactive(true, sel);
-        }
-        return RG_DIALOG_REDRAW;
-    }
-    
-    // Update the displayed value
-    if (slot >= 0 && slot < RG_COUNT(labels))
-        sprintf(option->value, "%d - %s", slot, labels[slot]);
+    rg_wifi_config_t config;
+    if (rg_network_wifi_read_config(slot, &config))
+        sprintf(option->value, "%d - %s", slot, config.ssid);
     else
         strcpy(option->value, _("none"));
     return RG_DIALOG_VOID;
@@ -1976,12 +1940,12 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     {
         const rg_gui_option_t options[] = {
             {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
-            {0x00, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_profile_cb     },
             {0x00, _("Add new network"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_add_network_cb },
             {0x00, _("Manage networks"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_manage_networks_cb },
             RG_DIALOG_SEPARATOR,
             {0x00, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
             RG_DIALOG_SEPARATOR,
+            {0x00, _("Wi-Fi profile"),      "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_profile_cb     },
             {0x10, _("Network"),            "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
             {0x11, _("IP address"),         "-",  RG_DIALOG_FLAG_MESSAGE, &wifi_status_cb      },
             RG_DIALOG_END,
