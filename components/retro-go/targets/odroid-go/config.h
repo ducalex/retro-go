@@ -1,32 +1,71 @@
-// Target definition
+/****************************************************************************
+ * Target definition for Hardkernel's ODROID-GO                             *
+ ****************************************************************************/
 #define RG_TARGET_NAME             "ODROID-GO"
 
-// Storage
+
+/****************************************************************************
+ * Status LED                                                               *
+ ****************************************************************************/
+#define RG_LED_DRIVER               1   // 1 = GPIO
+#define RG_GPIO_LED                 GPIO_NUM_2
+// #define RG_GPIO_LED_INVERT          // Uncomment if the LED is active LOW
+
+
+/****************************************************************************
+ * I2C / GPIO Extender                                                      *
+ ****************************************************************************/
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_ADDR            0x00
+// #define RG_GPIO_I2C_SDA             GPIO_NUM_15
+// #define RG_GPIO_I2C_SCL             GPIO_NUM_4
+
+
+/****************************************************************************
+ * Storage                                                                  *
+ ****************************************************************************/
 #define RG_STORAGE_ROOT             "/sd"
 #define RG_STORAGE_SDSPI_HOST       SPI2_HOST
 #define RG_STORAGE_SDSPI_SPEED      SDMMC_FREQ_DEFAULT
+#define RG_GPIO_SDSPI_MISO          GPIO_NUM_19
+#define RG_GPIO_SDSPI_MOSI          GPIO_NUM_23
+#define RG_GPIO_SDSPI_CLK           GPIO_NUM_18
+#define RG_GPIO_SDSPI_CS            GPIO_NUM_22
 // #define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
+// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_14
+// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_21
+// #define RG_GPIO_SDMMC_D0            GPIO_NUM_17
+// #define RG_GPIO_SDMMC_D1            GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_D2            GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_D3            GPIO_NUM_NC
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
-// GPIO Extender
-// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
-// #define RG_I2C_GPIO_ADDR            0x00
 
-// Audio
+/****************************************************************************
+ * Audio                                                                    *
+ ****************************************************************************/
 #define RG_AUDIO_USE_INT_DAC        3   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_4
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_15
+// #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
 
-// Video
-#define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
+
+/****************************************************************************
+ * Video                                                                    *
+ ****************************************************************************/
+#define RG_SCREEN_DRIVER            1   // 1 = ILI9341/ST7789
 #define RG_SCREEN_HOST              SPI2_HOST
 #define RG_SCREEN_SPEED             SPI_MASTER_FREQ_40M
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
-#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0} // left, top, right, bottom
+#define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0} // left, top, right, bottom
+#define RG_SCREEN_PARTIAL_UPDATES   1
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \
@@ -49,7 +88,19 @@
 #define RG_SCREEN_DEINIT() \
     /* Nothing to do */
 
-// Input
+#define RG_GPIO_LCD_MISO            GPIO_NUM_19
+#define RG_GPIO_LCD_MOSI            GPIO_NUM_23
+#define RG_GPIO_LCD_CLK             GPIO_NUM_18
+#define RG_GPIO_LCD_CS              GPIO_NUM_5
+#define RG_GPIO_LCD_DC              GPIO_NUM_21
+#define RG_GPIO_LCD_BCKL            GPIO_NUM_14
+// #define RG_GPIO_LCD_BCKL_INVERT     // Uncomment if the LED is active LOW
+// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
+
+
+/****************************************************************************
+ * Input                                                                    *
+ ****************************************************************************/
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_ADC_MAP {\
     {RG_KEY_UP,    ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 3072, 4096},\
@@ -66,7 +117,10 @@
     {RG_KEY_B,      .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
 }
 
-// Battery
+
+/****************************************************************************
+ * Battery                                                                  *
+ ****************************************************************************/
 #define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
 #define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_0
@@ -74,48 +128,20 @@
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
 
 
-// Status LED
-#define RG_GPIO_LED                 GPIO_NUM_2
-// #define RG_GPIO_LED_INVERT          // Uncomment if the LED is active LOW
-
-// I2C BUS
-// #define RG_GPIO_I2C_SDA             GPIO_NUM_15
-// #define RG_GPIO_I2C_SCL             GPIO_NUM_4
-
-// SPI Display
-#define RG_GPIO_LCD_MISO            GPIO_NUM_19
-#define RG_GPIO_LCD_MOSI            GPIO_NUM_23
-#define RG_GPIO_LCD_CLK             GPIO_NUM_18
-#define RG_GPIO_LCD_CS              GPIO_NUM_5
-#define RG_GPIO_LCD_DC              GPIO_NUM_21
-#define RG_GPIO_LCD_BCKL            GPIO_NUM_14
-// #define RG_GPIO_LCD_BCKL_INVERT     // Uncomment if the LED is active LOW
-// #define RG_GPIO_LCD_RST           GPIO_NUM_NC
-
-// SPI SD Card
-#define RG_GPIO_SDSPI_MISO          GPIO_NUM_19
-#define RG_GPIO_SDSPI_MOSI          GPIO_NUM_23
-#define RG_GPIO_SDSPI_CLK           GPIO_NUM_18
-#define RG_GPIO_SDSPI_CS            GPIO_NUM_22
-
-// SDMMC SD Card
-// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_14
-// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_21
-// #define RG_GPIO_SDMMC_D0            GPIO_NUM_17
-// #define RG_GPIO_SDMMC_D1            GPIO_NUM_NC
-// #define RG_GPIO_SDMMC_D2            GPIO_NUM_NC
-// #define RG_GPIO_SDMMC_D3            GPIO_NUM_NC
-
-// External I2S DAC
-#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_4
-#define RG_GPIO_SND_I2S_WS          GPIO_NUM_12
-#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_15
-// #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_NC
-
-// Updater
+/****************************************************************************
+ * Updater                                                                  *
+ ****************************************************************************/
 #define RG_UPDATER_ENABLE               1
 #define RG_UPDATER_APPLICATION          RG_APP_FACTORY
 #define RG_UPDATER_DOWNLOAD_LOCATION    RG_STORAGE_ROOT "/odroid/firmware"
 
-// Miscellaneous config
+
+/****************************************************************************
+ * Miscellaneous                                                            *
+ ****************************************************************************/
+#define RG_RECOVERY_BTN                 RG_KEY_ANY
+
+#define RG_CUSTOM_PLATFORM_INIT() \
+    /* Arbitrary code executed very early during retro-go init */
+
 // See components/retro-go/config.h for more things you can define here!
