@@ -1,3 +1,7 @@
+# Retro-Go 1.xx (2025-??-??)
+- Virtual keyboard to add wifi networks
+
+
 # Retro-Go 1.45 (2025-07-27)
 - SMS/GG: Fixe broken inputs in many games since 1.40 (#198)
 - SNES: Increased max supported ROM size on some devices
@@ -6,6 +10,8 @@
 - All: French translation now has accents
 - New device support: LILYGO T-Deck Plus
 - New device support: Null Nano by Ampersand
+- New device support: crokpocket
+- New device support: VMU
 
 
 # Retro-Go 1.44 (2025-02-03)
