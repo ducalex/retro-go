@@ -1895,7 +1895,7 @@ static rg_gui_event_t wifi_profile_cb(rg_gui_option_t *option, rg_gui_event_t ev
     if (rg_network_wifi_read_config(slot, &config))
         sprintf(option->value, "%d - %s", slot, config.ssid);
     else
-        strcpy(option->value, _("none"));
+        strcpy(option->value, _("None"));
     return RG_DIALOG_VOID;
 }
 

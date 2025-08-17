@@ -58,7 +58,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "For these changes to take effect you must restart your device.\nrestart now?",
-        [RG_LANG_FR] = "Pour que ces changements prennent effet, vous devez redémmarer votre appareil.\nRedémmarer maintenant ?",
+        [RG_LANG_FR] = "Pour que ces changements prennent effet, vous devez redémarrer votre appareil.\nRedémarrer maintenant ?",
     },
     {
         [RG_LANG_EN] = "Wi-Fi profile",
@@ -162,7 +162,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Emulator options",
-        [RG_LANG_FR] = "Options emulateur",
+        [RG_LANG_FR] = "Options émulateur",
     },
     {
         [RG_LANG_EN] = "Date",
@@ -214,7 +214,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "RTC config",
-        [RG_LANG_FR] = "Congig RTC",
+        [RG_LANG_FR] = "Config RTC",
     },
     {
         [RG_LANG_EN] = "Palette",
@@ -373,11 +373,11 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Connecting...",
-        [RG_LANG_FR] = "Connection...",
+        [RG_LANG_FR] = "Connexion...",
     },
     {
         [RG_LANG_EN] = "Disconnecting...",
-        [RG_LANG_FR] = "Disconnection...",
+        [RG_LANG_FR] = "Déconnexion...",
     },
     {
         [RG_LANG_EN] = "(empty)",
@@ -442,7 +442,7 @@ static const char *translations[][RG_LANG_MAX] =
         [RG_LANG_FR] = "Options Wi-Fi",
     },
 
-    // app dettings
+    // app settings
     {
         [RG_LANG_EN] = "Scaling",
         [RG_LANG_FR] = "Format",
@@ -580,7 +580,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Tabs Visibility",
-        [RG_LANG_FR] = "Visibilitée onglets",
+        [RG_LANG_FR] = "Visibilité onglets",
     },
 
     // scroll modes
@@ -658,7 +658,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Start screen",
-        [RG_LANG_FR] = "Ecran démarrage",
+        [RG_LANG_FR] = "Écran démarrage",
     },
     {
         [RG_LANG_EN] = "Hide tabs",
@@ -820,7 +820,7 @@ static const char *translations[][RG_LANG_MAX] =
     },
     {
         [RG_LANG_EN] = "Recovery mode",
-        [RG_LANG_FR] = "Mode de recupération",
+        [RG_LANG_FR] = "Mode de récupération",
     },
     {
         [RG_LANG_EN] = "System Panic!",
