@@ -966,10 +966,10 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes)
 {
     const rg_gui_option_t options[] = {
-        {0, message, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, "",      NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {1, _("Yes"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
-        {0, _("No"),   NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {0, message,  NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, "",       NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {1, _("Yes"), NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {0, _("No"),  NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
         RG_DIALOG_END,
     };
     return rg_gui_dialog(title, message ? options : options + 1, default_yes ? -2 : -1) == 1;
@@ -980,7 +980,7 @@ void rg_gui_alert(const char *title, const char *message)
     const rg_gui_option_t options[] = {
         {0, message, NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
         {0, "",      NULL, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {1, _("OK"),    NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
+        {1, _("OK"), NULL, RG_DIALOG_FLAG_NORMAL,  NULL},
         RG_DIALOG_END,
     };
     rg_gui_dialog(title, message ? options : options + 1, -1);
@@ -1752,10 +1752,10 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
         snprintf(title, sizeof(title), "Slot %d: %.15s", slot, config.ssid);
 
         const rg_gui_option_t slot_options[] = {
-            {1, _("Connect"),      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {2, _("Edit SSID"),    NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {1, _("Connect"),       NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {2, _("Edit SSID"),     NULL, RG_DIALOG_FLAG_NORMAL, NULL},
             {3, _("Edit Password"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {4, _("Delete"),       NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+            {4, _("Delete"),        NULL, RG_DIALOG_FLAG_NORMAL, NULL},
             RG_DIALOG_END,
         };
 
