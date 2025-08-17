@@ -1702,14 +1702,50 @@ static rg_gui_event_t wifi_status_cb(rg_gui_option_t *option, rg_gui_event_t eve
 static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int slot = option->arg;
+    rg_wifi_config_t config = {0};
+
+    if (event == RG_DIALOG_INIT || event == RG_DIALOG_UPDATE || event == RG_DIALOG_ENTER)
+    {
+        rg_network_wifi_read_config(slot, &config);
+        strcpy(option->value, config.ssid[0] ? config.ssid : _("(add network)"));
+    }
 
     if (event == RG_DIALOG_ENTER)
     {
-        rg_wifi_config_t config;
-        if (!rg_network_wifi_read_config(slot, &config))
+        if (!config.ssid[0])
         {
-            rg_gui_alert(_("Error"), _("No network configuration found in this slot"));
-            return RG_DIALOG_VOID;
+            // Get SSID from user
+            char *ssid = rg_gui_input_str(_("Wi-Fi SSID"), _("Enter new network name:"), "");
+            if (!ssid || strlen(ssid) == 0)
+            {
+                free(ssid);
+                return RG_DIALOG_VOID;
+            }
+
+            // Get password from user
+            char *password = rg_gui_input_str(_("Wi-Fi Password"), _("Enter password (leave empty for open network):"), "");
+            if (!password)
+                password = strdup("");
+
+            // Save the configuration
+            rg_wifi_config_t new_config = {0};
+            strncpy(new_config.ssid, ssid, sizeof(new_config.ssid) - 1);
+            strncpy(new_config.password, password, sizeof(new_config.password) - 1);
+            new_config.channel = 0; // Auto
+            new_config.ap_mode = false;
+
+            free(ssid);
+            free(password);
+
+            if (!rg_network_wifi_write_config(slot, &new_config))
+            {
+                rg_gui_alert(_("Error"), _("Failed to save network configuration"));
+                return RG_DIALOG_VOID;
+            }
+
+            rg_settings_commit();
+            config = new_config;
+            // fall through, allowing the user to connect to the new network
         }
 
         char title[50];
@@ -1773,6 +1809,7 @@ static rg_gui_event_t wifi_manage_slot_cb(rg_gui_option_t *option, rg_gui_event_
                 break;
         }
 
+        strcpy(option->value, config.ssid[0] ? config.ssid : _("(empty)"));
         return RG_DIALOG_REDRAW;
     }
 
@@ -1783,106 +1820,15 @@ static rg_gui_event_t wifi_manage_networks_cb(rg_gui_option_t *option, rg_gui_ev
 {
     if (event == RG_DIALOG_ENTER)
     {
-        char slot_labels[5][60];
-        rg_gui_option_t slot_options[6];
-        
-        for (size_t i = 0; i < 5; i++)
-        {
-            rg_wifi_config_t config;
-            if (rg_network_wifi_read_config(i, &config))
-                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: %.25s", (int)i, config.ssid);
-            else
-                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: (empty)", (int)i);
-                
-            slot_options[i] = (rg_gui_option_t){i, slot_labels[i], NULL, 
-                rg_network_wifi_read_config(i, &config) ? RG_DIALOG_FLAG_NORMAL : RG_DIALOG_FLAG_DISABLED, 
-                &wifi_manage_slot_cb};
-        }
-        slot_options[5] = (rg_gui_option_t)RG_DIALOG_END;
-
-        rg_gui_dialog(_("Manage Networks"), slot_options, 0);
-        return RG_DIALOG_REDRAW;
-    }
-    return RG_DIALOG_VOID;
-}
-
-static rg_gui_event_t wifi_add_network_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        // Get SSID from user
-        char *ssid = rg_gui_input_str(_("Wi-Fi SSID"), _("Enter network name:"), "");
-        if (!ssid || strlen(ssid) == 0)
-        {
-            free(ssid);
-            rg_gui_alert(_("Error"), _("SSID cannot be empty"));
-            return RG_DIALOG_REDRAW;
-        }
-
-        // Get password from user
-        char *password = rg_gui_input_str(_("Wi-Fi Password"), _("Enter password (leave empty for open network):"), "");
-        if (!password)
-            password = strdup("");
-
-        // Select slot to save to
-        char slot_labels[5][50];
-        for (size_t i = 0; i < 5; i++)
-        {
-            rg_wifi_config_t config;
-            if (rg_network_wifi_read_config(i, &config))
-                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: %s", (int)i, config.ssid);
-            else
-                snprintf(slot_labels[i], sizeof(slot_labels[i]), "Slot %d: (empty)", (int)i);
-        }
-
-        const rg_gui_option_t slot_options[] = {
-            {0, slot_labels[0], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {1, slot_labels[1], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {2, slot_labels[2], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {3, slot_labels[3], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-            {4, slot_labels[4], NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        rg_gui_option_t slot_options[] = {
+            {0, _("Slot 0"), "_", RG_DIALOG_FLAG_NORMAL, &wifi_manage_slot_cb},
+            {1, _("Slot 1"), "_", RG_DIALOG_FLAG_NORMAL, &wifi_manage_slot_cb},
+            {2, _("Slot 2"), "_", RG_DIALOG_FLAG_NORMAL, &wifi_manage_slot_cb},
+            {3, _("Slot 3"), "_", RG_DIALOG_FLAG_NORMAL, &wifi_manage_slot_cb},
+            {4, _("Slot 4"), "_", RG_DIALOG_FLAG_NORMAL, &wifi_manage_slot_cb},
             RG_DIALOG_END,
         };
-
-        int selected_slot = rg_gui_dialog(_("Select Slot"), slot_options, 0);
-        if (selected_slot == RG_DIALOG_CANCELLED)
-        {
-            free(ssid);
-            free(password);
-            return RG_DIALOG_REDRAW;
-        }
-
-        // Save the configuration
-        rg_wifi_config_t new_config = {0};
-        strncpy(new_config.ssid, ssid, sizeof(new_config.ssid) - 1);
-        strncpy(new_config.password, password, sizeof(new_config.password) - 1);
-        new_config.channel = 0; // Auto
-        new_config.ap_mode = false;
-
-        if (rg_network_wifi_write_config(selected_slot, &new_config))
-        {
-            // Commit settings
-            rg_settings_commit();
-
-            // Ask if user wants to connect now
-            char confirm_msg[150];
-            snprintf(confirm_msg, sizeof(confirm_msg), 
-                    "Network saved to slot %d.\n\nConnect now?", selected_slot);
-            
-            if (rg_gui_confirm(_("Network Saved"), confirm_msg, true))
-            {
-                rg_settings_set_boolean(NS_WIFI, SETTING_WIFI_ENABLE, true);
-                rg_settings_set_number(NS_WIFI, SETTING_WIFI_SLOT, selected_slot);
-                wifi_toggle_interactive(true, selected_slot);
-            }
-        }
-        else
-        {
-            rg_gui_alert(_("Error"), _("Failed to save network configuration"));
-        }
-
-        free(ssid);
-        free(password);
+        rg_gui_dialog(_("Manage Networks"), slot_options, 0);
         return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
@@ -1932,7 +1878,6 @@ static rg_gui_event_t wifi_cb(rg_gui_option_t *option, rg_gui_event_t event)
     {
         const rg_gui_option_t options[] = {
             {0x00, _("Wi-Fi enable"),       "-",  RG_DIALOG_FLAG_NORMAL,  &wifi_enable_cb      },
-            {0x00, _("Add new network"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_add_network_cb },
             {0x00, _("Manage networks"),    NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_manage_networks_cb },
             RG_DIALOG_SEPARATOR,
             {0x00, _("Wi-Fi access point"), NULL, RG_DIALOG_FLAG_NORMAL,  &wifi_access_point_cb},
