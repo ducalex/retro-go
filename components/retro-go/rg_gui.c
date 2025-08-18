@@ -1046,11 +1046,9 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
-void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer, 
-                                  const void *layout_ptr, int cursor_pos)
+void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer,
+                                  const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
-    const rg_keyboard_layout_t *current_layout = (const rg_keyboard_layout_t *)layout_ptr;
-
     const int key_width = 28;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
@@ -1059,41 +1057,39 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
     const int keyboard_y = gui.screen_height - keyboard_height - 40;
     const int input_box_height = 30;
     const int input_box_y = keyboard_y - input_box_height - 10;
-    
-    // Clear background using same method as rg_gui_draw_dialog
-    rg_gui_draw_rect(0, 0, gui.screen_width, gui.screen_height, 0, C_NONE, gui.style.box_background);
+    char text_buffer[200];
 
-    // Draw title similar to dialog title
-    if (title)
+    if (!partial_redraw)
     {
-        rg_gui_draw_text(0, 10, gui.screen_width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+        // Clear background using same method as rg_gui_draw_dialog
+        rg_gui_draw_rect(0, 0, gui.screen_width, gui.screen_height, 0, C_NONE, gui.style.box_background);
+
+        // Draw title similar to dialog title
+        if (title)
+            rg_gui_draw_text(0, 10, gui.screen_width, title, gui.style.box_header, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+
+        // Draw message similar to dialog message
+        if (message)
+            rg_gui_draw_text(0, title ? 35 : 10, gui.screen_width, message, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
+
+        // Draw input box with same styling as dialog
+        rg_gui_draw_rect(keyboard_x, input_box_y, keyboard_width, input_box_height, 2, gui.style.box_border, C_WHITE);
+
+        // Draw instructions at bottom like dialog
+        const char *layout_name = current_layout->is_symbols ? "SYM" : (current_layout->is_upper ? "ABC" : "abc");
+        snprintf(text_buffer, sizeof(text_buffer),
+                "A=Type  B=Backspace  SELECT=%s  START=OK  MENU/OPT=Cancel", layout_name);
+        rg_gui_draw_text(0, gui.screen_height - 15, gui.screen_width, text_buffer, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
     }
 
-    // Draw message similar to dialog message
-    if (message)
-    {
-        rg_gui_draw_text(0, title ? 35 : 10, gui.screen_width, message, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
-    }
-
-    // Draw input box with same styling as dialog
-    rg_gui_draw_rect(keyboard_x, input_box_y, keyboard_width, input_box_height, 2, gui.style.box_border, C_WHITE);
-    
-    // Add blinking cursor to input display
-    char display_text[140];
-    static uint32_t blink_timer = 0;
+    // Draw input buffer text and blinking cursor
+    // static uint32_t blink_timer = 0;
     static bool show_cursor = true;
-    uint32_t current_time = rg_system_timer() / 1000000; // Convert to seconds
-    if (current_time - blink_timer > 1) // Blink every second
-    {
-        show_cursor = !show_cursor;
-        blink_timer = current_time;
-    }
-    
-    snprintf(display_text, sizeof(display_text), "%s%s", input_buffer, show_cursor ? "_" : " ");
-    rg_gui_draw_text(keyboard_x + 5, input_box_y + 5, keyboard_width - 10, display_text, C_BLACK, C_WHITE, 0);
+    snprintf(text_buffer, sizeof(text_buffer), "%s%s", input_buffer, show_cursor ? "_" : " ");
+    rg_gui_draw_text(keyboard_x + 5, input_box_y + 5, keyboard_width - 10, text_buffer, C_BLACK, C_WHITE, 0);
 
     // Draw keyboard container with same border style as dialog
-    rg_gui_draw_rect(keyboard_x - 2, keyboard_y - 2, keyboard_width + 4, keyboard_height + 4, 2, gui.style.box_border, gui.style.box_background);
+    rg_gui_draw_rect(keyboard_x - 2, keyboard_y - 2, keyboard_width + 4, keyboard_height + 4, 2, gui.style.box_border, C_NONE);
 
     // Draw keyboard keys
     for (int row = 0; row < current_layout->rows; row++)
@@ -1104,7 +1100,7 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
             int x = keyboard_x + col * key_width;
             int y = keyboard_y + row * key_height;
             char key = current_layout->layout[key_idx];
-            
+
             bool is_selected = (cursor_pos == key_idx);
             // Use same color scheme as dialog items
             rg_color_t bg_color = is_selected ? gui.style.item_standard : gui.style.box_background;
@@ -1121,13 +1117,6 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
             rg_gui_draw_text(x + 2, y + 2, key_width - 4, key_str, fg_color, bg_color, RG_TEXT_ALIGN_CENTER);
         }
     }
-
-    // Draw instructions at bottom like dialog
-    const char *layout_name = current_layout->is_symbols ? "SYM" : (current_layout->is_upper ? "ABC" : "abc");
-    char instructions[200];
-    snprintf(instructions, sizeof(instructions), 
-            "A=Type  B=Backspace  SELECT=%s  START=OK  MENU/OPT=Cancel", layout_name);
-    rg_gui_draw_text(0, gui.screen_height - 15, gui.screen_width, instructions, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
 }
 
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
@@ -1187,6 +1176,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
     uint32_t joystick = 0, joystick_old;
     uint64_t joystick_last = 0;
     bool redraw = true;
+    int redraws = 0;
 
     while (true)
     {
@@ -1261,6 +1251,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
                 current_layout = &layouts[layout_idx];
                 cursor_pos = 0;
                 redraw = true;
+                redraws = 0;
             }
             else if (joystick & RG_KEY_START)
             {
@@ -1279,7 +1270,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
 
         if (redraw)
         {
-            rg_gui_draw_virtual_keyboard(title, message, input_buffer, current_layout, cursor_pos);
+            rg_gui_draw_virtual_keyboard(title, message, input_buffer, current_layout, cursor_pos, redraws++ > 0);
             redraw = false;
         }
 
