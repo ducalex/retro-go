@@ -1047,7 +1047,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
 }
 
 void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
-                                  const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
+                              const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
     const int key_width = 28;
     const int key_height = 20;
@@ -1058,6 +1058,9 @@ void rg_gui_draw_input_screen(const char *title, const char *message, const char
     const int input_box_height = 30;
     const int input_box_y = keyboard_y - input_box_height - 10;
     char text_buffer[200];
+
+    if (!input_buffer)
+        input_buffer = "";
 
     if (!partial_redraw)
     {
