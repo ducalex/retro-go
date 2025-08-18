@@ -8,7 +8,6 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 | Name                                                          | Notes |
 |---------------------------------------------------------------|--------|
 | [byteboi-rev1](targets/byteboi-rev1/docs/README.md)           |   |
-| [esp32s3-devkit-c](targets/esp32s3-devkit-c/docs/README.md)   |   |
 | [esplay-micro](targets/esplay-micro/docs/README.md)           |   |
 | [esplay-s3](targets/esplay-s3/docs/README.md)                 | Broken |
 | [fri3d-2024](targets/fri3d-2024/docs/README.md)               |   |
