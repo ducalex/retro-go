@@ -47,6 +47,7 @@
  ****************************************************************************/
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
+#define RG_AUDIO_USE_BUZZER_PIN     0   // See drivers/audio/buzzer.c for details
 #define RG_GPIO_SND_I2S_BCK         GPIO_NUM_26
 #define RG_GPIO_SND_I2S_WS          GPIO_NUM_25
 #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_19

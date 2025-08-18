@@ -33,7 +33,7 @@ Note that there are some restrictions on how high the PWM frequency can be, and 
 
 #include "rg_system.h" // include configuration from components/retro-go/targets/*/config.h
 
-#ifdef RG_AUDIO_USE_BUZZER_PIN
+#if RG_AUDIO_USE_BUZZER_PIN
 #include "rg_audio.h"
 
 #ifndef ESP_PLATFORM
