@@ -186,9 +186,6 @@ static bool driver_set_mute(bool mute)
         #else
             gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
         #endif
-    #elif defined(RG_TARGET_QTPY_GAMER)
-        rg_i2c_gpio_set_direction(AW_HEADPHONE_EN, 0);
-        rg_i2c_gpio_set_level(AW_HEADPHONE_EN, !mute);
     #endif
     state.muted = mute;
     return true;
