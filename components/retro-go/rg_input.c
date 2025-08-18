@@ -137,7 +137,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     uint32_t buttons = 0;
 #if defined(RG_I2C_GPIO_DRIVER)
     int data0 = rg_i2c_gpio_read_port(0), data1 = rg_i2c_gpio_read_port(1);
-    if (data0 > -1 && data1 > -1)
+    if (data0 > -1) // && data1 > -1)
     {
         buttons = (data1 << 8) | (data0);
 #elif defined(RG_TARGET_T_DECK_PLUS)

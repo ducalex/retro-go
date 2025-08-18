@@ -15,7 +15,7 @@
 /****************************************************************************
  * I2C / GPIO Extender                                                      *
  ****************************************************************************/
-// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017, 4 = PCF8575
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017, 4 = PCF8575, 5 = PCF8574
 #define RG_I2C_GPIO_ADDR            0x20
 #define RG_GPIO_I2C_SDA             GPIO_NUM_21
 #define RG_GPIO_I2C_SCL             GPIO_NUM_22
