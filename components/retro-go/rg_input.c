@@ -478,7 +478,7 @@ int rg_input_read_keyboard(const rg_keyboard_layout_t *map)
         cursor = RG_MIN(RG_MAX(cursor, 0), count - 1);
 
         if (cursor != prev_cursor)
-            rg_gui_draw_keyboard(map, cursor);
+            rg_gui_draw_virtual_keyboard(RG_GUI_CENTER, RG_GUI_BOTTOM, map, cursor, false);
 
         rg_input_wait_for_key(RG_KEY_ALL, false, 500);
         rg_input_wait_for_key(RG_KEY_ANY, true, 500);

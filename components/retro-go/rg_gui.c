@@ -1046,7 +1046,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     return filepath;
 }
 
-void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const char *input_buffer,
+void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
                                   const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
     const int key_width = 28;
@@ -1088,8 +1088,25 @@ void rg_gui_draw_virtual_keyboard(const char *title, const char *message, const 
     snprintf(text_buffer, sizeof(text_buffer), "%s%s", input_buffer, show_cursor ? "_" : " ");
     rg_gui_draw_text(keyboard_x + 5, input_box_y + 5, keyboard_width - 10, text_buffer, C_BLACK, C_WHITE, 0);
 
-    // Draw keyboard container with same border style as dialog
-    rg_gui_draw_rect(keyboard_x - 2, keyboard_y - 2, keyboard_width + 4, keyboard_height + 4, 2, gui.style.box_border, C_NONE);
+    // Draw keyboard pad
+    rg_gui_draw_virtual_keyboard(keyboard_x, keyboard_y, current_layout, cursor_pos, true);
+}
+
+void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
+{
+    const int key_width = 28;
+    const int key_height = 20;
+    const int keyboard_width = current_layout->columns * key_width;
+    const int keyboard_height = current_layout->rows * key_height;
+    const int keyboard_x = get_horizontal_position(x_pos, keyboard_width);
+    const int keyboard_y = get_vertical_position(y_pos, keyboard_height);
+
+    if (!partial_redraw)
+    {
+        // Draw keyboard container with same border style as dialog
+        rg_gui_draw_rect(keyboard_x - 2, keyboard_y - 2, keyboard_width + 4, keyboard_height + 4, 2,
+            gui.style.box_border, gui.style.box_background);
+    }
 
     // Draw keyboard keys
     for (int row = 0; row < current_layout->rows; row++)
@@ -1270,7 +1287,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
 
         if (redraw)
         {
-            rg_gui_draw_virtual_keyboard(title, message, input_buffer, current_layout, cursor_pos, redraws++ > 0);
+            rg_gui_draw_input_screen(title, message, input_buffer, current_layout, cursor_pos, redraws++ > 0);
             redraw = false;
         }
 
@@ -1285,31 +1302,6 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
         return NULL;
 
     return input_length > 0 ? strdup(input_buffer) : NULL;
-}
-
-void rg_gui_draw_keyboard(const rg_keyboard_layout_t *map, size_t cursor)
-{
-    RG_ASSERT_ARG(map);
-
-    int width = map->columns * 16 + 16;
-    int height = map->rows * 16 + 16;
-
-    int x_pos = (gui.screen_width - width) / 2;
-    int y_pos = (gui.screen_height - height);
-
-    char buf[2] = {0};
-
-    rg_gui_draw_rect(x_pos, y_pos, width, height, 2, gui.style.box_border, gui.style.box_background);
-
-    for (size_t i = 0; i < map->columns * map->rows; ++i)
-    {
-        int x = x_pos + 8 + (i % map->columns) * 16;
-        int y = y_pos + 8 + (i / map->columns) * 16;
-        if (!map->layout[i])
-            continue;
-        buf[0] = map->layout[i];
-        rg_gui_draw_text(x + 1, y + 1, 14, buf, C_BLACK, i == cursor ? C_CYAN : C_IVORY, RG_TEXT_ALIGN_CENTER);
-    }
 }
 
 static rg_gui_event_t volume_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
