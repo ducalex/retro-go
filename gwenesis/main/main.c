@@ -4,6 +4,8 @@
 
 #include <gwenesis.h>
 
+#define USE_CORE1_TASK
+
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
@@ -29,6 +31,12 @@ static bool sn76489_enabled = true;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_app_t *app;
+
+#ifdef USE_CORE1_TASK
+static rg_task_t *core1_task_handle;
+static bool core1_task_rendering = false;
+static bool core1_task_sound = true;
+#endif
 
 static const char *SETTING_YFM_EMULATION = "yfm_enable";
 static const char *SETTING_Z80_EMULATION = "z80_enable";
@@ -114,6 +122,7 @@ static rg_gui_event_t yfm_update_cb(rg_gui_option_t *option, rg_gui_event_t even
     {
         yfm_enabled = !yfm_enabled;
         rg_settings_set_number(NS_APP, SETTING_YFM_EMULATION, yfm_enabled);
+        memset(gwenesis_ym2612_buffer, 0, sizeof(gwenesis_ym2612_buffer));
     }
     strcpy(option->value, yfm_enabled ? _("On") : _("Off"));
 
@@ -126,6 +135,7 @@ static rg_gui_event_t sn76489_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     {
         sn76489_enabled = !sn76489_enabled;
         rg_settings_set_number(NS_APP, SETTING_SN76489_EMULATION, sn76489_enabled);
+        memset(gwenesis_sn76489_buffer, 0, sizeof(gwenesis_sn76489_buffer));
     }
     strcpy(option->value, sn76489_enabled ? _("On") : _("Off"));
 
@@ -189,11 +199,53 @@ static void event_handler(int event, void *arg)
     }
 }
 
+static rg_gui_event_t core1_rendering_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        core1_task_rendering = !core1_task_rendering;
+    strcpy(option->value, core1_task_rendering ? _("On") : _("Off"));
+    return RG_DIALOG_VOID;
+}
+
+static rg_gui_event_t core1_sound_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        core1_task_sound = !core1_task_sound;
+    strcpy(option->value, core1_task_sound ? _("On") : _("Off"));
+    return RG_DIALOG_VOID;
+}
+
+static void core1_task(void *arg)
+{
+    rg_task_msg_t msg;
+    while (rg_task_receive(&msg))
+    {
+        switch (msg.type)
+        {
+            case 1: // Rendering
+                gwenesis_vdp_render_line(msg.dataInt);
+                break;
+            case 2: // Sound
+                gwenesis_SN76489_run(msg.dataInt);
+                ym2612_run(msg.dataInt);
+                break;
+            case RG_TASK_MSG_STOP:
+                return;
+            default: // Sync/no-op
+                continue;
+        }
+    }
+}
+
 static void options_handler(rg_gui_option_t *dest)
 {
     *dest++ = (rg_gui_option_t){0, _("YM2612 audio "), "-", RG_DIALOG_FLAG_NORMAL, &yfm_update_cb};
     *dest++ = (rg_gui_option_t){0, _("SN76489 audio"), "-", RG_DIALOG_FLAG_NORMAL, &sn76489_update_cb};
     *dest++ = (rg_gui_option_t){0, _("Z80 emulation"), "-", RG_DIALOG_FLAG_NORMAL, &z80_update_cb};
+
+    *dest++ = (rg_gui_option_t){0, _("Render on core 1"), "-", RG_DIALOG_FLAG_NORMAL, &core1_rendering_update_cb};
+    *dest++ = (rg_gui_option_t){0, _("Sound on core 1"),  "-", RG_DIALOG_FLAG_NORMAL, &core1_sound_update_cb};
+
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
 }
 
@@ -226,6 +278,11 @@ void app_main(void)
 
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
+#ifdef USE_CORE1_TASK
+    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 4096, RG_TASK_PRIORITY_6, 1);
+    RG_ASSERT(core1_task_handle, "Failed to create core1 task!");
+#endif
+
     RG_LOGI("Genesis start\n");
 
     size_t rom_size;
@@ -257,7 +314,7 @@ void app_main(void)
     }
 
     rg_system_set_tick_rate(60);
-    app->frameskip = 3;
+    app->frameskip = 2;
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;
@@ -330,13 +387,25 @@ void app_main(void)
             *    =0 : line  accurate mode. audio is refreshed every lines.
             */
             if (GWENESIS_AUDIO_ACCURATE == 0) {
-                gwenesis_SN76489_run(system_clock + VDP_CYCLES_PER_LINE);
-                ym2612_run(system_clock + VDP_CYCLES_PER_LINE);
+                if (core1_task_sound)
+                {
+                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 2, .dataInt = system_clock + VDP_CYCLES_PER_LINE});
+                }
+                else
+                {
+                    gwenesis_SN76489_run(system_clock + VDP_CYCLES_PER_LINE);
+                    ym2612_run(system_clock + VDP_CYCLES_PER_LINE);
+                }
             }
 
             /* Video */
             if (drawFrame && scan_line < screen_height)
-                gwenesis_vdp_render_line(scan_line); /* render scan_line */
+            {
+                if (core1_task_rendering)
+                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 1, .dataInt = scan_line});
+                else
+                    gwenesis_vdp_render_line(scan_line); /* render scan_line */
+            }
 
             // On these lines, the line counter interrupt is reloaded
             if ((scan_line == 0) || (scan_line > screen_height)) {
@@ -374,6 +443,13 @@ void app_main(void)
             system_clock += VDP_CYCLES_PER_LINE;
         }
 
+        // Make sure all our previous messages have been processed before we continue
+        if (core1_task_rendering || core1_task_sound)
+        {
+            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
+            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
+        }
+
         /* Audio
         * synchronize YM2612 and SN76489 to system_clock
         * it completes the missing audio sample for accurate audio mode
@@ -398,10 +474,8 @@ void app_main(void)
 
         rg_system_tick(rg_system_timer() - startTime);
 
-        if (yfm_enabled || z80_enabled) {
-            // TODO: Mix in gwenesis_sn76489_buffer
-            rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
-        }
+        // TODO: Mix in gwenesis_sn76489_buffer
+        rg_audio_submit((void *)gwenesis_ym2612_buffer, AUDIO_BUFFER_LENGTH >> 1);
 
         if (skipFrames == 0)
         {
