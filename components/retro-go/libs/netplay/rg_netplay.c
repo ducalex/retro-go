@@ -417,7 +417,7 @@ bool rg_netplay_quick_start(void)
         if (screen_msg != status_msg)
         {
             rg_display_clear(0);
-            rg_gui_draw_dialog(status_msg, NULL, 0);
+            rg_gui_draw_message(status_msg);
             screen_msg = status_msg;
         }
 

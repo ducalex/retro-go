@@ -1142,45 +1142,95 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
     }
 }
 
+static const rg_keyboard_layout_t keyboard_layouts[] = {
+    // Lowercase letters
+    {
+        .layout = "1234567890"
+                    "qwertyuiop"
+                    "asdfghjkl "
+                    "zxcvbnm.,?",
+        .columns = 10,
+        .rows = 4,
+        .is_upper = false,
+        .is_symbols = false
+    },
+    // Uppercase letters
+    {
+        .layout = "1234567890"
+                    "QWERTYUIOP"
+                    "ASDFGHJKL "
+                    "ZXCVBNM.,?",
+        .columns = 10,
+        .rows = 4,
+        .is_upper = true,
+        .is_symbols = false
+    },
+    // Symbols
+    {
+        .layout = "!@#$%^&*()"
+                    "[]{}|\\:;\"'"
+                    "<>?/+=_-~ "
+                    "1234567890",
+        .columns = 10,
+        .rows = 4,
+        .is_upper = false,
+        .is_symbols = true
+    }
+};
+
+// TODO: Abstract all the redundant/similar code between rg_gui_input_str and rg_gui_input_char
+
+int rg_gui_input_char(const rg_keyboard_layout_t *map)
+{
+    if (!map)
+        map = &keyboard_layouts[0];
+
+    int cursor = -1;
+    int count = map->columns * map->rows;
+
+    rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
+
+    while (1)
+    {
+        uint32_t joystick = rg_input_read_gamepad();
+        int prev_cursor = cursor;
+
+        if (joystick & RG_KEY_A)
+            return map->layout[cursor];
+        if (joystick & RG_KEY_B)
+            break;
+
+        if (joystick & RG_KEY_LEFT)
+            cursor--;
+        if (joystick & RG_KEY_RIGHT)
+            cursor++;
+        if (joystick & RG_KEY_UP)
+            cursor -= map->columns;
+        if (joystick & RG_KEY_DOWN)
+            cursor += map->columns;
+
+        if (cursor > count - 1)
+            cursor = prev_cursor;
+        else if (cursor < 0)
+            cursor = prev_cursor;
+
+        cursor = RG_MIN(RG_MAX(cursor, 0), count - 1);
+
+        if (cursor != prev_cursor)
+            rg_gui_draw_virtual_keyboard(RG_GUI_CENTER, RG_GUI_BOTTOM, map, cursor, false);
+
+        rg_input_wait_for_key(RG_KEY_ALL, false, 500);
+        rg_input_wait_for_key(RG_KEY_ANY, true, 500);
+
+        rg_system_tick(0);
+    }
+
+    return -1;
+}
+
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value)
 {
     // Virtual keyboard implementation for Wi-Fi credential input
-    static const rg_keyboard_layout_t layouts[] = {
-        // Lowercase letters
-        {
-            .layout = "1234567890"
-                     "qwertyuiop"
-                     "asdfghjkl "
-                     "zxcvbnm.,?",
-            .columns = 10,
-            .rows = 4,
-            .is_upper = false,
-            .is_symbols = false
-        },
-        // Uppercase letters
-        {
-            .layout = "1234567890"
-                     "QWERTYUIOP"
-                     "ASDFGHJKL "
-                     "ZXCVBNM.,?",
-            .columns = 10,
-            .rows = 4,
-            .is_upper = true,
-            .is_symbols = false
-        },
-        // Symbols
-        {
-            .layout = "!@#$%^&*()"
-                     "[]{}|\\:;\"'"
-                     "<>?/+=_-~ "
-                     "1234567890",
-            .columns = 10,
-            .rows = 4,
-            .is_upper = false,
-            .is_symbols = true
-        }
-    };
-
     char input_buffer[128] = {0};
     if (default_value)
         strncpy(input_buffer, default_value, sizeof(input_buffer) - 1);
@@ -1190,7 +1240,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
     int input_length = strlen(input_buffer);
     bool cancelled = false;
 
-    const rg_keyboard_layout_t *current_layout = &layouts[layout_idx];
+    const rg_keyboard_layout_t *current_layout = &keyboard_layouts[layout_idx];
 
     // Follow the same pattern as rg_gui_dialog
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
@@ -1271,7 +1321,7 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
                 {
                     layout_idx = 1; // Switch to uppercase
                 }
-                current_layout = &layouts[layout_idx];
+                current_layout = &keyboard_layouts[layout_idx];
                 cursor_pos = 0;
                 redraw = true;
                 redraws = 0;
