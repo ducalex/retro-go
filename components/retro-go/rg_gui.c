@@ -834,7 +834,10 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
     // We create a copy of options because the callbacks might modify it (ie option->value)
     rg_gui_option_t options[options_count + 1];
-    char *text_buffer = calloc(options_count, 32);
+    // The text_buffer is used for mutable option->values. Because values tend to be small, we can make
+    // some assumptions. This is a terrible system that is prone to corruption. But we're stuck with it.
+    size_t text_buffer_size = RG_MAX(options_count * 32, 1024);
+    char *text_buffer = malloc(text_buffer_size);
     char *text_buffer_ptr = text_buffer;
 
     memcpy(options, options_const, sizeof(options));
@@ -844,11 +847,11 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
         rg_gui_option_t *option = &options[i];
         if (!option->label)
             option->label = "";
-        if (option->value && text_buffer)
+        if (option->value && text_buffer_ptr)
             option->value = strcpy(text_buffer_ptr, option->value);
         if (option->update_cb)
             option->update_cb(option, RG_DIALOG_INIT);
-        if (option->value && text_buffer)
+        if (option->value && text_buffer_ptr)
             text_buffer_ptr += RG_MAX(strlen(option->value), 31) + 1;
     }
 
@@ -1896,7 +1899,7 @@ static rg_gui_event_t app_options_cb(rg_gui_option_t *option, rg_gui_event_t eve
 
 void rg_gui_options_menu(void)
 {
-    rg_gui_option_t options[16] = {
+    rg_gui_option_t options[20] = {
         #if RG_SCREEN_BACKLIGHT
         {0, _("Brightness"),    "-", RG_DIALOG_FLAG_NORMAL, &brightness_update_cb},
         #endif

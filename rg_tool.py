@@ -25,7 +25,9 @@ PROJECT_APPS = {
 }
 # PROJECT_APPS = {}
 # for t in glob.glob("*/CMakeLists.txt"):
-#     PROJECT_APPS[os.path.basename(os.path.dirname(t))] = [0, 0, 0]
+#     name = os.path.basename(os.path.dirname(t))
+#     if name not in PROJECT_APPS:
+#         PROJECT_APPS[name] = [0, 0, 0]
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
         "git describe --tags --abbrev=5 --dirty --always", shell=True
@@ -125,6 +127,8 @@ def build_image(output_file, apps, img_format="esp32", fatsize=0):
     with open(output_file, "wb") as f:
         f.write(image_data)
 
+    print("\nPartition table:")
+    print("\n".join(table_csv))
     print("\nSaved image '%s' (%d bytes)\n" % (output_file, len(image_data)))
 
 
@@ -227,10 +231,8 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
 os.putenv("IDF_TARGET", IDF_TARGET)
 
 command = args.command
-if "all" in args.apps:
-    apps = DEFAULT_APPS.split() or list(PROJECT_APPS.keys())
-else:
-    apps = [app for app in PROJECT_APPS.keys() if app in args.apps]
+apps = DEFAULT_APPS.split() if "all" in args.apps else args.apps
+apps = [app for app in PROJECT_APPS.keys() if app in apps] # Ensure ordering and uniqueness
 
 try:
     if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
