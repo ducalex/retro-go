@@ -19,8 +19,6 @@ static struct
     struct {int left, top, right, bottom;} margins;
     struct
     {
-        const rg_font_t *font;
-        int font_height;
         rg_color_t box_background;
         rg_color_t box_header;
         rg_color_t box_border;
@@ -32,7 +30,9 @@ static struct
     } style;
     char theme_name[32];
     cJSON *theme_obj;
+    const rg_font_t *font;
     int font_index;
+    int font_height;
     bool show_clock;
     bool initialized;
 } gui;
@@ -108,10 +108,12 @@ void rg_gui_init(void)
     //        because of how this is defined in config.h. It should be documented somewhere...
     gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
-    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_11));
-    rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
+    if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN)))
+        rg_gui_set_language_id(RG_LANG_EN);
+    if (!rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_DEFAULT)))
+        rg_gui_set_font(0);
+    rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.initialized = true;
 }
 
@@ -123,7 +125,6 @@ bool rg_gui_set_language_id(int index)
         RG_LOGI("Language set to: %s (%d)", rg_localization_get_language_name(index), index);
         return true;
     }
-    rg_localization_set_language_id(RG_LANG_EN);
     RG_LOGE("Invalid language id %d!", index);
     return false;
 }
@@ -221,16 +222,14 @@ bool rg_gui_set_font(int index)
     if (index < 0 || index > RG_FONT_MAX - 1)
         return false;
 
-    const rg_font_t *font = fonts[index];
-
+    gui.font = fonts[index];
     gui.font_index = index;
-    gui.style.font = font;
-    gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
+    gui.font_height = (index < 3) ? (8 + index * 4) : gui.font->height;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
     RG_LOGI("Font set to: %s (height=%d, scaling=%.2f)\n",
-        gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
+        gui.font->name, gui.font_height, (float)gui.font_height / gui.font->height);
 
     return true;
 }
@@ -353,9 +352,9 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
-    const rg_font_t *font = gui.style.font;
+    const rg_font_t *font = gui.font;
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
+    int font_height = (flags & RG_TEXT_BIGGER) ? gui.font_height * 2 : gui.font_height;
     int monospace = ((flags & RG_TEXT_MONOSPACE) || font->type == 0) ? font->width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
@@ -649,7 +648,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 {
     const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
-    const int font_height = gui.style.font_height;
+    const int font_height = gui.font_height;
     const int max_box_width = 0.82f * gui.screen_width;
     const int max_box_height = 0.82f * gui.screen_height;
     const int box_padding = 6;
@@ -1626,10 +1625,10 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
         return RG_DIALOG_REDRAW;
     if (event == RG_DIALOG_NEXT && rg_gui_set_font(gui.font_index + 1))
         return RG_DIALOG_REDRAW;
-    if (gui.style.font_height != gui.style.font->height)
-        sprintf(option->value, "%s (%d)", gui.style.font->name, gui.style.font_height);
+    if (gui.font_height != gui.font->height)
+        sprintf(option->value, "%s (%d)", gui.font->name, gui.font_height);
     else
-        sprintf(option->value, "%s", gui.style.font->name);
+        sprintf(option->value, "%s", gui.font->name);
     return RG_DIALOG_VOID;
 }
 
@@ -2180,7 +2179,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         }
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
-        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
+        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
         rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
         rg_surface_free(preview);
     }

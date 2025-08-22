@@ -20,6 +20,8 @@ enum {
     RG_FONT_VERA_11,
     RG_FONT_VERA_14,
     RG_FONT_MAX,
+
+    RG_FONT_DEFAULT = RG_FONT_VERA_11,
 };
 
 static const rg_font_t *fonts[RG_FONT_MAX] = {
