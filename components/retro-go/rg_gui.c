@@ -364,7 +364,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         int line_width = padding * 2;
         for (const char *ptr = text; *ptr;)
         {
-            int chr = rg_utf8_get_codepoint(&ptr);
+            int chr = rg_utf8_decode(&ptr);
             line_width += monospace ?: get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
@@ -398,7 +398,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int chr = rg_utf8_get_codepoint(&line);
+                int chr = rg_utf8_decode(&line);
                 int width = monospace ?: get_glyph(NULL, font, font_height, chr);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
@@ -419,7 +419,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         {
             uint32_t bitmap[font_height];
             const char *prev_ptr = ptr;
-            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_get_codepoint(&ptr));
+            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_decode(&ptr));
             int width = monospace ?: glyph_width;
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
@@ -1082,9 +1082,7 @@ void rg_gui_draw_input_screen(const char *title, const char *message, const char
         rg_gui_draw_rect(keyboard_x, input_box_y, keyboard_width, input_box_height, 2, gui.style.box_border, C_WHITE);
 
         // Draw instructions at bottom like dialog
-        const char *layout_name = current_layout->is_symbols ? "SYM" : (current_layout->is_upper ? "ABC" : "abc");
-        snprintf(text_buffer, sizeof(text_buffer),
-                "A=Type  B=Backspace  SELECT=%s  START=OK  MENU/OPT=Cancel", layout_name);
+        snprintf(text_buffer, sizeof(text_buffer), "A=Type  B=Backspace  SELECT=%3s  START=OK  MENU/OPT=Cancel", current_layout->label);
         rg_gui_draw_text(0, gui.screen_height - 15, gui.screen_width, text_buffer, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
     }
 
@@ -1106,6 +1104,7 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
     const int keyboard_height = current_layout->rows * key_height;
     const int keyboard_x = get_horizontal_position(x_pos, keyboard_width);
     const int keyboard_y = get_vertical_position(y_pos, keyboard_height);
+    const char *layout_ptr = current_layout->layout;
 
     if (!partial_redraw)
     {
@@ -1122,7 +1121,6 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
             int key_idx = row * current_layout->columns + col;
             int x = keyboard_x + col * key_width;
             int y = keyboard_y + row * key_height;
-            char key = current_layout->layout[key_idx];
 
             bool is_selected = (cursor_pos == key_idx);
             // Use same color scheme as dialog items
@@ -1134,9 +1132,13 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
             rg_gui_draw_rect(x + 1, y + 1, key_width - 2, key_height - 2, 1, border_color, bg_color);
 
             // Draw key character
-            char key_str[4] = {key, '\0'};
+            char key_str[5] = {0, 0, 0, 0, 0};
+            int key = rg_utf8_decode(&layout_ptr);
             if (key == ' ')
                 strcpy(key_str, "SP");
+            else
+                rg_utf8_encode(key_str, key);
+
             rg_gui_draw_text(x + 2, y + 2, key_width - 4, key_str, fg_color, bg_color, RG_TEXT_ALIGN_CENTER);
         }
     }
@@ -1151,8 +1153,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "zxcvbnm.,?",
         .columns = 10,
         .rows = 4,
-        .is_upper = false,
-        .is_symbols = false
+        .label = "ABC",
     },
     // Uppercase letters
     {
@@ -1162,8 +1163,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "ZXCVBNM.,?",
         .columns = 10,
         .rows = 4,
-        .is_upper = true,
-        .is_symbols = false
+        .label = "abc",
     },
     // Symbols
     {
@@ -1173,8 +1173,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "1234567890",
         .columns = 10,
         .rows = 4,
-        .is_upper = false,
-        .is_symbols = true
+        .label = "!@#",
     }
 };
 
@@ -1289,10 +1288,13 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
             }
             else if (joystick & RG_KEY_A)
             {
-                char key = current_layout->layout[cursor_pos];
-                if (input_length < sizeof(input_buffer) - 1)
+                if (input_length < sizeof(input_buffer) - 4)
                 {
-                    input_buffer[input_length++] = key;
+                    const char *layout_ptr = current_layout->layout;
+                    int key = 0;
+                    for (int i = 0; i <= cursor_pos; ++i)
+                        key = rg_utf8_decode(&layout_ptr);
+                    input_length += rg_utf8_encode(&input_buffer[input_length], key);
                     input_buffer[input_length] = '\0';
                     redraw = true;
                 }
@@ -1300,27 +1302,20 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
             else if (joystick & RG_KEY_B)
             {
                 // Backspace
-                if (input_length > 0)
+                while (input_length > 0)
                 {
-                    input_buffer[--input_length] = '\0';
-                    redraw = true;
+                    // Rewind until we find a valid codepoint
+                    const char *ptr = &input_buffer[--input_length];
+                    if (rg_utf8_decode(&ptr) != -1)
+                        break;
                 }
+                input_buffer[input_length] = '\0';
+                redraw = true;
             }
             else if (joystick & RG_KEY_SELECT)
             {
                 // Toggle between layouts (Shift/Symbols)
-                if (current_layout->is_symbols)
-                {
-                    layout_idx = 0; // Back to lowercase
-                }
-                else if (current_layout->is_upper)
-                {
-                    layout_idx = 2; // Switch to symbols
-                }
-                else
-                {
-                    layout_idx = 1; // Switch to uppercase
-                }
+                layout_idx = (layout_idx + 1) % RG_COUNT(keyboard_layouts);
                 current_layout = &keyboard_layouts[layout_idx];
                 cursor_pos = 0;
                 redraw = true;

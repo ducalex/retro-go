@@ -72,8 +72,7 @@ typedef struct
     const char *layout;
     size_t columns;
     size_t rows;
-    bool is_upper;
-    bool is_symbols;
+    const char *label;
 } rg_keyboard_layout_t;
 
 typedef struct
