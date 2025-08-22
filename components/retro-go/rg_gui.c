@@ -1057,7 +1057,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
 void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
                               const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
-    const int key_width = 28;
+    const int key_width = gui.screen_width / 10 - 4;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
     const int keyboard_height = current_layout->rows * key_height;
@@ -1103,7 +1103,7 @@ void rg_gui_draw_input_screen(const char *title, const char *message, const char
 
 void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
-    const int key_width = 28;
+    const int key_width = gui.screen_width / 10 - 4;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
     const int keyboard_height = current_layout->rows * key_height;
