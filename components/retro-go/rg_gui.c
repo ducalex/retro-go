@@ -245,6 +245,12 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
     left = get_horizontal_position(left, width);
     top = get_vertical_position(top, height);
 
+    if (left >= gui.screen_width || top >= gui.screen_height)
+    {
+        RG_LOGD("Buffer (x: %d, y:%d) is entirely outside the screen!", left, top);
+        return;
+    }
+
     if (gui.screen_buffer)
     {
         if (stride < width)
@@ -381,12 +387,12 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 
     if (x_pos >= gui.screen_width || y_pos >= gui.screen_height)
     {
-        RG_LOGD("Texbox (x: %d, y:%d) is entirely outside the screen!", x_pos, y_pos);
+        RG_LOGD("Textbox (x: %d, y:%d) is entirely outside the screen!", x_pos, y_pos);
         return (rg_rect_t){x_pos, y_pos, 0, 0};
     }
     else if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
     {
-        RG_LOGD("Texbox (pos: %dx%d, size: %dx%d) will be truncated!", x_pos, y_pos, width, line_height);
+        RG_LOGD("Textbox (pos: %dx%d, size: %dx%d) will be truncated!", x_pos, y_pos, width, line_height);
         // return;
     }
 
