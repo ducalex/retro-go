@@ -109,8 +109,8 @@ void rg_gui_init(void)
     gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
-    if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN)))
-        rg_gui_set_language_id(RG_LANG_EN);
+    if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_DEFAULT)))
+        rg_gui_set_language_id(0);
     if (!rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_DEFAULT)))
         rg_gui_set_font(0);
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
