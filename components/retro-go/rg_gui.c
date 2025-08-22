@@ -379,9 +379,14 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     x_pos = get_horizontal_position(x_pos, width);
     y_pos = get_vertical_position(y_pos, line_height);
 
-    if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
+    if (x_pos >= gui.screen_width || y_pos >= gui.screen_height)
     {
-        RG_LOGD("Texbox (pos: %dx%d, size: %dx%d) will be truncated!", width, line_height, x_pos, y_pos);
+        RG_LOGD("Texbox (x: %d, y:%d) is entirely outside the screen!", x_pos, y_pos);
+        return (rg_rect_t){x_pos, y_pos, 0, 0};
+    }
+    else if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
+    {
+        RG_LOGD("Texbox (pos: %dx%d, size: %dx%d) will be truncated!", x_pos, y_pos, width, line_height);
         // return;
     }
 
