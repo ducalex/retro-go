@@ -239,10 +239,15 @@ void rg_gui_set_surface(rg_surface_t *surface)
     gui.screen_buffer = surface ? surface->data : NULL;
 }
 
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const uint16_t *buffer, bool transparency)
 {
     left = get_horizontal_position(left, width);
     top = get_vertical_position(top, height);
+    width = RG_MIN(width, gui.screen_width - left);
+    height = RG_MIN(height, gui.screen_height - top);
+
+    if (width <= 0 || height <= 0)
+        return;
 
     if (left >= gui.screen_width || top >= gui.screen_height)
     {
@@ -255,16 +260,20 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
         if (stride < width)
             stride = width * 2;
 
-        width = RG_MIN(width, gui.screen_width - left);
-        height = RG_MIN(height, gui.screen_height - top);
-
         for (int y = 0; y < height; ++y)
         {
             uint16_t *dst = gui.screen_buffer + (top + y) * gui.screen_width + left;
             const uint16_t *src = (void *)buffer + y * stride;
-            for (int x = 0; x < width; ++x)
-                if (src[x] != C_TRANSPARENT)
-                    dst[x] = src[x];
+            if (transparency)
+            {
+                for (int x = 0; x < width; ++x)
+                    if (src[x] != C_TRANSPARENT)
+                        dst[x] = src[x];
+            }
+            else
+            {
+                memcpy(dst, src, width * 2);
+            }
         }
     }
     else
@@ -358,6 +367,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     int monospace = ((flags & RG_TEXT_MONOSPACE) || font->type == 0) ? font->width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
+    bool transparency = color_fg == C_TRANSPARENT || color_bg == C_TRANSPARENT;
     // int16_t line_breaks[64], line_width_cache[64];
 
     if (!text || *text == 0)
@@ -460,7 +470,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer, transparency);
 
         y_offset += line_height;
 
@@ -483,11 +493,12 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     if (border_size > 0)
     {
         uint16_t *draw_buffer = get_draw_buffer(border_size, RG_MAX(width, height), border_color);
+        bool transparency = border_color == C_TRANSPARENT;
 
-        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, draw_buffer);                        // Top
-        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer); // Bottom
-        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, draw_buffer);                       // Left
-        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer); // Right
+        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, draw_buffer, transparency);                        // Top
+        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer, transparency); // Bottom
+        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, draw_buffer, transparency);                       // Left
+        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer, transparency); // Right
 
         x_pos += border_size;
         y_pos += border_size;
@@ -498,8 +509,9 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     if (width > 0 && height > 0 && fill_color != C_NONE)
     {
         uint16_t *draw_buffer = get_draw_buffer(width, RG_MIN(height, 16), fill_color);
+        bool transparency = fill_color == C_TRANSPARENT;
         for (int y = 0; y < height; y += 16)
-            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer, transparency);
     }
 }
 
@@ -508,14 +520,14 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
         rg_image_t *new_img = rg_surface_resize(img, width, height);
-        rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
+        rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data, true);
         rg_surface_free(new_img);
     }
     else if (img)
     {
         int draw_width = width ? RG_MIN(width, img->width) : img->width;
         int draw_height = height ? RG_MIN(height, img->height) : img->height;
-        rg_gui_copy_buffer(x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data);
+        rg_gui_copy_buffer(x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data, true);
     }
     else // We fill a rect to show something is missing instead of abort...
     {

@@ -119,7 +119,7 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const uint16_t *buffer, bool transparency);
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
