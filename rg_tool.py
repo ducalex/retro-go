@@ -177,6 +177,7 @@ def flash_app(app, port, baudrate=1152000):
     app_bin = os.path.join(app, "build", app + ".bin")
     print(f"Flashing '{app_bin}' to port {port}")
     run([PARTTOOL_PY, "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
+    print("Done.\n")
 
 
 def flash_image(image_file, port, baudrate=1152000):
@@ -185,6 +186,7 @@ def flash_image(image_file, port, baudrate=1152000):
     os.putenv("ESPTOOL_PORT", port)
     print(f"Flashing image file '{image_file}' to {port}")
     run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])
+    print("Done.\n")
 
 
 def monitor_app(app, port, baudrate=115200):
