@@ -1092,35 +1092,24 @@ int rg_system_get_log_level(void)
 
 void rg_system_set_overclock(int level)
 {
-#if defined(ESP_PLATFORM) && CONFIG_IDF_TARGET_ESP32
-    // None of this is documented by espressif but can be found in the file rtc_clk.c
+#if CONFIG_IDF_TARGET_ESP32
+    // #include "driver/uart.h"
+    // None of this is documented by espressif but there are comments to be found in the file `rtc_clk.c`
     #define I2C_BBPLL                   0x66
-    #define I2C_BBPLL_ENDIV5              11
-    #define I2C_BBPLL_BBADC_DSMP           9
     #define I2C_BBPLL_HOSTID               4
-    #define I2C_BBPLL_OC_LREF              2
-    #define I2C_BBPLL_OC_DIV_7_0           3
-    #define I2C_BBPLL_OC_DCUR              5
-    #define BBPLL_ENDIV5_VAL_320M       0x43
-    #define BBPLL_BBADC_DSMP_VAL_320M   0x84
+    #define I2C_BBPLL_ENDIV5              11    // This controls the BBPLL frequency. It should already be at 480Mhz
+    #define I2C_BBPLL_BBADC_DSMP           9    // This controls the BBPLL frequency. It should already be at 480Mhz
+    #define I2C_BBPLL_OC_LREF              2    // This is specific to the installed crystal (24/26/40), we don't care
+    #define I2C_BBPLL_OC_DIV_7_0           3    // This is the PLL divider to get the CPU clock (our main concern)
+    #define I2C_BBPLL_OC_DCUR              5    // This is specific to the installed crystal (24/26/40), we don't care
     #define BBPLL_ENDIV5_VAL_480M       0xc3
     #define BBPLL_BBADC_DSMP_VAL_480M   0x74
     extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
+    extern int uart_set_baudrate(int uart_num, uint32_t baud_rate);
 
-    uint8_t div_ref = 0;
-    uint8_t div7_0 = (level + 4) * 8;
-    uint8_t div10_8 = 0;
-    uint8_t lref = 0;
-    uint8_t dcur = 6;
-    uint8_t bw = 3;
-    uint8_t ENDIV5 = BBPLL_ENDIV5_VAL_480M;
-    uint8_t BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
-    uint8_t BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
-    uint8_t BBADC_OC_DIV_7_0 = div7_0;
-    uint8_t BBADC_OC_DCUR = (bw << 6) | dcur;
-
-    static uint8_t BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR, BASE_SAVED;
+    static uint8_t BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR;
+    static bool BASE_SAVED = false;
     if (!BASE_SAVED)
     {
         BASE_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
@@ -1131,18 +1120,30 @@ void rg_system_set_overclock(int level)
         BASE_SAVED = true;
     }
 
-    if (level == 0)
-    {
-        ENDIV5 = BASE_ENDIV5;
-        BBADC_DSMP = BASE_BBADC_DSMP;
-        BBADC_OC_LREF = BASE_BBADC_OC_LREF;
-        BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
-        BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
-    }
-    else if (level < -4 || level > 3)
+    uint8_t ENDIV5 = BASE_ENDIV5;
+    uint8_t BBADC_DSMP = BASE_BBADC_DSMP;
+    uint8_t BBADC_OC_LREF = BASE_BBADC_OC_LREF;
+    uint8_t BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
+    uint8_t BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
+
+    if (level < -4 || level > 3)
     {
         RG_LOGW("Invalid level %d, min:-4 max:3", level);
         return;
+    }
+    else if (level != 0)
+    {
+        uint8_t div_ref = 0;
+        uint8_t div7_0 = (level + 4) * 8;
+        uint8_t div10_8 = 0;
+        uint8_t lref = 0;
+        uint8_t dcur = 6;
+        uint8_t bw = 3;
+        ENDIV5 = BBPLL_ENDIV5_VAL_480M;
+        BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
+        BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
+        BBADC_OC_DIV_7_0 = div7_0;
+        BBADC_OC_DCUR = (bw << 6) | dcur;
     }
 
     RG_LOGW(" ");
@@ -1150,29 +1151,25 @@ void rg_system_set_overclock(int level)
     RG_LOGW("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
     RG_LOGW(" ");
 
+    RG_LOGW("Preparing peripherals for the speed change...");
+    rg_task_delay(10); // Wait for the log to be sent
+
+    float overclock_ratio = (240 + (level * 40)) / 240.f;
+    rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
+    uart_set_baudrate(0, 115200 / overclock_ratio);
+
+    RG_LOGW("Updating clock registers!");
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
-    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
+    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
-    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
-
+    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
     RG_LOGW("Overclock applied!");
-#if 0
-    extern uint64_t esp_rtc_get_time_us(void);
-    uint64_t start = esp_rtc_get_time_us();
-    int64_t end = rg_system_timer() + 1000000;
-    while (rg_system_timer() < end)
-        continue;
-    overclock_ratio = 1000000.f / (esp_rtc_get_time_us() - start);
-#endif
-    // overclock_ratio = (240 + (app.overclock * 40)) / 240.f;
 
-    // rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
+    app.overclock = level;
 #else
     RG_LOGE("Overclock not supported on this platform!");
 #endif
-
-    app.overclock = level;
 }
 
 int rg_system_get_overclock(void)
