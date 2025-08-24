@@ -895,7 +895,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
         if (joystick ^ joystick_old)
         {
-            bool active_selection = options[sel].flags == RG_DIALOG_FLAG_NORMAL;
+            bool active_selection = options_count && options[sel].flags == RG_DIALOG_FLAG_NORMAL;
             rg_gui_callback_t callback = active_selection ? options[sel].update_cb : NULL;
 
             if (joystick & RG_KEY_UP) {
@@ -1954,7 +1954,10 @@ static rg_gui_event_t app_options_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_ENTER)
     {
         const rg_app_t *app = rg_system_get_app();
-        rg_gui_option_t options[16] = {0};
+        rg_gui_option_t options[16] = {
+            {0, _("None"), NULL, RG_DIALOG_FLAG_MESSAGE, 0},
+            RG_DIALOG_END,
+        };
         if (app->handlers.options)
             app->handlers.options(options);
         rg_display_force_redraw();
