@@ -20,6 +20,8 @@ boot_mode selected_boot_mode = boot_game;
 u32 skip_next_frame = 0;
 int sprite_limit = 1;
 
+gbsp_memory_t *gbsp_memory;
+
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_app_t *app;
@@ -27,6 +29,7 @@ static rg_app_t *app;
 void netpacket_poll_receive()
 {
 }
+
 void netpacket_send(uint16_t client_id, const void *buf, size_t len)
 {
 }
@@ -95,11 +98,14 @@ void app_main(void)
 
     updates[0] = rg_surface_create(GBA_SCREEN_WIDTH, GBA_SCREEN_HEIGHT + 1, RG_PIXEL_565_LE, MEM_FAST);
     updates[0]->height = GBA_SCREEN_HEIGHT;
+    // updates[1] = rg_surface_create(GBA_SCREEN_WIDTH, GBA_SCREEN_HEIGHT + 1, RG_PIXEL_565_LE, MEM_FAST);
+    // updates[1]->height = GBA_SCREEN_HEIGHT;
     currentUpdate = updates[0];
 
     gba_screen_pixels = currentUpdate->data;
 
-    RG_LOGI("GBA");
+    gbsp_memory = rg_alloc(sizeof(*gbsp_memory), MEM_ANY);
+    RG_LOGI("gbsp_memory=%p", gbsp_memory);
 
     libretro_supports_bitmasks = true;
     retro_set_input_state(input_cb);
