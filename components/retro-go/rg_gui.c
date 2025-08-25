@@ -19,8 +19,6 @@ static struct
     struct {int left, top, right, bottom;} margins;
     struct
     {
-        const rg_font_t *font;
-        int font_height;
         rg_color_t box_background;
         rg_color_t box_header;
         rg_color_t box_border;
@@ -32,7 +30,9 @@ static struct
     } style;
     char theme_name[32];
     cJSON *theme_obj;
+    const rg_font_t *font;
     int font_index;
+    int font_height;
     bool show_clock;
     bool initialized;
 } gui;
@@ -108,10 +108,12 @@ void rg_gui_init(void)
     //        because of how this is defined in config.h. It should be documented somewhere...
     gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
-    rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_EN));
-    rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_VERA_11));
-    rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
+    if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_DEFAULT)))
+        rg_gui_set_language_id(0);
+    if (!rg_gui_set_font(rg_settings_get_number(NS_GLOBAL, SETTING_FONTTYPE, RG_FONT_DEFAULT)))
+        rg_gui_set_font(0);
+    rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.initialized = true;
 }
 
@@ -123,7 +125,6 @@ bool rg_gui_set_language_id(int index)
         RG_LOGI("Language set to: %s (%d)", rg_localization_get_language_name(index), index);
         return true;
     }
-    rg_localization_set_language_id(RG_LANG_EN);
     RG_LOGE("Invalid language id %d!", index);
     return false;
 }
@@ -221,16 +222,14 @@ bool rg_gui_set_font(int index)
     if (index < 0 || index > RG_FONT_MAX - 1)
         return false;
 
-    const rg_font_t *font = fonts[index];
-
+    gui.font = fonts[index];
     gui.font_index = index;
-    gui.style.font = font;
-    gui.style.font_height = (index < 3) ? (8 + index * 4) : font->height;
+    gui.font_height = (index < 3) ? (8 + index * 4) : gui.font->height;
 
     rg_settings_set_number(NS_GLOBAL, SETTING_FONTTYPE, index);
 
     RG_LOGI("Font set to: %s (height=%d, scaling=%.2f)\n",
-        gui.style.font->name, gui.style.font_height, (float)gui.style.font_height / font->height);
+        gui.font->name, gui.font_height, (float)gui.font_height / gui.font->height);
 
     return true;
 }
@@ -240,26 +239,41 @@ void rg_gui_set_surface(rg_surface_t *surface)
     gui.screen_buffer = surface ? surface->data : NULL;
 }
 
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer)
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const uint16_t *buffer, bool transparency)
 {
     left = get_horizontal_position(left, width);
     top = get_vertical_position(top, height);
+    width = RG_MIN(width, gui.screen_width - left);
+    height = RG_MIN(height, gui.screen_height - top);
+
+    if (width <= 0 || height <= 0)
+        return;
+
+    if (left >= gui.screen_width || top >= gui.screen_height)
+    {
+        RG_LOGD("Buffer (x: %d, y:%d) is entirely outside the screen!", left, top);
+        return;
+    }
 
     if (gui.screen_buffer)
     {
         if (stride < width)
             stride = width * 2;
 
-        width = RG_MIN(width, gui.screen_width - left);
-        height = RG_MIN(height, gui.screen_height - top);
-
         for (int y = 0; y < height; ++y)
         {
             uint16_t *dst = gui.screen_buffer + (top + y) * gui.screen_width + left;
             const uint16_t *src = (void *)buffer + y * stride;
-            for (int x = 0; x < width; ++x)
-                if (src[x] != C_TRANSPARENT)
-                    dst[x] = src[x];
+            if (transparency)
+            {
+                for (int x = 0; x < width; ++x)
+                    if (src[x] != C_TRANSPARENT)
+                        dst[x] = src[x];
+            }
+            else
+            {
+                memcpy(dst, src, width * 2);
+            }
         }
     }
     else
@@ -347,12 +361,13 @@ static size_t get_glyph(uint32_t *output, const rg_font_t *font, int points, int
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags)
 {
-    const rg_font_t *font = gui.style.font;
+    const rg_font_t *font = gui.font;
     int padding = (flags & RG_TEXT_NO_PADDING) ? 0 : 1;
-    int font_height = (flags & RG_TEXT_BIGGER) ? gui.style.font_height * 2 : gui.style.font_height;
+    int font_height = (flags & RG_TEXT_BIGGER) ? gui.font_height * 2 : gui.font_height;
     int monospace = ((flags & RG_TEXT_MONOSPACE) || font->type == 0) ? font->width : 0;
     int line_height = font_height + padding * 2;
     int line_count = 0;
+    bool transparency = color_fg == C_TRANSPARENT || color_bg == C_TRANSPARENT;
     // int16_t line_breaks[64], line_width_cache[64];
 
     if (!text || *text == 0)
@@ -364,7 +379,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         int line_width = padding * 2;
         for (const char *ptr = text; *ptr;)
         {
-            int chr = rg_utf8_get_codepoint(&ptr);
+            int chr = rg_utf8_decode(&ptr);
             line_width += monospace ?: get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
@@ -379,9 +394,14 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
     x_pos = get_horizontal_position(x_pos, width);
     y_pos = get_vertical_position(y_pos, line_height);
 
-    if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
+    if (x_pos >= gui.screen_width || y_pos >= gui.screen_height)
     {
-        RG_LOGD("Texbox (pos: %dx%d, size: %dx%d) will be truncated!", width, line_height, x_pos, y_pos);
+        RG_LOGD("Textbox (x: %d, y:%d) is entirely outside the screen!", x_pos, y_pos);
+        return (rg_rect_t){x_pos, y_pos, 0, 0};
+    }
+    else if (x_pos + width > gui.screen_width || y_pos + line_height > gui.screen_height)
+    {
+        RG_LOGD("Textbox (pos: %dx%d, size: %dx%d) will be truncated!", x_pos, y_pos, width, line_height);
         // return;
     }
 
@@ -398,7 +418,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int chr = rg_utf8_get_codepoint(&line);
+                int chr = rg_utf8_decode(&line);
                 int width = monospace ?: get_glyph(NULL, font, font_height, chr);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
@@ -419,7 +439,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         {
             uint32_t bitmap[font_height];
             const char *prev_ptr = ptr;
-            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_get_codepoint(&ptr));
+            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_decode(&ptr));
             int width = monospace ?: glyph_width;
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
@@ -450,7 +470,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         }
 
         if (!(flags & RG_TEXT_DUMMY_DRAW))
-            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y_offset, draw_width, line_height, 0, draw_buffer, transparency);
 
         y_offset += line_height;
 
@@ -473,11 +493,12 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     if (border_size > 0)
     {
         uint16_t *draw_buffer = get_draw_buffer(border_size, RG_MAX(width, height), border_color);
+        bool transparency = border_color == C_TRANSPARENT;
 
-        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, draw_buffer);                        // Top
-        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer); // Bottom
-        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, draw_buffer);                       // Left
-        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer); // Right
+        rg_gui_copy_buffer(x_pos, y_pos, width, border_size, 0, draw_buffer, transparency);                        // Top
+        rg_gui_copy_buffer(x_pos, y_pos + height - border_size, width, border_size, 0, draw_buffer, transparency); // Bottom
+        rg_gui_copy_buffer(x_pos, y_pos, border_size, height, 0, draw_buffer, transparency);                       // Left
+        rg_gui_copy_buffer(x_pos + width - border_size, y_pos, border_size, height, 0, draw_buffer, transparency); // Right
 
         x_pos += border_size;
         y_pos += border_size;
@@ -488,8 +509,9 @@ void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_si
     if (width > 0 && height > 0 && fill_color != C_NONE)
     {
         uint16_t *draw_buffer = get_draw_buffer(width, RG_MIN(height, 16), fill_color);
+        bool transparency = fill_color == C_TRANSPARENT;
         for (int y = 0; y < height; y += 16)
-            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer);
+            rg_gui_copy_buffer(x_pos, y_pos + y, width, RG_MIN(height - y, 16), 0, draw_buffer, transparency);
     }
 }
 
@@ -498,14 +520,14 @@ void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resampl
     if (img && resample && (width && height) && (width != img->width || height != img->height))
     {
         rg_image_t *new_img = rg_surface_resize(img, width, height);
-        rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data);
+        rg_gui_copy_buffer(x_pos, y_pos, width, height, new_img->width * 2, new_img->data, true);
         rg_surface_free(new_img);
     }
     else if (img)
     {
         int draw_width = width ? RG_MIN(width, img->width) : img->width;
         int draw_height = height ? RG_MIN(height, img->height) : img->height;
-        rg_gui_copy_buffer(x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data);
+        rg_gui_copy_buffer(x_pos, y_pos, draw_width, draw_height, img->width * 2, img->data, true);
     }
     else // We fill a rect to show something is missing instead of abort...
     {
@@ -638,7 +660,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 {
     const size_t options_count = get_dialog_items_count(options);
     const int sep_width = TEXT_RECT(": ", 0).width;
-    const int font_height = gui.style.font_height;
+    const int font_height = gui.font_height;
     const int max_box_width = 0.82f * gui.screen_width;
     const int max_box_height = 0.82f * gui.screen_height;
     const int box_padding = 6;
@@ -873,7 +895,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
         if (joystick ^ joystick_old)
         {
-            bool active_selection = options[sel].flags == RG_DIALOG_FLAG_NORMAL;
+            bool active_selection = options_count && options[sel].flags == RG_DIALOG_FLAG_NORMAL;
             rg_gui_callback_t callback = active_selection ? options[sel].update_cb : NULL;
 
             if (joystick & RG_KEY_UP) {
@@ -1052,7 +1074,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
 void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
                               const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
-    const int key_width = 28;
+    const int key_width = gui.screen_width / 10 - 4;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
     const int keyboard_height = current_layout->rows * key_height;
@@ -1082,9 +1104,7 @@ void rg_gui_draw_input_screen(const char *title, const char *message, const char
         rg_gui_draw_rect(keyboard_x, input_box_y, keyboard_width, input_box_height, 2, gui.style.box_border, C_WHITE);
 
         // Draw instructions at bottom like dialog
-        const char *layout_name = current_layout->is_symbols ? "SYM" : (current_layout->is_upper ? "ABC" : "abc");
-        snprintf(text_buffer, sizeof(text_buffer),
-                "A=Type  B=Backspace  SELECT=%s  START=OK  MENU/OPT=Cancel", layout_name);
+        snprintf(text_buffer, sizeof(text_buffer), "A=Type  B=Backspace  SELECT=%3s  START=OK  MENU/OPT=Cancel", current_layout->label);
         rg_gui_draw_text(0, gui.screen_height - 15, gui.screen_width, text_buffer, gui.style.item_message, gui.style.box_background, RG_TEXT_ALIGN_CENTER);
     }
 
@@ -1100,12 +1120,13 @@ void rg_gui_draw_input_screen(const char *title, const char *message, const char
 
 void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout_t *current_layout, int cursor_pos, bool partial_redraw)
 {
-    const int key_width = 28;
+    const int key_width = gui.screen_width / 10 - 4;
     const int key_height = 20;
     const int keyboard_width = current_layout->columns * key_width;
     const int keyboard_height = current_layout->rows * key_height;
     const int keyboard_x = get_horizontal_position(x_pos, keyboard_width);
     const int keyboard_y = get_vertical_position(y_pos, keyboard_height);
+    const char *layout_ptr = current_layout->layout;
 
     if (!partial_redraw)
     {
@@ -1122,7 +1143,6 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
             int key_idx = row * current_layout->columns + col;
             int x = keyboard_x + col * key_width;
             int y = keyboard_y + row * key_height;
-            char key = current_layout->layout[key_idx];
 
             bool is_selected = (cursor_pos == key_idx);
             // Use same color scheme as dialog items
@@ -1134,9 +1154,13 @@ void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout
             rg_gui_draw_rect(x + 1, y + 1, key_width - 2, key_height - 2, 1, border_color, bg_color);
 
             // Draw key character
-            char key_str[4] = {key, '\0'};
+            char key_str[5] = {0, 0, 0, 0, 0};
+            int key = rg_utf8_decode(&layout_ptr);
             if (key == ' ')
                 strcpy(key_str, "SP");
+            else
+                rg_utf8_encode(key_str, key);
+
             rg_gui_draw_text(x + 2, y + 2, key_width - 4, key_str, fg_color, bg_color, RG_TEXT_ALIGN_CENTER);
         }
     }
@@ -1151,8 +1175,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "zxcvbnm.,?",
         .columns = 10,
         .rows = 4,
-        .is_upper = false,
-        .is_symbols = false
+        .label = "ABC",
     },
     // Uppercase letters
     {
@@ -1162,8 +1185,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "ZXCVBNM.,?",
         .columns = 10,
         .rows = 4,
-        .is_upper = true,
-        .is_symbols = false
+        .label = "abc",
     },
     // Symbols
     {
@@ -1173,8 +1195,7 @@ static const rg_keyboard_layout_t keyboard_layouts[] = {
                     "1234567890",
         .columns = 10,
         .rows = 4,
-        .is_upper = false,
-        .is_symbols = true
+        .label = "!@#",
     }
 };
 
@@ -1289,10 +1310,13 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
             }
             else if (joystick & RG_KEY_A)
             {
-                char key = current_layout->layout[cursor_pos];
-                if (input_length < sizeof(input_buffer) - 1)
+                if (input_length < sizeof(input_buffer) - 4)
                 {
-                    input_buffer[input_length++] = key;
+                    const char *layout_ptr = current_layout->layout;
+                    int key = 0;
+                    for (int i = 0; i <= cursor_pos; ++i)
+                        key = rg_utf8_decode(&layout_ptr);
+                    input_length += rg_utf8_encode(&input_buffer[input_length], key);
                     input_buffer[input_length] = '\0';
                     redraw = true;
                 }
@@ -1300,27 +1324,20 @@ char *rg_gui_input_str(const char *title, const char *message, const char *defau
             else if (joystick & RG_KEY_B)
             {
                 // Backspace
-                if (input_length > 0)
+                while (input_length > 0)
                 {
-                    input_buffer[--input_length] = '\0';
-                    redraw = true;
+                    // Rewind until we find a valid codepoint
+                    const char *ptr = &input_buffer[--input_length];
+                    if (rg_utf8_decode(&ptr) != -1)
+                        break;
                 }
+                input_buffer[input_length] = '\0';
+                redraw = true;
             }
             else if (joystick & RG_KEY_SELECT)
             {
                 // Toggle between layouts (Shift/Symbols)
-                if (current_layout->is_symbols)
-                {
-                    layout_idx = 0; // Back to lowercase
-                }
-                else if (current_layout->is_upper)
-                {
-                    layout_idx = 2; // Switch to symbols
-                }
-                else
-                {
-                    layout_idx = 1; // Switch to uppercase
-                }
+                layout_idx = (layout_idx + 1) % RG_COUNT(keyboard_layouts);
                 current_layout = &keyboard_layouts[layout_idx];
                 cursor_pos = 0;
                 redraw = true;
@@ -1515,13 +1532,23 @@ static rg_gui_event_t custom_zoom_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t overclock_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
+static rg_gui_event_t overclock_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
+    // if (event == RG_DIALOG_ENTER)
+    // {
+    //     const rg_gui_option_t options[] = {
+    //         {0, _("CPU"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {1, _("LCD"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {2, _("SD"),  "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         RG_DIALOG_END,
+    //     };
+    //     rg_gui_dialog(option->label, options, 0);
+    // }
     if (event == RG_DIALOG_PREV)
         rg_system_set_overclock(rg_system_get_overclock() - 1);
     else if (event == RG_DIALOG_NEXT)
         rg_system_set_overclock(rg_system_get_overclock() + 1);
-    sprintf(option->value, "%dMhz", 240 + (rg_system_get_overclock() * 40));
+    sprintf(option->value, "%dMhz", 240 + rg_system_get_overclock() * 20);
     return RG_DIALOG_VOID;
 }
 
@@ -1620,10 +1647,10 @@ static rg_gui_event_t font_type_cb(rg_gui_option_t *option, rg_gui_event_t event
         return RG_DIALOG_REDRAW;
     if (event == RG_DIALOG_NEXT && rg_gui_set_font(gui.font_index + 1))
         return RG_DIALOG_REDRAW;
-    if (gui.style.font_height != gui.style.font->height)
-        sprintf(option->value, "%s (%d)", gui.style.font->name, gui.style.font_height);
+    if (gui.font_height != gui.font->height)
+        sprintf(option->value, "%s (%d)", gui.font->name, gui.font_height);
     else
-        sprintf(option->value, "%s", gui.style.font->name);
+        sprintf(option->value, "%s", gui.font->name);
     return RG_DIALOG_VOID;
 }
 
@@ -1937,7 +1964,10 @@ static rg_gui_event_t app_options_cb(rg_gui_option_t *option, rg_gui_event_t eve
     if (event == RG_DIALOG_ENTER)
     {
         const rg_app_t *app = rg_system_get_app();
-        rg_gui_option_t options[16] = {0};
+        rg_gui_option_t options[16] = {
+            {0, _("None"), NULL, RG_DIALOG_FLAG_MESSAGE, 0},
+            RG_DIALOG_END,
+        };
         if (app->handlers.options)
             app->handlers.options(options);
         rg_display_force_redraw();
@@ -1979,6 +2009,9 @@ void rg_gui_options_menu(void)
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
+        #if !RG_BUILD_RELEASE
+        {0, _("Overclock"),        "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
+        #endif
         {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
     };
@@ -2070,7 +2103,7 @@ void rg_gui_debug_menu(void)
         {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
-        {0, "Overclock", "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+        {0, "Overclock", NULL, RG_DIALOG_FLAG_NORMAL, &overclock_cb},
         {1, "Reboot to firmware", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Clear cache    ", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, "Save screenshot", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -2174,7 +2207,7 @@ static rg_gui_event_t slot_select_cb(rg_gui_option_t *option, rg_gui_event_t eve
         }
         rg_gui_draw_image(0, margin, gui.screen_width, gui.screen_height - margin * 2, true, preview);
         rg_gui_draw_rect(0, margin, gui.screen_width, gui.screen_height - margin * 2, border, color, C_NONE);
-        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.style.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
+        rg_gui_draw_rect(border, margin + border, gui.screen_width - border * 2, gui.font_height * 2 + 6, 0, C_BLACK, C_BLACK);
         rg_gui_draw_text(border + 60, margin + border + 5, gui.screen_width - border * 2 - 120, buffer, C_WHITE, C_BLACK, RG_TEXT_ALIGN_CENTER|RG_TEXT_BIGGER|RG_TEXT_NO_PADDING);
         rg_surface_free(preview);
     }

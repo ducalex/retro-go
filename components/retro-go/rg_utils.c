@@ -48,7 +48,7 @@ char *rg_json_fixup(char *json)
     return json;
 }
 
-int rg_utf8_get_codepoint(const char **ptr)
+int rg_utf8_decode(const char **ptr)
 {
     // This implementation is based solely on https://en.wikipedia.org/wiki/UTF-8#Description
     // It's probably wrong in many ways but I'm sure it'll be good enough for us :)
@@ -102,6 +102,38 @@ int rg_utf8_get_codepoint(const char **ptr)
     return codepoint;
 }
 
+size_t rg_utf8_encode(char *output, int codepoint)
+{
+    if (codepoint <= 0x7F) // 1 byte
+    {
+        output[0] = codepoint & 0xFF;
+        return 1;
+    }
+    else if (codepoint <= 0x7FF) // 2 bytes
+    {
+        output[0] = 0xC0 | ((codepoint >> 6) & 0x1F);
+        output[1] = 0x80 | (codepoint & 0x3F);
+        return 2;
+    }
+    else if (codepoint <= 0xFFFF) // 3 bytes
+    {
+        output[0] = 0xE0 | ((codepoint >> 12) & 0x0F);
+        output[1] = 0x80 | ((codepoint >> 6) & 0x3F);
+        output[2] = 0x80 | (codepoint & 0x3F);
+        return 3;
+    }
+    else if (codepoint <= 0x10FFFF) // 4 bytes
+    {
+        output[0] = 0xF0 | ((codepoint >> 18) & 0x07);
+        output[1] = 0x80 | ((codepoint >> 12) & 0x3F);
+        output[2] = 0x80 | ((codepoint >> 6) & 0x3F);
+        output[3] = 0x80 | (codepoint & 0x3F);
+        return 4;
+    }
+    RG_LOGD("Out of range codepoint 0x%X", codepoint);
+    return 0;
+}
+
 size_t rg_utf8_strlen(const char *str)
 {
     if (!str)
@@ -110,8 +142,8 @@ size_t rg_utf8_strlen(const char *str)
     size_t length = 0;
     while (*str)
     {
-        rg_utf8_get_codepoint(&str);
-        length++;
+        if (rg_utf8_decode(&str) > 0)
+            length++;
     }
     return length;
 }

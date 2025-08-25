@@ -43,7 +43,7 @@ static bool save_state_handler(const char *filename)
 
 static bool load_state_handler(const char *filename)
 {
-    FILE* f = fopen(filename, "r");
+    FILE* f = fopen(filename, "rb");
     if (f)
     {
         system_load_state(f);

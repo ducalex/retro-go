@@ -55,9 +55,12 @@ char *rg_json_fixup(char *json);
 
 /* UTF-8 */
 // Parse the next codepoint and advance ptr
-int rg_utf8_get_codepoint(const char **ptr);
-// Count the codepoints in a string
+int rg_utf8_decode(const char **ptr);
+// size_t rg_utf8_encode(char **ptr, int codepoint);
+size_t rg_utf8_encode(char *ptr, int codepoint);
 size_t rg_utf8_strlen(const char *str);
+// size_t rg_utf8_get_codepoint(const char *str, int *codepoint);
+// size_t rg_utf8_put_codepoint(char *str, int codepoint);
 
 /* Paths functions */
 const char *rg_dirname(const char *path);

@@ -1,5 +1,10 @@
 # Retro-Go 1.xx (2025-??-??)
-- Virtual keyboard to add wifi networks
+- Launcher: Added virtual keyboard to manage wifi networks
+- Launcher: Diacritics now display correctly in filenames
+- GEN/MD: Improved performance
+- SNES: Improved performance
+- All: German translations added
+- New device support: ESP32-P4 on a breadboard
 
 
 # Retro-Go 1.45 (2025-07-27)

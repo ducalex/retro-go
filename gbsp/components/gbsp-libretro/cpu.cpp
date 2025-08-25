@@ -1450,13 +1450,15 @@ u32 reg[64];
 u32 spsr[6];
 u32 reg_mode[7][7];
 
-EXT_RAM_ATTR u8 *memory_map_read [8 * 1024];
 u16 oam_ram[512];
 u16 palette_ram[512];
 u16 palette_ram_converted[512];
-EXT_RAM_ATTR u8 ewram[1024 * 256 * 2];
-EXT_RAM_ATTR u8 iwram[1024 * 32 * 2];
-EXT_RAM_ATTR u8 vram[1024 * 96];
+#ifndef RETRO_GO
+u8 ewram[1024 * 256 * 2];
+u8 iwram[1024 * 32 * 2];
+u8 vram[1024 * 96];
+u8 *memory_map_read[8 * 1024];
+#endif
 u16 io_registers[512];
 #endif
 

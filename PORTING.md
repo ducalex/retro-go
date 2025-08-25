@@ -84,20 +84,23 @@ You can combine any of them by defining the appropriate `RG_GAMEPAD_*_MAP` in yo
 This file is used by ESP-IDF to build the code for the ESP32 itself.
 
 Retro-Go, for the most part, doesn't care about the sdkconfig and its content will depend entirely the chip/board used. But there are things that you should keep in mind:
-- The main task stack size has to be at least 8KB for retro-go
-- The CPU frequency should be set to the maximum possible and power management be disabled
-- SPIRAM should be enabled and configured correctly for your device
+- The main task stack size has to be at least 8KB for retro-go ([CONFIG_ESP_MAIN_TASK_STACK_SIZE](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/kconfig-reference.html#config-esp-main-task-stack-size))
+- The CPU frequency should be set to the maximum possible and power management be disabled ([CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-esp-default-cpu-freq-mhz), [CONFIG_PM_ENABLE](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-pm-enable))
+- SPIRAM should be enabled and configured correctly for your device ([CONFIG_SPIRAM_\*](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#esp-psram))
+- Flash and SPIRAM speed should be set to the maximum supported by your device ([CONFIG_ESPTOOLPY_FLASHFREQ](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-esptoolpy-flashfreq), [CONFIG_SPIRAM_SPEED](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-spiram-speed))
+- Long filenames support should be enabled in FATFS ([CONFIG_FATFS_LFN_HEAP](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-fatfs-long-filenames))
+- UTF-8 support should be enabled in FATFS ([CONFIG_FATFS_API_ENCODING_UTF_8](https://docs.espressif.com/projects/esp-idf/en/stable/esp32/api-reference/kconfig-reference.html#config-fatfs-api-encoding))
 
-ESP-IDF provides a tool to edit it, namely `menuconfig`, but to use it in retro-go you must follow the following steps:
+ESP-IDF provides a tool to edit it, namely `idf.py menuconfig`, but to use it in retro-go you must follow the following steps:
 
 1. Build the launcher for your target (this will make sure you have the correct ESP32 board selected and generate a default sdkconfig)
     - `./rg_tool.py clean`
-    - `./rg_tool.py --target my-target build launcher`
+    - `./rg_tool.py --target=my-target build launcher`
 2. Enter the launcher directory: `cd launcher`
 3. Run `idf.py menuconfig` and make the changes that you need. Make sure to save the changes and exit.
 4. Optionally test the app with the new config (but do NOT run `rg_tool.py clean` at this point, your new config will be deleted)
     - `cd ..`
-    - `./rg_tool.py --target my-target run launcher`
+    - `./rg_tool.py --target=my-target run launcher`
 5. When you're satisfied, copy the `sdkconfig` file from the launcher to the target folder, so that it's used by all apps
     - `cd ..`
     - `mv  -f launcher/sdkconfig components/retro-go/targets/my-target/sdkconfig`

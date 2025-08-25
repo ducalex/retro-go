@@ -336,11 +336,12 @@ const u32 def_seq_cycles[16][2] =
   { 9, 17 }, // Gamepak (wait 2)
 };
 
-
-EXT_RAM_ATTR u8 bios_rom[1024 * 16];
+#ifndef RETRO_GO
+u8 bios_rom[1024 * 16];
 
 // Up to 128kb, store SRAM, flash ROM, or EEPROM here.
-EXT_RAM_ATTR u8 gamepak_backup[1024 * 128];
+u8 gamepak_backup[1024 * 128];
+#endif
 
 u32 dma_bus_val;
 dma_transfer_type dma[4];

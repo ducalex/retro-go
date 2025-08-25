@@ -3,9 +3,10 @@ set(COMPONENT_ADD_INCLUDEDIRS ". libretro/libretro-common/include")
 set(COMPONENT_REQUIRES "retro-go")
 register_component()
 rg_setup_compile_options(
-    -O2
+    -O3
     -fomit-frame-pointer -ffast-math
     -DOVERCLOCK_60FPS
+    -DROM_BUFFER_SIZE=2
     -Wno-unused-variable
     -Wno-implicit-fallthrough
     -Wno-missing-field-initializers

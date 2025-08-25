@@ -258,7 +258,6 @@ extern u32 oam_update;
 extern u32 gbc_sound_wave_update;
 extern dma_transfer_type dma[DMA_CHAN_CNT];
 
-extern const u8 open_gba_bios_rom[1024*16];
 extern u16 palette_ram[512];
 extern u16 oam_ram[512];
 extern u16 palette_ram_converted[512];
@@ -327,5 +326,33 @@ static inline void clear_gamepak_stickybits(void)
 bool memory_check_savestate(const u8*src);
 bool memory_read_savestate(const u8*src);
 unsigned memory_write_savestate(u8 *dst);
+
+
+#ifdef RETRO_GO
+// We wrap certain globals to move them under a dynamic allocation, whilst still preserving the functionality
+// of any code treating them as fixed arrays. This results in very minimal code changes to the rest of gbSP.
+typedef struct
+{
+  // TODO: Evaluate what is best left in internal memory for performance reasons (for the few that could fit)
+  u8 vram[1024 * 96];
+  u8 bios_rom[1024 * 16];
+  u8 ewram[1024 * 256 * 2];
+  u8 iwram[1024 * 32 * 2];
+  u8 *memory_map_read[8 * 1024];
+  u8 gamepak_backup[1024 * 128];
+  // There's also stuff from video.cpp to consider:
+  // u8 obj_priority_list[5][160][128];
+  // u8 obj_priority_count[5][160];
+  // u8 obj_alpha_count[160];
+} gbsp_memory_t;
+
+extern gbsp_memory_t *gbsp_memory;
+#define vram gbsp_memory->vram
+#define bios_rom gbsp_memory->bios_rom
+#define ewram gbsp_memory->ewram
+#define iwram gbsp_memory->iwram
+#define memory_map_read gbsp_memory->memory_map_read
+#define gamepak_backup gbsp_memory->gamepak_backup
+#endif
 
 #endif
