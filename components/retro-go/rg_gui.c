@@ -1532,41 +1532,23 @@ static rg_gui_event_t custom_zoom_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
-static rg_gui_event_t overclock_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    switch ((int)option->arg)
-    {
-        case 0:
-            #if CONFIG_IDF_TARGET_ESP32
-            if (event == RG_DIALOG_PREV)
-                rg_system_set_overclock(rg_system_get_overclock() - 1);
-            else if (event == RG_DIALOG_NEXT)
-                rg_system_set_overclock(rg_system_get_overclock() + 1);
-            sprintf(option->value, "%dMhz", 240 + (rg_system_get_overclock() * 40));
-            #endif
-            break;
-        case 1:
-            // sprintf(option->value, "%dMhz", RG_SCREEN_SPEED / 1000 / 1000);
-            break;
-        case 2:
-            // sprintf(option->value, "%dMhz", RG_STORAGE_SDSPI_SPEED / 1000 / 1000);
-            break;
-    }
-    return RG_DIALOG_VOID;
-}
-
 static rg_gui_event_t overclock_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (event == RG_DIALOG_ENTER)
-    {
-        const rg_gui_option_t options[] = {
-            {0, _("CPU"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
-            {1, _("LCD"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
-            {2, _("SD"),  "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
-            RG_DIALOG_END,
-        };
-        rg_gui_dialog(option->label, options, 0);
-    }
+    // if (event == RG_DIALOG_ENTER)
+    // {
+    //     const rg_gui_option_t options[] = {
+    //         {0, _("CPU"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {1, _("LCD"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {2, _("SD"),  "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         RG_DIALOG_END,
+    //     };
+    //     rg_gui_dialog(option->label, options, 0);
+    // }
+    if (event == RG_DIALOG_PREV)
+        rg_system_set_overclock(rg_system_get_overclock() - 1);
+    else if (event == RG_DIALOG_NEXT)
+        rg_system_set_overclock(rg_system_get_overclock() + 1);
+    sprintf(option->value, "%dMhz", 240 + rg_system_get_overclock() * 20);
     return RG_DIALOG_VOID;
 }
 
@@ -2028,7 +2010,7 @@ void rg_gui_options_menu(void)
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
         #if !RG_BUILD_RELEASE
-        {0, _("Overclock"),        NULL, RG_DIALOG_FLAG_NORMAL, &overclock_cb},
+        {0, _("Overclock"),        "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
         #endif
         {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,

@@ -407,10 +407,10 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         .speed = 1.f,
         .sampleRate = sampleRate,
         .tickRate = 60,
+        .tickTimeout = 3000000,
         .frameTime = 1000000 / 60,
         .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
         .overclock = 0,
-        .tickTimeout = 3000000,
         .lowMemoryMode = false,
         .enWatchdog = true,
         .isColdBoot = true,
@@ -1093,6 +1093,11 @@ int rg_system_get_log_level(void)
 void rg_system_set_overclock(int level)
 {
 #if CONFIG_IDF_TARGET_ESP32
+    if (level < -5 || level > 6)
+    {
+        RG_LOGW("Invalid level %d, min:-4 max:3", level);
+        return;
+    }
     // #include "driver/uart.h"
     // None of this is documented by espressif but there are comments to be found in the file `rtc_clk.c`
     #define I2C_BBPLL                   0x66
@@ -1107,66 +1112,70 @@ void rg_system_set_overclock(int level)
     extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
     extern int uart_set_baudrate(int uart_num, uint32_t baud_rate);
+    extern uint64_t esp_rtc_get_time_us(void);
 
-    static uint8_t BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR;
-    static bool BASE_SAVED = false;
-    if (!BASE_SAVED)
+    uint8_t PREV_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
+    uint8_t PREV_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
+    uint8_t PREV_BBADC_OC_LREF = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF);
+    uint8_t PREV_BBADC_OC_DIV_7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
+    uint8_t PREV_BBADC_OC_DCUR = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR);
+    // It's important that the PLL is set at 480Mhz because we make many assumptions based on this.
+    // Not so much the speed itself, but the many related registers as well as the core voltage and current.
+    if (PREV_ENDIV5 != BBPLL_ENDIV5_VAL_480M || PREV_BBADC_DSMP != BBPLL_BBADC_DSMP_VAL_480M)
     {
-        BASE_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
-        BASE_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
-        BASE_BBADC_OC_LREF = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF);
-        BASE_BBADC_OC_DIV_7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
-        BASE_BBADC_OC_DCUR = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR);
-        BASE_SAVED = true;
-    }
-
-    uint8_t ENDIV5 = BASE_ENDIV5;
-    uint8_t BBADC_DSMP = BASE_BBADC_DSMP;
-    uint8_t BBADC_OC_LREF = BASE_BBADC_OC_LREF;
-    uint8_t BBADC_OC_DIV_7_0 = BASE_BBADC_OC_DIV_7_0;
-    uint8_t BBADC_OC_DCUR = BASE_BBADC_OC_DCUR;
-
-    if (level < -4 || level > 3)
-    {
-        RG_LOGW("Invalid level %d, min:-4 max:3", level);
+        RG_LOGE("Expected to find a 480Mhz PLL.");
         return;
     }
-    else if (level != 0)
-    {
-        uint8_t div_ref = 0;
-        uint8_t div7_0 = (level + 4) * 8;
-        uint8_t div10_8 = 0;
-        uint8_t lref = 0;
-        uint8_t dcur = 6;
-        uint8_t bw = 3;
-        ENDIV5 = BBPLL_ENDIV5_VAL_480M;
-        BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
-        BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
-        BBADC_OC_DIV_7_0 = div7_0;
-        BBADC_OC_DCUR = (bw << 6) | dcur;
-    }
+
+    uint8_t div_ref = 0;
+    uint8_t div7_0 = 28 + (level * 5);
+    uint8_t div10_8 = 0;
+    uint8_t lref = 0;
+    uint8_t dcur = 6;
+    uint8_t bw = 3;
+    uint8_t ENDIV5 = BBPLL_ENDIV5_VAL_480M;
+    uint8_t BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
+    uint8_t BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
+    uint8_t BBADC_OC_DIV_7_0 = div7_0;
+    uint8_t BBADC_OC_DCUR = (bw << 6) | dcur;
 
     RG_LOGW(" ");
-    RG_LOGW("BASE: %d %d %d %d %d", BASE_ENDIV5, BASE_BBADC_DSMP, BASE_BBADC_OC_LREF, BASE_BBADC_OC_DIV_7_0, BASE_BBADC_OC_DCUR);
+    RG_LOGW("BASE: %d %d %d %d %d", PREV_ENDIV5, PREV_BBADC_DSMP, PREV_BBADC_OC_LREF, PREV_BBADC_OC_DIV_7_0, PREV_BBADC_OC_DCUR);
     RG_LOGW("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
     RG_LOGW(" ");
+    rg_task_delay(20);
 
-    RG_LOGW("Preparing peripherals for the speed change...");
-    rg_task_delay(10); // Wait for the log to be sent
-
-    float overclock_ratio = (240 + (level * 40)) / 240.f;
-    rg_audio_set_sample_rate(app.sampleRate / overclock_ratio);
-    uart_set_baudrate(0, 115200 / overclock_ratio);
-
-    RG_LOGW("Updating clock registers!");
-    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
-    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
+    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
+    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
     // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
     // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
-    RG_LOGW("Overclock applied!");
+
+    // RTC clock isn't affected by the CPU or APB clocks, so it remains our only reliable time measurement
+    uint64_t t = esp_rtc_get_time_us(); // The - 10000 is to account for time wasted on mutexes
+    uint32_t cc = xthal_get_ccount(); // Obtain it *after* calling esp_rtc_get_time_us because it is slow
+    rg_usleep(100000);
+    int real_mhz = (double)(xthal_get_ccount() - cc) / (esp_rtc_get_time_us() - t);
+    int calc_mhz = 240 + level * 20;
+
+    // Most audio devices rely on either the APB or the CPU clocks, which we've just skewed. So we have to
+    // compensate. The external DAC uses the APLL which is an independant clock source, no need to correct.
+    if (strcmp(rg_audio_get_sink()->name, "Ext DAC") != 0)
+        rg_audio_set_sample_rate(app.sampleRate * (240.0 / real_mhz));
+    uart_set_baudrate(0, 115200.0 * (240.0 / real_mhz));
+    // esp_timer_impl_update_apb_freq(80.0 / 240.0 * real_mhz);
+    // ets_update_cpu_frequency(real_mhz);
+
+    // This is a lazy hack to report a more accurate emulation speed. Obviously this isn't a real solution.
+    static int original_tickRate = 0;
+    if (!original_tickRate)
+        original_tickRate = app.tickRate;
+    app.tickRate = original_tickRate * (240.f / real_mhz);
 
     app.overclock = level;
+    app.frameskip = 1;
+
+    RG_LOGW("Overclock level %d applied: %dMhz (measured: %dMhz)", level, calc_mhz, real_mhz);
 #else
     RG_LOGE("Overclock not supported on this platform!");
 #endif

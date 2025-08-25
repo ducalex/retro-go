@@ -166,10 +166,10 @@ typedef struct
     float speed;
     int sampleRate;
     int tickRate;
+    int tickTimeout;
     int frameTime;
     int frameskip;
     int overclock;
-    int tickTimeout;
     bool lowMemoryMode;
     bool enWatchdog;
     bool isColdBoot;
