@@ -3,7 +3,7 @@
 static const char *language_names[RG_LANG_MAX] = {
     [RG_LANG_EN] = "English",
     [RG_LANG_FR] = "Francais",
-    [RG_LANG_DE] = "German",
+    [RG_LANG_DE] = "Deutsch",
     [RG_LANG_CHS] = "简体中文",
 };
 
