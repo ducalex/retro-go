@@ -1,8 +1,8 @@
 # Retro-Go 1.xx (2025-??-??)
-- SNES: Improved performance
+- Launcher: Added virtual keyboard to manage wifi networks
+- Launcher: Diacritics now display correctly in filenames
 - GEN/MD: Improved performance
-- Laucnher: Diatrics should now display correctly in filenames
-- Launcher: Virtual keyboard to add wifi networks
+- SNES: Improved performance
 - All: German translations added
 - New device support: ESP32-P4 on a breadboard
 
