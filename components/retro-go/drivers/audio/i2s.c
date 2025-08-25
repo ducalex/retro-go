@@ -131,15 +131,15 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 
         if (use_internal_dac)
         {
-            int sample = (left + right) >> 1;
         #if RG_AUDIO_USE_INT_DAC == 1
-            left = sample + 0x8000; // the internal DAC expects unsigned data
+            left = ((left + right) >> 1) + 0x8000; // the internal DAC expects unsigned data
             right = 0;
         #elif RG_AUDIO_USE_INT_DAC == 2
             left = 0;
-            right = sample + 0x8000; // the internal DAC expects unsigned data
+            right = ((left + right) >> 1) + 0x8000; // the internal DAC expects unsigned data
         #elif RG_AUDIO_USE_INT_DAC == 3
             // In two channel mode we use left and right as a differential mono output to increase resolution.
+            int sample = (left + right) >> 1;
             if (sample > 0x7F00)
             {
                 left = 0x8000 + (sample - 0x7F00);
