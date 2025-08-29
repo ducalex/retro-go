@@ -1113,6 +1113,7 @@ void rg_system_set_overclock(int level)
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
     extern int uart_set_baudrate(int uart_num, uint32_t baud_rate);
     extern uint64_t esp_rtc_get_time_us(void);
+    extern unsigned xthal_get_ccount(void);
 
     uint8_t PREV_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
     uint8_t PREV_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
