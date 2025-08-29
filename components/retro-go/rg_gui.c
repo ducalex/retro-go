@@ -1548,7 +1548,8 @@ static rg_gui_event_t overclock_cb(rg_gui_option_t *option, rg_gui_event_t event
         rg_system_set_overclock(rg_system_get_overclock() - 1);
     else if (event == RG_DIALOG_NEXT)
         rg_system_set_overclock(rg_system_get_overclock() + 1);
-    sprintf(option->value, "%dMhz", 240 + rg_system_get_overclock() * 20);
+    if (event == RG_DIALOG_INIT || event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        sprintf(option->value, "%d (%dMhz)", rg_system_get_overclock(), rg_system_get_cpu_speed());
     return RG_DIALOG_VOID;
 }
 

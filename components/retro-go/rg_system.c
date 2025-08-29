@@ -1090,6 +1090,21 @@ int rg_system_get_log_level(void)
     return app.logLevel;
 }
 
+int rg_system_get_cpu_speed(void)
+{
+#ifdef ESP_PLATFORM
+    extern uint64_t esp_rtc_get_time_us(void);
+    extern unsigned xthal_get_ccount(void);
+    // RTC clock isn't affected by the CPU or APB clocks, so it remains our only reliable time measurement
+    uint64_t t = esp_rtc_get_time_us(); // The - 10000 is to account for time wasted on mutexes
+    uint32_t cc = xthal_get_ccount(); // Obtain it *after* calling esp_rtc_get_time_us because it is slow
+    rg_usleep(100000);
+    return (double)(xthal_get_ccount() - cc) / (esp_rtc_get_time_us() - t);
+#else
+    return 0;
+#endif
+}
+
 void rg_system_set_overclock(int level)
 {
 #if CONFIG_IDF_TARGET_ESP32
@@ -1112,8 +1127,6 @@ void rg_system_set_overclock(int level)
     extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
     extern int uart_set_baudrate(int uart_num, uint32_t baud_rate);
-    extern uint64_t esp_rtc_get_time_us(void);
-    extern unsigned xthal_get_ccount(void);
 
     uint8_t PREV_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
     uint8_t PREV_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
@@ -1152,11 +1165,7 @@ void rg_system_set_overclock(int level)
     rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
     // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
 
-    // RTC clock isn't affected by the CPU or APB clocks, so it remains our only reliable time measurement
-    uint64_t t = esp_rtc_get_time_us(); // The - 10000 is to account for time wasted on mutexes
-    uint32_t cc = xthal_get_ccount(); // Obtain it *after* calling esp_rtc_get_time_us because it is slow
-    rg_usleep(100000);
-    int real_mhz = (double)(xthal_get_ccount() - cc) / (esp_rtc_get_time_us() - t);
+    int real_mhz = rg_system_get_cpu_speed();
     int calc_mhz = 240 + level * 20;
 
     // Most audio devices rely on either the APB or the CPU clocks, which we've just skewed. So we have to

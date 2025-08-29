@@ -220,8 +220,6 @@ bool rg_system_set_led_color(rg_color_t color);
 rg_color_t rg_system_get_led_color(void);
 void rg_system_set_tick_rate(int tickRate);
 int rg_system_get_tick_rate(void);
-void rg_system_set_overclock(int level);
-int  rg_system_get_overclock(void);
 void rg_system_set_log_level(rg_log_level_t level);
 int  rg_system_get_log_level(void);
 void rg_system_tick(int busyTime);
@@ -232,6 +230,11 @@ void rg_system_event(int event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
 rg_stats_t rg_system_get_counters(void);
+
+// Overclock
+void rg_system_set_overclock(int level);
+int rg_system_get_overclock(void);
+int rg_system_get_cpu_speed(void);
 
 // RTC and time-related functions
 void rg_system_set_timezone(const char *TZ);
