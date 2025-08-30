@@ -25,6 +25,8 @@ gbc_sound_struct gbc_sound_channel[4];
 
 const u32 sound_frequency = GBA_SOUND_FREQUENCY;
 
+bool sound_master_enable = true;
+
 u32 sound_on;
 static s16 sound_buffer[BUFFER_SIZE];
 static u32 sound_buffer_base;
@@ -65,7 +67,7 @@ unsigned sound_timer(fixed8_24 frequency_step, u32 channel)
   ds->fifo_base = (ds->fifo_base + 1) % 32;
   next_sample = ds->fifo[ds->fifo_base] * 16;
 
-  if(sound_on == 1)
+  if(sound_on == 1 && sound_master_enable)
   {
     current_sample >>= ds->volume_halve;
     next_sample >>= ds->volume_halve;
@@ -424,7 +426,7 @@ void render_gbc_sound()
     gbc_sound_partial_ticks &= 0xFFFF;
   }
 
-  if(sound_on == 1)
+  if(sound_on == 1 && sound_master_enable)
   {
     s8 *wave_bank;
     gs = gbc_sound_channel + 0;
@@ -810,6 +812,7 @@ u32 sound_read_samples(s16 *out, u32 frames)
    if (samples_to_read > samples_available)
       samples_to_read = samples_available;
 
+   if (sound_master_enable)
    for(i = 0; i < samples_to_read; i++)
    {
       u32 source_index   = (sound_buffer_base + i) & BUFFER_SIZE_MASK;

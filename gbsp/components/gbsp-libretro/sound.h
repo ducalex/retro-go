@@ -96,6 +96,7 @@ extern u32 gbc_sound_last_cpu_ticks;
 
 extern const u32 sound_frequency;
 extern u32 sound_on;
+extern bool sound_master_enable;
 
 void sound_timer_queue32(u32 channel, u32 value);
 unsigned sound_timer(fixed8_24 frequency_step, u32 channel);

@@ -4,6 +4,7 @@
 
 #include "../components/gbsp-libretro/common.h"
 #include "../components/gbsp-libretro/memmap.h"
+#include "../components/gbsp-libretro/sound.h"
 #include "../components/gbsp-libretro/gba_memory.h"
 #include "../components/gbsp-libretro/gba_cc_lut.h"
 
@@ -25,6 +26,8 @@ gbsp_memory_t *gbsp_memory;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_app_t *app;
+
+static const char *SETTING_SOUND_EMULATION = "sound";
 
 void netpacket_poll_receive()
 {
@@ -51,6 +54,7 @@ static bool load_state_handler(const char *filename)
 
 static bool reset_handler(bool hard)
 {
+    reset_gba();
     return true;
 }
 
@@ -82,6 +86,25 @@ void set_fastforward_override(bool fastforward)
 {
 }
 
+static rg_gui_event_t sound_toggle_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+    {
+        sound_master_enable = !sound_master_enable;
+        rg_settings_set_number(NS_APP, SETTING_SOUND_EMULATION, sound_master_enable);
+    }
+
+    strcpy(option->value, sound_master_enable ? _("On") : _("Off"));
+
+    return RG_DIALOG_VOID;
+}
+
+static void options_handler(rg_gui_option_t *dest)
+{
+    *dest++ = (rg_gui_option_t){0, _("Audio enable"), "-", RG_DIALOG_FLAG_NORMAL, &sound_toggle_cb};
+    *dest++ = (rg_gui_option_t)RG_DIALOG_END;
+}
+
 void app_main(void)
 {
     const rg_handlers_t handlers = {
@@ -90,11 +113,14 @@ void app_main(void)
         .reset = &reset_handler,
         .screenshot = &screenshot_handler,
         .event = &event_handler,
+        .options = &options_handler,
     };
 
     app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
     // app = rg_system_init(AUDIO_SAMPLE_RATE * 0.7, &handlers, NULL);
     // rg_system_set_overclock(2);
+
+    sound_master_enable = rg_settings_get_number(NS_APP, SETTING_SOUND_EMULATION, true);
 
     updates[0] = rg_surface_create(GBA_SCREEN_WIDTH, GBA_SCREEN_HEIGHT + 1, RG_PIXEL_565_LE, MEM_FAST);
     updates[0]->height = GBA_SCREEN_HEIGHT;
@@ -126,11 +152,11 @@ void app_main(void)
 
     RG_LOGI("emulation loop");
 
+    rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH] = {0};
+
     while (true)
     {
         // RG_TIMER_INIT();
-
-        rg_audio_sample_t mixbuffer[AUDIO_BUFFER_LENGTH];
         uint32_t joystick = rg_input_read_gamepad();
 
         if (joystick & (RG_KEY_MENU | RG_KEY_OPTION))
@@ -139,6 +165,7 @@ void app_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
+            memset(&mixbuffer, 0, sizeof(mixbuffer));
         }
 
         int64_t start_time = rg_system_timer();
