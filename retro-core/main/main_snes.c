@@ -80,15 +80,15 @@ static rg_audio_sample_t *currentAudioBuffer;
 static rg_task_t *audio_task_handle;
 #endif
 
-static bool apu_enabled = true;
+static bool sound_enabled = true;
 static bool lowpass_filter = false;
 
 static int keymap_id = 0;
 static keymap_t keymap;
 
 static const char *SETTING_KEYMAP = "keymap";
-static const char *SETTING_APU_EMULATION = "apu";
-static const char *SETTING_APU_FILTER = "filter";
+static const char *SETTING_SOUND_EMULATION = "apu";
+static const char *SETTING_SOUND_FILTER = "filter";
 // --- MAIN
 
 static void update_keymap(int id)
@@ -115,6 +115,8 @@ static bool load_state_handler(const char *filename)
 static bool reset_handler(bool hard)
 {
     S9xReset();
+    memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
+    memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
     return true;
 }
 
@@ -130,12 +132,11 @@ static rg_gui_event_t apu_toggle_cb(rg_gui_option_t *option, rg_gui_event_t even
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
-        apu_enabled = !apu_enabled;
-        rg_settings_set_number(NS_APP, SETTING_APU_EMULATION, apu_enabled);
+        sound_enabled = !sound_enabled;
+        rg_settings_set_number(NS_APP, SETTING_SOUND_EMULATION, sound_enabled);
     }
 
-    strcpy(option->value, apu_enabled ? _("On") : _("Off"));
-
+    strcpy(option->value, sound_enabled ? _("On") : _("Off"));
     return RG_DIALOG_VOID;
 }
 
@@ -144,11 +145,10 @@ static rg_gui_event_t lowpass_filter_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         lowpass_filter = !lowpass_filter;
-        rg_settings_set_number(NS_APP, SETTING_APU_FILTER, lowpass_filter);
+        rg_settings_set_number(NS_APP, SETTING_SOUND_FILTER, lowpass_filter);
     }
 
     strcpy(option->value, lowpass_filter ? _("On") : _("Off"));
-
     return RG_DIALOG_VOID;
 }
 
@@ -304,7 +304,8 @@ static void audio_task(void *arg)
     {
         if (msg.type == RG_TASK_MSG_STOP)
             break;
-        mix_samples(AUDIO_BUFFER_LENGTH << 1);
+        if (msg.type != 0)
+            mix_samples(AUDIO_BUFFER_LENGTH << 1);
         rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
     }
 }
@@ -331,8 +332,8 @@ void snes_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     // Load settings
-    apu_enabled = rg_settings_get_number(NS_APP, SETTING_APU_EMULATION, 1);
-    lowpass_filter = rg_settings_get_number(NS_APP, SETTING_APU_FILTER, 0);
+    sound_enabled = rg_settings_get_number(NS_APP, SETTING_SOUND_EMULATION, 1);
+    lowpass_filter = rg_settings_get_number(NS_APP, SETTING_SOUND_FILTER, 0);
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
 
     // Allocate surfaces and audio buffers
@@ -347,10 +348,10 @@ void snes_main(void)
     currentUpdate = updates[0];
 
 #ifdef AUDIO_DOUBLE_BUFFERING
-    audioBuffers[0] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
-    audioBuffers[1] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
+    audioBuffers[1] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
 #else
-    audioBuffers[0] = (rg_audio_sample_t *)malloc(AUDIO_BUFFER_LENGTH * 4);
+    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
     audioBuffers[1] = audioBuffers[0];
 #endif
     currentAudioBuffer = audioBuffers[0];
@@ -432,6 +433,8 @@ void snes_main(void)
         else if (joystick & RG_KEY_OPTION)
         {
             rg_gui_options_menu();
+            memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
+            memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
         }
 
         menuPressed = joystick & RG_KEY_MENU;
@@ -451,11 +454,8 @@ void snes_main(void)
         S9xMainLoop();
 
     #ifdef USE_AUDIO_TASK
-        if (apu_enabled)
-        {
-            rg_task_msg_t msg = {0};
-            rg_task_send(audio_task_handle, &msg);
-        }
+        rg_task_msg_t msg = {.type = (int)sound_enabled};
+        rg_task_send(audio_task_handle, &msg);
     #endif
 
         if (drawFrame)
@@ -466,16 +466,10 @@ void snes_main(void)
         }
 
     #ifndef USE_AUDIO_TASK
-        if (apu_enabled)
-        {
+        if (sound_enabled)
             mix_samples(AUDIO_BUFFER_LENGTH << 1);
-            rg_system_tick(rg_system_timer() - startTime);
-            rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
-        }
-        else
-        {
-            rg_system_tick(rg_system_timer() - startTime);
-        }
+        rg_system_tick(rg_system_timer() - startTime);
+        rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
     #else
         rg_system_tick(rg_system_timer() - startTime);
     #endif

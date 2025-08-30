@@ -119,7 +119,6 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 {
     float volume = state.muted ? 0.f : (state.volume * 0.01f);
     rg_audio_frame_t buffer[180];
-    size_t written = 0;
     size_t pos = 0;
 
     bool use_internal_dac = state.device == 0;
@@ -168,6 +167,7 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 
         if (i == count - 1 || ++pos == RG_COUNT(buffer))
         {
+            size_t written;
             if (i2s_write(I2S_NUM_0, (void *)buffer, pos * 4, &written, 1000) != ESP_OK)
                 RG_LOGW("I2S Submission error! Written: %d/%d\n", written, pos * 4);
             pos = 0;
