@@ -169,7 +169,8 @@ typedef struct
     int tickTimeout;
     int frameTime;
     int frameskip;
-    int overclock;
+    int overclock_level;
+    int overclock_mhz;
     bool lowMemoryMode;
     bool enWatchdog;
     bool isColdBoot;

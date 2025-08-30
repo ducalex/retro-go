@@ -410,7 +410,8 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         .tickTimeout = 3000000,
         .frameTime = 1000000 / 60,
         .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
-        .overclock = 0,
+        .overclock_level = 0,
+        .overclock_mhz = 240,
         .lowMemoryMode = false,
         .enWatchdog = true,
         .isColdBoot = true,
@@ -1092,82 +1093,55 @@ int rg_system_get_log_level(void)
 
 int rg_system_get_cpu_speed(void)
 {
-#ifdef ESP_PLATFORM
-    extern uint64_t esp_rtc_get_time_us(void);
-    extern unsigned xthal_get_ccount(void);
-    // RTC clock isn't affected by the CPU or APB clocks, so it remains our only reliable time measurement
-    uint64_t t = esp_rtc_get_time_us(); // The - 10000 is to account for time wasted on mutexes
-    uint32_t cc = xthal_get_ccount(); // Obtain it *after* calling esp_rtc_get_time_us because it is slow
-    rg_usleep(100000);
-    return (double)(xthal_get_ccount() - cc) / (esp_rtc_get_time_us() - t);
-#else
-    return 0;
-#endif
+    return app.overclock_mhz;
 }
 
 void rg_system_set_overclock(int level)
 {
-#if CONFIG_IDF_TARGET_ESP32
-    if (level < -5 || level > 6)
-    {
-        RG_LOGW("Invalid level %d, min:-4 max:3", level);
-        return;
-    }
-    // #include "driver/uart.h"
-    // None of this is documented by espressif but there are comments to be found in the file `rtc_clk.c`
-    #define I2C_BBPLL                   0x66
-    #define I2C_BBPLL_HOSTID               4
-    #define I2C_BBPLL_ENDIV5              11    // This controls the BBPLL frequency. It should already be at 480Mhz
-    #define I2C_BBPLL_BBADC_DSMP           9    // This controls the BBPLL frequency. It should already be at 480Mhz
-    #define I2C_BBPLL_OC_LREF              2    // This is specific to the installed crystal (24/26/40), we don't care
-    #define I2C_BBPLL_OC_DIV_7_0           3    // This is the PLL divider to get the CPU clock (our main concern)
-    #define I2C_BBPLL_OC_DCUR              5    // This is specific to the installed crystal (24/26/40), we don't care
-    #define BBPLL_ENDIV5_VAL_480M       0xc3
-    #define BBPLL_BBADC_DSMP_VAL_480M   0x74
+#if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S3
+    // None of this is documented by espressif but there are comments to be found in the file `rtc_clk.c` and `clk_tree_ll.h`
     extern void rom_i2c_writeReg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
     extern uint8_t rom_i2c_readReg(uint8_t block, uint8_t host_id, uint8_t reg_add);
     extern int uart_set_baudrate(int uart_num, uint32_t baud_rate);
-
-    uint8_t PREV_ENDIV5 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5);
-    uint8_t PREV_BBADC_DSMP = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP);
-    uint8_t PREV_BBADC_OC_LREF = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF);
-    uint8_t PREV_BBADC_OC_DIV_7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
-    uint8_t PREV_BBADC_OC_DCUR = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR);
-    // It's important that the PLL is set at 480Mhz because we make many assumptions based on this.
-    // Not so much the speed itself, but the many related registers as well as the core voltage and current.
-    if (PREV_ENDIV5 != BBPLL_ENDIV5_VAL_480M || PREV_BBADC_DSMP != BBPLL_BBADC_DSMP_VAL_480M)
+    extern uint64_t esp_rtc_get_time_us(void);
+    extern unsigned xthal_get_ccount(void);
+    // #include "driver/uart.h"
+#if CONFIG_IDF_TARGET_ESP32
+    #define I2C_BBPLL                   0x66
+    #define I2C_BBPLL_HOSTID               4
+    #define I2C_BBPLL_OC_DIV_7_0           3    // This is the PLL divider to get the CPU clock (our main concern)
+    #define OC_MAX_LEVEL                   6
+    #define OC_MIN_LEVEL                  -5
+    #define OC_DIV7_MULTIPLIER             5
+#else // CONFIG_IDF_TARGET_ESP32S3
+    #define I2C_BBPLL                   0x66
+    #define I2C_BBPLL_HOSTID               1
+    #define I2C_BBPLL_OC_DIV_7_0           3
+    #define OC
+    #define OC_MAX_LEVEL                   8
+    #define OC_MIN_LEVEL                  -8
+    #define OC_DIV7_MULTIPLIER             1
+#endif
+    if (level < OC_MIN_LEVEL || level > OC_MAX_LEVEL)
     {
-        RG_LOGE("Expected to find a 480Mhz PLL.");
+        RG_LOGW("Invalid level %d, min:%d max:%d", level, OC_MIN_LEVEL, OC_MAX_LEVEL);
         return;
     }
-
-    uint8_t div_ref = 0;
-    uint8_t div7_0 = 28 + (level * 5);
-    uint8_t div10_8 = 0;
-    uint8_t lref = 0;
-    uint8_t dcur = 6;
-    uint8_t bw = 3;
-    uint8_t ENDIV5 = BBPLL_ENDIV5_VAL_480M;
-    uint8_t BBADC_DSMP = BBPLL_BBADC_DSMP_VAL_480M;
-    uint8_t BBADC_OC_LREF = (lref << 7) | (div10_8 << 4) | (div_ref);
-    uint8_t BBADC_OC_DIV_7_0 = div7_0;
-    uint8_t BBADC_OC_DCUR = (bw << 6) | dcur;
-
-    RG_LOGW(" ");
-    RG_LOGW("BASE: %d %d %d %d %d", PREV_ENDIV5, PREV_BBADC_DSMP, PREV_BBADC_OC_LREF, PREV_BBADC_OC_DIV_7_0, PREV_BBADC_OC_DCUR);
-    RG_LOGW("NEW : %d %d %d %d %d", ENDIV5, BBADC_DSMP, BBADC_OC_LREF, BBADC_OC_DIV_7_0, BBADC_OC_DCUR);
-    RG_LOGW(" ");
+    static int original_div7_0 = -1;
+    if (original_div7_0 == -1)
+        original_div7_0 = rom_i2c_readReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0);
+    uint8_t div7_0 = original_div7_0 + (level * OC_DIV7_MULTIPLIER);
+    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, div7_0);
     rg_task_delay(20);
 
-    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_ENDIV5, ENDIV5);
-    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_BBADC_DSMP, BBADC_DSMP);
-    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_LREF, BBADC_OC_LREF);
-    rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DIV_7_0, BBADC_OC_DIV_7_0);
-    // rom_i2c_writeReg(I2C_BBPLL, I2C_BBPLL_HOSTID, I2C_BBPLL_OC_DCUR, BBADC_OC_DCUR);
+    // RTC clock isn't affected by the CPU or APB clocks, so it remains our only reliable time measurement
+    uint64_t t = esp_rtc_get_time_us(); // The - 10000 is to account for time wasted on mutexes
+    uint32_t cc = xthal_get_ccount(); // Obtain it *after* calling esp_rtc_get_time_us because it is slow
+    rg_usleep(100000);
+    int real_mhz = (double)(xthal_get_ccount() - cc) / (esp_rtc_get_time_us() - t);
+    // float factor = 240.f / real_mhz;
 
-    int real_mhz = rg_system_get_cpu_speed();
-    int calc_mhz = 240 + level * 20;
-
+#if CONFIG_IDF_TARGET_ESP32
     // Most audio devices rely on either the APB or the CPU clocks, which we've just skewed. So we have to
     // compensate. The external DAC uses the APLL which is an independant clock source, no need to correct.
     if (strcmp(rg_audio_get_sink()->name, "Ext DAC") != 0)
@@ -1175,17 +1149,18 @@ void rg_system_set_overclock(int level)
     uart_set_baudrate(0, 115200.0 * (240.0 / real_mhz));
     // esp_timer_impl_update_apb_freq(80.0 / 240.0 * real_mhz);
     // ets_update_cpu_frequency(real_mhz);
+#endif
 
     // This is a lazy hack to report a more accurate emulation speed. Obviously this isn't a real solution.
     static int original_tickRate = 0;
     if (!original_tickRate)
         original_tickRate = app.tickRate;
     app.tickRate = original_tickRate * (240.f / real_mhz);
-
-    app.overclock = level;
+    app.overclock_level = level;
+    app.overclock_mhz = real_mhz;
     app.frameskip = 1;
 
-    RG_LOGW("Overclock level %d applied: %dMhz (measured: %dMhz)", level, calc_mhz, real_mhz);
+    RG_LOGW("Overclock level %d applied: %dMhz", level, real_mhz);
 #else
     RG_LOGE("Overclock not supported on this platform!");
 #endif
@@ -1193,7 +1168,7 @@ void rg_system_set_overclock(int level)
 
 int rg_system_get_overclock(void)
 {
-    return app.overclock;
+    return app.overclock_level;
 }
 
 char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)

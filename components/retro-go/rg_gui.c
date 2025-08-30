@@ -2010,8 +2010,8 @@ void rg_gui_options_menu(void)
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
-        #if !RG_BUILD_RELEASE && CONFIG_IDF_TARGET_ESP32
-        {0, _("Overclock"),        "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
+        #if !RG_BUILD_RELEASE /* Add overclock here for easier testing during dev */
+        {0, _("Overclock"),     "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
         #endif
         {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
