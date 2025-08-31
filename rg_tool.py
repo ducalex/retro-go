@@ -20,7 +20,7 @@ PROJECT_APPS = {
   'retro-core':   [0, 0, 983040],
   'prboom-go':    [0, 0, 851968],
   'gwenesis':     [0, 0, 983040],
-  'fmsx':         [0, 0, 589824],
+  'fmsx':         [0, 0, 655360],
   'gbsp':         [0, 0, 851968],
 }
 # PROJECT_APPS = {}
