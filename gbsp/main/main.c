@@ -44,12 +44,26 @@ static bool screenshot_handler(const char *filename, int width, int height)
 
 static bool save_state_handler(const char *filename)
 {
-    return false;
+    size_t buffer_len = GBA_STATE_MEM_SIZE;
+    void *buffer = malloc(buffer_len);
+    if (!buffer)
+        return false;
+    gba_save_state(buffer);
+    bool success = rg_storage_write_file(filename, buffer, buffer_len, 0);
+    free(buffer);
+    return success;
 }
 
 static bool load_state_handler(const char *filename)
 {
-    return false;
+    size_t buffer_len = GBA_STATE_MEM_SIZE;
+    void *buffer = malloc(buffer_len);
+    if (!buffer)
+        return false;
+    bool success = rg_storage_read_file(filename, &buffer, &buffer_len, RG_FILE_USER_BUFFER)
+                    && gba_load_state(buffer);
+    free(buffer);
+    return success;
 }
 
 static bool reset_handler(bool hard)
@@ -149,6 +163,12 @@ void app_main(void)
 
     RG_LOGI("reset_gba");
     reset_gba();
+
+    if (app->bootFlags & RG_BOOT_RESUME)
+    {
+        RG_LOGI("load_state");
+        rg_emu_load_state(app->saveSlot);
+    }
 
     RG_LOGI("emulation loop");
 
