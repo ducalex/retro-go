@@ -15,6 +15,14 @@
 #include <driver/dac.h>
 #endif
 
+#ifdef RG_GPIO_SND_AMP_ENABLE_INVERT
+#define MUTE_ENABLE 1
+#define MUTE_DISABLE 0
+#else
+#define MUTE_ENABLE 0
+#define MUTE_DISABLE 1
+#endif
+
 static struct {
     const char *last_error;
     int device;
@@ -80,6 +88,11 @@ static bool driver_init(int device, int sample_rate)
         state.last_error = "This device does not support external DAC mode!";
     #endif
     }
+    #ifdef RG_GPIO_SND_AMP_ENABLE
+        gpio_reset_pin(RG_GPIO_SND_AMP_ENABLE);
+        gpio_set_level(RG_GPIO_SND_AMP_ENABLE, MUTE_ENABLE);
+        gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
+    #endif
     return state.last_error == NULL;
 }
 
@@ -179,13 +192,8 @@ static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 static bool driver_set_mute(bool mute)
 {
     i2s_zero_dma_buffer(I2S_NUM_0);
-    #if defined(RG_GPIO_SND_AMP_ENABLE)
-        gpio_set_direction(RG_GPIO_SND_AMP_ENABLE, GPIO_MODE_OUTPUT);
-        #ifdef RG_GPIO_SND_AMP_ENABLE_INVERT
-            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 1 : 0);
-        #else
-            gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? 0 : 1);
-        #endif
+    #ifdef RG_GPIO_SND_AMP_ENABLE
+    gpio_set_level(RG_GPIO_SND_AMP_ENABLE, mute ? MUTE_ENABLE : MUTE_DISABLE);
     #endif
     state.muted = mute;
     return true;
