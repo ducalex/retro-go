@@ -16,7 +16,7 @@ static struct
     uint16_t *screen_buffer, *draw_buffer;
     size_t draw_buffer_size;
     int screen_width, screen_height;
-    struct {int left, top, right, bottom;} margins;
+    rg_margins_t margins;
     struct
     {
         rg_color_t box_background;
@@ -106,7 +106,7 @@ void rg_gui_init(void)
     gui.screen_height = rg_display_get_height();
     // FIXME: RG_SCREEN_SAFE_AREA being added on top of RG_SCREEN_VISIBLE_AREA might not be super intuitive
     //        because of how this is defined in config.h. It should be documented somewhere...
-    gui.margins = (__typeof__(gui.margins))RG_SCREEN_SAFE_AREA;
+    gui.margins = (rg_margins_t)RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
     if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_DEFAULT)))
@@ -237,6 +237,11 @@ bool rg_gui_set_font(int index)
 void rg_gui_set_surface(rg_surface_t *surface)
 {
     gui.screen_buffer = surface ? surface->data : NULL;
+}
+
+rg_margins_t rg_gui_get_safe_area(void)
+{
+    return gui.margins;
 }
 
 void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const uint16_t *buffer, bool transparency)

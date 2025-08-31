@@ -74,13 +74,15 @@ typedef struct
     // bool (*write)(int left, int top, int width, int height, int pitch, const uint16_t data);
 } rg_display_driver_t;
 
+#include "rg_surface.h"
+
 typedef struct
 {
     struct
     {
         int real_width, real_height; // Real physical resolution
         int width, height; // Visible resolution (minus margins)
-        struct {int left, top, right, bottom;} margins;
+        rg_margins_t margins;
         int format;
     } screen;
     struct
@@ -96,8 +98,6 @@ typedef struct
     } source;
     bool changed;
 } rg_display_t;
-
-#include "rg_surface.h"
 
 void rg_display_init(void);
 void rg_display_deinit(void);

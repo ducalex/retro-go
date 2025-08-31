@@ -32,6 +32,12 @@ typedef struct
 
 typedef struct
 {
+    int left, top;
+    int right, bottom;
+} rg_margins_t;
+
+typedef struct
+{
     int width, height;
     int stride, offset; // , pixlen
     int format;
