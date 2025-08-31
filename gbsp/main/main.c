@@ -11,8 +11,6 @@
 #define AUDIO_SAMPLE_RATE (GBA_SOUND_FREQUENCY)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
-#include "bios.h"
-
 u32 idle_loop_target_pc = 0xFFFFFFFF;
 u32 translation_gate_target_pc[MAX_TRANSLATION_GATES];
 u32 translation_gate_targets = 0;
@@ -151,9 +149,7 @@ void app_main(void)
     retro_set_input_state(input_cb);
     init_gamepak_buffer();
     init_sound();
-
-    if (load_bios(RG_BASE_PATH_BIOS "/gba_bios.bin") != 0)
-        memcpy(bios_rom, open_gba_bios_rom, sizeof(bios_rom));
+    // load_bios(RG_BASE_PATH_BIOS "/gba_bios.bin");
 
     memset(gamepak_backup, 0xff, sizeof(gamepak_backup));
     if (load_gamepak(NULL, app->romPath, FEAT_DISABLE, FEAT_DISABLE, SERIAL_MODE_DISABLED) != 0)

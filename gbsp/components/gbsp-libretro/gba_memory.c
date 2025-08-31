@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include "streams/file_stream.h"
+#include "bios/open_gba_bios.h"
 
 /* Sound */
 #define gbc_sound_tone_control_low(channel, regn)                             \
@@ -336,9 +337,10 @@ const u32 def_seq_cycles[16][2] =
   { 9, 17 }, // Gamepak (wait 2)
 };
 
-#ifndef RETRO_GO
-u8 bios_rom[1024 * 16];
+static u8 *bios_rom_alloc; // [1024 * 16];
+const u8 *bios_rom = open_gba_bios_rom; // [1024 * 16];
 
+#ifndef RETRO_GO
 // Up to 128kb, store SRAM, flash ROM, or EEPROM here.
 u8 gamepak_backup[1024 * 128];
 #endif
@@ -2578,13 +2580,21 @@ u32 load_gamepak(const struct retro_game_info* info, const char *name,
 s32 load_bios(char *name)
 {
   FILE *fd = fopen(name, "rb");
-
-  if(!fd)
+  if (!fd)
     return -1;
 
-  fread(bios_rom, 0x4000, 1, fd);
+  if (!bios_rom_alloc)
+    bios_rom_alloc = malloc(0x4000);
+
+  if (bios_rom_alloc && fread(bios_rom_alloc, 0x4000, 1, fd))
+  {
+    bios_rom = bios_rom_alloc;
+    fclose(fd);
+    return 0;
+  }
+fail:
   fclose(fd);
-  return 0;
+  return -1;
 }
 
 
