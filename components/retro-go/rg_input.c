@@ -372,6 +372,11 @@ void rg_input_deinit(void)
     RG_LOGI("Input terminated.\n");
 }
 
+bool rg_input_key_is_present(rg_key_t mask)
+{
+    return (gamepad_mapped & mask) == mask;
+}
+
 uint32_t rg_input_read_gamepad(void)
 {
 #ifdef RG_TARGET_SDL2
@@ -423,11 +428,4 @@ const char *rg_input_get_key_name(rg_key_t key)
     case RG_KEY_NONE: return "None";
     default: return "Unknown";
     }
-}
-
-const char *rg_input_get_key_mapping(rg_key_t key)
-{
-    if ((gamepad_mapped & key) == key)
-        return "PHYSICAL";
-    return NULL;
 }

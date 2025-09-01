@@ -2039,7 +2039,7 @@ void rg_gui_options_menu(void)
 void rg_gui_about_menu(void)
 {
     const rg_app_t *app = rg_system_get_app();
-    bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
+    bool have_option_btn = rg_input_key_is_present(RG_KEY_OPTION);
 
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
@@ -2245,7 +2245,7 @@ int rg_gui_savestate_menu(const char *title, const char *rom_path)
 void rg_gui_game_menu(void)
 {
     const char *rom_path = rg_system_get_app()->romPath;
-    bool have_option_btn = rg_input_get_key_mapping(RG_KEY_OPTION);
+    bool have_option_btn = rg_input_key_is_present(RG_KEY_OPTION);
     const rg_gui_option_t choices[] = {
         {1000, _("Save & Continue"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2000, _("Save & Quit"),     NULL, RG_DIALOG_FLAG_NORMAL, NULL},
