@@ -17,8 +17,15 @@ typedef struct
 	} keys[16];
 } keymap_t;
 
+enum {
+    KEYMAP_TYPE_A = 0,
+    KEYMAP_TYPE_B,
+    KEYMAP_TYPE_C,
+    KEYMAP_REGULAR
+};
+
 static const keymap_t KEYMAPS[] = {
-	{"Type A", {
+	[KEYMAP_TYPE_A] = {"Type A", {
 		{SNES_A_MASK, RG_KEY_A, 0},
 		{SNES_B_MASK, RG_KEY_B, 0},
 		{SNES_X_MASK, RG_KEY_START, 0},
@@ -32,7 +39,7 @@ static const keymap_t KEYMAPS[] = {
 		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
 		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
 	}},
-	{"Type B", {
+	[KEYMAP_TYPE_B] = {"Type B", {
 		{SNES_A_MASK, RG_KEY_START, 0},
 		{SNES_B_MASK, RG_KEY_A, 0},
 		{SNES_X_MASK, RG_KEY_SELECT, 0},
@@ -46,7 +53,7 @@ static const keymap_t KEYMAPS[] = {
 		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
 		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
 	}},
-	{"Type C", {
+	[KEYMAP_TYPE_C] = {"Type C", {
 		{SNES_A_MASK, RG_KEY_A, 0},
 		{SNES_B_MASK, RG_KEY_B, 0},
 		{SNES_X_MASK, 0, 0},
@@ -60,7 +67,7 @@ static const keymap_t KEYMAPS[] = {
 		{SNES_LEFT_MASK, RG_KEY_LEFT, 0},
 		{SNES_RIGHT_MASK, RG_KEY_RIGHT, 0},
 	}},
-    {"Type D", {
+    [KEYMAP_REGULAR] = {"Regular", {
 		{SNES_A_MASK, RG_KEY_A, 0},
 		{SNES_B_MASK, RG_KEY_B, 0},
 		{SNES_X_MASK, RG_KEY_X, 0},
@@ -348,7 +355,8 @@ void snes_main(void)
     // Load settings
     sound_enabled = rg_settings_get_number(NS_APP, SETTING_SOUND_EMULATION, 1);
     lowpass_filter = rg_settings_get_number(NS_APP, SETTING_SOUND_FILTER, 0);
-    update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, 0));
+    int default_keymap = (rg_input_key_is_present(RG_KEY_X|RG_KEY_Y|RG_KEY_L|RG_KEY_R)) ? KEYMAP_REGULAR : KEYMAP_TYPE_A;
+    update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, default_keymap));
 
     // Allocate surfaces and audio buffers
     updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
