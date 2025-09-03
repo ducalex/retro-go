@@ -455,7 +455,9 @@ void snes_main(void)
 
     #ifdef USE_AUDIO_TASK
         rg_task_msg_t msg = {.type = (int)sound_enabled};
-        rg_task_send(audio_task_handle, &msg);
+        // Don't submit silence if we're already behind. This might help reduce slowdowns?
+        if (sound_enabled || rg_system_timer() - startTime < app->frameTime)
+            rg_task_send(audio_task_handle, &msg);
     #endif
 
         if (drawFrame)
@@ -465,13 +467,14 @@ void snes_main(void)
             currentUpdate = updates[currentUpdate == updates[0]];
         }
 
-    #ifndef USE_AUDIO_TASK
-        if (sound_enabled)
+    #ifdef USE_AUDIO_TASK
+        rg_system_tick(rg_system_timer() - startTime);
+    #else
+        // Don't submit silence if we're already behind. This might help reduce slowdowns?
+        if (sound_enabled || rg_system_timer() - startTime < app->frameTime)
             mix_samples(AUDIO_BUFFER_LENGTH << 1);
         rg_system_tick(rg_system_timer() - startTime);
         rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
-    #else
-        rg_system_tick(rg_system_timer() - startTime);
     #endif
 
         if (skipFrames == 0)
