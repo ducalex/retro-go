@@ -3,6 +3,7 @@
 - Launcher: Diacritics now display correctly in filenames
 - GEN/MD: Improved performance
 - SNES: Improved performance
+- All: On-screen low battery indicator
 - All: German translations added
 - New device support: ESP32-P4 on a breadboard
 

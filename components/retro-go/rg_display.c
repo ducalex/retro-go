@@ -44,9 +44,9 @@ static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
 #include "drivers/display/dummy.h"
 #endif
 
-static inline bool draw_on_screen_display(int y1, int y2)
+static int draw_on_screen_display(int region_start, int region_end)
 {
-    static unsigned area_dirty = 0;
+    static unsigned int area_dirty = 0;
     rg_margins_t margins = rg_gui_get_safe_area();
     int left = display.screen.width - margins.right - 28;
     int top = margins.top + 4;
@@ -54,9 +54,8 @@ static inline bool draw_on_screen_display(int y1, int y2)
     int width = 20;
     int height = 14;
 
-    // Check if the region contains OSD to draw
-    if (y2 < top || y1 > top + height)
-        return false;
+    if (region_end < top + height)
+        return top + height;
 
     // Low battery indicator
     if (rg_system_get_indicator(RG_INDICATOR_POWER_LOW) && ((counters.totalFrames / 20) & 1))
@@ -64,16 +63,17 @@ static inline bool draw_on_screen_display(int y1, int y2)
         rg_display_clear_rect(left, top, width, height, C_RED); // Main body
         rg_display_clear_rect(left + width, top + height / 4, border, height / 2, C_RED); // The tab
         rg_display_clear_rect(left + border, top + border, width - border * 2, height - border * 2, C_BLACK); // The fill
-        area_dirty |= 1 << RG_INDICATOR_POWER_LOW;
+        // memset(&screen_line_checksum[top], 0, sizeof(uint32_t) * height);
+        area_dirty |= (1 << RG_INDICATOR_POWER_LOW);
     }
     else if (area_dirty)
     {
-        if (display.viewport.left || display.viewport.top)
+        if (display.viewport.width < display.screen.width || display.viewport.height < display.screen.height)
             rg_display_clear_rect(left, top, width + border, height, C_BLACK);
         memset(&screen_line_checksum[top], 0, sizeof(uint32_t) * height);
         area_dirty = 0;
     }
-    return true;
+    return 0;
 }
 
 static inline unsigned blend_pixels(unsigned a, unsigned b)
@@ -133,7 +133,7 @@ static inline void write_update(const rg_surface_t *update)
     int lines_remaining = draw_height;
     int lines_updated = 0;
     int window_top = -1;
-    int osd_threshold = 24;
+    int osd_next_call = 20;
 
     for (int y = 0; y < draw_height;)
     {
@@ -243,10 +243,10 @@ static inline void write_update(const rg_surface_t *update)
             lcd_send_buffer(line_buffer, 0);
         }
 
-        // if (draw_on_screen_display(draw_top + y - lines_to_copy, draw_top + y))
-        if (draw_top + y > osd_threshold && draw_on_screen_display(0, draw_top + y))
+        // Drawing the OSD as we progress reduces flicker compared to doing it once at the end
+        if (osd_next_call && draw_top + y >= osd_next_call)
         {
-            osd_threshold = 9999;
+            osd_next_call = draw_on_screen_display(0, draw_top + y);
             window_top = -1;
         }
 
