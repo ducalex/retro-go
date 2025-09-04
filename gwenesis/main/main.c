@@ -323,7 +323,7 @@ void app_main(void)
     extern int hint_pending;
 
     uint32_t keymap[8] = {RG_KEY_UP, RG_KEY_DOWN, RG_KEY_LEFT, RG_KEY_RIGHT, RG_KEY_A, RG_KEY_B, RG_KEY_SELECT, RG_KEY_START};
-    uint32_t joystick_old;
+    uint32_t joystick_old = -1;
 
     int skipFrames = 0;
 
