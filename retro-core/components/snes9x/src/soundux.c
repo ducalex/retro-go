@@ -19,13 +19,14 @@
 #define CLIP8(v) \
 (v) = (((v) <= -128) ? -128 : (((v) >= 127) ? 127 : (v)))
 
+#define MIX_BUFFER_SIZE SOUND_BUFFER_SIZE
 static struct {
-   int32_t wave[SOUND_BUFFER_SIZE];
-   int32_t Echo [24000];
-   int32_t MixBuffer [SOUND_BUFFER_SIZE];
-   int32_t EchoBuffer [SOUND_BUFFER_SIZE];
+   int32_t wave[MIX_BUFFER_SIZE / 2];
+   int32_t Echo [16000]; // (512 * 0xF * so.playback_rate) / 32040 * 2
+   int32_t MixBuffer [MIX_BUFFER_SIZE];
+   int32_t EchoBuffer [MIX_BUFFER_SIZE];
    int32_t FilterTaps [8];
-   uint8_t FilterTapDefinitionBitfield;
+   uint32_t FilterTapDefinitionBitfield;
    /* In the above, bit I is set if FilterTaps[I] is non-zero. */
    uint32_t Z;
    int32_t Loop [16];
@@ -94,6 +95,11 @@ static const uint32_t IncreaseRate [32] =
 };
 
 #define SustainRate DecreaseRateExp
+
+static const int32_t EnvSteps [10] =
+{
+   0, 64, 619, 619, 128, 1, 64, 55, 64, 619
+};
 
 #define FIXED_POINT 0x10000UL
 #define FIXED_POINT_REMAINDER 0xffffUL
@@ -231,8 +237,12 @@ void S9xSetEchoFeedback(int32_t feedback)
 
 void S9xSetEchoDelay(int32_t delay)
 {
-   SoundData.echo_buffer_size = (512 * delay * so.playback_rate) / 32040;
+   SoundData.echo_buffer_size = (512 * (delay & 0xF) * so.playback_rate) / 32040;
    SoundData.echo_buffer_size <<= 1;
+   // This can happen if so.playback_rate frequency is higher than 32040. This check replaces a possible crash with at worse bogus echo...
+   // You have to enlarge Echo to accommodate higher playback rate
+   if (SoundData.echo_buffer_size > sizeof(Echo) / sizeof(Echo[0]))
+      SoundData.echo_buffer_size = sizeof(Echo) / sizeof(Echo[0]);
    if (SoundData.echo_buffer_size)
       SoundData.echo_ptr %= SoundData.echo_buffer_size;
    else
@@ -755,72 +765,78 @@ stereo_exit:;
 
 void S9xMixSamples(int16_t* buffer, int32_t sample_count)
 {
-   int32_t J;
-   int32_t I;
-
-   if (SoundData.echo_enable)
-      memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
-   memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
-   MixStereo(sample_count);
-
-   /* Mix and convert waveforms */
-   if (SoundData.echo_enable && SoundData.echo_buffer_size)
+   for (int32_t remaining = sample_count; remaining > 0; remaining -= sample_count)
    {
-      /* 16-bit stereo sound with echo enabled ... */
-      if (FilterTapDefinitionBitfield == 0)
+      sample_count = MIN(sizeof(MixBuffer) / sizeof(MixBuffer[0]), remaining);
+
+      int32_t J;
+      int32_t I;
+
+      if (SoundData.echo_enable && SoundData.echo_buffer_size)
+         memset(EchoBuffer, 0, sample_count * sizeof(EchoBuffer [0]));
+      memset(MixBuffer, 0, sample_count * sizeof(MixBuffer [0]));
+      MixStereo(sample_count);
+
+      /* Mix and convert waveforms */
+      if (SoundData.echo_enable && SoundData.echo_buffer_size)
       {
-         /* ... but no filter defined. */
-         for (J = 0; J < sample_count; J++)
+         /* 16-bit stereo sound with echo enabled ... */
+         if (FilterTapDefinitionBitfield == 0)
          {
-            int32_t E = Echo [SoundData.echo_ptr];
-            Echo[SoundData.echo_ptr++] = (E * SoundData.echo_feedback) / 128 + EchoBuffer [J];
+            /* ... but no filter defined. */
+            for (J = 0; J < sample_count; J++)
+            {
+               int32_t E = Echo [SoundData.echo_ptr];
+               Echo[SoundData.echo_ptr++] = (E * SoundData.echo_feedback) / 128 + EchoBuffer [J];
 
-            if (SoundData.echo_ptr >= SoundData.echo_buffer_size)
-               SoundData.echo_ptr = 0;
+               if (SoundData.echo_ptr >= SoundData.echo_buffer_size)
+                  SoundData.echo_ptr = 0;
 
-            I = (MixBuffer[J] * SoundData.master_volume [J & 1] + E * SoundData.echo_volume [J & 1]) / VOL_DIV16;
-            CLIP16(I);
-            buffer[J] = I;
+               I = (MixBuffer[J] * SoundData.master_volume [J & 1] + E * SoundData.echo_volume [J & 1]) / VOL_DIV16;
+               CLIP16(I);
+               buffer[J] = I;
+            }
+         }
+         else
+         {
+            /* ... with filter defined. */
+            for (J = 0; J < sample_count; J++)
+            {
+               int32_t E;
+               Loop [(Z - 0) & 15] = Echo [SoundData.echo_ptr];
+               E =  Loop [(Z -  0) & 15] * FilterTaps [0];
+               if (FilterTapDefinitionBitfield & 0x02) E += Loop [(Z -  2) & 15] * FilterTaps [1];
+               if (FilterTapDefinitionBitfield & 0x04) E += Loop [(Z -  4) & 15] * FilterTaps [2];
+               if (FilterTapDefinitionBitfield & 0x08) E += Loop [(Z -  6) & 15] * FilterTaps [3];
+               if (FilterTapDefinitionBitfield & 0x10) E += Loop [(Z -  8) & 15] * FilterTaps [4];
+               if (FilterTapDefinitionBitfield & 0x20) E += Loop [(Z - 10) & 15] * FilterTaps [5];
+               if (FilterTapDefinitionBitfield & 0x40) E += Loop [(Z - 12) & 15] * FilterTaps [6];
+               if (FilterTapDefinitionBitfield & 0x80) E += Loop [(Z - 14) & 15] * FilterTaps [7];
+               E /= 128;
+               Z++;
+
+               Echo[SoundData.echo_ptr++] = (E * SoundData.echo_feedback) / 128 + EchoBuffer[J];
+
+               if (SoundData.echo_ptr >= SoundData.echo_buffer_size)
+                  SoundData.echo_ptr = 0;
+
+               I = (MixBuffer[J] * SoundData.master_volume [J & 1] + E * SoundData.echo_volume [J & 1]) / VOL_DIV16;
+               CLIP16(I);
+               buffer[J] = I;
+            }
          }
       }
       else
       {
-         /* ... with filter defined. */
+         /* 16-bit mono or stereo sound, no echo */
          for (J = 0; J < sample_count; J++)
          {
-            int32_t E;
-            Loop [(Z - 0) & 15] = Echo [SoundData.echo_ptr];
-                                             E =  Loop [(Z -  0) & 15] * FilterTaps [0];
-            if (FilterTapDefinitionBitfield & 0x02) E += Loop [(Z -  2) & 15] * FilterTaps [1];
-            if (FilterTapDefinitionBitfield & 0x04) E += Loop [(Z -  4) & 15] * FilterTaps [2];
-            if (FilterTapDefinitionBitfield & 0x08) E += Loop [(Z -  6) & 15] * FilterTaps [3];
-            if (FilterTapDefinitionBitfield & 0x10) E += Loop [(Z -  8) & 15] * FilterTaps [4];
-            if (FilterTapDefinitionBitfield & 0x20) E += Loop [(Z - 10) & 15] * FilterTaps [5];
-            if (FilterTapDefinitionBitfield & 0x40) E += Loop [(Z - 12) & 15] * FilterTaps [6];
-            if (FilterTapDefinitionBitfield & 0x80) E += Loop [(Z - 14) & 15] * FilterTaps [7];
-            E /= 128;
-            Z++;
-
-            Echo[SoundData.echo_ptr++] = (E * SoundData.echo_feedback) / 128 + EchoBuffer[J];
-
-            if (SoundData.echo_ptr >= SoundData.echo_buffer_size)
-               SoundData.echo_ptr = 0;
-
-            I = (MixBuffer[J] * SoundData.master_volume [J & 1] + E * SoundData.echo_volume [J & 1]) / VOL_DIV16;
+            I = (MixBuffer[J] * SoundData.master_volume [J & 1]) / VOL_DIV16;
             CLIP16(I);
             buffer[J] = I;
          }
       }
-   }
-   else
-   {
-      /* 16-bit mono or stereo sound, no echo */
-      for (J = 0; J < sample_count; J++)
-      {
-         I = (MixBuffer[J] * SoundData.master_volume [J & 1]) / VOL_DIV16;
-         CLIP16(I);
-         buffer[J] = I;
-      }
+      buffer += sample_count;
    }
 }
 
@@ -912,7 +928,6 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
    if (playback_rate)
    {
-      int32_t steps [] = {0, 64, 619, 619, 128, 1, 64, 55, 64, 619};
       int32_t i, u;
 
       /* notaz: calculate a value (let's call it freqbase) to simplify channel freq calculations later. */
@@ -921,7 +936,7 @@ void S9xSetPlaybackRate(uint32_t playback_rate)
 
       for (u = 0 ; u < 10 ; u++)
       {
-         int64_t fp1000su = ((int64_t) FIXED_POINT * 1000 * steps[u]);
+         int64_t fp1000su = ((int64_t) FIXED_POINT * 1000 * EnvSteps[u]);
 
          for (i = 0 ; i < 16 ; i++)
             AttackERate[i][u] = (uint32_t) (fp1000su / (AttackRate[i] * playback_rate));
