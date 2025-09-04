@@ -16,7 +16,7 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 | [odroid-go](targets/odroid-go/docs/README.md)                 | Official |
 | [rachel-esp32](targets/rachel-esp32/docs/README.md)           |   |
 | [retro-esp32](targets/retro-esp32/docs/README.md)             |   |
-| [retro-ruler](targets/retro-ruler-V1/docs/README.md)          |   |
+| [retro-ruler](targets/retro-ruler/docs/README.md)             |   |
 | [sdl2](targets/sdl2/docs/README.md)                           | Broken |
 | [t-deck-plus](targets/t-deck-plus/docs/README.md)             |  |
 
