@@ -123,7 +123,7 @@ void S9xSetEchoFeedback(int32_t echo_feedback);
 void S9xSetEchoEnable(uint8_t byte);
 void S9xSetEchoDelay(int32_t byte);
 void S9xSetEchoWriteEnable(uint8_t byte);
-void S9xSetFilterCoefficient(int32_t tap, int32_t value);
+void S9xSetFilterCoefficient(int32_t tap, int8_t value);
 void S9xSetFrequencyModulationEnable(uint8_t byte);
 void S9xSetEnvelopeRate(int32_t channel, uint32_t rate, int32_t direction, int32_t target, uint32_t  mode);
 bool S9xSetSoundMode(int32_t channel, int32_t mode);
