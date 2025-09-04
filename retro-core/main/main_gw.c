@@ -229,19 +229,24 @@ void gw_main(void)
 
     while (true)
     {
+        const int64_t startTime = rg_system_timer();
+        uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = true;
+
         /* refresh internal G&W timer on emulated CPU state transition */
         if (previous_m_halt != m_halt)
             gw_check_time();
 
         previous_m_halt = m_halt;
 
-        // hardware keys
-        uint32_t joystick = rg_input_read_gamepad();
-
-        if (joystick & RG_KEY_MENU)
-            rg_gui_game_menu();
-        else if (joystick & RG_KEY_OPTION)
-            rg_gui_options_menu();
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        {
+            if (joystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else if (joystick & RG_KEY_OPTION)
+                rg_gui_options_menu();
+            continue;
+        }
 
         // soft keys emulation
         if (softkey_duration > 0)
@@ -253,13 +258,20 @@ void gw_main(void)
             softkey_alarm_pressed = 0;
         }
 
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = true;
 
         /* Emulate and Blit */
         // Call the emulator function with number of clock cycles
         // to execute on the emulated device
         gw_system_run(GW_SYSTEM_CYCLES);
+
+        /* copy audio samples for DMA */
+        rg_audio_sample_t mixbuffer[GW_AUDIO_BUFFER_LENGTH];
+        for (size_t i = 0; i < GW_AUDIO_BUFFER_LENGTH; i++)
+        {
+            mixbuffer[i].left = gw_audio_buffer[i] << 13;
+            mixbuffer[i].right = gw_audio_buffer[i] << 13;
+        }
+        gw_audio_buffer_copied = true;
 
         // Our refresh rate is 128Hz, which is way too fast for our display
         // so make sure the previous frame is done sending before queuing a new one
@@ -272,15 +284,6 @@ void gw_main(void)
 
         // Tick before submitting audio/syncing
         rg_system_tick(rg_system_timer() - startTime);
-
-        /* copy audio samples for DMA */
-        rg_audio_sample_t mixbuffer[GW_AUDIO_BUFFER_LENGTH];
-        for (size_t i = 0; i < GW_AUDIO_BUFFER_LENGTH; i++)
-        {
-            mixbuffer[i].left = gw_audio_buffer[i] << 13;
-            mixbuffer[i].right = gw_audio_buffer[i] << 13;
-        }
         rg_audio_submit(mixbuffer, GW_AUDIO_BUFFER_LENGTH);
-        gw_audio_buffer_copied = true;
     } // end of loop
 }

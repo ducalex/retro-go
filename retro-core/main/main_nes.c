@@ -261,7 +261,9 @@ void nes_main(void)
 
     while (true)
     {
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = !skipFrames && !nsfPlayer;
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
@@ -269,12 +271,10 @@ void nes_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
+            continue;
         }
 
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = !skipFrames && !nsfPlayer;
         int buttons = 0;
-
         if (joystick & RG_KEY_START)  buttons |= NES_PAD_START;
         if (joystick & RG_KEY_SELECT) buttons |= NES_PAD_SELECT;
         if (joystick & RG_KEY_UP)     buttons |= NES_PAD_UP;
@@ -283,14 +283,11 @@ void nes_main(void)
         if (joystick & RG_KEY_LEFT)   buttons |= NES_PAD_LEFT;
         if (joystick & RG_KEY_A)      buttons |= NES_PAD_A;
         if (joystick & RG_KEY_B)      buttons |= NES_PAD_B;
+        input_update(0, buttons);
 
         if (drawFrame)
-        {
             currentUpdate = updates[currentUpdate == updates[0]];
-            nes_setvidbuf(currentUpdate->data);
-        }
-
-        input_update(0, buttons);
+        nes_setvidbuf(currentUpdate->data);
         nes_emulate(drawFrame);
 
         // Tick before submitting audio/syncing

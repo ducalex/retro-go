@@ -266,8 +266,7 @@ extern uint8_t *PageW[8];
 int  pce_init(void);
 void pce_reset(bool hard);
 void pce_term(void);
-void pce_run(void);
-void pce_pause(void);
+void pce_run(bool draw);
 void pce_writeIO(uint16_t A, uint8_t V);
 uint8_t pce_readIO(uint16_t A);
 

@@ -311,8 +311,6 @@ gfx_latch_context(int force)
 static inline void
 render_lines(int min_line, int max_line)
 {
-	gfx_context.latched = 0;
-
 	uint8_t *screen_buffer = osd_gfx_framebuffer(PCE.VDC.screen_width, PCE.VDC.screen_height);
 	if (!screen_buffer) {
 		return;
@@ -399,7 +397,7 @@ gfx_irq(int type)
 	Process one scanline
 */
 void
-gfx_run(void)
+gfx_run(bool draw)
 {
 	int scanline = PCE.Scanline;
 
@@ -431,8 +429,10 @@ gfx_run(void)
 
 		if (scanline >= IO_VDC_MINLINE && scanline <= IO_VDC_MAXLINE) {
 			if (gfx_context.latched) {
-				render_lines(last_line_counter, line_counter);
+				if (draw)
+					render_lines(last_line_counter, line_counter);
 				last_line_counter = line_counter;
+				gfx_context.latched = 0;
 			}
 			line_counter++;
 		}
@@ -442,7 +442,9 @@ gfx_run(void)
 
 		// Draw any lines left in the context
 		gfx_latch_context(0);
-		render_lines(last_line_counter, line_counter);
+		if (draw)
+			render_lines(last_line_counter, line_counter);
+		gfx_context.latched = 0;
 
 		// Trigger interrupts
 		if (SpHitON && sprite_hit_check()) {

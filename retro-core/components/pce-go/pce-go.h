@@ -70,16 +70,16 @@
 #define XBUF_WIDTH 	(352 + 16)
 #define	XBUF_HEIGHT	(242)
 
+int InitPCE(int samplerate, bool stereo);
+void ResetPCE(bool hard);
+void InputPCE(int port, uint32_t value);
+void RunPCE(bool draw);
+void ShutdownPCE(void);
+
 int LoadState(const char *name);
 int SaveState(const char *name);
-void ResetPCE(bool);
-void RunPCE(void);
-void ShutdownPCE();
-int InitPCE(int samplerate, bool stereo);
 int LoadCard(uint8_t *data, size_t size);
 int LoadFile(const char *name);
 void *PalettePCE(int bitdepth);
 
 extern uint8_t *osd_gfx_framebuffer(int width, int height);
-extern void osd_input_read(uint8_t joypads[8]);
-extern void osd_vsync(void);

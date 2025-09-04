@@ -122,7 +122,7 @@ pce_term(void)
   * Run emulation for one frame
   **/
 void
-pce_run(void)
+pce_run(bool draw)
 {
 	// Handle pending video mode changes
 	if (PCE.VDC.mode_chg) {
@@ -139,7 +139,7 @@ pce_run(void)
 			PCE.MaxCycles -= PCE.Cycles;
 			PCE.Cycles = 0;
 		}
-		gfx_run();
+		gfx_run(draw);
 	}
 }
 

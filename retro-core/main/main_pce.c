@@ -50,85 +50,6 @@ uint8_t *osd_gfx_framebuffer(int width, int height)
     return drawFrame ? currentUpdate->data : NULL;
 }
 
-void osd_vsync(void)
-{
-    static int64_t lasttime, prevtime;
-
-    if (drawFrame)
-    {
-        slowFrame = !rg_display_sync(false);
-        rg_display_submit(currentUpdate, 0);
-        currentUpdate = updates[currentUpdate == updates[0]];
-    }
-
-    // See if we need to skip a frame to keep up
-    if (skipFrames == 0)
-    {
-        if (app->frameskip > 0)
-            skipFrames = app->frameskip;
-        else if (drawFrame && slowFrame)
-            skipFrames = 1;
-    }
-    else if (skipFrames > 0)
-    {
-        skipFrames--;
-    }
-
-    int64_t curtime = rg_system_timer();
-    int frameTime = app->frameTime;
-    int sleep = frameTime - (curtime - lasttime);
-
-    if (sleep > frameTime)
-    {
-        RG_LOGE("Our vsync timer seems to have overflowed! (%dus)", sleep);
-    }
-    else if (sleep > 0)
-    {
-        rg_usleep(sleep);
-    }
-    else if (sleep < -(frameTime / 2))
-    {
-        skipFrames++;
-    }
-
-    rg_system_tick(curtime - prevtime);
-
-    prevtime = rg_system_timer();
-    lasttime += frameTime;
-
-    if ((lasttime + frameTime) < prevtime)
-        lasttime = prevtime;
-
-    drawFrame = (skipFrames == 0);
-}
-
-void osd_input_read(uint8_t joypads[8])
-{
-    uint32_t joystick = rg_input_read_gamepad();
-    uint32_t buttons = 0;
-
-    if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
-    {
-        emulationPaused = true;
-        if (joystick & RG_KEY_MENU)
-            rg_gui_game_menu();
-        else
-            rg_gui_options_menu();
-        emulationPaused = false;
-    }
-
-    if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;
-    if (joystick & RG_KEY_RIGHT)  buttons |= JOY_RIGHT;
-    if (joystick & RG_KEY_UP)     buttons |= JOY_UP;
-    if (joystick & RG_KEY_DOWN)   buttons |= JOY_DOWN;
-    if (joystick & RG_KEY_A)      buttons |= JOY_A;
-    if (joystick & RG_KEY_B)      buttons |= JOY_B;
-    if (joystick & RG_KEY_START)  buttons |= JOY_RUN;
-    if (joystick & RG_KEY_SELECT) buttons |= JOY_SELECT;
-
-    joypads[0] = buttons;
-}
-
 static void audioTask(void *arg)
 {
     const size_t numSamples = 62; // TODO: Find the best value
@@ -246,8 +167,84 @@ void pce_main(void)
     rg_system_set_tick_rate(60);
     app->frameskip = 1;
 
+    int64_t lasttime = 0, prevtime = 0;
     emulationPaused = false;
-    RunPCE();
+    while (true)
+    {
+        const int64_t startTime = rg_system_timer();
+        uint32_t joystick = rg_input_read_gamepad();
+        // bool drawFrame = skipFrames == 0;
+        drawFrame = skipFrames == 0;
+
+        if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
+        {
+            emulationPaused = true;
+            if (joystick & RG_KEY_MENU)
+                rg_gui_game_menu();
+            else
+                rg_gui_options_menu();
+            emulationPaused = false;
+            continue;
+        }
+
+        uint32_t buttons = 0;
+        if (joystick & RG_KEY_LEFT)   buttons |= JOY_LEFT;
+        if (joystick & RG_KEY_RIGHT)  buttons |= JOY_RIGHT;
+        if (joystick & RG_KEY_UP)     buttons |= JOY_UP;
+        if (joystick & RG_KEY_DOWN)   buttons |= JOY_DOWN;
+        if (joystick & RG_KEY_A)      buttons |= JOY_A;
+        if (joystick & RG_KEY_B)      buttons |= JOY_B;
+        if (joystick & RG_KEY_START)  buttons |= JOY_RUN;
+        if (joystick & RG_KEY_SELECT) buttons |= JOY_SELECT;
+        InputPCE(0, buttons);
+
+        RunPCE(drawFrame);
+
+        if (drawFrame)
+        {
+            slowFrame = !rg_display_sync(false);
+            rg_display_submit(currentUpdate, 0);
+            currentUpdate = updates[currentUpdate == updates[0]];
+        }
+
+        rg_system_tick(rg_system_timer() - startTime);
+
+        // See if we need to skip a frame to keep up
+        if (skipFrames == 0)
+        {
+            if (app->frameskip > 0)
+                skipFrames = app->frameskip;
+            else if (drawFrame && slowFrame)
+                skipFrames = 1;
+        }
+        else if (skipFrames > 0)
+        {
+            skipFrames--;
+        }
+
+        int64_t curtime = rg_system_timer();
+        int frameTime = app->frameTime;
+        int sleep = frameTime - (curtime - lasttime);
+
+        if (sleep > frameTime)
+        {
+            RG_LOGE("Our vsync timer seems to have overflowed! (%dus)", sleep);
+        }
+        else if (sleep > 0)
+        {
+            rg_usleep(sleep);
+        }
+        else if (sleep < -(frameTime / 2))
+        {
+            skipFrames++;
+        }
+
+        prevtime = rg_system_timer();
+        lasttime += frameTime;
+
+        if ((lasttime + frameTime) < prevtime)
+            lasttime = prevtime;
+    }
 
     RG_PANIC("PCE-GO died.");
 }

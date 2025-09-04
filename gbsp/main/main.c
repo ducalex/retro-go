@@ -173,6 +173,7 @@ void app_main(void)
     while (true)
     {
         // RG_TIMER_INIT();
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
 
         if (joystick & (RG_KEY_MENU | RG_KEY_OPTION))
@@ -182,13 +183,11 @@ void app_main(void)
             else
                 rg_gui_options_menu();
             memset(&mixbuffer, 0, sizeof(mixbuffer));
+            continue;
         }
-
-        int64_t start_time = rg_system_timer();
 
         update_input();
         rumble_frame_reset();
-
         clear_gamepak_stickybits();
         execute_arm(execute_cycles);
         // RG_TIMER_LAP("execute_arm");
@@ -199,7 +198,7 @@ void app_main(void)
         size_t frames_count = sound_read_samples((s16 *)mixbuffer, AUDIO_BUFFER_LENGTH);
         // RG_TIMER_LAP("sound_read_samples");
 
-        rg_system_tick(rg_system_timer() - start_time);
+        rg_system_tick(rg_system_timer() - startTime);
 
         rg_audio_submit(mixbuffer, frames_count);
         // RG_TIMER_LAP("rg_audio_submit");

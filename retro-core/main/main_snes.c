@@ -419,7 +419,10 @@ void snes_main(void)
 
     while (1)
     {
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = (skipFrames == 0);
+        bool slowFrame = false;
 
         if (menuPressed && !(joystick & RG_KEY_MENU))
         {
@@ -427,6 +430,9 @@ void snes_main(void)
             {
                 rg_task_delay(50);
                 rg_gui_game_menu();
+                menuPressed = false;
+                menuCancelled = false;
+                continue;
             }
             menuCancelled = false;
         }
@@ -435,30 +441,20 @@ void snes_main(void)
             rg_gui_options_menu();
             memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
             memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
+            continue;
         }
 
         menuPressed = joystick & RG_KEY_MENU;
 
-        if (menuPressed && joystick & ~RG_KEY_MENU)
+        if (menuPressed && (joystick & ~RG_KEY_MENU))
         {
             menuCancelled = true;
         }
-
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = (skipFrames == 0);
-        bool slowFrame = false;
 
         IPPU.RenderThisFrame = drawFrame;
         GFX.Screen = currentUpdate->data;
 
         S9xMainLoop();
-
-    #ifdef USE_AUDIO_TASK
-        rg_task_msg_t msg = {.type = (int)sound_enabled};
-        // Don't submit silence if we're already behind. This might help reduce slowdowns?
-        if (sound_enabled || rg_system_timer() - startTime < app->frameTime)
-            rg_task_send(audio_task_handle, &msg);
-    #endif
 
         if (drawFrame)
         {
@@ -469,12 +465,15 @@ void snes_main(void)
 
     #ifdef USE_AUDIO_TASK
         rg_system_tick(rg_system_timer() - startTime);
+        rg_task_msg_t msg = {.type = (int)sound_enabled};
+        if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
+            rg_task_send(audio_task_handle, &msg);
     #else
-        // Don't submit silence if we're already behind. This might help reduce slowdowns?
-        if (sound_enabled || rg_system_timer() - startTime < app->frameTime)
+        if (sound_enabled)
             mix_samples(AUDIO_BUFFER_LENGTH << 1);
         rg_system_tick(rg_system_timer() - startTime);
-        rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
+        if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
+            rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
     #endif
 
         if (skipFrames == 0)

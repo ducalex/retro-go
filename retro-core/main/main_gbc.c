@@ -313,11 +313,12 @@ void gbc_main(void)
     // Ready!
 
     uint32_t joystick_old = -1;
-    uint32_t joystick = 0;
 
     while (true)
     {
-        joystick = rg_input_read_gamepad();
+        const int64_t startTime = rg_system_timer();
+        uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = !skipFrames;
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
@@ -329,8 +330,10 @@ void gbc_main(void)
             }
             else
                 rg_gui_options_menu();
+            continue;
         }
-        else if (joystick != joystick_old)
+
+        if (joystick != joystick_old)
         {
             int pad = 0;
             if (joystick & RG_KEY_UP) pad |= GB_PAD_UP;
@@ -344,9 +347,6 @@ void gbc_main(void)
             gnuboy_set_pad(pad); // That call is somewhat costly, that's why we try to avoid it
             joystick_old = joystick;
         }
-
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = !skipFrames;
 
         video_time = audio_time = 0;
 

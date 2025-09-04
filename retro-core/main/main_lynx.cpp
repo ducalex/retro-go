@@ -231,7 +231,9 @@ extern "C" void lynx_main(void)
     // Start emulation
     while (1)
     {
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = !skipFrames;
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
@@ -239,12 +241,10 @@ extern "C" void lynx_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
+            continue;
         }
 
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = !skipFrames;
         ULONG buttons = 0;
-
     	if (joystick & RG_KEY_UP)     buttons |= dpad_mapped_up;
     	if (joystick & RG_KEY_DOWN)   buttons |= dpad_mapped_down;
     	if (joystick & RG_KEY_LEFT)   buttons |= dpad_mapped_left;
@@ -253,8 +253,8 @@ extern "C" void lynx_main(void)
     	if (joystick & RG_KEY_B)      buttons |= BUTTON_B;
     	if (joystick & RG_KEY_START)  buttons |= BUTTON_OPT2; // BUTTON_PAUSE
     	if (joystick & RG_KEY_SELECT) buttons |= BUTTON_OPT1;
-
         lynx->SetButtonData(buttons);
+
         lynx->UpdateFrame(drawFrame);
 
         if (drawFrame)
@@ -270,6 +270,7 @@ extern "C" void lynx_main(void)
         rg_system_tick(rg_system_timer() - startTime);
 
         rg_audio_submit((const rg_audio_frame_t *)gAudioBuffer, gAudioBufferPointer / 2);
+        gAudioBufferPointer = 0;
 
         // See if we need to skip a frame to keep up
         if (skipFrames == 0)
@@ -287,6 +288,5 @@ extern "C" void lynx_main(void)
         {
             skipFrames--;
         }
-        gAudioBufferPointer = 0;
     }
 }

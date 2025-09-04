@@ -93,8 +93,6 @@ static const struct {
 	{0x00000000, "Unknown", 0},
 };
 
-static bool running = false;
-
 /**
  * Load card into memory and set its memory map
  * NOTE: This function takes ownership of `data`
@@ -320,18 +318,20 @@ PalettePCE(int bitdepth)
  * Start the emulation
  */
 void
-RunPCE(void)
+RunPCE(bool draw)
 {
-	running = true;
-
-	while (running)
-	{
-		osd_input_read(PCE.Joypad.regs);
-		pce_run();
-		osd_vsync();
-	}
+	pce_run(draw);
 }
 
+
+/**
+ * Set joystick status
+ */
+void
+InputPCE(int port, uint32_t value)
+{
+	PCE.Joypad.regs[port & 0x7] = value & 0xFF;
+}
 
 /**
  * Load saved state
@@ -441,7 +441,7 @@ _cleanup:
  * Cleanup and quit (not used in retro-go)
  */
 void
-ShutdownPCE()
+ShutdownPCE(void)
 {
 	gfx_term();
 	psg_term();

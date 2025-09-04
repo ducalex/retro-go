@@ -166,7 +166,10 @@ void sms_main(void)
 
     while (true)
     {
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = !skipFrames;
+        bool slowFrame = false;
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
@@ -174,11 +177,8 @@ void sms_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
+            continue;
         }
-
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = !skipFrames;
-        bool slowFrame = false;
 
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
@@ -227,12 +227,14 @@ void sms_main(void)
                     colecoKey = 11;
                 else
                     colecoKey = 255;
-                colecoKeyDecay = 3;
+                colecoKeyDecay = 4;
+                continue;
             }
             else if (joystick & RG_KEY_SELECT)
             {
                 rg_task_delay(100);
                 system_reset();
+                continue;
             }
         }
 
