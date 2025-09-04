@@ -345,7 +345,7 @@ typedef struct
   u8 vram[1024 * 96];
   u8 ewram[(1024 * 256) << SMC_DETECTION];
   u8 iwram[(1024 * 32) << SMC_DETECTION];
-  u8 *memory_map_read[8 * 1024];
+  // u8 *memory_map_read[8 * 1024];
   u8 gamepak_backup[1024 * 128];
   // There's also stuff from video.cpp to consider:
   // u8 obj_priority_list[5][160][128];
@@ -357,7 +357,7 @@ extern gbsp_memory_t *gbsp_memory;
 #define vram gbsp_memory->vram
 #define ewram gbsp_memory->ewram
 #define iwram gbsp_memory->iwram
-#define memory_map_read gbsp_memory->memory_map_read
+// #define memory_map_read gbsp_memory->memory_map_read
 #define gamepak_backup gbsp_memory->gamepak_backup
 #endif
 

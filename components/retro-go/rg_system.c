@@ -275,6 +275,7 @@ static void system_monitor_task(void *arg)
             (int)roundf((battery.volts * 1000) ?: battery.level));
 
         // Auto frameskip
+        // TODO: Use a rolling average of frameTimes instead of this mess
         if (statistics.ticks > app.tickRate * 2)
         {
             float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;

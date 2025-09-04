@@ -1457,8 +1457,8 @@ u16 palette_ram_converted[512];
 u8 ewram[(1024 * 256) << SMC_DETECTION];
 u8 iwram[(1024 * 32) << SMC_DETECTION];
 u8 vram[1024 * 96];
-u8 *memory_map_read[8 * 1024];
 #endif
+u8 *memory_map_read[8 * 1024];
 u16 io_registers[512];
 #endif
 
