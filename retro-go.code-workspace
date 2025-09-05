@@ -28,6 +28,9 @@
 			"path": "tools"
 		},
 		{
+			"path": "updater"
+		},
+		{
 			"path": ".",
 			"name": "root"
 		}
