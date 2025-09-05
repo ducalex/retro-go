@@ -730,26 +730,23 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         y += font_height + 6;
     }
 
-    int top_i = 0;
-    int end_i = 0;
+    int list_top_i = 0;
+    int list_end_i = 0;
 
     // Find top of page that contains selection
-    if (sel >= 0 && sel < options_count)
+    for (int yy = y, i = 0; i <= sel && i < options_count; i++)
     {
-        for (int yy = y, i = 0; i <= sel; i++)
+        yy += row_height[i];
+        if (yy >= box_y + box_height)
         {
-            yy += row_height[i];
-            if (yy >= box_y + box_height)
-            {
-                if (sel < i)
-                    break;
-                yy = y;
-                top_i = i;
-            }
+            if (sel < i)
+                break;
+            yy = y + row_height[i];
+            list_top_i = i;
         }
     }
 
-    for (int i = top_i; i < options_count; i++)
+    for (int i = list_top_i; i < options_count; i++)
     {
         uint16_t color, fg, bg;
         int xx = x + row_padding_x;
@@ -770,7 +767,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         if (y + row_height[i] >= box_y + box_height)
             break;
 
-        end_i = i;
+        list_end_i = i;
 
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)
             continue;
@@ -809,7 +806,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
     rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.style.box_border, C_NONE);
 
     // Basic scroll indicators are overlayed at the end...
-    if (top_i > 0)
+    if (list_top_i > 0)
     {
         int x = box_x + box_width - 10;
         int y = box_y + box_padding + 2;
@@ -818,7 +815,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         rg_gui_draw_rect(x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
     }
 
-    if (end_i + 1 < options_count)
+    if (list_end_i + 1 < options_count)
     {
         int x = box_x + box_width - 10;
         int y = box_y + box_height - 6;
@@ -847,45 +844,55 @@ void rg_gui_draw_message(const char *format, ...)
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
 {
+    rg_gui_option_t *options = (rg_gui_option_t *)options_const;
     size_t options_count = get_dialog_items_count(options_const);
-    int sel = selected_index < 0 ? (options_count + selected_index) : selected_index;
-    int sel_old = -1;
-    bool redraw = false;
 
-    // Constrain initial cursor and skip FLAG_SKIP items
-    sel = RG_MIN(RG_MAX(0, sel), options_count - 1);
-
-    // We create a copy of options because the callbacks might modify it (ie option->value)
-    rg_gui_option_t options[options_count + 1];
-    // The text_buffer is used for mutable option->values. Because values tend to be small, we can make
-    // some assumptions. This is a terrible system that is prone to corruption. But we're stuck with it.
-    size_t text_buffer_size = RG_MAX(options_count * 32, 1024);
-    char *text_buffer = malloc(text_buffer_size);
-    char *text_buffer_ptr = text_buffer;
-
-    memcpy(options, options_const, sizeof(options));
-
+    // In many cases we must create a copy of the options array because it can be mutated by the callbacks
+    // (typically option->value and option->flags). No callback in the array = no way of it being mutable.
+    // The entire text_buffer system is very brittle and prone to corruption. We get away with it for now
+    // because most values are less than our assumed 32 bytes...
+    size_t shadow_options_count = 0;
+    size_t shadow_text_buffer_size = 0;
     for (size_t i = 0; i < options_count; i++)
     {
-        rg_gui_option_t *option = &options[i];
-        if (!option->label)
-            option->label = "";
-        if (option->value && text_buffer_ptr)
-            option->value = strcpy(text_buffer_ptr, option->value);
-        if (option->update_cb)
-            option->update_cb(option, RG_DIALOG_INIT);
-        if (option->value && text_buffer_ptr)
-            text_buffer_ptr += RG_MAX(strlen(option->value), 31) + 1;
+        if (options_const[i].update_cb)
+            shadow_options_count = options_count;
+        // if (options_const[i].value)
+        //     shadow_text_buffer_size += strlen(options_const[i].value) + 1;
     }
+    rg_gui_option_t shadow_options[shadow_options_count + 1];
+    char *shadow_text_buffer = NULL;
+    if (shadow_options_count > 0)
+    {
+        options = memcpy(shadow_options, options_const, sizeof(shadow_options));
+        shadow_text_buffer_size = RG_MAX(options_count * 32, 1024);
+        shadow_text_buffer = malloc(shadow_text_buffer_size);
+        char *text_buffer_ptr = shadow_text_buffer;
+        for (size_t i = 0; i < shadow_options_count; i++)
+        {
+            rg_gui_option_t *option = &shadow_options[i];
+            if (!text_buffer_ptr || !option->value || !option->update_cb)
+                continue;
+            option->value = strcpy(text_buffer_ptr, option->value);
+            option->update_cb(option, RG_DIALOG_INIT);
+            text_buffer_ptr += RG_MAX(strlen(text_buffer_ptr), 31) + 1;
+        }
+    }
+
+    if (selected_index < 0)
+        selected_index += options_count;
+
+    rg_gui_event_t event = RG_DIALOG_VOID;
+    uint32_t joystick = 0, joystick_old;
+    uint64_t joystick_last = 0;
+    bool redraw = false;
+    int sel = RG_MIN(RG_MAX(0, selected_index), options_count - 1);
+    int sel_old = -1;
 
     rg_gui_draw_status_bars();
     rg_gui_draw_dialog(title, options, options_count, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
     rg_task_delay(80);
-
-    rg_gui_event_t event = RG_DIALOG_VOID;
-    uint32_t joystick = 0, joystick_old;
-    uint64_t joystick_last = 0;
 
     while (event != RG_DIALOG_SELECT && event != RG_DIALOG_CANCEL)
     {
@@ -981,7 +988,8 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
     rg_input_wait_for_key(joystick, false, 1000);
     rg_display_force_redraw();
-    free(text_buffer);
+    // free(shadow_options);
+    free(shadow_text_buffer);
 
     if (event == RG_DIALOG_CANCEL || sel < 0)
         return RG_DIALOG_CANCELLED;
@@ -1014,7 +1022,7 @@ void rg_gui_alert(const char *title, const char *message)
 
 typedef struct
 {
-    rg_gui_option_t options[22];
+    rg_gui_option_t *options;
     size_t count;
     bool (*validator)(const char *path);
 } file_picker_opts_t;
@@ -1024,51 +1032,50 @@ static int file_picker_cb(const rg_scandir_t *entry, void *arg)
     file_picker_opts_t *f = arg;
     if (f->validator && !(f->validator)(entry->path))
         return RG_SCANDIR_SKIP;
-    char *path = strdup(entry->path);
-    f->options[f->count].arg = (intptr_t)path;
-    f->options[f->count].flags = RG_DIALOG_FLAG_NORMAL;
-    f->options[f->count].label = rg_basename(path);
-    f->count++;
-    if (f->count > 18)
+    rg_gui_option_t *options = realloc(f->options, (f->count + 2) * sizeof(rg_gui_option_t));
+    if (!options)
         return RG_SCANDIR_STOP;
+    char *name = strdup(entry->basename);
+    f->options = options;
+    f->options[f->count++] = (rg_gui_option_t){(intptr_t)name, name, NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     return RG_SCANDIR_CONTINUE;
 }
 
 char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option)
 {
     file_picker_opts_t options = {
-        .options = {},
+        .options = calloc(8, sizeof(rg_gui_option_t)),
         .count = 0,
         .validator = validator,
     };
+    char *filepath = NULL;
 
     if (!title)
         title = _("Select file");
 
     if (none_option)
-    {
         options.options[options.count++] = (rg_gui_option_t){0, _("<None>"), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
-        // options.options[options.count++] = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
-    }
 
     if (!rg_storage_scandir(path, file_picker_cb, &options, 0) || options.count < 1)
     {
         rg_gui_alert(title, _("Folder is empty."));
-        return NULL;
+        goto cleanup;
     }
-
     options.options[options.count] = (rg_gui_option_t)RG_DIALOG_END;
 
-    char *filepath = (char *)rg_gui_dialog(title, options.options, 0);
+    char *filename = (char *)rg_gui_dialog(title, options.options, 0);
+    if (filename != (void *)RG_DIALOG_CANCELLED)
+    {
+        char buffer[RG_PATH_MAX] = "";
+        if (filename)
+            snprintf(buffer, RG_PATH_MAX, "%s/%s", path, filename);
+        filepath = strdup(buffer);
+    }
 
-    if (filepath != (void *)RG_DIALOG_CANCELLED)
-        filepath = strdup(filepath ? filepath : "");
-    else
-        filepath = NULL;
-
+cleanup:
     for (size_t i = 0; i < options.count; ++i)
         free((void *)(options.options[i].arg));
-
+    free(options.options);
     return filepath;
 }
 
