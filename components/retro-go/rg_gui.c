@@ -661,9 +661,10 @@ static size_t get_dialog_items_count(const rg_gui_option_t *options)
     return opt - options;
 }
 
-void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int sel)
+void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel)
 {
-    const size_t options_count = get_dialog_items_count(options);
+    RG_ASSERT_ARG(options || options_count == 0);
+
     const int sep_width = TEXT_RECT(": ", 0).width;
     const int font_height = gui.font_height;
     const int max_box_width = 0.82f * gui.screen_width;
@@ -672,31 +673,26 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     const int row_padding_y = 0; // now handled by draw_text
     const int row_padding_x = 8;
     const int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
-    const int min_row_height = TEXT_RECT(" ", max_inner_width).height + row_padding_y * 2;
 
     int box_width = box_padding * 2;
     int box_height = box_padding * 2 + (title ? font_height + 6 : 0);
     int inner_width = TEXT_RECT(title, 0).width;
     int col1_width = -1;
     int col2_width = -1;
-    int row_height[options_count];
+    uint8_t row_height[options_count];
 
     for (size_t i = 0; i < options_count; i++)
     {
-        rg_rect_t label = {0, 0, 0, min_row_height};
-        rg_rect_t value = {0};
-
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)
         {
             row_height[i] = 0;
             continue;
         }
 
-        if (options[i].label)
-        {
-            label = TEXT_RECT(options[i].label, max_inner_width);
-            inner_width = RG_MAX(inner_width, label.width);
-        }
+        rg_rect_t label = TEXT_RECT(options[i].label, max_inner_width);
+        rg_rect_t value = {0};
+
+        inner_width = RG_MAX(inner_width, label.width);
 
         if (options[i].value)
         {
@@ -735,15 +731,14 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
     }
 
     int top_i = 0;
+    int end_i = 0;
 
+    // Find top of page that contains selection
     if (sel >= 0 && sel < options_count)
     {
-        int yy = y;
-
-        for (int i = 0; i < options_count; i++)
+        for (int yy = y, i = 0; i <= sel; i++)
         {
             yy += row_height[i];
-
             if (yy >= box_y + box_height)
             {
                 if (sel < i)
@@ -754,8 +749,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         }
     }
 
-    int i = top_i;
-    for (; i < options_count; i++)
+    for (int i = top_i; i < options_count; i++)
     {
         uint16_t color, fg, bg;
         int xx = x + row_padding_x;
@@ -775,6 +769,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
 
         if (y + row_height[i] >= box_y + box_height)
             break;
+
+        end_i = i;
 
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)
             continue;
@@ -822,7 +818,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, int s
         rg_gui_draw_rect(x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
     }
 
-    if (i < options_count)
+    if (end_i + 1 < options_count)
     {
         int x = box_x + box_width - 10;
         int y = box_y + box_height - 6;
@@ -846,7 +842,7 @@ void rg_gui_draw_message(const char *format, ...)
         RG_DIALOG_END,
     };
     // FIXME: Should rg_display_force_redraw() be called? Before? After? Both?
-    rg_gui_draw_dialog(NULL, options, 0);
+    rg_gui_draw_dialog(NULL, options, 1, 0);
 }
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
@@ -883,7 +879,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
     }
 
     rg_gui_draw_status_bars();
-    rg_gui_draw_dialog(title, options, sel);
+    rg_gui_draw_dialog(title, options, options_count, sel);
     rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
     rg_task_delay(80);
 
@@ -975,7 +971,7 @@ intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, 
 
         if (redraw)
         {
-            rg_gui_draw_dialog(title, options, sel);
+            rg_gui_draw_dialog(title, options, options_count, sel);
             redraw = false;
         }
 

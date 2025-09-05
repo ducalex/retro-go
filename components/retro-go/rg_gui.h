@@ -75,13 +75,6 @@ typedef struct
     const char *label;
 } rg_keyboard_layout_t;
 
-typedef struct
-{
-    intptr_t arg;
-    size_t index;
-    bool cancelled;
-} rg_dialog_ret_t;
-
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
 
@@ -127,7 +120,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
 void rg_gui_draw_icons(void);
-void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
+void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
