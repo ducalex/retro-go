@@ -6,7 +6,7 @@ rg_setup_compile_options(
     -O3
     -fomit-frame-pointer -ffast-math
     -DOVERCLOCK_60FPS
-    -DROM_BUFFER_SIZE=2
+    -DROM_BUFFER_SIZE=8
     -Wno-unused-variable
     -Wno-implicit-fallthrough
     -Wno-missing-field-initializers
