@@ -169,8 +169,6 @@ typedef struct
     int tickTimeout;
     int frameTime;
     int frameskip;
-    int overclock_level;
-    int overclock_mhz;
     bool lowMemoryMode;
     bool enWatchdog;
     bool isColdBoot;
@@ -190,6 +188,7 @@ typedef struct
     float partialFPS;
     float fullFPS;
     float totalFPS;
+    float speedPercent;
     float busyPercent;
     int64_t busyTime;
     int64_t lastTick;
@@ -230,9 +229,11 @@ bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(int event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
-rg_stats_t rg_system_get_counters(void);
+rg_stats_t rg_system_get_stats(void);
 
-// Overclock
+// Speed and Overclock
+void rg_system_set_app_speed(float speed);
+float rg_system_get_app_speed(void);
 void rg_system_set_overclock(int level);
 int rg_system_get_overclock(void);
 int rg_system_get_cpu_speed(void);
@@ -282,8 +283,6 @@ bool rg_emu_reset(bool hard);
 bool rg_emu_screenshot(const char *filename, int width, int height);
 rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots);
 uint8_t rg_emu_get_last_used_slot(const char *romPath);
-void rg_emu_set_speed(float speed);
-float rg_emu_get_speed(void);
 
 /* Utilities */
 

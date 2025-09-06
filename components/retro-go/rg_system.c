@@ -87,6 +87,7 @@ static RTC_NOINIT_ATTR panic_trace_t panicTrace;
 static RTC_NOINIT_ATTR time_t rtcValue;
 static bool panicTraceCleared = false;
 static bool exitCalled = false;
+static int overclockLevel, overclockMhz;
 static uint32_t indicators;
 static rg_color_t ledColor = -1;
 static rg_stats_t statistics;
@@ -209,11 +210,12 @@ static void update_statistics(void)
         // Hard to fix this sync issue without a lock, which I don't want to use...
         ticks = RG_MAX(ticks, frames);
 
-        statistics.busyPercent = busyTime / totalTime * 100.f;
         statistics.totalFPS = ticks / totalTimeSecs;
         statistics.skippedFPS = (ticks - frames) / totalTimeSecs;
         statistics.fullFPS = fullFrames / totalTimeSecs;
         statistics.partialFPS = partFrames / totalTimeSecs;
+        statistics.busyPercent = busyTime / totalTime * 100.f;
+        statistics.speedPercent = app.tickRate > 0 ? (statistics.totalFPS / app.tickRate * 100.f) : 100.f;
     }
     statistics.uptime = rg_system_timer() / 1000000;
 
@@ -276,9 +278,9 @@ static void system_monitor_task(void *arg)
 
         // Auto frameskip
         // TODO: Use a rolling average of frameTimes instead of this mess
-        if (statistics.ticks > app.tickRate * 2)
+        if (app.tickRate > 0 && statistics.ticks > app.tickRate * 2)
         {
-            float speed = ((float)statistics.totalFPS / app.tickRate) * 100.f / app.speed;
+            float speed = statistics.speedPercent / app.speed;
             // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
             // borderline in power and going back to 0 is just asking for stuttering...
             if (speed > 99.f && statistics.busyPercent < 85.f && app.frameskip > 1)
@@ -411,8 +413,6 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         .tickTimeout = 3000000,
         .frameTime = 1000000 / 60,
         .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
-        .overclock_level = 0,
-        .overclock_mhz = 240,
         .lowMemoryMode = false,
         .enWatchdog = true,
         .isColdBoot = true,
@@ -802,7 +802,7 @@ rg_app_t *rg_system_get_app(void)
     return &app;
 }
 
-rg_stats_t rg_system_get_counters(void)
+rg_stats_t rg_system_get_stats(void)
 {
     return statistics;
 }
@@ -1092,9 +1092,24 @@ int rg_system_get_log_level(void)
     return app.logLevel;
 }
 
-int rg_system_get_cpu_speed(void)
+void rg_system_set_app_speed(float speed)
 {
-    return app.overclock_mhz;
+    float newSpeed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
+    if (newSpeed == app.speed)
+        return;
+    // FIXME: We need to store the actual default frameskip so we can return to it...
+    app.frameskip = (newSpeed - 0.5f) * 3;
+    app.frameTime = 1000000.f / (app.tickRate * newSpeed);
+    app.speed = newSpeed;
+    // There's a bug in esp-idf v4.4.8 where many frequencies play at the wrong speed.
+    // Still trying to find how to work around that...
+    rg_audio_set_sample_rate(app.sampleRate * newSpeed);
+    rg_system_event(RG_EVENT_SPEEDUP, NULL);
+}
+
+float rg_system_get_app_speed(void)
+{
+    return app.speed;
 }
 
 void rg_system_set_overclock(int level)
@@ -1157,9 +1172,10 @@ void rg_system_set_overclock(int level)
     if (!original_tickRate)
         original_tickRate = app.tickRate;
     app.tickRate = original_tickRate * (240.f / real_mhz);
-    app.overclock_level = level;
-    app.overclock_mhz = real_mhz;
     app.frameskip = 1;
+
+    overclockLevel = level;
+    overclockMhz = real_mhz;
 
     RG_LOGW("Overclock level %d applied: %dMhz", level, real_mhz);
 #else
@@ -1169,7 +1185,19 @@ void rg_system_set_overclock(int level)
 
 int rg_system_get_overclock(void)
 {
-    return app.overclock_level;
+    return overclockLevel;
+}
+
+int rg_system_get_cpu_speed(void)
+{
+    if (overclockMhz)
+        return overclockMhz;
+    #if CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ
+        return CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ;
+    #elif CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ
+        return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
+    #endif
+    return 0;
 }
 
 char *rg_emu_get_path(rg_path_type_t pathType, const char *filename)
@@ -1403,26 +1431,10 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    if (app.speed != 1.f)
-        rg_emu_set_speed(1.f);
+    rg_system_set_app_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
-}
-
-void rg_emu_set_speed(float speed)
-{
-    app.speed = RG_MIN(2.5f, RG_MAX(0.5f, speed));
-    // FIXME: We need to store the actual default frameskip so we can return to it...
-    app.frameskip = (app.speed - 0.5f) * 3;
-    app.frameTime = 1000000.f / (app.tickRate * app.speed);
-    rg_audio_set_sample_rate(app.sampleRate * app.speed);
-    rg_system_event(RG_EVENT_SPEEDUP, NULL);
-}
-
-float rg_emu_get_speed(void)
-{
-    return app.speed;
 }
 
 #ifdef RG_ENABLE_PROFILING

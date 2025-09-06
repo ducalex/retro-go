@@ -625,16 +625,16 @@ void rg_gui_draw_status_bars(void)
     char footer[max_len];
 
     const rg_app_t *app = rg_system_get_app();
-    rg_stats_t stats = rg_system_get_counters();
+    rg_stats_t stats = rg_system_get_stats();
 
     if (!app->initialized || app->isLauncher)
         return;
 
     snprintf(header, max_len, "SPEED: %d%% (%d %d) / BUSY: %d%%",
-        (int)round(stats.totalFPS / app->tickRate * 100.f),
-        (int)round(stats.totalFPS),
+        (int)roundf(stats.speedPercent),
+        (int)roundf(stats.totalFPS),
         (int)app->frameskip,
-        (int)round(stats.busyPercent));
+        (int)roundf(stats.busyPercent));
 
     if (app->romPath && strlen(app->romPath) > max_len - 1)
         snprintf(footer, max_len, "...%s", app->romPath + (strlen(app->romPath) - (max_len - 4)));
@@ -1566,9 +1566,9 @@ static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t 
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         float change = (event == RG_DIALOG_NEXT) ? 0.5f : -0.5f;
-        rg_emu_set_speed(rg_emu_get_speed() + change);
+        rg_system_set_app_speed(rg_system_get_app_speed() + change);
     }
-    sprintf(option->value, "%.1fx", rg_emu_get_speed());
+    sprintf(option->value, "%.1fx", rg_system_get_app_speed());
     return RG_DIALOG_VOID;
 }
 
@@ -2094,7 +2094,7 @@ void rg_gui_debug_menu(void)
     char screen_res[20], source_res[20], scaled_res[20];
     char stack_hwm[20], heap_free[20], block_free[20];
     char local_time[32], timezone[32], uptime[20];
-    char battery_info[25], frame_time[32];
+    char battery_info[20], frame_time[20], overclock[20];
     char app_name[32], network_str[64];
 
     const rg_gui_option_t options[] = {
@@ -2111,8 +2111,8 @@ void rg_gui_debug_menu(void)
         {0, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
         {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, "Overclock",  overclock,    RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
-        {0, "Overclock",            "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
         {1, "Reboot to firmware",   NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {2, "Clear cache    ",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {3, "Save screenshot",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -2125,7 +2125,7 @@ void rg_gui_debug_menu(void)
 
     const rg_display_t *display = rg_display_get_info();
     rg_display_counters_t display_stats = rg_display_get_counters();
-    rg_stats_t stats = rg_system_get_counters();
+    rg_stats_t stats = rg_system_get_stats();
     time_t now = time(NULL);
 
     strftime(local_time, 32, "%F %T", localtime(&now));
@@ -2146,6 +2146,7 @@ void rg_gui_debug_menu(void)
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(app_name, 32, "%s", rg_system_get_app()->name);
     snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+    snprintf(overclock, 20, "%d (%dMhz)", rg_system_get_overclock(), rg_system_get_cpu_speed());
 
     rg_battery_t battery;
     if (rg_input_read_battery_raw(&battery))

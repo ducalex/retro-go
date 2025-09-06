@@ -439,7 +439,7 @@ void I_StartTic(void)
             Z_FreeTags(PU_CACHE, PU_CACHE); // At this point the heap is usually full. Let's reclaim some!
             rg_gui_game_menu();
         }
-        realtic_clock_rate = app->speed * 100;
+        realtic_clock_rate = rg_system_get_app_speed() * 100;
         R_InitInterpolation();
     }
     else

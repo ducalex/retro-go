@@ -14,6 +14,12 @@
 #define DOWNLOAD_LOCATION RG_BASE_PATH
 #endif
 
+#if CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
+#define CAN_UPDATE_PARTITION_TABLE 1
+#else
+#define CAN_UPDATE_PARTITION_TABLE 0
+#endif
+
 void app_main(void)
 {
     rg_app_t *app = rg_system_init(32000, NULL, NULL);
