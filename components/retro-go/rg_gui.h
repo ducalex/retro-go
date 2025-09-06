@@ -132,7 +132,7 @@ void rg_gui_draw_message(const char *format, ...);
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool browse_tree, bool none_option);
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value);
 int rg_gui_input_char(const rg_keyboard_layout_t *map);
 

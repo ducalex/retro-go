@@ -1041,7 +1041,7 @@ static int file_picker_cb(const rg_scandir_t *entry, void *arg)
     return RG_SCANDIR_CONTINUE;
 }
 
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option)
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool browse_tree, bool none_option)
 {
     file_picker_opts_t options = {
         .options = calloc(8, sizeof(rg_gui_option_t)),
@@ -1055,6 +1055,9 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
 
     if (none_option)
         options.options[options.count++] = (rg_gui_option_t){0, _("<None>"), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+
+    // if (browse_tree)
+    //     options.options[options.count++] = (rg_gui_option_t){0, "...", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
 
     if (!rg_storage_scandir(path, file_picker_cb, &options, 0) || options.count < 1)
     {
@@ -1070,6 +1073,9 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
         if (filename)
             snprintf(buffer, RG_PATH_MAX, "%s/%s", path, filename);
         filepath = strdup(buffer);
+        // if (browse_tree && rg_storage_stat(filepath).is_dir)
+        // {
+        // }
     }
 
 cleanup:
@@ -1667,7 +1673,7 @@ static rg_gui_event_t theme_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_ENTER)
     {
-        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL, true);
+        char *path = rg_gui_file_picker("Theme", RG_BASE_PATH_THEMES, NULL, false, true);
         if (path != NULL)
         {
             const char *theme = strlen(path) > 0 ? rg_basename(path) : NULL;
@@ -1713,7 +1719,7 @@ static rg_gui_event_t border_update_cb(rg_gui_option_t *option, rg_gui_event_t e
 {
     if (event == RG_DIALOG_ENTER)
     {
-        char *path = rg_gui_file_picker("Border", RG_BASE_PATH_BORDERS, NULL, true);
+        char *path = rg_gui_file_picker("Border", RG_BASE_PATH_BORDERS, NULL, false, true);
         if (path != NULL)
         {
             rg_display_set_border(strlen(path) ? path : NULL);

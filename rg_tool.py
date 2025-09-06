@@ -7,6 +7,9 @@ import math
 import sys
 import re
 import os
+import struct
+import time
+import zlib
 
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
@@ -58,6 +61,7 @@ else:
     ESPTOOL_PY = "esptool.py"
     PARTTOOL_PY = "parttool.py"
     GEN_ESP32PART_PY = "gen_esp32part.py"
+MKIMG_PY = os.path.join("tools", "mkimg.py")
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
 
@@ -68,9 +72,9 @@ def run(cmd, cwd=None, check=True):
     return subprocess.run(cmd, shell=False, cwd=cwd, check=check)
 
 
-def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
+def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0, info_target="unknown", info_version="unknown"):
     print("Building firmware with: %s\n" % " ".join(apps))
-    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {PROJECT_VER}", PROJECT_ICON]
+    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {info_version}", PROJECT_ICON]
 
     if fw_format == "esplay":
         args.append("--esplay")
@@ -82,7 +86,7 @@ def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
     run(args)
 
 
-def build_image(output_file, apps, img_format="esp32", fatsize=0):
+def build_image(output_file, apps, img_format="esp32", fatsize=0, info_target="unknown", info_version="unknown"):
     print("Building image with: %s\n" % " ".join(apps))
     image_data = bytearray(b"\xFF" * 0x10000)
     table_ota = 0
@@ -127,6 +131,17 @@ def build_image(output_file, apps, img_format="esp32", fatsize=0):
     else:
         image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
         image_data[0x8000:0x8000+len(table_bin)] = table_bin
+
+    # Append the information structure used by retro-go's updater.
+    image_data += struct.pack(
+        "<III32s32s180s",
+        0x31304752,             # Magic number "RG01"
+        zlib.crc32(image_data), # CRC of the image not including this footer
+        int(time.time()),       # Unix timestamp
+        info_target.encode(),   # Name of the target device
+        info_version.encode(),  # Version
+        b"\xFF" * 256,          # 0xFF padding of the reserved area
+    )
 
     with open(output_file, "wb") as f:
         f.write(image_data)
@@ -259,14 +274,14 @@ try:
         print("=== Step: Packing ===\n")
         if FW_FORMAT in ["odroid", "esplay"]:
             fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-            build_firmware(fw_file, apps, FW_FORMAT, args.fatsize)
+            build_firmware(fw_file, apps, FW_FORMAT, args.fatsize, args.target, PROJECT_VER)
         else:
             print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
         img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_image(img_file, apps, IDF_TARGET, args.fatsize)
+        build_image(img_file, apps, IDF_TARGET, args.fatsize, args.target, PROJECT_VER)
 
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")
