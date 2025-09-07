@@ -130,7 +130,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
 
     if (event == RG_DIALOG_ENTER)
     {
-    #if defined(RG_UPDATER_APPLICATION) && defined(RG_UPDATER_DOWNLOAD_LOCATION)
+    #if defined(RG_UPDATER_APPLICATION)
         rg_gui_option_t options[release->assets_count + 4];
         rg_gui_option_t *opt = options;
 
@@ -145,7 +145,7 @@ static rg_gui_event_t view_release_cb(rg_gui_option_t *option, rg_gui_event_t ev
         if (sel != RG_DIALOG_CANCELLED)
         {
             char dest_path[RG_PATH_MAX];
-            snprintf(dest_path, RG_PATH_MAX, "%s/%s", RG_UPDATER_DOWNLOAD_LOCATION, release->assets[sel].name);
+            snprintf(dest_path, RG_PATH_MAX, "%s/%s", RG_BASE_PATH_UPDATES, release->assets[sel].name);
             if (download_file(release->assets[sel].url, dest_path))
             {
                 if (rg_gui_confirm(_("Download complete!"), _("Reboot to flash?"), true))

@@ -84,9 +84,12 @@
 #define RG_UPDATER_ENABLE 1
 #endif
 
-// If either of the following isn't defined then the updater will only perform version *checks*, not self-update
+// If RG_UPDATER_APPLICATION is not defined then the updater only performs version *checks*, not self-update
 // #define RG_UPDATER_APPLICATION       RG_APP_FACTORY
-// #define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/odroid/firmware"
+
+#ifndef RG_UPDATER_DOWNLOAD_LOCATION
+#define RG_UPDATER_DOWNLOAD_LOCATION RG_STORAGE_ROOT "/retro-go/updates"
+#endif
 
 #ifndef RG_UPDATER_GITHUB_RELEASES
 #define RG_UPDATER_GITHUB_RELEASES "https://api.github.com/repos/ducalex/retro-go/releases?per_page=10"

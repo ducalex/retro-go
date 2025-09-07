@@ -11,12 +11,6 @@
 #include <esp_spi_flash.h>
 #include <esp_ota_ops.h>
 
-#ifdef RG_UPDATER_DOWNLOAD_LOCATION
-#define DOWNLOAD_LOCATION RG_UPDATER_DOWNLOAD_LOCATION
-#else
-#define DOWNLOAD_LOCATION RG_BASE_PATH
-#endif
-
 #if CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
 #define CAN_UPDATE_PARTITION_TABLE 1
 #else
@@ -206,7 +200,7 @@ void app_main(void)
     // const char *filename = app->romPath;
     while (true)
     {
-        char *filename = rg_gui_file_picker("Select update", DOWNLOAD_LOCATION, NULL, true, true);
+        char *filename = rg_gui_file_picker("Select update", RG_BASE_PATH_UPDATES, NULL, true, true);
         if (!filename || !*filename)
             break;
         if (do_update(filename))
