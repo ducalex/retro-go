@@ -144,22 +144,47 @@ static rg_gui_event_t startup_app_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
-#ifdef RG_ENABLE_NETWORKING
 static rg_gui_event_t updater_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
-    if (rg_network_get_info().state != RG_NETWORK_CONNECTED)
-    {
-        option->flags = RG_DIALOG_FLAG_DISABLED;
-        return RG_DIALOG_VOID;
-    }
     if (event == RG_DIALOG_ENTER)
     {
-        updater_show_dialog();
+        const rg_gui_option_t options[] = {
+        #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
+            {1, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        #endif
+        #if defined(RG_UPDATER_APPLICATION)
+            {2, _("Reboot to installer"), NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        #endif
+            RG_DIALOG_END,
+        };
+        int sel = rg_gui_dialog(_("Update Retro-Go"), options, 0);
+        #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
+        if (sel == 1)
+            updater_show_dialog();
+        #endif
+        #if defined(RG_UPDATER_APPLICATION)
+        if (sel == 2)
+            rg_system_switch_app(RG_UPDATER_APPLICATION, NULL, NULL, 0, 0);
+        #endif
         return RG_DIALOG_REDRAW;
     }
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        rg_input_wait_for_key(RG_KEY_ANY, false, 1000);
+        #ifdef RG_ENABLE_NETWORKING
+        webui_stop();
+        #endif
+        crc_cache_prebuild();
+    }
+    return RG_DIALOG_VOID;
+}
+
+#ifdef RG_ENABLE_NETWORKING
 static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     bool enabled = rg_settings_get_number(NS_APP, SETTING_WEBUI, 0);
@@ -175,19 +200,6 @@ static rg_gui_event_t webui_switch_cb(rg_gui_option_t *option, rg_gui_event_t ev
     return RG_DIALOG_VOID;
 }
 #endif
-
-static rg_gui_event_t prebuild_cache_cb(rg_gui_option_t *option, rg_gui_event_t event)
-{
-    if (event == RG_DIALOG_ENTER)
-    {
-        rg_input_wait_for_key(RG_KEY_ANY, false, 1000);
-        #ifdef RG_ENABLE_NETWORKING
-        webui_stop();
-        #endif
-        crc_cache_prebuild();
-    }
-    return RG_DIALOG_VOID;
-}
 
 static void retro_loop(void)
 {
@@ -432,9 +444,7 @@ static void options_handler(rg_gui_option_t *dest)
 static void about_handler(rg_gui_option_t *dest)
 {
     *dest++ = (rg_gui_option_t){0, _("Build CRC cache"), NULL, RG_DIALOG_FLAG_NORMAL, &prebuild_cache_cb};
-    #if defined(RG_ENABLE_NETWORKING) && RG_UPDATER_ENABLE
-    *dest++ = (rg_gui_option_t){0, _("Check for updates"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
-    #endif
+    *dest++ = (rg_gui_option_t){0, _("Update Retro-Go"), NULL, RG_DIALOG_FLAG_NORMAL, &updater_cb};
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
 }
 

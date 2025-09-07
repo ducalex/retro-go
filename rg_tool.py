@@ -19,8 +19,8 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
 PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
-  'updater':      [0, 0, 524288],
   'launcher':     [0, 0, 1048576],
+  'updater':      [0, 0, 524288], # Should be first to allow growth but it interfere with boot for now
   'retro-core':   [0, 0, 1048576],
   'prboom-go':    [0, 0, 851968],
   'gwenesis':     [0, 0, 1048576],
