@@ -66,7 +66,8 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
-#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_ROTATION          6   // Possible values are 0-7 (you'll have to experiment)
+#define RG_SCREEN_BGR               1   // Possible values are 0-1 (change if colors are bad)
 #define RG_SCREEN_VISIBLE_AREA      {20, 0, 20, 0}  // Left, Top, Right, Bottom
 #define RG_SCREEN_SAFE_AREA         {20, 0, 20, 0}  // Left, Top, Right, Bottom
 #define RG_SCREEN_INIT()                                                                                     \
@@ -80,14 +81,13 @@ ILI9341_CMD(0xC0, 0x1B);                 /* Power control   //VRH[5:0] */       
 ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
 ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
 ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-ILI9341_CMD(0x36, (0x40 | 0x80 | 0x08)); /* Memory Access Control */                                         \
 ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
 ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
 ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
 ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
 ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \
 ILI9341_CMD(0xE0, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x32, 0x44, 0x42, 0x06, 0x0e, 0x12, 0x14, 0x17);       \
-ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);       
+ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);
 #define RG_SCREEN_DEINIT() \
     /* Nothing to do */
 

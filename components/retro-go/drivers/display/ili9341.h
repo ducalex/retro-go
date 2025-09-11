@@ -4,10 +4,6 @@
 #include <driver/gpio.h>
 #include <driver/ledc.h>
 
-#if defined(RG_SCREEN_ROTATE) && RG_SCREEN_ROTATE != 0
-#error "RG_SCREEN_ROTATE doesn't do anything on this driver, you have to use the 0x36 command during init!"
-#endif
-
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
@@ -236,17 +232,22 @@ static void lcd_init(void)
     rg_usleep(10 * 1000);
 #endif
 
-    ILI9341_CMD(0x01);          // Reset
-    rg_usleep(5 * 1000);        // Wait 5ms after reset
-    ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565
-    #ifdef RG_SCREEN_INIT
-        RG_SCREEN_INIT();
-    #else
-        #warning "LCD init sequence is not defined for this device!"
-    #endif
-    ILI9341_CMD(0x11);  // Exit Sleep
-    rg_usleep(10 * 1000);// Wait 10ms after sleep out
-    ILI9341_CMD(0x29);  // Display on
+    ILI9341_CMD(0x01);       // Reset
+    rg_usleep(5 * 1000);     // Wait 5ms after reset
+    ILI9341_CMD(0x3A, 0X55); // COLMOD (Pixel Format Set RGB565 65k)
+#if defined(RG_SCREEN_ROTATION) && defined(RG_SCREEN_BGR)
+    // The rotation is designed so that the user can simply try all values 0-7 to find what works.
+    // It's simpler than trying to explain the MADCTL register bits, combined with hardware variations...
+    ILI9341_CMD(0x36, (RG_SCREEN_BGR ? 0x08 : 0x00) | (RG_SCREEN_ROTATION << 5)); // MADCTL (0x08=BGR, 0x20=MV, 0x40=MX, 0x80=MY)
+#endif
+#ifdef RG_SCREEN_INIT
+    RG_SCREEN_INIT();
+#else
+    #warning "LCD init sequence is not defined for this device!"
+#endif
+    ILI9341_CMD(0x11);    // Exit Sleep
+    rg_usleep(10 * 1000); // Wait 10ms after sleep out
+    ILI9341_CMD(0x29);    // Display on
 }
 
 static void lcd_deinit(void)

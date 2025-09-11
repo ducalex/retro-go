@@ -20,7 +20,8 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            300
-#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_ROTATION          3   // Possible values are 0-7 (you'll have to experiment)
+#define RG_SCREEN_BGR               1   // Possible values are 0-1 (change if colors are bad)
 #define RG_SCREEN_VISIBLE_AREA      {0, 55, 0, 30} // Left, Top, Right, Bottom
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0} // Left, Top, Right, Bottom
 #define RG_SCREEN_INIT()                                                                                         \
@@ -30,12 +31,10 @@
     ILI9341_CMD(0xCB, 0x39, 0x2c, 0x00, 0x34, 0x02);                                                             \
     ILI9341_CMD(0xF7, 0x20);                                                                                     \
     ILI9341_CMD(0xEA, 0x00, 0x00);                                                                               \
-    ILI9341_CMD(0x36, 0x60);                    /* Display Rotation */                                           \
     ILI9341_CMD(0xC0, 0x1B);                    /* Power control   //VRH[5:0] */                                 \
     ILI9341_CMD(0xC1, 0x12);                    /* Power control   //SAP[2:0];BT[3:0] */                         \
     ILI9341_CMD(0xC5, 0x32, 0x3C);              /* VCM control */                                                \
     ILI9341_CMD(0xC7, 0x91);                    /* VCM control2 */                                               \
-    ILI9341_CMD(0x36, 0x68);                    /* Memory Access Control  (MX|MV|BGR) */                         \
     ILI9341_CMD(0xB1, 0x00, 0x10);              /* Frame Rate Control (1B=70, 1F=61, 10=119) */                  \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);              /* Display Function Control */                                   \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \

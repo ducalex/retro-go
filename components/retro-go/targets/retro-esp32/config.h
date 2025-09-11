@@ -20,7 +20,8 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
-#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_ROTATION          6   // Possible values are 0-7 (you'll have to experiment)
+#define RG_SCREEN_BGR               1   // Possible values are 0-1 (change if colors are bad)
 #define RG_SCREEN_VISIBLE_AREA      {15, 0, 20, 0}
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                         \
@@ -34,7 +35,6 @@
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(0x36, 0xC8);                 /* Memory Access Control (MY|MX|BGR) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \

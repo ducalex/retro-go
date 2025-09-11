@@ -21,13 +21,11 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             240  //1.3 inch 240  2.4 inch 320
 #define RG_SCREEN_HEIGHT            240
-#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_ROTATION          5   // 1.3 inch = 5 (MY|MV)  /  2.4 inch = 4 (MY)
+#define RG_SCREEN_BGR               1   // 1.3 inch = 1 (BGR)  /  2.4 inch = 0 (RGB)
 #define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                                        \
-    ILI9341_CMD(0x01);                                                                                                          \
-    ILI9341_CMD(0x3A, 0x55);                                                                                                    \
-    ILI9341_CMD(0x20);                                                                                                          \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                                        \
     ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                                  \
     ILI9341_CMD(0xE8, 0x85, 0x00, 0x78);                                                                                        \
@@ -38,7 +36,6 @@
     ILI9341_CMD(0xC1, 0x12);                                                                                                    \
     ILI9341_CMD(0xC5, 0x32, 0x3C);                                                                                              \
     ILI9341_CMD(0xC7, 0x91);                                                                                                    \
-    ILI9341_CMD(0x36, 0xA8);                          /* 1.3 inch (MY|MV|BGR)  /  2.4 inch  (MY) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);                                                                                              \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);                                                                                              \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                                              \
@@ -46,8 +43,7 @@
     ILI9341_CMD(0x26, 0x01);                                                                                                    \
     ILI9341_CMD(0xE0, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x32, 0x44, 0x42, 0x06, 0x0e, 0x12, 0x14, 0x17);                      \
     ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0a, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1b, 0x1e);                      \
-    ILI9341_CMD(0x11);                                                                                                          \
-    ILI9341_CMD(0x29);
+
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types

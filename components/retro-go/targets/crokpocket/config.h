@@ -20,15 +20,10 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
-#define RG_SCREEN_ROTATE            0
-#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0} // Left, Top, Right, Bottom 
+#define RG_SCREEN_ROTATION          0   // Possible values are 0-7 (you'll have to experiment)
+#define RG_SCREEN_BGR               1   // Possible values are 0-1 (change if colors are bad)
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0} // Left, Top, Right, Bottom
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0} // Left, Top, Right, Bottom
-
-#define ST7789_MADCTL 0x36 // Memory Access Control
-#define ST7789_MADCTL_MV 0x20
-#define ST7789_MADCTL_RGB 0x00
-#define ST7789_MADCTL_BGR 0x08
-
 
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
@@ -41,7 +36,6 @@
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-    ILI9341_CMD(ST7789_MADCTL, (ST7789_MADCTL_BGR));                                          \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
@@ -75,7 +69,7 @@
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_38
 
-// SPI Display 
+// SPI Display
 #define RG_GPIO_LCD_MISO            GPIO_NUM_NC
 #define RG_GPIO_LCD_MOSI            GPIO_NUM_12
 #define RG_GPIO_LCD_CLK             GPIO_NUM_48

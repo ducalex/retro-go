@@ -64,12 +64,12 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             240
 #define RG_SCREEN_HEIGHT            320
-#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_ROTATION          0   // Possible values are 0-7 (you'll have to experiment)
+#define RG_SCREEN_BGR               0   // Possible values are 0-1 (change if colors are bad)
 #define RG_SCREEN_VISIBLE_AREA      {0, 28, 0, 68} // left, top, right, bottom
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}   // left, top, right, bottom
 #define RG_SCREEN_PARTIAL_UPDATES   1
 #define RG_SCREEN_INIT()                                                                                   \
-    ILI9341_CMD(0x36, 0x00);                                                                               \
     ILI9341_CMD(0xB1, 0x00, 0x10);                                                                         \
     ILI9341_CMD(0xB2, 0x0c, 0x0c, 0x00, 0x33, 0x33);                                                       \
     ILI9341_CMD(0xB7, 0x35);                                                                               \
