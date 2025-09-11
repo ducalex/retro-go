@@ -681,6 +681,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
     int col2_width = -1;
     uint8_t row_height[options_count];
 
+    // FIXME: The information built in this loop should be cached between calls to rg_gui_draw_dialog...
+    // It doesn't matter for most dialogs but the file picker with 500+ files wastes a LOT of time here.
     for (size_t i = 0; i < options_count; i++)
     {
         if (options[i].flags == RG_DIALOG_FLAG_HIDDEN)

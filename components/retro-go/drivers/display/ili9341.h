@@ -235,10 +235,10 @@ static void lcd_init(void)
     ILI9341_CMD(0x01);       // Reset
     rg_usleep(5 * 1000);     // Wait 5ms after reset
     ILI9341_CMD(0x3A, 0X55); // COLMOD (Pixel Format Set RGB565 65k)
-#if defined(RG_SCREEN_ROTATION) && defined(RG_SCREEN_BGR)
+#if defined(RG_SCREEN_ROTATION) && defined(RG_SCREEN_RGB_BGR)
     // The rotation is designed so that the user can simply try all values 0-7 to find what works.
     // It's simpler than trying to explain the MADCTL register bits, combined with hardware variations...
-    ILI9341_CMD(0x36, (RG_SCREEN_BGR ? 0x08 : 0x00) | (RG_SCREEN_ROTATION << 5)); // MADCTL (0x08=BGR, 0x20=MV, 0x40=MX, 0x80=MY)
+    ILI9341_CMD(0x36, (RG_SCREEN_RGB_BGR ? 0x08 : 0x00) | (RG_SCREEN_ROTATION << 5)); // MADCTL (0x08=BGR, 0x20=MV, 0x40=MX, 0x80=MY)
 #endif
 #ifdef RG_SCREEN_INIT
     RG_SCREEN_INIT();
