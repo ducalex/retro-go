@@ -186,26 +186,27 @@ void gw_system_blit(unsigned short *active_framebuffer) { device_blit(active_fra
 bool gw_system_romload() { return gw_romloader(); }
 
 /******** Audio functions *******************/
-static unsigned char mspeaker_data = 0;
 static int gw_audio_buffer_idx = 0;
 
 /* Audio buffer */
-unsigned char gw_audio_buffer[GW_AUDIO_BUFFER_LENGTH * 2];
+unsigned char *gw_audio_buffer; // [GW_AUDIO_BUFFER_LENGTH * 2];
 bool gw_audio_buffer_copied;
 
 void gw_system_sound_init()
 {
 	/* Init Sound */
-	/* clear shared audio buffer with emulator */
-	memset(gw_audio_buffer, 0, sizeof(gw_audio_buffer));
+	if (!gw_audio_buffer)
+		gw_audio_buffer = malloc(GW_AUDIO_BUFFER_LENGTH * 2);
+	memset(gw_audio_buffer, 0, GW_AUDIO_BUFFER_LENGTH);
 	gw_audio_buffer_copied = false;
 
 	gw_audio_buffer_idx = 0;
-	mspeaker_data = 0;
 }
 
 static void gw_system_sound_melody(unsigned char data)
 {
+	unsigned char mspeaker_data = 0;
+
 	if (gw_audio_buffer_copied)
 	{
 		gw_audio_buffer_copied = false;
@@ -669,11 +670,11 @@ void gw_system_shutdown(void)
 	//gw_set_audio_frequency(48000);
 }
 
-static gw_state_t save_state;
-
 /* save state */
 bool gw_state_save(void *dest_ptr)
 {
+	gw_state_t save_state;
+
 	/* add header and signature */
 	memcpy(&save_state.magic_word, GW_MAGIC_WORD, 8);
 	memcpy(&save_state.rom_signature, &gw_head.rom_signature, 8);
@@ -752,6 +753,7 @@ bool gw_state_save(void *dest_ptr)
 /* load state */
 bool gw_state_load(void *src_ptr)
 {
+	gw_state_t save_state;
 
 	memcpy(&save_state, src_ptr, sizeof(save_state));
 

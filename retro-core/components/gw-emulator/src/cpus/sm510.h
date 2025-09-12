@@ -29,7 +29,7 @@ void sm510_wakeup_vector(); // after halt
 /* SM511 variation */
 void sm511_device_reset();
 void sm511_execute_run();
-bool sm511_init_melody(un8 *gw_melody);
+bool sm511_init_melody(un8 *melody);
 
 /*misc internal helpers for SM5XX microcomputer family */
 void pop_stack();

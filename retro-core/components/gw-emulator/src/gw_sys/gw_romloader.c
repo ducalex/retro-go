@@ -68,21 +68,7 @@ static uint8_t JPEG_Buffer[JPEG_BUFFER_SIZE] __attribute__((aligned(4)));
 // 4x320x240     JPEG out buffer ARGB 8888                           307200
 // background    RGB565 background from JPEG 2 x 320x240             153600
 
-#define GW_ROM_SIZE_MAX 400000U
-unsigned char *GW_ROM;
-
-unsigned short *gw_background = NULL;
-unsigned char *gw_segments = NULL;
-unsigned short *gw_segments_x = NULL;
-unsigned short *gw_segments_y = NULL;
-unsigned short *gw_segments_width = NULL;
-unsigned short *gw_segments_height = NULL;
-unsigned int *gw_segments_offset = NULL;
-unsigned char *gw_program = NULL;
-unsigned char *gw_melody = NULL;
-unsigned int *gw_keyboard = NULL;
-
-gwromheader_t gw_head;
+gwrom_t *gwrom;
 
 /**************** Background *******************/
 /*
@@ -132,8 +118,6 @@ keyboard[9] is B   (8 bits lsb)
 
 bool gw_romloader_rom2ram()
 {
-   GW_ROM = malloc(GW_ROM_SIZE_MAX);
-
    /* src pointer to the ROM data in the external flash (raw or LZ4) */
    const unsigned char *src = (unsigned char *)ROM_DATA;
 
@@ -332,6 +316,9 @@ bool gw_romloader_rom2ram()
 bool gw_romloader()
 {
    printf("gw_romloader\n");
+
+   if (!gwrom)
+      gwrom = malloc(sizeof(gwrom_t));
 
    bool rom_status = gw_romloader_rom2ram();
 

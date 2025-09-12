@@ -72,7 +72,7 @@ void gw_system_set_time(gw_time_t time);
 gw_time_t gw_system_get_time();
 
 /* shared audio buffer between host and emulator */
-extern unsigned char gw_audio_buffer[GW_AUDIO_BUFFER_LENGTH * 2];
+extern unsigned char *gw_audio_buffer; // [GW_AUDIO_BUFFER_LENGTH * 2];
 extern bool gw_audio_buffer_copied;
 
 /* Output of emulated system  */

@@ -128,6 +128,7 @@ static inline void write_update(const rg_surface_t *update)
     const uint16_t *palette = update->palette;
 
     const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
+    // const bool interlace = false;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
     int lines_remaining = draw_height;

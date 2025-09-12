@@ -62,22 +62,7 @@ __license__ = "GPLv3"
 #define FLAG_LCD_DEFLICKER_2   0x80
 #define FLAG_LCD_DEFLICKER_3   0xC0
 
-/* ADD ROM SUPPORT */
-/* Large memory to store all objects from external flash */
-extern unsigned char *GW_ROM;
-
-/* ROM in RAM : objects pointers */
-extern unsigned char  *gw_rom_base;
-extern unsigned short *gw_background;
-extern unsigned char  *gw_segments;
-extern unsigned short *gw_segments_x;
-extern unsigned short *gw_segments_y;
-extern unsigned short *gw_segments_width;
-extern unsigned short *gw_segments_height;
-extern unsigned int   *gw_segments_offset;
-extern unsigned char  *gw_program;
-extern unsigned char  *gw_melody;
-extern unsigned int   *gw_keyboard;
+#define GW_ROM_SIZE_MAX 400000U
 
 /* ROM header */
 typedef struct gwromheader_s
@@ -144,7 +129,37 @@ typedef struct gwromheader_s
 
 } gwromheader_t;
 
-extern gwromheader_t gw_head;
+typedef struct
+{
+   gwromheader_t header;
+   unsigned char data[GW_ROM_SIZE_MAX];
+   unsigned char  *rom_base;
+   unsigned short *background;
+   unsigned char  *segments;
+   unsigned short *segments_x;
+   unsigned short *segments_y;
+   unsigned short *segments_width;
+   unsigned short *segments_height;
+   unsigned int   *segments_offset;
+   unsigned char  *program;
+   unsigned char  *melody;
+   unsigned int   *keyboard;
+} gwrom_t;
+
+extern gwrom_t *gwrom;
+#define gw_head gwrom->header
+#define GW_ROM gwrom->data
+#define gw_rom_base gwrom->rom_base
+#define gw_background gwrom->background
+#define gw_segments gwrom->segments
+#define gw_segments_x gwrom->segments_x
+#define gw_segments_y gwrom->segments_y
+#define gw_segments_width gwrom->segments_width
+#define gw_segments_height gwrom->segments_height
+#define gw_segments_offset gwrom->segments_offset
+#define gw_program gwrom->program
+#define gw_melody gwrom->melody
+#define gw_keyboard gwrom->keyboard
 
 bool gw_romloader();
 
