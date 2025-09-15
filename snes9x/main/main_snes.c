@@ -2,7 +2,7 @@
 #include <snes9x.h>
 #include <math.h>
 
-#define AUDIO_SAMPLE_RATE   (32000)
+#define AUDIO_SAMPLE_RATE   (32040)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
 // #define FRAME_DOUBLE_BUFFERING
@@ -96,8 +96,6 @@ static const char *SNES_BUTTONS[] = {
 static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
-static rg_audio_sample_t *audioBuffers[2];
-static rg_audio_sample_t *currentAudioBuffer;
 
 #ifdef USE_AUDIO_TASK
 static rg_task_t *audio_task_handle;
@@ -138,8 +136,6 @@ static bool load_state_handler(const char *filename)
 static bool reset_handler(bool hard)
 {
     S9xReset();
-    memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
-    memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
     return true;
 }
 
@@ -310,26 +306,30 @@ void JustifierButtons(uint32_t *justifiers)
     (void)justifiers;
 }
 
-static inline void mix_samples(int32_t count)
-{
-    currentAudioBuffer = audioBuffers[currentAudioBuffer == audioBuffers[0]];
-    if (lowpass_filter)
-        S9xMixSamplesLowPass((int16_t *)currentAudioBuffer, count, AUDIO_LOW_PASS_RANGE);
-    else
-        S9xMixSamples((int16_t *)currentAudioBuffer, count);
-}
-
 #ifdef USE_AUDIO_TASK
 static void audio_task(void *arg)
 {
+    rg_audio_sample_t *audioBuffer = rg_alloc(AUDIO_BUFFER_LENGTH * 4, MEM_FAST);
     rg_task_msg_t msg;
+    bool zeroed = false;
     while (rg_task_receive(&msg))
     {
         if (msg.type == RG_TASK_MSG_STOP)
             break;
-        if (msg.type != 0)
-            mix_samples(AUDIO_BUFFER_LENGTH << 1);
-        rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
+        if (msg.type != 0) // Sound enabled, mix
+        {
+            if (lowpass_filter)
+                S9xMixSamplesLowPass((int16_t *)audioBuffer, msg.dataInt << 1, AUDIO_LOW_PASS_RANGE);
+            else
+                S9xMixSamples((int16_t *)audioBuffer, msg.dataInt << 1);
+            zeroed = false;
+        }
+        else if (!zeroed) // Sound disabled, zero buffer only if needed
+        {
+            memset(audioBuffer, 0, AUDIO_BUFFER_LENGTH * 4);
+            zeroed = true;
+        }
+        rg_audio_submit(audioBuffer, msg.dataInt);
     }
 }
 #endif
@@ -371,22 +371,15 @@ void app_main(void)
 #endif
     currentUpdate = updates[0];
 
-#ifdef AUDIO_DOUBLE_BUFFERING
-    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-    audioBuffers[1] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-#else
-    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-    audioBuffers[1] = audioBuffers[0];
-#endif
-    currentAudioBuffer = audioBuffers[0];
-
-    if (!updates[0] || !updates[1] || !audioBuffers[0] || !audioBuffers[1])
+    if (!updates[0] || !updates[1])
         RG_PANIC("Failed to allocate buffers!");
 
 #ifdef USE_AUDIO_TASK
     // Set up multicore audio
     audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
     RG_ASSERT(audio_task_handle, "Failed to create audio task!");
+#else
+    rg_audio_sample_t *audioBuffer = rg_alloc(AUDIO_BUFFER_LENGTH * 4, MEM_FAST);
 #endif
 
     Settings.CyclesPercentage = 100;
@@ -437,6 +430,8 @@ void app_main(void)
     rg_system_set_tick_rate(Memory.ROMFramesPerSecond);
     app->frameskip = 3;
 
+    const float samplesPerFrame = (float)app->sampleRate / app->tickRate;
+    float samplesRemaining = 0.f;
     bool menuCancelled = false;
     bool menuPressed = false;
     int skipFrames = 0;
@@ -463,8 +458,6 @@ void app_main(void)
         else if (joystick & RG_KEY_OPTION)
         {
             rg_gui_options_menu();
-            memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
-            memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
             continue;
         }
 
@@ -487,17 +480,25 @@ void app_main(void)
             currentUpdate = updates[currentUpdate == updates[0]];
         }
 
+        samplesRemaining += samplesPerFrame;
+        int samples = (int)samplesRemaining;
+        samplesRemaining -= samples;
+
     #ifdef USE_AUDIO_TASK
         rg_system_tick(rg_system_timer() - startTime);
-        rg_task_msg_t msg = {.type = (int)sound_enabled};
+        rg_task_msg_t msg = {.type = (int)sound_enabled, .dataInt = samples};
         if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
             rg_task_send(audio_task_handle, &msg);
     #else
-        if (sound_enabled)
-            mix_samples(AUDIO_BUFFER_LENGTH << 1);
+        if (sound_enabled && lowpass_filter)
+            S9xMixSamplesLowPass((int16_t *)audioBuffer, samples << 1, AUDIO_LOW_PASS_RANGE);
+        else if (sound_enabled)
+            S9xMixSamples((int16_t *)audioBuffer, samples << 1);
+        else
+            memset(audioBuffer, 0, AUDIO_BUFFER_LENGTH * sizeof(rg_audio_sample_t));
         rg_system_tick(rg_system_timer() - startTime);
         if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
-            rg_audio_submit(currentAudioBuffer, AUDIO_BUFFER_LENGTH);
+            rg_audio_submit(audioBuffer, samples);
     #endif
 
         if (skipFrames == 0)
