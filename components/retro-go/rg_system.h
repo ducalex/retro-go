@@ -133,25 +133,20 @@ typedef struct
     void (*about)(rg_gui_option_t *dest);                            // Add extra options to rg_gui_about_menu()
 } rg_handlers_t;
 
+// Note: Always make sure that a value of 0 represents a reasonable default...
+// For example: Do not add `enableThing` if it must default to `1` when unspecified
+// Instead, consider adding `disableThing`.
 typedef struct
 {
-    uint8_t id;
-    bool is_used;
-    bool is_lastused;
-    size_t size;
-    time_t mtime;
-    char preview[RG_PATH_MAX];
-    char file[RG_PATH_MAX];
-} rg_emu_slot_t;
-
-typedef struct
-{
-    size_t total;
-    size_t used;
-    rg_emu_slot_t *lastused;
-    rg_emu_slot_t *latest;
-    rg_emu_slot_t slots[];
-} rg_emu_states_t;
+    int sampleRate;
+    int frameRate; // tickRate
+    // int frameSkip;
+    int mallocAlwaysInternal;
+    bool storageRequired;
+    bool romRequired;
+    bool isLauncher;
+    rg_handlers_t handlers;
+} rg_config_t;
 
 typedef struct
 {
@@ -203,7 +198,7 @@ typedef struct
     int freeStackMain;
 } rg_stats_t;
 
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused);
+rg_app_t *rg_system_init(const rg_config_t *config);
 rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused);
 void rg_system_panic(const char *context, const char *message) __attribute__((noreturn));
 void rg_system_shutdown(void) __attribute__((noreturn));
@@ -229,6 +224,7 @@ bool rg_system_save_trace(const char *filename, bool append);
 void rg_system_event(int event, void *data);
 int64_t rg_system_timer(void);
 rg_app_t *rg_system_get_app(void);
+// rg_config_t rg_system_get_config(void);
 rg_stats_t rg_system_get_stats(void);
 
 // Speed and Overclock
@@ -275,6 +271,26 @@ rg_mutex_t *rg_mutex_create(void);
 void rg_mutex_free(rg_mutex_t *mutex);
 bool rg_mutex_give(rg_mutex_t *mutex);
 bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS);
+
+typedef struct
+{
+    uint8_t id;
+    bool is_used;
+    bool is_lastused;
+    size_t size;
+    time_t mtime;
+    char preview[RG_PATH_MAX];
+    char file[RG_PATH_MAX];
+} rg_emu_slot_t;
+
+typedef struct
+{
+    size_t total;
+    size_t used;
+    rg_emu_slot_t *lastused;
+    rg_emu_slot_t *latest;
+    rg_emu_slot_t slots[];
+} rg_emu_states_t;
 
 char *rg_emu_get_path(rg_path_type_t type, const char *arg);
 bool rg_emu_save_state(uint8_t slot);

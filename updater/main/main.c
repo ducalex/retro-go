@@ -180,16 +180,12 @@ static bool do_update(const char *filename)
 
 void app_main(void)
 {
-    app = rg_system_init(32000, NULL, NULL);
-    // This is a hack to hide the status bar with bogus speed info. A better solution will be
-    // needed as we still want the battery icon!
-    app->isLauncher = true;
-
-    if (!rg_storage_ready())
-    {
-        rg_gui_alert(_("Error"), "Storage mount failed.\nMake sure the card is FAT32.");
-        rg_system_exit();
-    }
+    app = rg_system_init(&(const rg_config_t){
+        .storageRequired = true,
+        // This is a hack to hide the status bar with bogus speed info. A better solution will be
+        // needed as we still want the battery icon!
+        .isLauncher = true,
+    });
 
     // if (spi_flash_read(ESP_PARTITION_TABLE_OFFSET, &device_partition_table, sizeof(device_partition_table)) != ESP_OK)
     // {

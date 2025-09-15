@@ -41,9 +41,6 @@
 #include <midifile.h>
 #include <oplplayer.h>
 #include <rg_system.h>
-#ifdef ESP_PLATFORM
-#include <esp_heap_caps.h>
-#endif
 
 #define AUDIO_SAMPLE_RATE 22050
 
@@ -532,17 +529,25 @@ static void options_handler(rg_gui_option_t *dest)
 
 void app_main()
 {
-    const rg_handlers_t handlers = {
-        .loadState = &load_state_handler,
-        .saveState = &save_state_handler,
-        .reset = &reset_handler,
-        .screenshot = &screenshot_handler,
-        .event = &event_handler,
-        .options = &options_handler,
+    const rg_config_t config = {
+        .sampleRate = AUDIO_SAMPLE_RATE,
+        .frameRate = TICRATE,
+        // Some things might be nice to place in internal RAM, but I do not have time to find such
+        // structures. So for now, prefer external RAM for most things except the framebuffer which
+        // is allocated above.
+        .mallocAlwaysInternal = 16,
+        .storageRequired = true,
+        .romRequired = true,
+        .handlers = {
+            .loadState = &load_state_handler,
+            .saveState = &save_state_handler,
+            .reset = &reset_handler,
+            .screenshot = &screenshot_handler,
+            .event = &event_handler,
+            .options = &options_handler,
+        },
     };
-
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
-    rg_system_set_tick_rate(TICRATE);
+    app = rg_system_init(&config);
 
     SCREENWIDTH = RG_MIN(rg_display_get_width(), MAX_SCREENWIDTH);
     SCREENHEIGHT = RG_MIN(rg_display_get_height(), MAX_SCREENHEIGHT);
@@ -573,13 +578,6 @@ void app_main()
     doom_argv[5] = "-file";
     doom_argv[6] = pwad;
     doom_argv[myargc] = 0;
-
-#ifdef ESP_PLATFORM
-    // Some things might be nice to place in internal RAM, but I do not have time to find such
-    // structures. So for now, prefer external RAM for most things except the framebuffer which
-    // is allocated above.
-    heap_caps_malloc_extmem_enable(0);
-#endif
 
     Z_Init();
     D_DoomMain();

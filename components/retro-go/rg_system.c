@@ -278,7 +278,7 @@ static void system_monitor_task(void *arg)
 
         // Auto frameskip
         // TODO: Use a rolling average of frameTimes instead of this mess
-        if (app.tickRate > 0 && statistics.ticks > app.tickRate * 2)
+        if (app.tickRate > 0 && statistics.ticks > app.tickRate * 2 && app.frameskip > -1) // -1 disables auto frameskip
         {
             float speed = statistics.speedPercent / app.speed;
             // We don't fully go back to 0 frameskip because if we dip below 95% once, we're clearly
@@ -379,20 +379,7 @@ static void platform_init(void)
 #endif
 }
 
-rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused)
-{
-    if (!app.initialized)
-        return rg_system_init(sampleRate, handlers, NULL);
-
-    app.sampleRate = sampleRate;
-    if (handlers)
-        app.handlers = *handlers;
-    rg_audio_set_sample_rate(app.sampleRate);
-
-    return &app;
-}
-
-rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_unused)
+rg_app_t *rg_system_init(const rg_config_t *config)
 {
     RG_ASSERT(app.initialized == false, "rg_system_init() was already called.");
     bool enterRecoveryMode = false;
@@ -408,7 +395,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
         .bootFlags = 0,
         .indicatorsMask = (1 << RG_INDICATOR_POWER_LOW),
         .speed = 1.f,
-        .sampleRate = sampleRate,
+        .sampleRate = 0,
         .tickRate = 60,
         .tickTimeout = 3000000,
         .frameTime = 1000000 / 60,
@@ -498,20 +485,40 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     app.romPath = app.bootArgs ?: ""; // For whatever reason some of our code isn't NULL-aware, sigh..
 
     rg_gui_draw_hourglass();
-    rg_audio_init(sampleRate);
 
+    if (config)
+    {
+        app.sampleRate = config->sampleRate;
+        app.tickRate = config->frameRate;
+        // app.frameskip = config->frameSkip;
+        if (config->mallocAlwaysInternal > 0)
+        {
+            #ifdef ESP_PLATFORM
+            heap_caps_malloc_extmem_enable(config->mallocAlwaysInternal);
+            #endif
+        }
+        if (config->storageRequired && !rg_storage_ready())
+        {
+            rg_display_clear(C_SKY_BLUE);
+            rg_gui_alert(_("SD Card Error"), _("Storage mount failed.\nMake sure the card is FAT32."));
+            rg_system_exit();
+        }
+        if (config->romRequired && !app.romPath && !*app.romPath)
+        {
+            // show rom picking dialog
+        }
+        app.isLauncher = config->isLauncher;
+        app.handlers = config->handlers;
+    }
+
+    if (app.sampleRate > 0)
+    {
+        rg_audio_init(app.sampleRate);
+    }
+
+    rg_system_set_tick_rate(app.tickRate);
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
-
-    // Do these last to not interfere with panic handling above
-    if (handlers)
-        app.handlers = *handlers;
-
-#ifdef RG_ENABLE_PROFILING
-    RG_LOGI("Profiling has been enabled at compile time!\n");
-    profile = rg_alloc(sizeof(*profile), MEM_SLOW);
-    profile->lock = rg_mutex_create();
-#endif
 
     if (app.lowMemoryMode)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
@@ -522,11 +529,27 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
+#ifdef RG_ENABLE_PROFILING
+    RG_LOGI("Profiling has been enabled at compile time!");
+    profile = rg_alloc(sizeof(*profile), MEM_SLOW);
+    profile->lock = rg_mutex_create();
+#endif
+
     update_memory_statistics();
     RG_LOGI("Available memory: %d/%d + %d/%d", statistics.freeMemoryInt / 1024, statistics.totalMemoryInt / 1024,
             statistics.freeMemoryExt / 1024, statistics.totalMemoryExt / 1024);
     RG_LOGI("Retro-Go ready.\n\n");
 
+    return &app;
+}
+
+rg_app_t *rg_system_reinit(int sampleRate, const rg_handlers_t *handlers, void *_unused)
+{
+    RG_ASSERT(app.initialized, "App not initialized");
+    rg_audio_set_sample_rate(app.sampleRate);
+    app.sampleRate = sampleRate;
+    if (handlers)
+        app.handlers = *handlers;
     return &app;
 }
 
@@ -810,7 +833,10 @@ rg_stats_t rg_system_get_stats(void)
 void rg_system_set_tick_rate(int tickRate)
 {
     app.tickRate = tickRate;
-    app.frameTime = 1000000 / (app.tickRate * app.speed);
+    if (tickRate > 0)
+        app.frameTime = 1000000 / (app.tickRate * app.speed);
+    else
+        app.frameTime = 1000000;
 }
 
 int rg_system_get_tick_rate(void)

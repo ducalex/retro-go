@@ -251,16 +251,20 @@ static void options_handler(rg_gui_option_t *dest)
 
 void app_main(void)
 {
-    const rg_handlers_t handlers = {
-        .loadState = &load_state_handler,
-        .saveState = &save_state_handler,
-        .reset = &reset_handler,
-        .screenshot = &screenshot_handler,
-        .event = &event_handler,
-        .options = &options_handler,
+    const rg_config_t config = {
+        .sampleRate = AUDIO_SAMPLE_RATE / 2,
+        .frameRate = 60,
+        .storageRequired = true,
+        .romRequired = true,
+        .handlers.loadState = &load_state_handler,
+        .handlers.saveState = &save_state_handler,
+        .handlers.reset = &reset_handler,
+        .handlers.screenshot = &screenshot_handler,
+        .handlers.event = &event_handler,
+        .handlers.options = &options_handler,
     };
-
-    app = rg_system_init(AUDIO_SAMPLE_RATE / 2, &handlers, NULL);
+    app = rg_system_init(&config);
+    app->frameskip = 2;
 
     yfm_enabled = rg_settings_get_number(NS_APP, SETTING_YFM_EMULATION, 1);
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
@@ -312,9 +316,6 @@ void app_main(void)
     {
         rg_emu_load_state(app->saveSlot);
     }
-
-    rg_system_set_tick_rate(60);
-    app->frameskip = 2;
 
     extern unsigned char gwenesis_vdp_regs[0x20];
     extern unsigned int gwenesis_vdp_status;

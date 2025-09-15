@@ -119,17 +119,20 @@ static void options_handler(rg_gui_option_t *dest)
 
 void app_main(void)
 {
-    const rg_handlers_t handlers = {
-        .loadState = &load_state_handler,
-        .saveState = &save_state_handler,
-        .reset = &reset_handler,
-        .screenshot = &screenshot_handler,
-        .event = &event_handler,
-        .options = &options_handler,
-    };
-
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
-    // app = rg_system_init(AUDIO_SAMPLE_RATE * 0.7, &handlers, NULL);
+    app = rg_system_init(&(const rg_config_t){
+        .sampleRate = AUDIO_SAMPLE_RATE,
+        .frameRate = 60,
+        .storageRequired = true,
+        .romRequired = true,
+        .handlers = {
+            .loadState = &load_state_handler,
+            .saveState = &save_state_handler,
+            .reset = &reset_handler,
+            .screenshot = &screenshot_handler,
+            .event = &event_handler,
+            .options = &options_handler,
+        },
+    });
     // rg_system_set_overclock(2);
 
     sound_master_enable = rg_settings_get_number(NS_APP, SETTING_SOUND_EMULATION, true);

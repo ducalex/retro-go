@@ -3,7 +3,12 @@
 
 void app_main(void)
 {
-    rg_app_t *app = rg_system_init(AUDIO_SAMPLE_RATE, NULL, NULL);
+    rg_app_t *app = rg_system_init(&(const rg_config_t){
+        .sampleRate = AUDIO_SAMPLE_RATE,
+        .frameRate = 60, // This was the old default, let's keep it
+        .storageRequired = true,
+        .romRequired = true,
+    });
 
     RG_LOGI("configNs=%s", app->configNs);
 

@@ -5,10 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#ifdef ESP_PLATFORM
-#include <esp_heap_caps.h>
-#endif
-
 #include "applications.h"
 #include "bookmarks.h"
 #include "browser.h"
@@ -450,34 +446,24 @@ static void about_handler(rg_gui_option_t *dest)
 
 void app_main(void)
 {
-    const rg_handlers_t handlers = {
-        .event = &event_handler,
-        .options = &options_handler,
-        .about = &about_handler,
-    };
-
-    app = rg_system_init(32000, &handlers, NULL);
+    app = rg_system_init(&(const rg_config_t){
+        .sampleRate = 32000,
+        .frameRate = 0,
+        // The launcher makes a lot of small allocations and it sometimes fills internal RAM, causing the SD Card driver to
+        // stop working. Lowering CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL and manually using rg_alloc to do internal allocs when
+        // needed is a better solution, but that would have to be done for every app. This is a good workaround for now.
+        .mallocAlwaysInternal = 1024,
+        .storageRequired = true,
+        .isLauncher = true,
+        .handlers.event = &event_handler,
+        .handlers.options = &options_handler,
+        .handlers.about = &about_handler,
+    });
     app->configNs = "launcher";
-    app->isLauncher = true;
 
-    if (!rg_storage_ready())
-    {
-        rg_display_clear(C_SKY_BLUE);
-        rg_gui_alert(_("SD Card Error"), _("Storage mount failed.\nMake sure the card is FAT32."));
-    }
-    else
-    {
-        rg_storage_mkdir(RG_BASE_PATH_CACHE);
-        rg_storage_mkdir(RG_BASE_PATH_CONFIG);
-        try_migrate();
-    }
-
-#ifdef ESP_PLATFORM
-    // The launcher makes a lot of small allocations and it sometimes fills internal RAM, causing the SD Card driver to
-    // stop working. Lowering CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL and manually using rg_alloc to do internal allocs when
-    // needed is a better solution, but that would have to be done for every app. This is a good workaround for now.
-    heap_caps_malloc_extmem_enable(1024);
-#endif
+    rg_storage_mkdir(RG_BASE_PATH_CACHE);
+    rg_storage_mkdir(RG_BASE_PATH_CONFIG);
+    try_migrate();
 
     retro_loop();
 }

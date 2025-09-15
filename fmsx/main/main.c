@@ -419,18 +419,19 @@ static void options_handler(rg_gui_option_t *dest)
 
 void app_main(void)
 {
-    const rg_handlers_t handlers = {
-        .loadState = &load_state_handler,
-        .saveState = &save_state_handler,
-        .reset = &reset_handler,
-        .screenshot = &screenshot_handler,
-        .event = &event_handler,
-        .options = &options_handler,
-    };
-
-    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
-    // This is probably not right, but the emulator outputs 440 samples per frame??
-    rg_system_set_tick_rate(55);
+    app = rg_system_init(&(const rg_config_t){
+        .sampleRate = AUDIO_SAMPLE_RATE,
+        .frameRate = 55, // This is probably not right, but the emulator outputs 440 samples per frame??
+        .storageRequired = true,
+        .handlers = {
+            .loadState = &load_state_handler,
+            .saveState = &save_state_handler,
+            .reset = &reset_handler,
+            .screenshot = &screenshot_handler,
+            .event = &event_handler,
+            .options = &options_handler,
+        },
+    });
 
     updates[0] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);
     updates[1] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);
