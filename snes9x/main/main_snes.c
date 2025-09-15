@@ -1,7 +1,9 @@
-#include "shared.h"
-
+#include <rg_system.h>
 #include <snes9x.h>
 #include <math.h>
+
+#define AUDIO_SAMPLE_RATE   (32000)
+#define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
 // #define FRAME_DOUBLE_BUFFERING
 // #define AUDIO_DOUBLE_BUFFERING
@@ -340,7 +342,7 @@ static void options_handler(rg_gui_option_t *dest)
     *dest++ = (rg_gui_option_t)RG_DIALOG_END;
 }
 
-void snes_main(void)
+void app_main(void)
 {
     const rg_handlers_t handlers = {
         .loadState = &load_state_handler,
@@ -350,7 +352,7 @@ void snes_main(void)
         .event = &event_handler,
         .options = &options_handler,
     };
-    app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
+    app = rg_system_init(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     // Load settings
     sound_enabled = rg_settings_get_number(NS_APP, SETTING_SOUND_EMULATION, 1);

@@ -6,4 +6,4 @@ IDF_TARGET = "esp32p4"
 # .fw file format, if supported by the device
 # FW_FORMAT = "odroid"
 # Default apps to build when none is specified (comment to build all)
-DEFAULT_APPS = "launcher retro-core gwenesis fmsx prboom-go gbsp"
+DEFAULT_APPS = " ".join(PROJECT_APPS.keys()) # All of them all the time!

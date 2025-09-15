@@ -21,8 +21,6 @@ void app_main(void)
         sms_main();
     else if (strcmp(app->configNs, "gw") == 0)
         gw_main();
-    else if (strcmp(app->configNs, "snes") == 0)
-        snes_main();
 #ifndef __TINYC__
     else if (strcmp(app->configNs, "lnx") == 0)
         lynx_main();

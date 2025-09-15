@@ -19,6 +19,9 @@
 			"path": "prboom-go"
 		},
 		{
+			"path": "snes9x"
+		},
+		{
 			"path": "retro-core"
 		},
 		{
