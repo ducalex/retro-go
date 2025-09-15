@@ -534,10 +534,10 @@ void app_main()
         .frameRate = TICRATE,
         // Some things might be nice to place in internal RAM, but I do not have time to find such
         // structures. So for now, prefer external RAM for most things except the framebuffer which
-        // is allocated above.
-        .mallocAlwaysInternal = 16,
+        // is allocated below.
+        .mallocAlwaysInternal = 1, // I want 0 but 0 will be ignored, so 1 it is!
         .storageRequired = true,
-        .romRequired = true,
+        .romRequired = false,
         .handlers = {
             .loadState = &load_state_handler,
             .saveState = &save_state_handler,
