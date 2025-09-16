@@ -763,7 +763,7 @@ bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS)
 {
     RG_ASSERT_ARG(mutex);
 #if defined(ESP_PLATFORM)
-    int timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    TickType_t timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
     return xSemaphoreTake((QueueHandle_t)mutex, timeout) == pdPASS;
 #elif defined(RG_TARGET_SDL2)
     return SDL_LockMutex((SDL_mutex *)mutex) == 0;
