@@ -335,8 +335,8 @@ unsigned int GetFreeAudio(void)
 void PlayAllSound(int uSec)
 {
     int64_t start = rg_system_timer();
-    unsigned int samples = 2 * uSec * AUDIO_SAMPLE_RATE / 1000000;
-    rg_task_send(audioQueue, &(rg_task_msg_t){.dataInt = samples});
+    rg_task_msg_t msg = {.dataInt = 2 * uSec * AUDIO_SAMPLE_RATE / 1000000};
+    rg_task_send(audioQueue, &msg, -1);
     FrameStartTime += rg_system_timer() - start;
 }
 
@@ -403,10 +403,10 @@ static void audioTask(void *arg)
 {
     RG_LOGI("task started");
     rg_task_msg_t msg;
-    while (rg_task_peek(&msg))
+    while (rg_task_peek(&msg, -1))
     {
         RenderAndPlayAudio(msg.dataInt);
-        rg_task_receive(&msg);
+        rg_task_receive(&msg, -1);
     }
 }
 

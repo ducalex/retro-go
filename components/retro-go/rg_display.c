@@ -347,7 +347,7 @@ static void display_task(void *arg)
 {
     rg_task_msg_t msg;
 
-    while (rg_task_peek(&msg))
+    while (rg_task_peek(&msg, -1))
     {
         // Received a shutdown request!
         if (msg.type == RG_TASK_MSG_STOP)
@@ -369,7 +369,7 @@ static void display_task(void *arg)
 
         write_update(msg.dataPtr);
         // draw_on_screen_display(0, display.screen.height);
-        rg_task_receive(&msg);
+        rg_task_receive(&msg, -1);
 
         lcd_sync();
     }
@@ -504,7 +504,7 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
         display.changed = true;
     }
 
-    rg_task_send(display_task_queue, &(rg_task_msg_t){.dataPtr = update});
+    rg_task_send(display_task_queue, &(rg_task_msg_t){.dataPtr = update}, -1);
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
@@ -615,7 +615,7 @@ void rg_display_clear(uint16_t color_le)
 
 void rg_display_deinit(void)
 {
-    rg_task_send(display_task_queue, &(rg_task_msg_t){.type = RG_TASK_MSG_STOP});
+    rg_task_send(display_task_queue, &(rg_task_msg_t){.type = RG_TASK_MSG_STOP}, -1);
     // lcd_set_backlight(0);
     lcd_deinit();
     RG_LOGI("Display terminated.\n");

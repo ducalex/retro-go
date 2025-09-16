@@ -255,9 +255,9 @@ typedef struct
 rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
 rg_task_t *rg_task_find(const char *name);
 rg_task_t *rg_task_current(void);
-bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg);
-bool rg_task_peek(rg_task_msg_t *out);
-bool rg_task_receive(rg_task_msg_t *out);
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg, int timeoutMS);
+bool rg_task_peek(rg_task_msg_t *out, int timeoutMS);
+bool rg_task_receive(rg_task_msg_t *out, int timeoutMS);
 bool rg_task_is_blocked(rg_task_t *task);
 size_t rg_task_messages_waiting(rg_task_t *task);
 // The main difference between rg_task_delay and rg_usleep is that rg_task_delay will yield

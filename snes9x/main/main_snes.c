@@ -312,7 +312,7 @@ static void audio_task(void *arg)
     rg_audio_sample_t *audioBuffer = rg_alloc(AUDIO_BUFFER_LENGTH * 4, MEM_FAST);
     rg_task_msg_t msg;
     bool zeroed = false;
-    while (rg_task_receive(&msg))
+    while (rg_task_receive(&msg, -1))
     {
         if (msg.type == RG_TASK_MSG_STOP)
             break;
@@ -491,7 +491,7 @@ void app_main(void)
         rg_system_tick(rg_system_timer() - startTime);
         rg_task_msg_t msg = {.type = (int)sound_enabled, .dataInt = samples};
         if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
-            rg_task_send(audio_task_handle, &msg);
+            rg_task_send(audio_task_handle, &msg, -1);
     #else
         if (sound_enabled && lowpass_filter)
             S9xMixSamplesLowPass((int16_t *)audioBuffer, samples << 1, AUDIO_LOW_PASS_RANGE);

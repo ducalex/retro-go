@@ -491,12 +491,6 @@ rg_app_t *rg_system_init(const rg_config_t *config)
         app.sampleRate = config->sampleRate;
         app.tickRate = config->frameRate;
         // app.frameskip = config->frameSkip;
-        if (config->mallocAlwaysInternal > 0)
-        {
-            #ifdef ESP_PLATFORM
-            heap_caps_malloc_extmem_enable(config->mallocAlwaysInternal);
-            #endif
-        }
         if (config->storageRequired && !rg_storage_ready())
         {
             rg_display_clear(C_SKY_BLUE);
@@ -506,6 +500,13 @@ rg_app_t *rg_system_init(const rg_config_t *config)
         if (config->romRequired && !app.romPath && !*app.romPath)
         {
             // show rom picking dialog
+            // app.romPath = rg_gui_file_picker(_("Choose ROM"), RG_BASE_PATH_ROMS, NULL, true, false);
+        }
+        if (config->mallocAlwaysInternal > 0)
+        {
+        #ifdef ESP_PLATFORM
+            heap_caps_malloc_extmem_enable(config->mallocAlwaysInternal);
+        #endif
         }
         app.isLauncher = config->isLauncher;
         app.handlers = config->handlers;
@@ -641,11 +642,12 @@ rg_task_t *rg_task_current(void)
     return NULL;
 }
 
-bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg)
+bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg, int timeoutMS)
 {
     RG_ASSERT_ARG(task && msg);
 #if defined(ESP_PLATFORM)
-    return xQueueSend(task->queue, msg, portMAX_DELAY) == pdTRUE;
+    TickType_t timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    return xQueueSend(task->queue, msg, timeout) == pdTRUE;
 #elif defined(RG_TARGET_SDL2)
     while (task->msgWaiting > 0)
         continue;
@@ -655,7 +657,7 @@ bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg)
 #endif
 }
 
-bool rg_task_peek(rg_task_msg_t *out)
+bool rg_task_peek(rg_task_msg_t *out, int timeoutMS)
 {
     rg_task_t *task = rg_task_current();
     bool success = false;
@@ -663,7 +665,8 @@ bool rg_task_peek(rg_task_msg_t *out)
         return false;
     // task->blocked = true;
 #if defined(ESP_PLATFORM)
-    success = xQueuePeek(task->queue, out, portMAX_DELAY) == pdTRUE;
+    TickType_t timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    success = xQueuePeek(task->queue, out, timeout) == pdTRUE;
 #elif defined(RG_TARGET_SDL2)
     while (task->msgWaiting < 1)
         continue;
@@ -673,7 +676,7 @@ bool rg_task_peek(rg_task_msg_t *out)
     return success;
 }
 
-bool rg_task_receive(rg_task_msg_t *out)
+bool rg_task_receive(rg_task_msg_t *out, int timeoutMS)
 {
     rg_task_t *task = rg_task_current();
     bool success = false;
@@ -681,7 +684,8 @@ bool rg_task_receive(rg_task_msg_t *out)
         return false;
     // task->blocked = true;
 #if defined(ESP_PLATFORM)
-    success = xQueueReceive(task->queue, out, portMAX_DELAY) == pdTRUE;
+    TickType_t timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
+    success = xQueueReceive(task->queue, out, timeout) == pdTRUE;
 #elif defined(RG_TARGET_SDL2)
     while (task->msgWaiting < 1)
         continue;
@@ -759,7 +763,7 @@ bool rg_mutex_take(rg_mutex_t *mutex, int timeoutMS)
 {
     RG_ASSERT_ARG(mutex);
 #if defined(ESP_PLATFORM)
-    int timeout = timeoutMS >= 0 ? pdMS_TO_TICKS(timeoutMS) : portMAX_DELAY;
+    int timeout = timeoutMS < 0 ? portMAX_DELAY : pdMS_TO_TICKS(timeoutMS);
     return xSemaphoreTake((QueueHandle_t)mutex, timeout) == pdPASS;
 #elif defined(RG_TARGET_SDL2)
     return SDL_LockMutex((SDL_mutex *)mutex) == 0;

@@ -218,7 +218,7 @@ static rg_gui_event_t core1_sound_update_cb(rg_gui_option_t *option, rg_gui_even
 static void core1_task(void *arg)
 {
     rg_task_msg_t msg;
-    while (rg_task_receive(&msg))
+    while (rg_task_receive(&msg, -1))
     {
         switch (msg.type)
         {
@@ -391,7 +391,8 @@ void app_main(void)
             if (GWENESIS_AUDIO_ACCURATE == 0) {
                 if (core1_task_sound)
                 {
-                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 2, .dataInt = system_clock + VDP_CYCLES_PER_LINE});
+                    rg_task_msg_t msg = {.type = 2, .dataInt = system_clock + VDP_CYCLES_PER_LINE};
+                    rg_task_send(core1_task_handle, &msg, -1);
                 }
                 else
                 {
@@ -404,7 +405,7 @@ void app_main(void)
             if (drawFrame && scan_line < screen_height)
             {
                 if (core1_task_rendering)
-                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 1, .dataInt = scan_line});
+                    rg_task_send(core1_task_handle, &(rg_task_msg_t){.type = 1, .dataInt = scan_line}, -1);
                 else
                     gwenesis_vdp_render_line(scan_line); /* render scan_line */
             }
@@ -448,8 +449,9 @@ void app_main(void)
         // Make sure all our previous messages have been processed before we continue
         if (core1_task_rendering || core1_task_sound)
         {
-            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
-            rg_task_send(core1_task_handle, &(rg_task_msg_t){0});
+            const rg_task_msg_t msg = {0};
+            rg_task_send(core1_task_handle, &msg, -1);
+            rg_task_send(core1_task_handle, &msg, -1);
         }
 
         /* Audio
