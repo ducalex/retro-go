@@ -346,6 +346,7 @@ void app_main(void)
         .sampleRate = AUDIO_SAMPLE_RATE,
         .storageRequired = true,
         .romRequired = true,
+        .mallocAlwaysInternal = 0x10000,
         .handlers.loadState = &load_state_handler,
         .handlers.saveState = &save_state_handler,
         .handlers.reset = &reset_handler,
