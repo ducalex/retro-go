@@ -199,8 +199,9 @@ static void update_statistics(void)
 
     if (counters.ticks && previous.ticks)
     {
+        const float usPerSecond = 1000000.f * (overclockMhz ? overclockMhz / 240.f : 1.f);
         float totalTime = counters.updateTime - previous.updateTime;
-        float totalTimeSecs = totalTime / 1000000.f;
+        float totalTimeSecs = totalTime / usPerSecond;
         float busyTime = counters.busyTime - previous.busyTime;
         float ticks = counters.ticks - previous.ticks;
         float fullFrames = counters.fullFrames - previous.fullFrames;
@@ -1197,11 +1198,6 @@ void rg_system_set_overclock(int level)
     // ets_update_cpu_frequency(real_mhz);
 #endif
 
-    // This is a lazy hack to report a more accurate emulation speed. Obviously this isn't a real solution.
-    static int original_tickRate = 0;
-    if (!original_tickRate)
-        original_tickRate = app.tickRate;
-    app.tickRate = original_tickRate * (240.f / real_mhz);
     app.frameskip = 1;
 
     overclockLevel = level;
