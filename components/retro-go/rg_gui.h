@@ -117,17 +117,17 @@ void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, co
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+rg_rect_t rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel);
+rg_rect_t rg_gui_draw_message(const char *format, ...);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
-void rg_gui_draw_icons(void);
-void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
+void rg_gui_draw_icons(void);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
 void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout_t *map, int cursor_pos, bool partial_redraw);
 void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
                               const rg_keyboard_layout_t *layout_ptr, int cursor_pos, bool partial_redraw);
-void rg_gui_draw_message(const char *format, ...);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);

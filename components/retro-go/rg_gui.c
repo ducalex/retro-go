@@ -661,7 +661,7 @@ static size_t get_dialog_items_count(const rg_gui_option_t *options)
     return opt - options;
 }
 
-void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel)
+rg_rect_t rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel) // const rg_rect_t *rect,
 {
     RG_ASSERT_ARG(options || options_count == 0);
 
@@ -674,6 +674,7 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
     const int row_padding_x = 8;
     const int max_inner_width = max_box_width - sep_width - (row_padding_x + box_padding) * 2;
 
+    int box_x, box_y;
     int box_width = box_padding * 2;
     int box_height = box_padding * 2 + (title ? font_height + 6 : 0);
     int inner_width = TEXT_RECT(title, 0).width;
@@ -717,9 +718,8 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
     col2_width = inner_width - col1_width - sep_width;
     box_width += inner_width + row_padding_x * 2;
     box_height = RG_MIN(box_height, max_box_height);
-
-    const int box_x = (gui.screen_width - box_width) / 2;
-    const int box_y = (gui.screen_height - box_height) / 2;
+    box_x = (gui.screen_width - box_width) / 2;
+    box_y = (gui.screen_height - box_height) / 2;
 
     int x = box_x + box_padding;
     int y = box_y + box_padding;
@@ -804,8 +804,13 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         rg_gui_draw_rect(box_x, y, box_width, (box_y + box_height) - y, 0, 0, gui.style.box_background);
     }
 
+    // Draw box border
     rg_gui_draw_rect(box_x, box_y, box_width, box_height, box_padding, gui.style.box_background, C_NONE);
     rg_gui_draw_rect(box_x - 1, box_y - 1, box_width + 2, box_height + 2, 1, gui.style.box_border, C_NONE);
+
+    // Draw box shadow
+    // rg_gui_draw_rect(box_x + box_width + 4, box_y + box_height, box_width, 4, 0, C_NONE, gui.style.shadow); // Bottom
+    // rg_gui_draw_rect(box_x + box_width, box_y + 4, 4, box_height, 0, C_NONE, gui.style.shadow); // left
 
     // Basic scroll indicators are overlayed at the end...
     if (list_top_i > 0)
@@ -816,7 +821,6 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
         rg_gui_draw_rect(x + 2, y - 4, 2, 2, 0, 0, gui.style.scrollbar);
     }
-
     if (list_end_i + 1 < options_count)
     {
         int x = box_x + box_width - 10;
@@ -825,9 +829,11 @@ void rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_
         rg_gui_draw_rect(x + 1, y - 2, 4, 2, 0, 0, gui.style.scrollbar);
         rg_gui_draw_rect(x + 2, y - 0, 2, 2, 0, 0, gui.style.scrollbar);
     }
+
+    return (rg_rect_t){box_x, box_y, box_width, box_height};
 }
 
-void rg_gui_draw_message(const char *format, ...)
+rg_rect_t rg_gui_draw_message(const char *format, ...) // const rg_rect_t *rect,
 {
     RG_ASSERT_ARG(format);
 
@@ -841,7 +847,7 @@ void rg_gui_draw_message(const char *format, ...)
         RG_DIALOG_END,
     };
     // FIXME: Should rg_display_force_redraw() be called? Before? After? Both?
-    rg_gui_draw_dialog(NULL, options, 1, 0);
+    return rg_gui_draw_dialog(NULL, options, 1, 0);
 }
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options_const, int selected_index)
@@ -2153,7 +2159,7 @@ void rg_gui_debug_menu(void)
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(app_name, 32, "%s", rg_system_get_app()->name);
-    snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+    snprintf(uptime, 20, "%ds", stats.uptime);
     snprintf(overclock, 20, "%d (%dMhz)", rg_system_get_overclock(), rg_system_get_cpu_speed());
 
     rg_battery_t battery;
