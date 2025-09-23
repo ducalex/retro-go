@@ -62,7 +62,6 @@ else:
     ESPTOOL_PY = "esptool.py"
     PARTTOOL_PY = "parttool.py"
     GEN_ESP32PART_PY = "gen_esp32part.py"
-MKIMG_PY = os.path.join("tools", "mkimg.py")
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
 
@@ -73,83 +72,28 @@ def run(cmd, cwd=None, check=True):
     return subprocess.run(cmd, shell=False, cwd=cwd, check=check)
 
 
-def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0, info_target="unknown", info_version="unknown"):
-    print("Building firmware with: %s\n" % " ".join(apps))
-    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {info_version}", PROJECT_ICON]
+def build_image(apps, output_file, img_type="odroid", fatsize=0, target="unknown", version="unknown"):
+    print("Building firmware image with: %s\n" % " ".join(apps))
+    args = [MKFW_PY, "--type", img_type, "--name", PROJECT_NAME, "--icon", PROJECT_ICON, "--version", PROJECT_VER]
 
-    if fw_format == "esplay":
-        args.append("--esplay")
+    if img_type not in ["odroid", "esplay"]:
+        print("Building bootloader...")
+        bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
+        if not os.path.exists(bootloader_file):
+            run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+        args += ["--target", target, "--bootloader", bootloader_file]
 
+    args += [output_file]
+
+    ota_next_id = 16
     for app in apps:
         part = PROJECT_APPS[app]
-        args += [str(part[0]), str(part[1]), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
+        args += [str(part[0]), str(ota_next_id), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
+        ota_next_id += 1
+    if fatsize:
+        args += ["1", "129", fatsize, "vfs", "none"]
 
     run(args)
-
-
-def build_image(output_file, apps, img_format="esp32", fatsize=0, info_target="unknown", info_version="unknown"):
-    print("Building image with: %s\n" % " ".join(apps))
-    image_data = bytearray(b"\xFF" * 0x10000)
-    table_ota = 0
-    table_csv = [
-        "nvs, data, nvs, 36864, 16384",
-        "otadata, data, ota, 53248, 8192",
-        "phy_init, data, phy, 61440, 4096",
-    ]
-
-    for app in apps:
-        with open(os.path.join(app, "build", app + ".bin"), "rb") as f:
-            data = f.read()
-        part_size = max(PROJECT_APPS[app][2], math.ceil(len(data) / 0x10000) * 0x10000)
-        table_csv.append("%s, app, ota_%d, %d, %d" % (app, table_ota, len(image_data), part_size))
-        table_ota += 1
-        image_data += data + b"\xFF" * (part_size - len(data))
-
-    if fatsize:
-        # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
-        table_csv.append("vfs, data, fat, %d, %s" % (len(image_data), fatsize))
-
-    print("Generating partition table...")
-    with open("partitions.csv", "w") as f:
-        f.write("\n".join(table_csv))
-    run([GEN_ESP32PART_PY, "partitions.csv", "partitions.bin"])
-    with open("partitions.bin", "rb") as f:
-        table_bin = f.read()
-
-    print("Building bootloader...")
-    bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
-    if not os.path.exists(bootloader_file):
-        run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
-    with open(bootloader_file, "rb") as f:
-        bootloader_bin = f.read()
-
-    if img_format == "esp32s3":
-        image_data[0x0000:0x0000+len(bootloader_bin)] = bootloader_bin
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
-    elif img_format == "esp32p4":
-        image_data[0x2000:0x2000+len(bootloader_bin)] = bootloader_bin
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
-    else:
-        image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
-
-    # Append the information structure used by retro-go's updater.
-    image_data += struct.pack(
-        "<III32s32s180s",
-        0x31304752,             # Magic number "RG01"
-        zlib.crc32(image_data), # CRC of the image not including this footer
-        int(time.time()),       # Unix timestamp
-        info_target.encode(),   # Name of the target device
-        info_version.encode(),  # Version
-        b"\xFF" * 256,          # 0xFF padding of the reserved area
-    )
-
-    with open(output_file, "wb") as f:
-        f.write(image_data)
-
-    print("\nPartition table:")
-    print("\n".join(table_csv))
-    print("\nSaved image '%s' (%d bytes)\n" % (output_file, len(image_data)))
 
 
 def clean_app(app):
@@ -275,14 +219,14 @@ try:
         print("=== Step: Packing ===\n")
         if FW_FORMAT in ["odroid", "esplay"]:
             fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-            build_firmware(fw_file, apps, FW_FORMAT, args.fatsize, args.target, PROJECT_VER)
+            build_image(apps, fw_file, FW_FORMAT, args.fatsize, args.target, PROJECT_VER)
         else:
             print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
         img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_image(img_file, apps, IDF_TARGET, args.fatsize, args.target, PROJECT_VER)
+        build_image(apps, img_file, IDF_TARGET, args.fatsize, args.target, PROJECT_VER)
 
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")

@@ -11,21 +11,20 @@
 #include <esp_spi_flash.h>
 #include <esp_ota_ops.h>
 
-#if CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
-#define CAN_UPDATE_PARTITION_TABLE 1
-#else
-#define CAN_UPDATE_PARTITION_TABLE 0
-#endif
+// CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
 
-#define RETRO_GO_IMG_MAGIC 0x31304752 // "RG01"
+#define MAX_PARTITIONS (24) // ESP_PARTITION_TABLE_MAX_ENTRIES
+
+#define RETRO_GO_IMG_MAGIC "RG_IMG_0"
 typedef struct
 {
-    uint32_t magic;
-    uint32_t crc32;
+    uint8_t magic[8];
+    char name[28];
+    char version[28];
+    char target[28];
     uint32_t timestamp;
-    char target[32];
-    char version[32];
-    char reserved[180];
+    uint32_t crc32;
+    char reserved[156];
 } img_info_t;
 
 #define FORMAT(message...) ({snprintf(message_buffer, sizeof(message_buffer), message); message_buffer; })
@@ -70,10 +69,11 @@ static bool do_update(const char *filename)
     filesize = ftell(fp); // Size without the footer
     TRY(fread(&img_info, sizeof(img_info), 1, fp), "File read failed");
 
-    img_info.target[sizeof(img_info.target) - 1] = 0;   // Just in case
+    img_info.name[sizeof(img_info.name) - 1] = 0;   // Just in case
     img_info.version[sizeof(img_info.version) - 1] = 0; // Just in case
+    img_info.target[sizeof(img_info.target) - 1] = 0;   // Just in case
 
-    if (img_info.magic != RETRO_GO_IMG_MAGIC) // Invalid image
+    if (memcmp(img_info.magic, RETRO_GO_IMG_MAGIC, 8) != 0) // Invalid image
     {
         CONFIRM("Warning", "File is not a valid Retro-Go image.\nContinue anyway?");
     }
