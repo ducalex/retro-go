@@ -357,12 +357,17 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
 
     DIR *dir = opendir(path);
     if (!dir)
+    {
+        if (errno != ENOENT) // Only log unusual errors. Path not found isn't unusual.
+            RG_LOGE("Opendir failed (%d): '%s'", errno, path);
         return false;
+    }
 
     // We allocate on heap in case we go recursive through rg_storage_delete
     rg_scandir_t *result = calloc(1, sizeof(rg_scandir_t));
     if (!result)
     {
+        RG_LOGE("Memory allocation failed: '%s'", path);
         closedir(dir);
         return false;
     }
@@ -456,7 +461,8 @@ bool rg_storage_read_file(const char *path, void **data_out, size_t *data_len, u
     FILE *fp = fopen(path, "rb");
     if (!fp)
     {
-        RG_LOGE("Fopen failed (%d): '%s'", errno, path);
+        if (errno != ENOENT) // Only log unusual errors. Path not found isn't unusual.
+            RG_LOGE("Fopen failed (%d): '%s'", errno, path);
         return false;
     }
 
@@ -574,7 +580,8 @@ bool rg_storage_unzip_file(const char *zip_path, const char *filter, void **data
     FILE *fp = fopen(zip_path, "rb");
     if (!fp)
     {
-        RG_LOGE("Fopen failed (%d): '%s'", errno, zip_path);
+        if (errno != ENOENT) // Only log unusual errors. Path not found isn't unusual.
+            RG_LOGE("Fopen failed (%d): '%s'", errno, zip_path);
         return false;
     }
 
