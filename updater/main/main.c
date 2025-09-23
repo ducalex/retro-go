@@ -14,6 +14,7 @@
 // CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
 
 #define MAX_PARTITIONS (24) // ESP_PARTITION_TABLE_MAX_ENTRIES
+#define ALIGN_BLOCK(val, alignment) ((int)(((val) + (alignment - 1)) / alignment) * alignment)
 
 #define RETRO_GO_IMG_MAGIC "RG_IMG_0"
 typedef struct
@@ -27,155 +28,204 @@ typedef struct
     char reserved[156];
 } img_info_t;
 
-#define FORMAT(message...) ({snprintf(message_buffer, sizeof(message_buffer), message); message_buffer; })
-#define CONFIRM(title, message...)                             \
-    {                                                          \
-        if (!rg_gui_confirm(_(title), FORMAT(message), false)) \
-            return false;                                      \
-        rg_display_clear(C_BLACK);                             \
-    }
-#define TRY(cond, error_message)                 \
-    if (!(cond))                                 \
-    {                                            \
-        rg_gui_alert(_("Error"), error_message); \
-        return false;                            \
-    }
-
 typedef struct
 {
-    const esp_partition_info_t *src;
-    const esp_partition_t *dst;
-} partition_pair_t;
+    char name[17];
+    struct {int offset, size;} src;
+    struct {int offset, size;} dst;
+} flash_task_t;
 
+static size_t gp_buffer_size = 0x20000;
+static void *gp_buffer = NULL;
 static rg_app_t *app;
-// static esp_partition_info_t device_partition_table[ESP_PARTITION_TABLE_MAX_ENTRIES];
+
+#define FORMAT(message...) ({snprintf(message_buffer, sizeof(message_buffer), message); message_buffer; })
+#define TRY(cond, error_message...)                      \
+    RG_LOGD("Line: %s", #cond);                          \
+    if (!(cond))                                         \
+    {                                                    \
+        rg_gui_alert(_("Error"), FORMAT(error_message)); \
+        goto fail;                                       \
+    }
+
+static bool fread_at(void *output, int offset, int length, FILE *fp)
+{
+    if (offset < 0 && !(fseek(fp, 0, SEEK_END) == 0 && fseek(fp, offset, SEEK_CUR) == 0))
+        return false;
+    else if (offset >= 0 && !(fseek(fp, offset, SEEK_SET) == 0))
+        return false;
+    return fread(output, length, 1, fp) == 1;
+}
+
+static bool parse_file(esp_partition_info_t *partition_table, size_t *num_partitions, FILE *fp)
+{
+    char message_buffer[256];
+    img_info_t img_info;
+    int _num_partitions;
+
+    TRY(fread_at(&img_info, -sizeof(img_info_t), sizeof(img_info_t), fp), "File read failed");
+    img_info.name[sizeof(img_info.name) - 1] = 0;       // Just in case
+    img_info.version[sizeof(img_info.version) - 1] = 0; // Just in case
+    img_info.target[sizeof(img_info.target) - 1] = 0;   // Just in case
+
+    if (memcmp(img_info.magic, RETRO_GO_IMG_MAGIC, 8) == 0) // Valid retro-go image
+    {
+        if (strcasecmp(img_info.target, RG_TARGET_NAME) != 0) // Wrong target
+        {
+            FORMAT("The file appears to be for a different device.\n"
+                   "Current device: %s\n"
+                   "Image device: %s\n\n"
+                   "Do you want to continue anyway?",
+                   RG_TARGET_NAME,
+                   img_info.target);
+            if (!rg_gui_confirm("Warning", message_buffer, false))
+                goto fail;
+        }
+        // TODO: Validate checksum
+        FORMAT("Current version: %s\nNew version: %s\n\nContinue?", app->version, img_info.version);
+        if (!rg_gui_confirm("Warning", message_buffer, false))
+            goto fail;
+    }
+    else if (!rg_gui_confirm("Warning", "File is not a valid Retro-Go image.\nContinue anyway?", false))
+    {
+        goto fail;
+    }
+    // TODO: Also support images that truncate the first 0x1000, just in case
+    TRY(fread_at(gp_buffer, ESP_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_MAX_LEN, fp), "File read failed");
+    TRY(esp_partition_table_verify((const esp_partition_info_t *)gp_buffer, true, &_num_partitions) == ESP_OK, "File is not a valid ESP32 image.");
+    memcpy(partition_table, gp_buffer, sizeof(esp_partition_info_t) * _num_partitions);
+    *num_partitions = _num_partitions;
+    return true;
+fail:
+    return false;
+}
+
+static bool do_flash(flash_task_t *queue, size_t queue_count, FILE *fp)
+{
+    char message_buffer[256];
+    rg_gui_option_t lines[queue_count + 4];
+    // size_t lines_count = 0;
+
+    for (size_t i = 0; i < queue_count; ++i)
+        lines[i] = (rg_gui_option_t){0, queue[i].name, NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+    lines[queue_count + 0] = (rg_gui_option_t)RG_DIALOG_SEPARATOR;
+    lines[queue_count + 1] = (rg_gui_option_t){5, "Proceed!", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+    lines[queue_count + 2] = (rg_gui_option_t)RG_DIALOG_END;
+
+    if (rg_gui_dialog("Partitions to be updated:", lines, -1) != 5)
+        goto fail;
+
+#define TRY_F(msg, cond, err)                                  \
+    RG_LOGD("Line: %s", #cond);                                \
+    rg_display_clear(C_BLACK);                                 \
+    lines[i].flags = RG_DIALOG_FLAG_NORMAL;                    \
+    lines[i].value = msg;                                      \
+    rg_gui_draw_dialog("Progress", lines, queue_count, i);     \
+    if (!(cond))                                               \
+    {                                                          \
+        lines[i].value = err;                                  \
+        rg_gui_draw_dialog("Progress", lines, queue_count, i); \
+        errors++;                                              \
+        break;                                                 \
+    }
+
+    int errors = 0;
+
+    for (size_t i = 0; i < queue_count; ++i)
+        lines[i].value = "Pending", lines[i].flags = RG_DIALOG_FLAG_DISABLED;
+
+    for (size_t i = 0; i < queue_count; ++i)
+    {
+        const flash_task_t *t = &queue[i];
+        TRY_F("Erasing", spi_flash_erase_range(t->dst.offset, t->dst.size) == ESP_OK || true, "Erase err");
+        int offset = 0, size = t->src.size;
+        while (size > 0)
+        {
+            int chunk_size = ALIGN_BLOCK(RG_MIN(size, gp_buffer_size), 0x1000);
+            TRY_F("Reading", fread_at(gp_buffer, t->src.offset + offset, chunk_size, fp), "Read err");
+            TRY_F("Writing", spi_flash_write(t->dst.offset + offset, gp_buffer, chunk_size) == ESP_OK, "Write err");
+            offset += chunk_size;
+            size -= chunk_size;
+        }
+        TRY_F("Complete", size == 0, "Failed");
+    }
+
+    lines[queue_count + 0] = (rg_gui_option_t){0, FORMAT("  - %d errors -  ", errors), NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+    lines[queue_count + 1] = (rg_gui_option_t){0, "Complete!", NULL, RG_DIALOG_FLAG_NORMAL, NULL};
+    lines[queue_count + 2] = (rg_gui_option_t)RG_DIALOG_END;
+    rg_gui_dialog("Complete", lines, -1);
+    return true;
+fail:
+    return false;
+}
+
+static bool do_update_dangerous(const char *filename)
+{
+    return false;
+}
 
 static bool do_update(const char *filename)
 {
+    esp_partition_info_t partition_table[MAX_PARTITIONS] = {0};
+    size_t num_partitions = 0;
+    flash_task_t queue[MAX_PARTITIONS] = {0};
+    size_t queue_count = 0;
     char message_buffer[256];
-    esp_partition_info_t partition_table[16]; // ESP_PARTITION_TABLE_MAX_ENTRIES
-    int num_partitions = 0;
-    img_info_t img_info;
-    void *buffer;
-    int filesize = 0;
-    FILE *fp;
+    FILE *fp = NULL;
 
     RG_LOGI("Filename: %s", filename);
     rg_display_clear(C_BLACK);
 
     TRY(fp = fopen(filename, "rb"), "File open failed");
-    TRY(fseek(fp, 0, SEEK_END) == 0, "File seek failed");
-    TRY(fseek(fp, -sizeof(img_info_t), SEEK_CUR) == 0, "File seek failed");
-    filesize = ftell(fp); // Size without the footer
-    TRY(fread(&img_info, sizeof(img_info), 1, fp), "File read failed");
-
-    img_info.name[sizeof(img_info.name) - 1] = 0;   // Just in case
-    img_info.version[sizeof(img_info.version) - 1] = 0; // Just in case
-    img_info.target[sizeof(img_info.target) - 1] = 0;   // Just in case
-
-    if (memcmp(img_info.magic, RETRO_GO_IMG_MAGIC, 8) != 0) // Invalid image
-    {
-        CONFIRM("Warning", "File is not a valid Retro-Go image.\nContinue anyway?");
-    }
-    else if (strcasecmp(img_info.target, RG_TARGET_NAME) != 0) // Wrong target
-    {
-        CONFIRM("Warning",
-                "The file appears to be for a different device.\n"
-                "Current device: %s\n"
-                "Image device: %s\n\n"
-                "Do you want to continue anyway?",
-                RG_TARGET_NAME,
-                img_info.target);
-    }
-    else // Valid image
-    {
-        CONFIRM("Version", "Current version: %s\nNew version: %s\n\nContinue?", app->version, img_info.version);
-    }
-
-    // TODO: Also support images that truncate the first 0x1000, just in case
-    TRY(fseek(fp, ESP_PARTITION_TABLE_OFFSET, SEEK_SET) == 0, "File seek failed");
-    TRY(fread(&partition_table, sizeof(partition_table), 1, fp), "File read failed");
-    TRY(esp_partition_table_verify(partition_table, true, &num_partitions) == ESP_OK, "File is not a valid ESP32 image.\nCannot continue.");
+    if (!parse_file(partition_table, &num_partitions, fp))
+        goto fail;
 
     const char *current_partition = esp_ota_get_running_partition()->label;
-    partition_pair_t queue[num_partitions];
-    size_t queue_count = 0;
-
     // At this time we only flash partitions of type app and subtype ota_X
-    for (int i = 0; i < num_partitions; ++i)
+    for (size_t i = 0; i < num_partitions; ++i)
     {
         const esp_partition_info_t *src = &partition_table[i];
         const esp_partition_t *dst = esp_partition_find_first(src->type, ESP_PARTITION_SUBTYPE_ANY, (char *)src->label);
 
         if (src->type != PART_TYPE_APP || (src->subtype & 0xF0) != PART_SUBTYPE_OTA_FLAG)
-            RG_LOGW("Skipping partition %.15s: Unsupported type.", (char *)src->label);
+            RG_LOGW("Skipping partition %.16s: Unsupported type.", (char *)src->label);
         else if (!dst)
-            RG_LOGW("Skipping partition %.15s: No match found.", (char *)src->label);
+            RG_LOGW("Skipping partition %.16s: No match found.", (char *)src->label);
         else if ((dst->subtype & 0xF0) != PART_SUBTYPE_OTA_FLAG)
-            RG_LOGW("Skipping partition %.15s: Not an OTA partition.", (char *)src->label);
+            RG_LOGW("Skipping partition %.16s: Not an OTA partition.", (char *)src->label);
         else if (strncmp(current_partition, dst->label, 16) == 0)
-            RG_LOGW("Skipping partition %.15s: Currently running.", (char *)src->label);
+            RG_LOGW("Skipping partition %.16s: Currently running.", (char *)src->label);
         else if (dst->size < src->pos.size)
-            RG_LOGW("Skipping partition %.15s: New partition is bigger.", (char *)src->label);
+            RG_LOGW("Skipping partition %.16s: New partition is bigger.", (char *)src->label);
         else
         {
-            queue[queue_count].src = src;
-            queue[queue_count].dst = dst;
-            queue_count++;
+            RG_LOGI("Partition %.16s can be updated!", (char *)src->label);
+            flash_task_t *task = memset(&queue[queue_count++], 0, sizeof(flash_task_t));
+            memcpy(task->name, src->label, 16);
+            task->src.offset = src->pos.offset;
+            task->src.size = src->pos.size;
+            task->dst.offset = dst->address;
+            task->dst.size = dst->size;
         }
     }
 
-    TRY(queue_count > 0, "Found no updatable partition!");
+    rg_display_clear(C_BLACK);
 
-    int pos = 0;
-    for (size_t i = 0; i < queue_count; ++i)
-        pos += snprintf(message_buffer + pos, sizeof(message_buffer) - pos, "- %s\n", queue[i].dst->label);
-    pos += snprintf(message_buffer + pos, sizeof(message_buffer) - pos, "\nProceed?");
-
-    if (!rg_gui_confirm("Partitions to be updated:", message_buffer, false))
-        return false;
-
-    TRY(buffer = malloc(2 * 1024 * 1024), "Memory allocation failed");
-
-    // TODO: Implement scrolling. Maybe on rg_gui side?
-    //       Or at least support continue writing on the same line. "... Complete"
-    int y_pos = 9999;
-    #define SCREEN_PRINTF(color, message...)                                               \
-        if (y_pos + 16 > rg_display_get_height())                                          \
-            rg_display_clear(C_BLACK), y_pos = 0;                                          \
-        y_pos += rg_gui_draw_text(0, y_pos, 0, FORMAT(message), color, C_BLACK, 0).height;
-
-    SCREEN_PRINTF(C_WHITE, "Starting...");
-
-    for (size_t i = 0; i < queue_count; ++i)
+    if (queue_count == 0)
     {
-        const esp_partition_info_t *src = queue[i].src;
-        const esp_partition_t *dst = queue[i].dst;
-        esp_ota_handle_t ota_handle;
-        esp_err_t ret;
-        if ((ret = esp_ota_begin(queue[i].dst, 0, &ota_handle)) != ESP_OK)
-        {
-            SCREEN_PRINTF(C_RED, "Skipping %s: %s", dst->label, esp_err_to_name(ret));
-            continue;
-        }
-        SCREEN_PRINTF(C_WHITE, "Reading %s from file...", dst->label);
-        if (fseek(fp, src->pos.offset, SEEK_SET) != 0 || !fread(buffer, src->pos.size, 1, fp))
-        {
-            SCREEN_PRINTF(C_RED, "File read error");
-            continue;
-        }
-        SCREEN_PRINTF(C_WHITE, "Writing %s to flash...", dst->label);
-        if ((ret = esp_ota_write(ota_handle, buffer, src->pos.size)) == ESP_OK) {
-            SCREEN_PRINTF(C_GREEN, "Complete!");
-        } else {
-            SCREEN_PRINTF(C_RED, "Failed: %s", esp_err_to_name(ret));
-        }
-        esp_ota_end(ota_handle);
+        // Try dangerous update
+        // goto fail;
     }
-    free(buffer);
 
-    rg_gui_alert(_("All done"), "The process is complete");
+    if (!do_flash(queue, queue_count, fp))
+        goto fail;
+
+    fclose(fp);
     return true;
+fail:
+    if (fp)
+        fclose(fp);
+    return false;
 }
 
 void app_main(void)
@@ -187,16 +237,15 @@ void app_main(void)
         .isLauncher = true,
     });
 
-    // if (spi_flash_read(ESP_PARTITION_TABLE_OFFSET, &device_partition_table, sizeof(device_partition_table)) != ESP_OK)
-    // {
-    //     rg_gui_alert(_("Error"), "Failed to read device's partition table!");
-    //     rg_system_exit();
-    // }
+    gp_buffer = rg_alloc(gp_buffer_size, MEM_FAST);
+    if (!gp_buffer)
+        RG_PANIC("Memory allocation failed");
 
     // const char *filename = app->romPath;
     while (true)
     {
         char *filename = rg_gui_file_picker("Select update", RG_BASE_PATH_UPDATES, NULL, true, true);
+        rg_display_clear(C_BLACK);
         if (!filename || !*filename)
             break;
         if (do_update(filename))
@@ -204,5 +253,6 @@ void app_main(void)
         free(filename);
     }
 
+    free(gp_buffer);
     rg_system_exit();
 }
