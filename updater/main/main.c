@@ -14,7 +14,6 @@
 // CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
 
 #define MAX_PARTITIONS (24) // ESP_PARTITION_TABLE_MAX_ENTRIES
-#define ALIGN_BLOCK(val, alignment) ((int)(((val) + (alignment - 1)) / alignment) * alignment)
 
 #define RETRO_GO_IMG_MAGIC "RG_IMG_0"
 typedef struct
@@ -35,7 +34,7 @@ typedef struct
     struct {int offset, size;} dst;
 } flash_task_t;
 
-static size_t gp_buffer_size = 0x20000;
+static size_t gp_buffer_size = 0x10000;
 static void *gp_buffer = NULL;
 static rg_app_t *app;
 
@@ -47,6 +46,8 @@ static rg_app_t *app;
         rg_gui_alert(_("Error"), FORMAT(error_message)); \
         goto fail;                                       \
     }
+#define ALIGN_BLOCK(val, alignment) ((int)(((val) + (alignment - 1)) / alignment) * alignment)
+#define CHECK_OVERLAP(start1, end1, start2, end2) ((end1) > (start2) && (end2) > (start1))
 
 static bool fread_at(void *output, int offset, int length, FILE *fp)
 {
@@ -159,11 +160,6 @@ fail:
     return false;
 }
 
-static bool do_update_dangerous(const char *filename)
-{
-    return false;
-}
-
 static bool do_update(const char *filename)
 {
     esp_partition_info_t partition_table[MAX_PARTITIONS] = {0};
@@ -180,8 +176,12 @@ static bool do_update(const char *filename)
     if (!parse_file(partition_table, &num_partitions, fp))
         goto fail;
 
-    const char *current_partition = esp_ota_get_running_partition()->label;
-    // At this time we only flash partitions of type app and subtype ota_X
+    const esp_partition_t *running_partition = esp_ota_get_running_partition();
+    const esp_partition_t *factory_partition = esp_partition_find_first(0x00, 0x00, NULL);
+    bool dangerous = false;
+
+    RG_LOGW("Checking if we can perform a standard update...");
+    size_t updatable_partitions = 0;
     for (size_t i = 0; i < num_partitions; ++i)
     {
         const esp_partition_info_t *src = &partition_table[i];
@@ -189,33 +189,82 @@ static bool do_update(const char *filename)
 
         if (src->type != PART_TYPE_APP || (src->subtype & 0xF0) != PART_SUBTYPE_OTA_FLAG)
             RG_LOGW("Skipping partition %.16s: Unsupported type.", (char *)src->label);
-        else if (!dst)
-            RG_LOGW("Skipping partition %.16s: No match found.", (char *)src->label);
-        else if ((dst->subtype & 0xF0) != PART_SUBTYPE_OTA_FLAG)
-            RG_LOGW("Skipping partition %.16s: Not an OTA partition.", (char *)src->label);
-        else if (strncmp(current_partition, dst->label, 16) == 0)
+        else if (src->pos.offset < 0x10000)
+            RG_LOGW("Skipping partition %.16s: Forbidden region.", (char *)src->label);
+        else if (dst == running_partition)
             RG_LOGW("Skipping partition %.16s: Currently running.", (char *)src->label);
-        else if (dst->size < src->pos.size)
-            RG_LOGW("Skipping partition %.16s: New partition is bigger.", (char *)src->label);
         else
         {
-            RG_LOGI("Partition %.16s can be updated!", (char *)src->label);
-            flash_task_t *task = memset(&queue[queue_count++], 0, sizeof(flash_task_t));
-            memcpy(task->name, src->label, 16);
-            task->src.offset = src->pos.offset;
-            task->src.size = src->pos.size;
-            task->dst.offset = dst->address;
-            task->dst.size = dst->size;
+            updatable_partitions++;
+            if (!dst)
+                RG_LOGW("Skipping partition %.16s: No match found.", (char *)src->label);
+            else if (dst->size < src->pos.size)
+                RG_LOGW("Skipping partition %.16s: New partition is bigger.", (char *)src->label);
+            else
+            {
+                RG_LOGI("Partition %.16s can be updated!", (char *)src->label);
+                flash_task_t *task = memset(&queue[queue_count++], 0, sizeof(flash_task_t));
+                memcpy(task->name, src->label, 16);
+                task->src.offset = src->pos.offset;
+                task->src.size = src->pos.size;
+                task->dst.offset = dst->address;
+                task->dst.size = dst->size;
+            }
         }
     }
 
-    rg_display_clear(C_BLACK);
-
-    if (queue_count == 0)
+    if (updatable_partitions != queue_count)
     {
-        // Try dangerous update
-        // goto fail;
+        // Some partitions can't be updated with this method, we have to attempt a dangerous update instead!
+        RG_LOGW("Some partitions cannot be updated in this mode. updatable_partitions=%d, queue_count=%d",
+            updatable_partitions, queue_count);
+    #if CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
+        // The presence of a factory app that is NOT the current app indicates that we're controlled by
+        // odroid-go-firmware or odroid-go-multifirmware and it isn't safe to do arbitrary flash writes
+        if (factory_partition && factory_partition != running_partition)
+            rg_gui_alert(_("Error"), "Probably running under odroid-go-multifirmware, cannot do full update!");
+        else
+            dangerous = true;
+    #else
+        rg_gui_alert(_("Error"), "CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED is not set, cannot do full update!\n");
+    #endif
     }
+
+    if (dangerous)
+    {
+        RG_LOGW("Performing a dangerous update!");
+        queue_count = 0;
+        for (size_t i = 0; i < num_partitions; ++i)
+        {
+            const esp_partition_info_t *src = &partition_table[i];
+            if (src->type != PART_TYPE_APP || (src->subtype & 0xF0) != PART_SUBTYPE_OTA_FLAG)
+                RG_LOGW("Skipping partition %.16s: Unsupported type.", (char *)src->label);
+            else if (src->pos.offset < 0x10000)
+                RG_LOGW("Skipping partition %.16s: Forbidden region.", (char *)src->label);
+            // FIXME: Instead of skipping an overlaping partition, we should attempt to relocate it.
+            else if (CHECK_OVERLAP(src->pos.offset, src->pos.offset + src->pos.size,
+                                running_partition->address, running_partition->address + running_partition->size))
+                RG_LOGW("Skipping partition %.16s: Overlap with self.", (char *)src->label);
+            else
+            {
+                RG_LOGI("Partition %.16s can be updated!", (char *)src->label);
+                flash_task_t *task = memset(&queue[queue_count++], 0, sizeof(flash_task_t));
+                memcpy(task->name, src->label, 16);
+                task->src.offset = src->pos.offset;
+                task->src.size = src->pos.size;
+                task->dst.offset = src->pos.offset;
+                task->dst.size = src->pos.size;
+            }
+        }
+
+        queue[queue_count++] = (flash_task_t){
+            .name = "partition_table",
+            .src = {ESP_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_MAX_LEN},
+            .dst = {ESP_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_MAX_LEN},
+        };
+    }
+
+    rg_display_clear(C_BLACK);
 
     if (!do_flash(queue, queue_count, fp))
         goto fail;
