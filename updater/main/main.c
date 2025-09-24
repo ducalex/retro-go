@@ -8,7 +8,7 @@
 
 #include <esp_flash_partitions.h>
 #include <esp_partition.h>
-#include <esp_spi_flash.h>
+#include <esp_flash.h>
 #include <esp_ota_ops.h>
 
 #define MAX_PARTITIONS (24) // ESP_PARTITION_TABLE_MAX_ENTRIES
@@ -137,13 +137,13 @@ static bool process_queue(flash_task_t *queue, size_t queue_count, FILE *fp)
     for (size_t i = 0; i < queue_count; ++i)
     {
         const flash_task_t *t = &queue[i];
-        TRY_F("Erasing", spi_flash_erase_range(t->dst.offset, t->dst.size) == ESP_OK || true, "Erase err");
+        TRY_F("Erasing", esp_flash_erase_region(NULL, t->dst.offset, ALIGN_BLOCK(t->dst.size, 0x1000)) == ESP_OK || true, "Erase err");
         int offset = 0, size = t->src.size;
         while (size > 0)
         {
             int chunk_size = RG_MIN(size, gp_buffer_size);
             TRY_F("Reading", fread_at(gp_buffer, t->src.offset + offset, chunk_size, fp), "Read err");
-            TRY_F("Writing", spi_flash_write(t->dst.offset + offset, gp_buffer, ALIGN_BLOCK(chunk_size, 0x1000)) == ESP_OK, "Write err");
+            TRY_F("Writing", esp_flash_write(NULL, gp_buffer, t->dst.offset + offset, ALIGN_BLOCK(chunk_size, 0x1000)) == ESP_OK, "Write err");
             offset += chunk_size;
             size -= chunk_size;
         }
