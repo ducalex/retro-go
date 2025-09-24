@@ -11,8 +11,6 @@
 #include <esp_spi_flash.h>
 #include <esp_ota_ops.h>
 
-// CONFIG_SPI_FLASH_DANGEROUS_WRITE_ALLOWED
-
 #define MAX_PARTITIONS (24) // ESP_PARTITION_TABLE_MAX_ENTRIES
 
 #define RETRO_GO_IMG_MAGIC "RG_IMG_0"
@@ -91,17 +89,18 @@ static bool parse_file(esp_partition_info_t *partition_table, size_t *num_partit
     {
         goto fail;
     }
-    // TODO: Also support images that truncate the first 0x1000, just in case
     TRY(fread_at(gp_buffer, ESP_PARTITION_TABLE_OFFSET, ESP_PARTITION_TABLE_MAX_LEN, fp), "File read failed");
     TRY(esp_partition_table_verify((const esp_partition_info_t *)gp_buffer, true, &_num_partitions) == ESP_OK, "File is not a valid ESP32 image.");
     memcpy(partition_table, gp_buffer, sizeof(esp_partition_info_t) * _num_partitions);
     *num_partitions = _num_partitions;
     return true;
 fail:
+    // TODO: Also support images that truncate the first 0x1000, just in case
+    // TODO: Also support .fw, which should be trivial to parse albeit lacking some meta data
     return false;
 }
 
-static bool do_flash(flash_task_t *queue, size_t queue_count, FILE *fp)
+static bool process_queue(flash_task_t *queue, size_t queue_count, FILE *fp)
 {
     char message_buffer[256];
     rg_gui_option_t lines[queue_count + 4];
@@ -142,9 +141,9 @@ static bool do_flash(flash_task_t *queue, size_t queue_count, FILE *fp)
         int offset = 0, size = t->src.size;
         while (size > 0)
         {
-            int chunk_size = ALIGN_BLOCK(RG_MIN(size, gp_buffer_size), 0x1000);
+            int chunk_size = RG_MIN(size, gp_buffer_size);
             TRY_F("Reading", fread_at(gp_buffer, t->src.offset + offset, chunk_size, fp), "Read err");
-            TRY_F("Writing", spi_flash_write(t->dst.offset + offset, gp_buffer, chunk_size) == ESP_OK, "Write err");
+            TRY_F("Writing", spi_flash_write(t->dst.offset + offset, gp_buffer, ALIGN_BLOCK(chunk_size, 0x1000)) == ESP_OK, "Write err");
             offset += chunk_size;
             size -= chunk_size;
         }
@@ -266,7 +265,7 @@ static bool do_update(const char *filename)
 
     rg_display_clear(C_BLACK);
 
-    if (!do_flash(queue, queue_count, fp))
+    if (!process_queue(queue, queue_count, fp))
         goto fail;
 
     fclose(fp);
@@ -287,10 +286,8 @@ void app_main(void)
     });
 
     gp_buffer = rg_alloc(gp_buffer_size, MEM_FAST);
-    if (!gp_buffer)
-        RG_PANIC("Memory allocation failed");
-
     // const char *filename = app->romPath;
+
     while (true)
     {
         char *filename = rg_gui_file_picker("Select update", RG_BASE_PATH_UPDATES, NULL, true, true);
