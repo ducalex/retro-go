@@ -19,14 +19,14 @@ PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
 PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
-  'launcher':     [0, 0, 1048576],
-  'updater':      [0, 0, 524288], # Should be first to allow growth but it interfere with boot for now
-  'retro-core':   [0, 0, 851968],
-  'prboom-go':    [0, 0, 851968],
-  'snes9x':       [0, 0, 655360],
-  'gwenesis':     [0, 0, 1048576],
-  'fmsx':         [0, 0, 655360],
-  'gbsp':         [0, 0, 851968],
+  'updater':      [0, 0,  393216],
+  'launcher':     [0, 16, 1048576],
+  'retro-core':   [0, 16, 851968],
+  'prboom-go':    [0, 16, 851968],
+  'snes9x':       [0, 16, 655360],
+  'gwenesis':     [0, 16, 1048576],
+  'fmsx':         [0, 16, 655360],
+  'gbsp':         [0, 16, 851968],
 }
 # PROJECT_APPS = {}
 # for t in glob.glob("*/CMakeLists.txt"):
@@ -88,8 +88,11 @@ def build_image(apps, output_file, img_type="odroid", fatsize=0, target="unknown
     ota_next_id = 16
     for app in apps:
         part = PROJECT_APPS[app]
-        args += [str(part[0]), str(ota_next_id), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
-        ota_next_id += 1
+        subtype = part[1]
+        if part[0] == 0 and (part[1] & 0xF0) == 0x10:  # Rewrite OTA indexes to maintain order
+            subtype = ota_next_id
+            ota_next_id += 1
+        args += [str(part[0]), str(subtype), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
     if fatsize:
         args += ["1", "129", fatsize, "vfs", "none"]
 
@@ -201,10 +204,6 @@ apps = DEFAULT_APPS.split() if "all" in args.apps else args.apps
 apps = [app for app in PROJECT_APPS.keys() if app in apps] # Ensure ordering and uniqueness
 
 try:
-    if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
-        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
-        apps.insert(0, "launcher")
-
     if command in ["clean", "release"]:
         print("=== Step: Cleaning ===\n")
         for app in apps:
