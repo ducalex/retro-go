@@ -67,7 +67,7 @@
     {RG_KEY_Y,      .src = RG_KEY_OPTION | RG_KEY_B},\
 }
 
-#define RG_RECOVERY_BTN RG_KEY_START
+#define RG_RECOVERY_BTN RG_KEY_OPTION
 
 // Battery
 #define RG_BATTERY_DRIVER           1
