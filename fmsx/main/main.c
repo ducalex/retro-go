@@ -423,6 +423,7 @@ void app_main(void)
         .sampleRate = AUDIO_SAMPLE_RATE,
         .frameRate = 55, // This is probably not right, but the emulator outputs 440 samples per frame??
         .storageRequired = true,
+        .romRequired = false,
         .handlers = {
             .loadState = &load_state_handler,
             .saveState = &save_state_handler,

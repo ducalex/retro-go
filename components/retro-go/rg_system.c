@@ -162,19 +162,21 @@ static void update_memory_statistics(void)
 #ifdef ESP_PLATFORM
     multi_heap_info_t heap_info;
     heap_caps_get_info(&heap_info, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT);
+    statistics.totalMemoryInt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
     statistics.freeMemoryInt = heap_info.total_free_bytes;
     statistics.freeBlockInt = heap_info.largest_free_block;
-    statistics.totalMemoryInt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
     heap_caps_get_info(&heap_info, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
     statistics.freeMemoryExt = heap_info.total_free_bytes;
     statistics.freeBlockExt = heap_info.largest_free_block;
-    statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
-
+    // FIXME: We should check all the tasks' HWM to be better informed!
     statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
 #else
-    statistics.freeMemoryInt = statistics.freeBlockInt = statistics.totalMemoryInt = (1 << 28);
-    statistics.freeMemoryExt = statistics.freeBlockExt = statistics.totalMemoryExt = (1 << 28);
+    statistics.freeMemoryInt = statistics.freeBlockInt = statistics.totalMemoryInt = 0x40000000;
 #endif
+    statistics.totalMemory = statistics.totalMemoryInt + statistics.totalMemoryExt;
+    statistics.freeMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
+    statistics.freeBlock = RG_MAX(statistics.freeBlockInt, statistics.freeBlockExt);
 }
 
 static void update_statistics(void)
@@ -401,7 +403,6 @@ rg_app_t *rg_system_init(const rg_config_t *config)
         .tickTimeout = 3000000,
         .frameTime = 1000000 / 60,
         .frameskip = 1, // This can be overriden on a per-app basis if needed, do not set 0 here!
-        .lowMemoryMode = false,
         .enWatchdog = true,
         .isColdBoot = true,
         .isLauncher = false,
@@ -431,6 +432,7 @@ rg_app_t *rg_system_init(const rg_config_t *config)
     printf("%s %s (%s)\n", app.name, app.version, app.buildDate);
     printf(" built for: %s. type: %s\n", RG_TARGET_NAME, app.isRelease ? "release" : "dev");
     printf("========================================================\n\n");
+    update_memory_statistics(); // Do this early in case any of our init routines needs to know
 
 #ifdef RG_I2C_GPIO_DRIVER
     rg_i2c_init();
@@ -479,9 +481,6 @@ rg_app_t *rg_system_init(const rg_config_t *config)
     memset(&panicTrace, 0, sizeof(panicTrace));
     panicTraceCleared = true;
 
-    update_memory_statistics();
-    app.lowMemoryMode = statistics.totalMemoryExt == 0;
-
     app.indicatorsMask = rg_settings_get_number(NS_GLOBAL, SETTING_INDICATOR_MASK, app.indicatorsMask);
     app.romPath = app.bootArgs ?: ""; // For whatever reason some of our code isn't NULL-aware, sigh..
 
@@ -489,9 +488,6 @@ rg_app_t *rg_system_init(const rg_config_t *config)
 
     if (config)
     {
-        app.sampleRate = config->sampleRate;
-        app.tickRate = config->frameRate;
-        // app.frameskip = config->frameSkip;
         if (config->storageRequired && !rg_storage_ready())
         {
             rg_display_clear(C_SKY_BLUE);
@@ -503,30 +499,29 @@ rg_app_t *rg_system_init(const rg_config_t *config)
             // show rom picking dialog
             // app.romPath = rg_gui_file_picker(_("Choose ROM"), RG_BASE_PATH_ROMS, NULL, true, false);
         }
-        if (config->mallocAlwaysInternal > 0)
-        {
         #ifdef ESP_PLATFORM
+        if (config->mallocAlwaysInternal > 0)
             heap_caps_malloc_extmem_enable(config->mallocAlwaysInternal);
         #endif
-        }
+        app.sampleRate = config->sampleRate;
+        app.tickRate = config->frameRate;
+        // app.frameskip = config->frameSkip;
         app.isLauncher = config->isLauncher;
         app.handlers = config->handlers;
     }
 
     if (app.sampleRate > 0)
-    {
         rg_audio_init(app.sampleRate);
-    }
 
     rg_system_set_tick_rate(app.tickRate);
     rg_system_set_timezone(rg_settings_get_string(NS_GLOBAL, SETTING_TIMEZONE, "EST+5"));
     rg_system_load_time();
 
-    if (app.lowMemoryMode)
-        rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
-
     if (app.bootFlags & RG_BOOT_ONCE)
         update_boot_config(RG_APP_LAUNCHER, NULL, NULL, 0, 0);
+
+    if (statistics.totalMemory < 0x200000)
+        rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
     rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;

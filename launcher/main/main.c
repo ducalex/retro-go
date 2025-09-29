@@ -449,15 +449,14 @@ void app_main(void)
     app = rg_system_init(&(const rg_config_t){
         .sampleRate = 32000,
         .frameRate = 0,
-        // The launcher makes a lot of small allocations and it sometimes fills internal RAM, causing the SD Card driver to
-        // stop working. Lowering CONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL and manually using rg_alloc to do internal allocs when
-        // needed is a better solution, but that would have to be done for every app. This is a good workaround for now.
-        .mallocAlwaysInternal = 1024,
         .storageRequired = true,
         .isLauncher = true,
         .handlers.event = &event_handler,
         .handlers.options = &options_handler,
         .handlers.about = &about_handler,
+        // The launcher makes a lot of small allocations and it sometimes fills internal RAM,
+        // causing the SD Card driver to stop working.
+        .mallocAlwaysInternal = 1024,
     });
     app->configNs = "launcher";
 

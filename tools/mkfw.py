@@ -61,9 +61,9 @@ def create_firmware(fw_type, partitions, icon_file, name, version, target):
 
 def create_image(chip_type, partitions, bootloader_file, name, version, target):
     bootloader_offset, table_offset, prog_offset = {
+        "esp32":   (0x1000, 0x8000, 0x10000),
         "esp32s3": (0x0000, 0x8000, 0x10000),
         "esp32p4": (0x2000, 0x8000, 0x10000),
-        "esp32": (0x1000, 0x8000, 0x10000),
     }.get(chip_type)
     partitions = [
         (1, 0x02, "nvs", 0x9000, 0x4000, b""),
@@ -90,7 +90,7 @@ def create_image(chip_type, partitions, bootloader_file, name, version, target):
     # (Maybe I could hide it somewhere else to avoid changing the size of the image)
     output_data += struct.pack(
         "<8s28s28s28sII156s",
-        "RG_IMG_0".encode(),    # Magic number "RG01"
+        "RG_IMG_0".encode(),    # Magic number
         name.encode(),          # Project name
         version.encode(),       # Project version
         target.encode(),        # Project target device
@@ -119,6 +119,7 @@ if __name__ == "__main__":
     else:
         partitions = get_partitions(args.partitions, 0x10000)
         data = create_image(args.type, partitions, args.bootloader, args.name, args.version, args.target)
+
     with open(args.output_file, "wb") as fp:
         fp.write(data)
 

@@ -697,6 +697,6 @@ void applications_init(void)
     // Special app to bootstrap native esp32 binaries from the SD card
     // application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
 
-    if (!rg_system_get_app()->lowMemoryMode)
+    if (rg_system_get_stats().freeMemory > 0x100000)
         crc_cache_init();
 }

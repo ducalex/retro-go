@@ -532,10 +532,6 @@ void app_main()
     const rg_config_t config = {
         .sampleRate = AUDIO_SAMPLE_RATE,
         .frameRate = TICRATE,
-        // Some things might be nice to place in internal RAM, but I do not have time to find such
-        // structures. So for now, prefer external RAM for most things except the framebuffer which
-        // is allocated below.
-        .mallocAlwaysInternal = 1, // I want 0 but 0 will be ignored, so 1 it is!
         .storageRequired = true,
         .romRequired = false,
         .handlers = {
@@ -546,6 +542,10 @@ void app_main()
             .event = &event_handler,
             .options = &options_handler,
         },
+        // Some things might be nice to place in internal RAM, but I do not have time to find such
+        // structures. So for now, prefer external RAM for most things except the framebuffer which
+        // is allocated below.
+        .mallocAlwaysInternal = 1, // I want 0 but 0 will be ignored, so 1 it is!
     };
     app = rg_system_init(&config);
 

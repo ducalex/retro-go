@@ -45,8 +45,8 @@ void gui_init(bool cold_boot)
     gui.browse = gui.start_screen == START_SCREEN_BROWSER || (gui.start_screen == START_SCREEN_AUTO && !cold_boot);
     gui.theme = &gui.themes[gui.color_theme % RG_COUNT(gui.themes)];
     gui.http_lock = false;
-    gui.low_memory_mode = rg_system_get_app()->lowMemoryMode;
     gui.surface = rg_surface_create(gui.width, gui.height, RG_PIXEL_565_LE, MEM_SLOW);
+    gui.low_memory_mode = rg_system_get_stats().freeMemory < 0x100000;
     gui_update_theme();
 }
 

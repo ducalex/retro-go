@@ -138,14 +138,16 @@ typedef struct
 // Instead, consider adding `disableThing`.
 typedef struct
 {
-    int sampleRate;
-    int frameRate; // tickRate
-    // int frameSkip;
-    int mallocAlwaysInternal;
-    bool storageRequired;
-    bool romRequired;
-    bool isLauncher;
-    rg_handlers_t handlers;
+    int sampleRate;             // Audio sample rate
+    int frameRate;              // Frame rate (should match how often rg_system_tick is called per second)
+    // int frameSkip;              // Initial frame skip value (-1 to disable auto frameskip)
+    // int tickRate;               // For now retro-go doesn't distinguish between tick rate and frame rate...
+    bool storageRequired;       // Will refuse to continue if storage mount fails
+    bool romRequired;           // Will show a file picker if no ROM is configured
+    bool isLauncher;            // Set to true if app is launcher
+    rg_handlers_t handlers;     // App handlers for certain actions (save states, screenshot, etc)
+    // Lower-level tweaks
+    int mallocAlwaysInternal;   // See heap_caps_malloc_extmem_enable
 } rg_config_t;
 
 typedef struct
@@ -164,7 +166,6 @@ typedef struct
     int tickTimeout;
     int frameTime;
     int frameskip;
-    bool lowMemoryMode;
     bool enWatchdog;
     bool isColdBoot;
     bool isLauncher;
@@ -191,10 +192,13 @@ typedef struct
     int uptime;
     int totalMemoryInt;
     int totalMemoryExt;
+    int totalMemory;
     int freeMemoryInt;
     int freeMemoryExt;
+    int freeMemory;
     int freeBlockInt;
     int freeBlockExt;
+    int freeBlock;
     int freeStackMain;
 } rg_stats_t;
 

@@ -344,15 +344,16 @@ void app_main(void)
 {
     const rg_config_t config = {
         .sampleRate = AUDIO_SAMPLE_RATE,
+        .frameRate = 60, // Will be adjusted later if a PAL ROM is loaded
         .storageRequired = true,
         .romRequired = true,
-        .mallocAlwaysInternal = 0x10000,
         .handlers.loadState = &load_state_handler,
         .handlers.saveState = &save_state_handler,
         .handlers.reset = &reset_handler,
         .handlers.screenshot = &screenshot_handler,
         .handlers.event = &event_handler,
         .handlers.options = &options_handler,
+        .mallocAlwaysInternal = 0x10000,
     };
     app = rg_system_init(&config);
 
