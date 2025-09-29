@@ -23,6 +23,12 @@
 #define MUTE_DISABLE 1
 #endif
 
+// We can safely assume that no application will submit more than 640 audio frames per call to
+// driver_submit (32000/50). Using a single large buffer risks blocking the call needlessly because
+// some apps submit more than once per cycle or there could be occasional jitter (early submission).
+#define DMA_BUFFER_COUNT 4
+#define DMA_BUFFER_LEN 180
+
 static struct {
     const char *last_error;
     int device;
@@ -45,8 +51,8 @@ static bool driver_init(int device, int sample_rate)
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
             .communication_format = I2S_COMM_FORMAT_STAND_MSB,
             .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
-            .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-            .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+            .dma_buf_count = DMA_BUFFER_COUNT,
+            .dma_buf_len = DMA_BUFFER_LEN,
         }, 0, NULL);
         if (ret == ESP_OK)
             ret = i2s_set_dac_mode(RG_AUDIO_USE_INT_DAC);
@@ -66,8 +72,8 @@ static bool driver_init(int device, int sample_rate)
             .channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
             .communication_format = I2S_COMM_FORMAT_STAND_I2S,
             .intr_alloc_flags = 0, // ESP_INTR_FLAG_LEVEL1
-            .dma_buf_count = 4, // Goal is to have ~800 samples over 2-8 buffers (3x270 or 5x180 are pretty good)
-            .dma_buf_len = 180, // The unit is stereo samples (4 bytes) (optimize for 533 usage)
+            .dma_buf_count = DMA_BUFFER_COUNT,
+            .dma_buf_len = DMA_BUFFER_LEN,
         #if CONFIG_IDF_TARGET_ESP32
             .use_apll = true, // External DAC may care about accuracy
         #endif
@@ -131,10 +137,9 @@ static bool driver_deinit(void)
 static bool driver_submit(const rg_audio_frame_t *frames, size_t count)
 {
     float volume = state.muted ? 0.f : (state.volume * 0.01f);
-    rg_audio_frame_t buffer[180];
-    size_t pos = 0;
-
     bool use_internal_dac = state.device == 0;
+    rg_audio_frame_t buffer[DMA_BUFFER_LEN];
+    size_t pos = 0;
 
     for (size_t i = 0; i < count; ++i)
     {
