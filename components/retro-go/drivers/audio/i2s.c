@@ -11,9 +11,6 @@
 
 #include <driver/gpio.h>
 #include <driver/i2s.h>
-#if RG_AUDIO_USE_INT_DAC
-#include <driver/dac.h>
-#endif
 
 #ifdef RG_GPIO_SND_AMP_ENABLE_INVERT
 #define MUTE_ENABLE 1
@@ -113,11 +110,7 @@ static bool driver_deinit(void)
     if (state.device == 0)
     {
     #if RG_AUDIO_USE_INT_DAC
-        if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_RIGHT_EN)
-            dac_output_disable(DAC_CHANNEL_1);
-        if (RG_AUDIO_USE_INT_DAC & I2S_DAC_CHANNEL_LEFT_EN)
-            dac_output_disable(DAC_CHANNEL_2);
-        dac_i2s_disable();
+        i2s_set_dac_mode(I2S_DAC_CHANNEL_DISABLE);
     #endif
     }
     else if (state.device == 1)
