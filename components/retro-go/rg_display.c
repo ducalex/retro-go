@@ -127,6 +127,8 @@ static inline void write_update(const rg_surface_t *update)
     const void *data = update->data + update->offset + (crop_top * stride) + (crop_left * RG_PIXEL_GET_SIZE(format));
     const uint16_t *palette = update->palette;
 
+    const int screen_left = display.screen.margins.left + draw_left;
+    const int screen_top = display.screen.margins.top + draw_top;
     const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
     // const bool interlace = false;
 
@@ -230,10 +232,9 @@ static inline void write_update(const rg_surface_t *update)
 
         if (need_update)
         {
-            int left = display.screen.margins.left + draw_left;
-            int top = display.screen.margins.top + draw_top + y - lines_to_copy;
+            int top = screen_top + y - lines_to_copy;
             if (top != window_top)
-                lcd_set_window(left, top, draw_width, lines_remaining);
+                lcd_set_window(screen_left, top, draw_width, lines_remaining);
             lcd_send_buffer(line_buffer, draw_width * lines_to_copy);
             window_top = top + lines_to_copy;
             lines_updated += lines_to_copy;
@@ -543,7 +544,9 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
     for (size_t y = 0; y < height; ++y)
         screen_line_checksum[top + y] = 0;
 
-    lcd_set_window(left + display.screen.margins.left, top + display.screen.margins.top, width, height);
+    const int screen_left = display.screen.margins.left + left;
+    const int screen_top = display.screen.margins.top + top;
+    lcd_set_window(screen_left, screen_top, width, height);
 
     for (size_t y = 0; y < height;)
     {
@@ -575,20 +578,23 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
 
 void rg_display_clear_rect(int left, int top, int width, int height, uint16_t color_le)
 {
+    const int screen_left = display.screen.margins.left + left;
+    const int screen_top = display.screen.margins.top + top;
     const uint16_t color_be = (color_le << 8) | (color_le >> 8);
+
     int pixels_remaining = width * height;
-    if (pixels_remaining > 0)
+    if (pixels_remaining <= 0)
+        return;
+
+    lcd_set_window(screen_left, screen_top, width, height);
+    while (pixels_remaining > 0)
     {
-        lcd_set_window(left + display.screen.margins.left, top + display.screen.margins.top, width, height);
-        while (pixels_remaining > 0)
-        {
-            uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
-            int pixels = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
-            for (size_t j = 0; j < pixels; ++j)
-                buffer[j] = color_be;
-            lcd_send_buffer(buffer, pixels);
-            pixels_remaining -= pixels;
-        }
+        uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+        int pixels = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
+        for (size_t j = 0; j < pixels; ++j)
+            buffer[j] = color_be;
+        lcd_send_buffer(buffer, pixels);
+        pixels_remaining -= pixels;
     }
 }
 
