@@ -36,6 +36,12 @@ static void lcd_set_window(int left, int top, int width, int height);
 static inline uint16_t *lcd_get_buffer(size_t length);
 static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
 
+// Driver should implement those:
+static void lcd_set_framebuffer(uint16_t *framebuffer, int width, int height, int scale);
+static inline uint16_t *lcd_get_fb_ptr(int left, int top);
+// Also set this to 1
+#define USE_SCREEN_BUFFER 0
+
 #if RG_SCREEN_DRIVER == 0 || RG_SCREEN_DRIVER == 1 /* ILI9341/ST7789 */
 #include "drivers/display/ili9341.h"
 #elif RG_SCREEN_DRIVER == 99
@@ -129,7 +135,7 @@ static inline void write_update(const rg_surface_t *update)
 
     const int screen_left = display.screen.margins.left + draw_left;
     const int screen_top = display.screen.margins.top + draw_top;
-    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
+    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES && !USE_SCREEN_BUFFER;
     // const bool interlace = false;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
@@ -152,8 +158,11 @@ static inline void write_update(const rg_surface_t *update)
                                          LINE_IS_REPEATED(y + lines_to_copy)))
                 --lines_to_copy;
         }
-
+#if USE_SCREEN_BUFFER
+        uint16_t *line_buffer = lcd_get_fb_ptr(screen_left, screen_top + y);
+#else
         uint16_t *line_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+#endif
         uint16_t *line_buffer_ptr = line_buffer;
 
         uint32_t checksum = 0xFFFFFFFF;
@@ -230,6 +239,7 @@ static inline void write_update(const rg_surface_t *update)
             }
         }
 
+#if !USE_SCREEN_BUFFER
         if (need_update)
         {
             int top = screen_top + y - lines_to_copy;
@@ -244,6 +254,10 @@ static inline void write_update(const rg_surface_t *update)
             // Return unused buffer
             lcd_send_buffer(line_buffer, 0);
         }
+#else
+        window_top = top + lines_to_copy;
+        lines_updated += lines_to_copy;
+#endif
 
         // Drawing the OSD as we progress reduces flicker compared to doing it once at the end
         if (osd_next_call && draw_top + y >= osd_next_call)
@@ -546,11 +560,17 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
 
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
+#if !USE_SCREEN_BUFFER
     lcd_set_window(screen_left, screen_top, width, height);
+#endif
 
     for (size_t y = 0; y < height;)
     {
+#if USE_SCREEN_BUFFER
+        uint16_t *lcd_buffer = lcd_get_fb_ptr(screen_left, screen_top + y);
+#else
         uint16_t *lcd_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+#endif
         size_t num_lines = RG_MIN(LCD_BUFFER_LENGTH / width, height - y);
 
         // Copy line by line because stride may not match width
@@ -569,7 +589,9 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
             }
         }
 
+#if !USE_SCREEN_BUFFER
         lcd_send_buffer(lcd_buffer, width * num_lines);
+#endif
         y += num_lines;
     }
 
@@ -583,6 +605,14 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
     int pixels_remaining = width * height;
     if (width < 0 || height < 0)
         return;
+#if USE_SCREEN_BUFFER
+    for (int y = 0; y < height; ++y)
+    {
+        uint16_t *buffer = lcd_get_fb_ptr(left, top + y);
+        for (int x = 0; x < width; ++x)
+            buffer[i] = color_le;
+    }
+#else
     const uint16_t color_be = (color_le << 8) | (color_le >> 8);
     lcd_set_window(screen_left, screen_top, width, height);
     while (pixels_remaining > 0)
@@ -594,6 +624,7 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
         lcd_send_buffer(buffer, pixels);
         pixels_remaining -= pixels;
     }
+#endif
 }
 
 void rg_display_clear_except(int left, int top, int width, int height, uint16_t color_le)
