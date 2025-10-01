@@ -236,6 +236,7 @@ void rg_audio_set_sample_rate(int sampleRate)
         {
             audio.driver->set_sample_rate(sampleRate);
             audio.sampleRate = sampleRate;
+            RG_LOGI("Samplerate set to %d", audio.sampleRate);
             RELEASE_DEVICE();
         }
     }

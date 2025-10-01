@@ -6,6 +6,8 @@
 - All: French translation now has accents
 - New device support: LILYGO T-Deck Plus
 - New device support: Null Nano by Ampersand
+- New device support: crokpocket
+- New device support: VMU
 
 
 # Retro-Go 1.44 (2025-02-03)
