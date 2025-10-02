@@ -183,9 +183,7 @@ static inline void write_update(const rg_surface_t *update)
                     RENDER_LINE(uint16_t, buffer[x])
 
                 if (partial_update)
-                {
                     checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
-                }
             }
 
             if (screen_line_checksum[draw_top + y] != checksum)
