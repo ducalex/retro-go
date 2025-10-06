@@ -5,9 +5,14 @@
 #define AUDIO_SAMPLE_RATE   (32040)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
 
-// #define FRAME_DOUBLE_BUFFERING
-// #define AUDIO_DOUBLE_BUFFERING
+#define AUDIO_DOUBLE_BUFFERING
 #define USE_AUDIO_TASK
+
+#if defined(RG_TARGET_PICOHELD2) && !defined (FRAME_DOUBLE_BUFFERING)
+#define FRAME_DOUBLE_BUFFERING
+#endif
+
+int audio_buffer_length;
 
 typedef struct
 {
@@ -100,10 +105,11 @@ static rg_audio_sample_t *audioBuffers[2];
 static rg_audio_sample_t *currentAudioBuffer;
 
 #ifdef USE_AUDIO_TASK
+static rg_task_t *audio_submit_task_handle;
 static rg_task_t *audio_task_handle;
 #endif
 
-static bool sound_enabled = true;
+volatile bool sound_enabled = true;
 static bool lowpass_filter = false;
 
 static int keymap_id = 0;
@@ -138,6 +144,8 @@ static bool load_state_handler(const char *filename)
 static bool reset_handler(bool hard)
 {
     S9xReset();
+    memset(audioBuffers[0], 0, audio_buffer_length * 4);
+    memset(audioBuffers[1], 0, audio_buffer_length * 4);
     return true;
 }
 
@@ -146,6 +154,9 @@ static void event_handler(int event, void *arg)
     if (event == RG_EVENT_REDRAW)
     {
         rg_display_submit(currentUpdate, 0);
+    } else if (event == RG_EVENT_SHUTDOWN) {
+        rg_task_msg_t msg = {.type = RG_TASK_MSG_STOP};
+        rg_task_send(audio_task_handle, &msg, false /*blocking*/ );
     }
 }
 
@@ -258,8 +269,8 @@ bool S9xInitDisplay(void)
     GFX.Pitch = SNES_WIDTH * 2;
     GFX.ZPitch = SNES_WIDTH;
     GFX.Screen = currentUpdate->data;
-    GFX.SubScreen = malloc(GFX.Pitch * SNES_HEIGHT_EXTENDED);
-    GFX.ZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
+    GFX.SubScreen = GFX.Screen;
+    GFX.ZBuffer = (uint8_t*) rg_alloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED, MEM_FAST);
     GFX.SubZBuffer = malloc(GFX.ZPitch * SNES_HEIGHT_EXTENDED);
     return GFX.Screen && GFX.SubScreen && GFX.ZBuffer && GFX.SubZBuffer;
 }
@@ -310,25 +321,30 @@ void JustifierButtons(uint32_t *justifiers)
 
 static inline void mix_samples(int32_t count)
 {
-    currentAudioBuffer = audioBuffers[currentAudioBuffer == audioBuffers[0]];
     if (lowpass_filter)
         S9xMixSamplesLowPass((int16_t *)currentAudioBuffer, count, AUDIO_LOW_PASS_RANGE);
     else
         S9xMixSamples((int16_t *)currentAudioBuffer, count);
+
+    currentAudioBuffer = audioBuffers[currentAudioBuffer == audioBuffers[0]];
 }
 
 #ifdef USE_AUDIO_TASK
 static void audio_task(void *arg)
 {
     rg_task_msg_t msg;
-    while (rg_task_receive(&msg, -1))
+    while (1)
     {
+        rg_task_receive(&msg, 10);
+
         if (msg.type == RG_TASK_MSG_STOP)
             break;
-        if (msg.type != 0)
-            mix_samples(msg.dataInt << 1);
-        rg_audio_submit(currentAudioBuffer, msg.dataInt);
-    }
+
+        if (sound_enabled) {
+          mix_samples(audio_buffer_length << 1);
+          rg_audio_submit(currentAudioBuffer, audio_buffer_length);
+        }
+   }
 }
 #endif
 
@@ -344,16 +360,15 @@ void app_main(void)
 {
     const rg_config_t config = {
         .sampleRate = AUDIO_SAMPLE_RATE,
-        .frameRate = 60, // Will be adjusted later if a PAL ROM is loaded
         .storageRequired = true,
         .romRequired = true,
+        .mallocAlwaysInternal = 0x10000,
         .handlers.loadState = &load_state_handler,
         .handlers.saveState = &save_state_handler,
         .handlers.reset = &reset_handler,
         .handlers.screenshot = &screenshot_handler,
         .handlers.event = &event_handler,
         .handlers.options = &options_handler,
-        .mallocAlwaysInternal = 0x10000,
     };
     app = rg_system_init(&config);
 
@@ -364,33 +379,23 @@ void app_main(void)
     update_keymap(rg_settings_get_number(NS_APP, SETTING_KEYMAP, default_keymap));
 
     // Allocate surfaces and audio buffers
-    updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
+    updates[0] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, MEM_FAST);
     updates[0]->height = SNES_HEIGHT;
 #ifdef FRAME_DOUBLE_BUFFERING
-    updates[1] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, 0);
+    updates[1] = rg_surface_create(SNES_WIDTH, SNES_HEIGHT_EXTENDED, RG_PIXEL_565_LE, MEM_FAST);
     updates[1]->height = SNES_HEIGHT;
 #else
     updates[1] = updates[0];
 #endif
+
     currentUpdate = updates[0];
 
-#ifdef AUDIO_DOUBLE_BUFFERING
-    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-    audioBuffers[1] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-#else
-    audioBuffers[0] = (rg_audio_sample_t *)calloc(AUDIO_BUFFER_LENGTH, 4);
-    audioBuffers[1] = audioBuffers[0];
+#if RG_SCREEN_DRIVER == 2
+    rg_display_setup_fb(updates[1], 0);
 #endif
-    currentAudioBuffer = audioBuffers[0];
 
-    if (!updates[0] || !updates[1] || !audioBuffers[0] || !audioBuffers[1])
-        RG_PANIC("Failed to allocate buffers!");
-
-#ifdef USE_AUDIO_TASK
-    // Set up multicore audio
-    audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
-    RG_ASSERT(audio_task_handle, "Failed to create audio task!");
-#endif
+    if (!updates[0] || !updates[1])
+        RG_PANIC("Failed to video allocate buffers!");
 
     Settings.CyclesPercentage = 100;
     Settings.H_Max = SNES_CYCLES_PER_SCANLINE;
@@ -438,12 +443,38 @@ void app_main(void)
     }
 
     rg_system_set_tick_rate(Memory.ROMFramesPerSecond);
-    app->frameskip = 3;
+    audio_buffer_length = AUDIO_SAMPLE_RATE / app->tickRate;
 
-    const int samplesPerFrame = (int)roundf((float)app->sampleRate / app->tickRate);
+    RG_LOGD("Target frame rate is: %d\n", app->tickRate);
+
+#if defined (AUDIO_DOUBLE_BUFFERING) || defined (USE_AUDIO_TASK)
+    audioBuffers[0] = (rg_audio_sample_t *) rg_alloc(audio_buffer_length * 4, MEM_FAST);
+    audioBuffers[1] = (rg_audio_sample_t *) rg_alloc(audio_buffer_length * 4, MEM_FAST);
+#else
+    audioBuffers[0] = (rg_audio_sample_t *) rg_alloc(audio_buffer_length * 4, MEM_SLOW);
+    audioBuffers[1] = audioBuffers[0];
+#endif
+    currentAudioBuffer = audioBuffers[0];
+
+    if (!audioBuffers[0] || !audioBuffers[1])
+        RG_PANIC("Failed to allocate audio buffers!");
+
+#ifdef USE_AUDIO_TASK
+    // Set up multicore audio
+    audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 4096, RG_TASK_PRIORITY_6, 1);
+    RG_ASSERT(audio_task_handle, "Failed to create audio generation task!");
+#endif
+
+#if defined(RG_TARGET_PICOHELD2)
+    app->frameskip = 0;
+#else
+    app->frameskip = 3;
+#endif
+
     bool menuCancelled = false;
     bool menuPressed = false;
     int skipFrames = 0;
+    int framedrop_balance = 0;
 
     while (1)
     {
@@ -467,8 +498,8 @@ void app_main(void)
         else if (joystick & RG_KEY_OPTION)
         {
             rg_gui_options_menu();
-            memset(audioBuffers[0], 0, AUDIO_BUFFER_LENGTH * 4);
-            memset(audioBuffers[1], 0, AUDIO_BUFFER_LENGTH * 4);
+            memset(audioBuffers[0], 0, audio_buffer_length * 4);
+            memset(audioBuffers[1], 0, audio_buffer_length * 4);
             continue;
         }
 
@@ -481,42 +512,58 @@ void app_main(void)
 
         IPPU.RenderThisFrame = drawFrame;
         GFX.Screen = currentUpdate->data;
+#if defined(FRAME_DOUBLE_BUFFERING)
+        // Now, this is a hack but it makes room for a screen backbuffer
+        GFX.SubScreen = GFX.Screen;
+#endif
 
         S9xMainLoop();
 
         if (drawFrame)
         {
             slowFrame = !rg_display_sync(false);
+            #if RG_SCREEN_DRIVER == 2
+            rg_display_submit_direct(currentUpdate, 0);
+            #else
             rg_display_submit(currentUpdate, 0);
+            #endif
             currentUpdate = updates[currentUpdate == updates[0]];
         }
 
     #ifdef USE_AUDIO_TASK
         rg_system_tick(rg_system_timer() - startTime);
-        rg_task_msg_t msg = {.type = (int)sound_enabled, .dataInt = samplesPerFrame};
-        if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
-            rg_task_send(audio_task_handle, &msg, -1);
     #else
         if (sound_enabled)
-            mix_samples(samplesPerFrame << 1);
+            mix_samples(audio_buffer_length << 1);
         rg_system_tick(rg_system_timer() - startTime);
         if (sound_enabled || app->frameTime - (rg_system_timer() - startTime) > 2000)
-            rg_audio_submit(currentAudioBuffer, samplesPerFrame);
+            rg_audio_submit(currentAudioBuffer, audio_buffer_length);
     #endif
 
-        if (skipFrames == 0)
-        {
-            int elapsed = rg_system_timer() - startTime;
-            if (app->frameskip > 0)
-                skipFrames = app->frameskip;
-            else if (elapsed > app->frameTime + 1500) // Allow some jitter
-                skipFrames = 1; // (elapsed / frameTime)
-            else if (drawFrame && slowFrame)
-                skipFrames = 1;
-        }
-        else if (skipFrames > 0)
-        {
+        if (app->frameskip > 0) {
+          if (skipFrames == 0)
+            skipFrames = app->frameskip;
+          else if (skipFrames > 0)
             skipFrames--;
+        } else {
+          framedrop_balance += (rg_system_timer() - startTime) - app->frameTime;
+
+          // We're now half a frame behind, so skip the next frame
+          if (framedrop_balance > app->frameTime / 2) {  // fcipaq: TODO: what amount is best?
+            skipFrames = 1;
+          } else {
+            skipFrames = 0;
+          }
+
+          if (framedrop_balance < -550)   // Allow some jitter
+          {
+            int64_t fpsLimiter = rg_system_timer();
+            while (rg_system_timer() - fpsLimiter < (-framedrop_balance))
+              ;
+            framedrop_balance = 0;
+          }
+
         }
+
     }
 }

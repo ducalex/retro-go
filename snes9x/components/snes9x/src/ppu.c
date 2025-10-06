@@ -99,7 +99,7 @@ void S9xFixColourBrightness()
 /* S9xSetPPU()                                                                */
 /* This function sets a PPU Register to a specific byte                       */
 /******************************************************************************/
-void S9xSetPPU(uint8_t Byte, uint16_t Address)
+IRAM_ATTR void S9xSetPPU(uint8_t Byte, uint16_t Address)
 {
    if (Address <= 0x2183)
    {
@@ -617,7 +617,7 @@ void S9xSetPPU(uint8_t Byte, uint16_t Address)
 /* S9xGetPPU()                                                                */
 /* This function retrieves a PPU Register                                     */
 /******************************************************************************/
-uint8_t S9xGetPPU(uint16_t Address)
+IRAM_ATTR uint8_t S9xGetPPU(uint16_t Address)
 {
    uint8_t byte;
    if (Address < 0x2100) /* not a real PPU reg */
@@ -877,7 +877,7 @@ uint8_t S9xGetPPU(uint16_t Address)
 /* S9xSetCPU()                                                                */
 /* This function sets a CPU/DMA Register to a specific byte                   */
 /******************************************************************************/
-void S9xSetCPU(uint8_t byte, uint16_t Address)
+IRAM_ATTR void S9xSetCPU(uint8_t byte, uint16_t Address)
 {
    int32_t d;
 
@@ -1307,7 +1307,7 @@ void S9xSetCPU(uint8_t byte, uint16_t Address)
 /* S9xGetCPU()                                                                */
 /* This function retrieves a CPU/DMA Register                                 */
 /******************************************************************************/
-uint8_t S9xGetCPU(uint16_t Address)
+IRAM_ATTR uint8_t S9xGetCPU(uint16_t Address)
 {
    int32_t d;
    uint8_t byte;

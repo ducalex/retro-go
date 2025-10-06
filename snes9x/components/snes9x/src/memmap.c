@@ -137,20 +137,21 @@ static void Sanitize(char* str, size_t bufsize)
 /**********************************************************************************************/
 bool S9xInitMemory(void)
 {
-   Memory.RAM   = (uint8_t*)malloc(RAM_SIZE);
-   Memory.SRAM  = (uint8_t*)malloc(SRAM_SIZE);
-   Memory.VRAM  = (uint8_t*)malloc(VRAM_SIZE);
-   Memory.FillRAM = (uint8_t*)malloc(0x8000);
-
-   Memory.Map = (uint8_t**)calloc(MEMMAP_NUM_BLOCKS, sizeof(uint8_t*));
-   Memory.MapInfo = (SMapInfo*)calloc(MEMMAP_NUM_BLOCKS, sizeof(SMapInfo));
-
-   IPPU.ScreenColors = (uint16_t *)calloc(256 * 9, sizeof(uint16_t));
+   IPPU.ScreenColors = (uint16_t *) rg_alloc(256 * 9 * sizeof(uint16_t), MEM_FAST);  // 4.5 kB
    IPPU.DirectColors = IPPU.ScreenColors + 256;
-   IPPU.TileCache = (uint8_t*) calloc(MAX_2BIT_TILES, 128);
-   IPPU.TileCached = (uint8_t*) calloc(MAX_2BIT_TILES, 1);
+   //IPPU.TileCache = (uint8_t*) rg_alloc(MAX_2BIT_TILES * 2, MEM_FAST);  // 8 kB// tile cache disabled
+   IPPU.TileCache = (uint8_t*) rg_alloc(MAX_2BIT_TILES * 128, MEM_SLOW);
+   IPPU.TileCached = (uint8_t*) rg_alloc(MAX_2BIT_TILES, MEM_FAST);  // 4 kB
 
-   bytes0x2000 = (uint8_t *)malloc(0x2000);
+   Memory.FillRAM = (uint8_t*) rg_alloc(0x8000, MEM_SLOW);  // 32 kB
+   bytes0x2000 = (uint8_t *) rg_alloc(0x2000, MEM_SLOW);  // 8 kB
+
+   Memory.RAM   = (uint8_t*) rg_alloc(RAM_SIZE, MEM_SLOW);  // 128 kB
+   Memory.SRAM  = (uint8_t*) rg_alloc(SRAM_SIZE, MEM_SLOW);  // 128 kB
+   Memory.VRAM  = (uint8_t*) rg_alloc(VRAM_SIZE, MEM_SLOW);  // 64 kB
+
+   Memory.Map = (uint8_t**) rg_alloc(MEMMAP_NUM_BLOCKS * sizeof(uint8_t*), MEM_SLOW);
+   Memory.MapInfo = (SMapInfo*) rg_alloc(MEMMAP_NUM_BLOCKS * sizeof(SMapInfo), MEM_SLOW);
 
    // Try to find the biggest (commercial) ROM size that can fit in our available memory.
    // const size_t AllocSizes[] = {0x600000, 0x400000, 0x300000, 0x280000, 0x200000, 0x100000, 0x80000, 0};
@@ -162,7 +163,7 @@ bool S9xInitMemory(void)
    }
 
    if (!Memory.RAM || !Memory.SRAM || !Memory.VRAM || !Memory.ROM || !Memory.Map || !Memory.MapInfo
-      || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000)
+      || !IPPU.ScreenColors || !IPPU.TileCache || !IPPU.TileCached || !bytes0x2000 || !Memory.FillRAM)
    {
       S9xDeinitMemory();
       return false;

@@ -8,7 +8,7 @@
 #include "gfx.h"
 #include "tile.h"
 
-static const uint32_t HeadMask[4] =
+IRAM_ATTR static const uint32_t HeadMask[4] =
 {
 #ifdef MSB_FIRST
    0xffffffff, 0x00ffffff, 0x0000ffff, 0x000000ff
@@ -17,7 +17,7 @@ static const uint32_t HeadMask[4] =
 #endif
 };
 
-static const uint32_t TailMask[5] =
+IRAM_ATTR static const uint32_t TailMask[5] =
 {
 #ifdef MSB_FIRST
    0x00000000, 0xff000000, 0xffff0000, 0xffffff00, 0xffffffff
@@ -26,7 +26,7 @@ static const uint32_t TailMask[5] =
 #endif
 };
 
-static const uint32_t odd[4][16] =
+IRAM_ATTR static const uint32_t odd[4][16] =
 {
 #ifdef MSB_FIRST
    {0x00000000, 0x00000001, 0x00000100, 0x00000101, 0x00010000, 0x00010001, 0x00010100, 0x00010101, 0x01000000, 0x01000001, 0x01000100, 0x01000101, 0x01010000, 0x01010001, 0x01010100, 0x01010101},
@@ -41,7 +41,7 @@ static const uint32_t odd[4][16] =
 #endif
 };
 
-static const uint32_t even[4][16] =
+IRAM_ATTR static const uint32_t even[4][16] =
 {
 #ifdef MSB_FIRST
    {0x00000000, 0x00000002, 0x00000200, 0x00000202, 0x00020000, 0x00020002, 0x00020200, 0x00020202, 0x02000000, 0x02000002, 0x02000200, 0x02000202, 0x02020000, 0x02020002, 0x02020200, 0x02020202},
@@ -56,7 +56,7 @@ static const uint32_t even[4][16] =
 #endif
 };
 
-static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
+IRAM_ATTR static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
 {
    uint8_t* tp = &Memory.VRAM[TileAddr];
    uint32_t* p = (uint32_t*) pCache;
@@ -171,7 +171,7 @@ static uint8_t ConvertTile(uint8_t* pCache, uint32_t TileAddr)
 
 #define PLOT_PIXEL(screen, pixel) (pixel)
 
-static INLINE void WRITE_4PIXELS16(int32_t Offset, uint8_t* Pixels, uint16_t* ScreenColors)
+IRAM_ATTR void WRITE_4PIXELS16(int32_t Offset, uint8_t* Pixels, uint16_t* ScreenColors)
 {
 #if defined(__MIPSEL) && defined(__GNUC__) && !defined(NO_ASM)
 	uint16_t *Screen = (uint16_t *) GFX.S + Offset;
@@ -258,7 +258,7 @@ static INLINE void WRITE_4PIXELS16(int32_t Offset, uint8_t* Pixels, uint16_t* Sc
 #endif
 }
 
-static INLINE void WRITE_4PIXELS16_FLIPPED(int32_t Offset, uint8_t* Pixels, uint16_t* ScreenColors)
+IRAM_ATTR void WRITE_4PIXELS16_FLIPPED(int32_t Offset, uint8_t* Pixels, uint16_t* ScreenColors)
 {
 #if defined(__MIPSEL) && defined(__GNUC__) && !defined(NO_ASM)
 	uint16_t *Screen = (uint16_t *) GFX.S + Offset;

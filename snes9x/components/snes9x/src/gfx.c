@@ -637,7 +637,7 @@ void S9xSetupOBJ(void)
    IPPU.OBJChanged = false;
 }
 
-static void DrawOBJS(bool OnMain, uint8_t D)
+IRAM_ATTR static void DrawOBJS(bool OnMain, uint8_t D)
 {
    struct
    {
@@ -2415,7 +2415,7 @@ static void DrawBGMode7Background16Sub1_2(uint8_t * Screen, int32_t bg)
         } \
     }
 
-static uint32_t Q_INTERPOLATE(uint32_t A, uint32_t B, uint32_t C, uint32_t D)
+IRAM_ATTR static uint32_t Q_INTERPOLATE(uint32_t A, uint32_t B, uint32_t C, uint32_t D)
 {
    uint32_t x = ((A >> 2) & HIGH_BITS_SHIFTED_TWO_MASK) + ((B >> 2) & HIGH_BITS_SHIFTED_TWO_MASK) + ((C >> 2) & HIGH_BITS_SHIFTED_TWO_MASK) + ((D >> 2) & HIGH_BITS_SHIFTED_TWO_MASK);
    uint32_t y = (A & TWO_LOW_BITS_MASK) + (B & TWO_LOW_BITS_MASK) + (C & TWO_LOW_BITS_MASK) + (D & TWO_LOW_BITS_MASK);
