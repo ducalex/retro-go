@@ -256,9 +256,11 @@ typedef struct
     };
 } rg_task_msg_t;
 #define RG_TASK_MSG_STOP -1
-rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity);
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize,
+                          size_t queueDepth, int priority, int affinity);
 rg_task_t *rg_task_find(const char *name);
 rg_task_t *rg_task_current(void);
+// bool rg_task_stop(rg_task_t *task, int timeoutMS, bool force);
 bool rg_task_send(rg_task_t *task, const rg_task_msg_t *msg, int timeoutMS);
 bool rg_task_peek(rg_task_msg_t *out, int timeoutMS);
 bool rg_task_receive(rg_task_msg_t *out, int timeoutMS);

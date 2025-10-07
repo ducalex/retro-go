@@ -354,7 +354,7 @@ void I_InitSound(void)
     music_player->init(snd_samplerate);
     music_player->setvolume(snd_MusicVolume);
 
-    rg_task_create("doom_sound", &soundTask, NULL, 2048, RG_TASK_PRIORITY_2, 1);
+    rg_task_create("doom_sound", &soundTask, NULL, 2048, 1, RG_TASK_PRIORITY_2, 1);
 }
 
 void I_ShutdownSound(void)

@@ -21,6 +21,7 @@ static bool slowFrame = false;
 static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
+static rg_task_t *audioTaskHandle;
 
 static const char *SETTING_OVERSCAN  = "overscan";
 // --- MAIN
@@ -141,7 +142,8 @@ void pce_main(void)
     free(palette);
 
     emulationPaused = true;
-    rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, RG_TASK_PRIORITY_2, 1);
+    audioTaskHandle = rg_task_create("pce_sound", &audioTask, NULL, 2 * 1024, 1, RG_TASK_PRIORITY_2, 1);
+    RG_ASSERT(audioTaskHandle, "Failed to start audio task!");
 
     InitPCE(app->sampleRate, true);
 

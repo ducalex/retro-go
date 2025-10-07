@@ -476,7 +476,7 @@ void app_main(void)
     }
     argv[argc++] = app->romPath;
 
-    audioQueue = rg_task_create("audioTask", &audioTask, NULL, 4096, RG_TASK_PRIORITY_2, 1);
+    audioQueue = rg_task_create("audioTask", &audioTask, NULL, 4096, 1, RG_TASK_PRIORITY_2, 1);
 
     RG_LOGI("fMSX start");
     fmsx_main(argc, (char **)argv);

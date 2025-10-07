@@ -283,7 +283,7 @@ void app_main(void)
     VRAM = rg_alloc(VRAM_MAX_SIZE, MEM_FAST);
 
 #ifdef USE_CORE1_TASK
-    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 4096, RG_TASK_PRIORITY_6, 1);
+    core1_task_handle = rg_task_create("core1_task", &core1_task, NULL, 4096, 1, RG_TASK_PRIORITY_6, 1);
     RG_ASSERT(core1_task_handle, "Failed to create core1 task!");
 #endif
 

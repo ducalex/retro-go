@@ -53,6 +53,7 @@ struct rg_task_s
     void (*func)(void *arg);
     void *arg;
     // bool blocked;
+    size_t queueDepth;
 #ifdef ESP_PLATFORM
     QueueHandle_t queue;
     TaskHandle_t handle;
@@ -523,7 +524,7 @@ rg_app_t *rg_system_init(const rg_config_t *config)
     if (statistics.totalMemory < 0x200000)
         rg_gui_alert("External memory not detected", "Boot will continue but it will surely crash...");
 
-    rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, RG_TASK_PRIORITY_5, -1);
+    rg_task_create("rg_sysmon", &system_monitor_task, NULL, 3 * 1024, 1, RG_TASK_PRIORITY_5, -1);
     app.initialized = true;
 
 #ifdef RG_ENABLE_PROFILING
@@ -557,7 +558,7 @@ static void task_wrapper(void *arg)
 {
     rg_task_t *task = arg;
     task->handle = xTaskGetCurrentTaskHandle();
-    task->queue = xQueueCreate(1, sizeof(rg_task_msg_t));
+    task->queue = xQueueCreate(task->queueDepth, sizeof(rg_task_msg_t));
     (task->func)(task->arg);
     vQueueDelete(task->queue);
     memset(task, 0, sizeof(rg_task_t));
@@ -574,7 +575,8 @@ static int task_wrapper(void *arg)
 }
 #endif
 
-rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize, int priority, int affinity)
+rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *arg, size_t stackSize,
+                          size_t queueDepth, int priority, int affinity)
 {
     RG_ASSERT_ARG(name && taskFunc);
     rg_task_t *task = NULL;
@@ -590,7 +592,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
 
     task->func = taskFunc;
     task->arg = arg;
-    task->handle = 0;
+    task->queueDepth = RG_MAX(1, queueDepth);
     strncpy(task->name, name, 15);
 
 #if defined(ESP_PLATFORM)

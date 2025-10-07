@@ -388,7 +388,7 @@ void app_main(void)
 
 #ifdef USE_AUDIO_TASK
     // Set up multicore audio
-    audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, RG_TASK_PRIORITY_6, 1);
+    audio_task_handle = rg_task_create("snes_audio", &audio_task, NULL, 2048, 1, RG_TASK_PRIORITY_6, 1);
     RG_ASSERT(audio_task_handle, "Failed to create audio task!");
 #endif
 

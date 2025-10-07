@@ -185,7 +185,7 @@ static bool buzzer_init(int device, int sampleRate)
         return false;
     }
 
-    rg_task_create("rg_buzzer_statistics", &rg_buzzer_statistics, (void*) cacheSamples, 3 * 1024, RG_TASK_PRIORITY_5, -1);
+    rg_task_create("rg_buzzer_statistics", &rg_buzzer_statistics, (void*) cacheSamples, 3 * 1024, 1, RG_TASK_PRIORITY_5, -1);
 
     // Avoid PWM frequency < 16 kHz because it causes audible sound
     int freq = sampleRate;
