@@ -170,10 +170,12 @@ static void update_memory_statistics(void)
     statistics.totalMemoryExt = heap_info.total_free_bytes + heap_info.total_allocated_bytes;
     statistics.freeMemoryExt = heap_info.total_free_bytes;
     statistics.freeBlockExt = heap_info.largest_free_block;
-    // FIXME: We should check all the tasks' HWM to be better informed!
-    statistics.freeStackMain = uxTaskGetStackHighWaterMark(tasks[0].handle);
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+        statistics.freeStack[i] = tasks[i].handle ? uxTaskGetStackHighWaterMark(tasks[i].handle) : -1;
 #else
     statistics.freeMemoryInt = statistics.freeBlockInt = statistics.totalMemoryInt = 0x40000000;
+    for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+        statistics.freeStack[i] = 0xFFFF;
 #endif
     statistics.totalMemory = statistics.totalMemoryInt + statistics.totalMemoryExt;
     statistics.freeMemory = statistics.freeMemoryInt + statistics.freeMemoryExt;
@@ -267,8 +269,8 @@ static void system_monitor_task(void *arg)
         update_indicators(false);
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
-        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
-            statistics.freeStackMain,
+        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (S:%d R:%d+%d), BATT:%d",
+            statistics.freeStack[0],
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
             statistics.freeBlockInt / 1024,
@@ -279,6 +281,14 @@ static void system_monitor_task(void *arg)
             (int)roundf(statistics.partialFPS),
             (int)roundf(statistics.fullFPS),
             (int)roundf((battery.volts * 1000) ?: battery.level));
+
+        for (size_t i = 0; i < RG_COUNT(tasks); ++i)
+        {
+            if (tasks[i].handle && statistics.freeStack[i] >= 0 && statistics.freeStack[i] < 300)
+                RG_LOGW("Task %.15s HWM = %d", tasks[i].name, statistics.freeStack[i]);
+            // if (tasks[i].handle && statistics.freeStack[i] >= 0)
+            //     rg_system_log(statistics.freeStack[i] < 1024 ? RG_LOG_WARN : RG_LOG_DEBUG, NULL, "Stack HWM: %s = %d", tasks[i].name, statistics.freeStack[i]);
+        }
 
         // Auto frameskip
         // TODO: Use a rolling average of frameTimes instead of this mess
@@ -1041,7 +1051,8 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
     fprintf(fp, "Total memory: %d + %d\n", stats->totalMemoryInt, stats->totalMemoryExt);
     fprintf(fp, "Free memory: %d + %d\n", stats->freeMemoryInt, stats->freeMemoryExt);
     fprintf(fp, "Free block: %d + %d\n", stats->freeBlockInt, stats->freeBlockExt);
-    fprintf(fp, "Stack HWM: %d\n", stats->freeStackMain);
+    for (int i = 0; i < RG_COUNT(stats->freeStack); ++i)
+        fprintf(fp, "Task %d HWM: %d\n", i, stats->freeStack[i]);
     fprintf(fp, "Uptime: %ds (%d ticks)\n", stats->uptime, stats->ticks);
     if (panic_trace && panicTrace.configNs[0])
         fprintf(fp, "Panic configNs: %.16s\n", panicTrace.configNs);

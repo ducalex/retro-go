@@ -2155,7 +2155,7 @@ void rg_gui_debug_menu(void)
     }
     else
         snprintf(frame_time, 20, "N/A");
-    snprintf(stack_hwm, 20, "%d", stats.freeStackMain);
+    snprintf(stack_hwm, 20, "%d", stats.freeStack[0]);
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(app_name, 32, "%s", rg_system_get_app()->name);

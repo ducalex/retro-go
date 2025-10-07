@@ -199,7 +199,7 @@ typedef struct
     int freeBlockInt;
     int freeBlockExt;
     int freeBlock;
-    int freeStackMain;
+    int freeStack[8];
 } rg_stats_t;
 
 rg_app_t *rg_system_init(const rg_config_t *config);
