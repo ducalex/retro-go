@@ -617,6 +617,27 @@ void rg_display_clear(uint16_t color_le)
                           display.screen.real_height, color_le);
 }
 
+bool rg_display_set_geometry(int width, int height, const rg_margins_t *margins)
+{
+    RG_ASSERT(width >= 64 && height >= 64, "Invalid resolution");
+    // Temporary limitation because we have some fixed buffers to fix (and no, it's not as simple as moving them to the heap)...
+    RG_ASSERT(width <= RG_SCREEN_WIDTH && height <= RG_SCREEN_HEIGHT, "Resolution cannot exceed RG_SCREEN_WIDTH*RG_SCREEN_HEIGHT!");
+    // FIXME: Not thread safe at all, we should block any access to the display until this function returns...
+    display.screen.real_width = width;
+    display.screen.real_height = height;
+    display.screen.margins = margins ? *margins : (rg_margins_t){0, 0, 0, 0};
+    display.screen.width = display.screen.real_width - display.screen.margins.left + display.screen.margins.right;
+    display.screen.height = display.screen.real_height - display.screen.margins.top + display.screen.margins.bottom;
+    display.changed = true;
+    // update_viewport_scaling();             // This will be implicitly done by the display task
+    rg_gui_update_geometry();              // Let the GUI know that the geometry has changed
+    rg_system_event(RG_EVENT_GEOMETRY, 0); // Let everybody know that the geometry has changed
+    RG_LOGI("Screen: resolution=%dx%d, effective=%dx%d, format=%d",
+            display.screen.real_width, display.screen.real_height,
+            display.screen.width, display.screen.height, display.screen.format);
+    return true;
+}
+
 void rg_display_deinit(void)
 {
     rg_task_send(display_task_queue, &(rg_task_msg_t){.type = RG_TASK_MSG_STOP}, -1);
@@ -637,16 +658,8 @@ void rg_display_init(void)
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
         .custom_zoom = rg_settings_get_number(NS_APP, SETTING_CUSTOM_ZOOM, 1.0),
     };
-    display = (rg_display_t){
-        .screen.real_width = RG_SCREEN_WIDTH,
-        .screen.real_height = RG_SCREEN_HEIGHT,
-        .screen.width = RG_SCREEN_WIDTH,
-        .screen.height = RG_SCREEN_HEIGHT,
-        .screen.margins = RG_SCREEN_VISIBLE_AREA,
-        .changed = true,
-    };
-    display.screen.width -= display.screen.margins.left + display.screen.margins.right;
-    display.screen.height -= display.screen.margins.top + display.screen.margins.bottom;
+    memset(&display, 0, sizeof(display));
+    rg_display_set_geometry(RG_SCREEN_WIDTH, RG_SCREEN_HEIGHT, &(rg_margins_t)RG_SCREEN_VISIBLE_AREA);
     lcd_init();
     rg_display_clear(C_BLACK);
     rg_task_delay(80); // Wait for the screen be cleared before turning on the backlight (40ms doesn't seem to be enough...)
@@ -654,5 +667,6 @@ void rg_display_init(void)
     display_task_queue = rg_task_create("rg_display", &display_task, NULL, 4 * 1024, 1, RG_TASK_PRIORITY_6, 1);
     if (config.border_file)
         load_border_file(config.border_file);
-    RG_LOGI("Display ready.\n");
+    display.initialized = true;
+    RG_LOGI("Display ready.");
 }

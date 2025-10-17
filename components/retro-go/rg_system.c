@@ -875,7 +875,8 @@ IRAM_ATTR int64_t rg_system_timer(void)
 
 void rg_system_event(int event, void *arg)
 {
-    RG_LOGV("Dispatching event:%d arg:%p\n", event, arg);
+    // FIXME: rg_* components should have a way to listen to events too (eg rg_gui receive RG_EVENT_GEOMETRY)
+    RG_LOGV("Dispatching event:%d arg:%p", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
 }

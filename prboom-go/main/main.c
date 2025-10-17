@@ -507,6 +507,11 @@ static void event_handler(int event, void *arg)
     {
         rg_display_submit(update, 0);
     }
+    else if (event == RG_EVENT_GEOMETRY)
+    {
+        // NOTE: Resolution can't be changed after D_DoomMain() has been called.
+        // The buffer will have to be scaled...
+    }
 }
 
 bool is_iwad(const char *path)

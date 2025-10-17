@@ -105,6 +105,7 @@ struct rg_gui_option_s
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
+void rg_gui_update_geometry(void);
 bool rg_gui_set_language_id(int index);
 void rg_gui_set_surface(rg_surface_t *surface);
 bool rg_gui_set_font(int index);

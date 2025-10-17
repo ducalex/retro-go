@@ -417,7 +417,21 @@ static void try_migrate(void)
 void event_handler(int event, void *arg)
 {
     if (event == RG_EVENT_REDRAW)
+    {
         gui_redraw();
+    }
+    else if (event == RG_EVENT_GEOMETRY)
+    {
+        RG_LOGW("Here we should add basic checks and also clear all loaded images...");
+        gui.width = rg_display_get_width();
+        gui.height = rg_display_get_height();
+        if (gui.surface)
+        {
+            gui.surface->width = gui.width;
+            gui.surface->height = gui.height;
+            gui.surface->stride = gui.width * 2;
+        }
+    }
 }
 
 static void options_handler(rg_gui_option_t *dest)

@@ -100,7 +100,7 @@ static int get_vertical_position(int y_pos, int height)
     return y_pos;
 }
 
-void rg_gui_init(void)
+static void gui_update_geometry(void)
 {
     gui.screen_width = rg_display_get_width();
     gui.screen_height = rg_display_get_height();
@@ -108,6 +108,11 @@ void rg_gui_init(void)
     //        because of how this is defined in config.h. It should be documented somewhere...
     gui.margins = (rg_margins_t)RG_SCREEN_SAFE_AREA;
     gui.draw_buffer = get_draw_buffer(gui.screen_width, 18, C_BLACK);
+}
+
+void rg_gui_init(void)
+{
+    gui_update_geometry();
     gui.show_clock = rg_settings_get_boolean(NS_GLOBAL, SETTING_CLOCK, false);
     if (!rg_gui_set_language_id(rg_settings_get_number(NS_GLOBAL, SETTING_LANGUAGE, RG_LANG_DEFAULT)))
         rg_gui_set_language_id(0);
@@ -115,6 +120,12 @@ void rg_gui_init(void)
         rg_gui_set_font(0);
     rg_gui_set_theme(rg_settings_get_string(NS_GLOBAL, SETTING_THEME, NULL));
     gui.initialized = true;
+}
+
+void rg_gui_update_geometry(void)
+{
+    if (gui.initialized)
+        gui_update_geometry();
 }
 
 bool rg_gui_set_language_id(int index)
@@ -2060,10 +2071,10 @@ void rg_gui_about_menu(void)
 
     // TODO: Add indicator whether or not the build is a release, and if it's official (built by me)
     rg_gui_option_t options[20] = {
-        {0, _("Version"), (char *)app->version, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, _("Date"), (char *)app->buildDate, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, _("Target"), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_MESSAGE, NULL},
-        {0, _("Website"), (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_MESSAGE, NULL},
+        {0, _("Version"), (char *)app->version, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Date"), (char *)app->buildDate, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Target"), (char *)RG_TARGET_NAME, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0, _("Website"), (char *)RG_PROJECT_WEBSITE, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
         {4, _("Options"), NULL, have_option_btn ? RG_DIALOG_FLAG_HIDDEN : RG_DIALOG_FLAG_NORMAL , NULL},
         // {1, _("View credits", NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -2112,28 +2123,28 @@ void rg_gui_debug_menu(void)
     char app_name[32], network_str[64];
 
     const rg_gui_option_t options[] = {
-        {0, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Source res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Scaled res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "App name  ", app_name,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Network   ", network_str,  RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Local time", local_time,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Timezone  ", timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
-        {0, "Overclock",  overclock,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x100, "Screen res", screen_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Source res", source_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Scaled res", scaled_res,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Stack HWM ", stack_hwm,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Heap free ", heap_free,    RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Block free", block_free,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "App name  ", app_name,     RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Network   ", network_str,  RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Local time", local_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Timezone  ", timezone,     RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Overclock",  overclock,    RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
-        {1, "Reboot to firmware",   NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {2, "Clear cache    ",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {3, "Save screenshot",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {4, "Save trace",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {5, "Cheats    ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {6, "Crash     ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
-        {7, "Log=debug ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x001, "Reboot to firmware",   NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x002, "Clear cache    ",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x003, "Save screenshot",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x004, "Save trace",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x005, "Cheats    ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x006, "Crash     ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x007, "Log=debug ",           NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_END
     };
 
@@ -2182,26 +2193,30 @@ void rg_gui_debug_menu(void)
 
     switch (rg_gui_dialog("Debugging", options, 0))
     {
-    case 1:
+    case 0x001:
         rg_system_switch_app(RG_APP_FACTORY, NULL, NULL, 0, 0);
         break;
-    case 2:
+    case 0x002:
         rg_storage_delete(RG_BASE_PATH_CACHE);
         rg_system_restart();
         break;
-    case 3:
+    case 0x003:
         rg_emu_screenshot(RG_STORAGE_ROOT "/screenshot.png", 0, 0);
         break;
-    case 4:
+    case 0x004:
         rg_system_save_trace(RG_STORAGE_ROOT "/trace.txt", 0);
         break;
-    case 5:
+    case 0x005:
         break;
-    case 6:
+    case 0x006:
         RG_PANIC("Crash test!");
         break;
-    case 7:
+    case 0x007:
         rg_system_set_log_level(RG_LOG_DEBUG);
+        break;
+    case 0x100:
+        rg_display_set_geometry(RG_MAX(64, (rand() % RG_SCREEN_WIDTH) & ~0x3),
+                                RG_MAX(64, (rand() % RG_SCREEN_HEIGHT) & ~0x3), NULL);
         break;
     }
 }
