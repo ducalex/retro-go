@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
+// #define LCD_SCREEN_BUFFER 0
+// #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 // static rg_display_driver_t driver;
 static rg_task_t *display_task_queue;
@@ -30,14 +31,22 @@ static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
 static void lcd_init(void);
 static void lcd_deinit(void);
 static void lcd_sync(void);
+static void lcd_flip(void);
 static void lcd_set_rotation(int rotation);
 static void lcd_set_backlight(float percent);
+// When LCD_SCREEN_BUFFER == 0:
 static void lcd_set_window(int left, int top, int width, int height);
 static inline uint16_t *lcd_get_buffer(size_t length);
 static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
+// When LCD_SCREEN_BUFFER == 1:
+static inline uint16_t *lcd_get_buffer_ptr(int left, int top);
 
 #if RG_SCREEN_DRIVER == 0 || RG_SCREEN_DRIVER == 1 /* ILI9341/ST7789 */
 #include "drivers/display/ili9341.h"
+#elif RG_SCREEN_DRIVER == 2 /* ESP_LCD */
+#include "drivers/display/esp_lcd.h"
+#elif RG_SCREEN_DRIVER == 98 /* DO NOT USE, DEMO */
+#include "drivers/display/ili9341_buffered.h"
 #elif RG_SCREEN_DRIVER == 99
 #include "drivers/display/sdl2.h"
 #else
@@ -129,7 +138,7 @@ static inline void write_update(const rg_surface_t *update)
 
     const int screen_left = display.screen.margins.left + draw_left;
     const int screen_top = display.screen.margins.top + draw_top;
-    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES;
+    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES && !LCD_SCREEN_BUFFER;
     // const bool interlace = false;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
@@ -152,8 +161,11 @@ static inline void write_update(const rg_surface_t *update)
                                          LINE_IS_REPEATED(y + lines_to_copy)))
                 --lines_to_copy;
         }
-
+#if LCD_SCREEN_BUFFER
+        uint16_t *line_buffer = lcd_get_buffer_ptr(screen_left, screen_top + y);
+#else
         uint16_t *line_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+#endif
         uint16_t *line_buffer_ptr = line_buffer;
 
         uint32_t checksum = 0xFFFFFFFF;
@@ -228,20 +240,22 @@ static inline void write_update(const rg_surface_t *update)
             }
         }
 
+#if !LCD_SCREEN_BUFFER
+        size_t lines_to_send = 0;
         if (need_update)
         {
             int top = screen_top + y - lines_to_copy;
             if (top != window_top)
                 lcd_set_window(screen_left, top, draw_width, lines_remaining);
-            lcd_send_buffer(line_buffer, draw_width * lines_to_copy);
             window_top = top + lines_to_copy;
             lines_updated += lines_to_copy;
+            lines_to_send = lines_to_copy;
         }
-        else
-        {
-            // Return unused buffer
-            lcd_send_buffer(line_buffer, 0);
-        }
+        // Always call lcd_send_buffer, even with 0 lines (to return the borrowed buffer)
+        lcd_send_buffer(line_buffer, lines_to_send * draw_width);
+#else
+        lines_updated += lines_to_copy;
+#endif
 
         // Drawing the OSD as we progress reduces flicker compared to doing it once at the end
         if (osd_next_call && draw_top + y >= osd_next_call)
@@ -516,6 +530,8 @@ bool rg_display_sync(bool block)
     return !rg_task_messages_waiting(display_task_queue);
 }
 
+// FIXME: We need to add a way to group writes and indicate completion, so that the display driver will blit/flip only
+//        when the last write is done. Currently we can either blit out of sync or rely on lcd_sync, both bad...
 void rg_display_write_rect(int left, int top, int width, int height, int stride, const uint16_t *buffer, uint32_t flags)
 {
     RG_ASSERT_ARG(buffer);
@@ -544,6 +560,8 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
 
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
+
+#if !LCD_SCREEN_BUFFER
     lcd_set_window(screen_left, screen_top, width, height);
 
     for (size_t y = 0; y < height;)
@@ -554,7 +572,7 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
         // Copy line by line because stride may not match width
         for (size_t line = 0; line < num_lines; ++line)
         {
-            uint16_t *src = (void *)buffer + ((y + line) * stride);
+            const uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
             if (flags & RG_DISPLAY_WRITE_NOSWAP)
             {
@@ -570,7 +588,15 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
         lcd_send_buffer(lcd_buffer, width * num_lines);
         y += num_lines;
     }
-
+#else
+    for (size_t y = 0; y < height; ++y)
+    {
+        const uint16_t *src = (void *)buffer + (y * stride);
+        uint16_t *dst = lcd_get_buffer_ptr(screen_left, screen_top + y);
+        for (size_t i = 0; i < width; ++i)
+            dst[i] = (src[i] >> 8) | (src[i] << 8);
+    }
+#endif
     lcd_sync();
 }
 
@@ -578,12 +604,11 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
 {
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
+#if !LCD_SCREEN_BUFFER
     const uint16_t color_be = (color_le << 8) | (color_le >> 8);
-
     int pixels_remaining = width * height;
     if (pixels_remaining <= 0)
         return;
-
     lcd_set_window(screen_left, screen_top, width, height);
     while (pixels_remaining > 0)
     {
@@ -594,6 +619,15 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
         lcd_send_buffer(buffer, pixels);
         pixels_remaining -= pixels;
     }
+#else
+    for (int y = 0; y < height; ++y)
+    {
+        uint16_t *buffer = lcd_get_buffer_ptr(screen_left, screen_top + y);
+        for (int x = 0; x < width; ++x)
+            buffer[x] = color_le;
+    }
+#endif
+    lcd_sync();
 }
 
 void rg_display_clear_except(int left, int top, int width, int height, uint16_t color_le)

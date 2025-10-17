@@ -1,3 +1,6 @@
+#define LCD_SCREEN_BUFFER 0
+#define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
+
 static uint16_t lcd_buffer[LCD_BUFFER_LENGTH];
 
 static void lcd_init(void)

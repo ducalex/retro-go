@@ -1,4 +1,4 @@
-#define LCD_SCREEN_BUFFER 0
+#define LCD_SCREEN_BUFFER 1
 #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 #include <freertos/FreeRTOS.h>
@@ -10,6 +10,7 @@
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
+static volatile int dirty = 0;
 
 #define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT      (5)
@@ -23,18 +24,7 @@ static QueueHandle_t spi_buffers;
             spi_queue_transaction(&x, sizeof(x), 1); \
     }
 
-static inline uint16_t *spi_take_buffer(void)
-{
-    uint16_t *buffer;
-    if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
-        RG_PANIC("display");
-    return buffer;
-}
-
-static inline void spi_give_buffer(uint16_t *buffer)
-{
-    xQueueSend(spi_buffers, &buffer, portMAX_DELAY);
-}
+static uint16_t *screen_buffer;
 
 static inline void spi_queue_transaction(const void *data, size_t length, uint32_t type)
 {
@@ -62,7 +52,10 @@ static inline void spi_queue_transaction(const void *data, size_t length, uint32
     }
     else
     {
-        t->tx_buffer = memcpy(spi_take_buffer(), data, length);
+        uint16_t *buffer;
+        if (xQueueReceive(spi_buffers, &buffer, pdMS_TO_TICKS(2500)) != pdTRUE)
+            RG_PANIC("display");
+        t->tx_buffer = memcpy(buffer, data, length);
         t->user = (void *)(type | 2);
     }
 
@@ -87,7 +80,7 @@ static void spi_task(void *arg)
     while (spi_device_get_trans_result(spi_dev, &t, portMAX_DELAY) == ESP_OK)
     {
         if ((int)t->user & 2)
-            spi_give_buffer((uint16_t *)t->tx_buffer);
+            xQueueSend(spi_buffers, &t->tx_buffer, portMAX_DELAY);
         xQueueSend(spi_transactions, &t, portMAX_DELAY);
     }
 }
@@ -138,7 +131,7 @@ static void spi_init(void)
     ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
 
-    rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, 1, RG_TASK_PRIORITY_7, 1);
+    rg_task_create("rg_spi", &spi_task, NULL, 2048, 1, RG_TASK_PRIORITY_7, 1);
 }
 
 static void spi_deinit(void)
@@ -151,51 +144,26 @@ static void spi_deinit(void)
         RG_LOGE("Failed to properly terminate SPI driver!");
 }
 
-static void lcd_set_backlight(float percent)
+static void lcd_blit_task(void *arg)
 {
-    float level = RG_MIN(RG_MAX(percent / 100.f, 0), 1.f);
-    int error_code = 0;
-
-#if defined(RG_GPIO_LCD_BCKL)
-    error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
-#endif
-
-    if (error_code)
-        RG_LOGE("failed setting backlight to %d%% (0x%02X)\n", (int)(100 * level), error_code);
-    else
-        RG_LOGI("backlight set to %d%%\n", (int)(100 * level));
-}
-
-static void lcd_set_window(int left, int top, int width, int height)
-{
-    int right = left + width - 1;
-    int bottom = top + height - 1;
-
-    if (left < 0 || top < 0 || right >= display.screen.real_width || bottom >= display.screen.real_height)
-        RG_LOGW("Bad lcd window (x0=%d, y0=%d, x1=%d, y1=%d)\n", left, top, right, bottom);
-
-    ILI9341_CMD(0x2A, left >> 8, left & 0xff, right >> 8, right & 0xff); // Horiz
-    ILI9341_CMD(0x2B, top >> 8, top & 0xff, bottom >> 8, bottom & 0xff); // Vert
-    ILI9341_CMD(0x2C);                                                   // Memory write
-}
-
-static inline uint16_t *lcd_get_buffer(size_t length)
-{
-    // RG_ASSERT_ARG(length < LCD_BUFFER_LENGTH);
-    return spi_take_buffer();
-}
-
-static inline void lcd_send_buffer(uint16_t *buffer, size_t length)
-{
-    if (length > 0)
-        spi_queue_transaction(buffer, length * sizeof(*buffer), 3);
-    else
-        spi_give_buffer(buffer);
-}
-
-static void lcd_sync(void)
-{
-    // Unused for SPI LCD
+    while (true)
+    {
+        while (!dirty)
+            rg_task_delay(10);
+        dirty = 0;
+        ILI9341_CMD(0x2A, 0, 0, display.screen.real_width >> 8, display.screen.real_width & 0xff); // Horiz
+        ILI9341_CMD(0x2B, 0, 0, display.screen.real_height >> 8, display.screen.real_height & 0xff); // Vert
+        ILI9341_CMD(0x2C);                                                   // Memory write
+        size_t pixels_remaining = display.screen.real_width * display.screen.real_height;
+        const uint16_t *screen_buffer_ptr = screen_buffer;
+        while (pixels_remaining > 0)
+        {
+            size_t length = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
+            spi_queue_transaction(screen_buffer_ptr, length * 2, 1);
+            screen_buffer_ptr += length;
+            pixels_remaining -= length;
+        }
+    }
 }
 
 static void lcd_init(void)
@@ -251,6 +219,9 @@ static void lcd_init(void)
     ILI9341_CMD(0x11);    // Exit Sleep
     rg_usleep(10 * 1000); // Wait 10ms after sleep out
     ILI9341_CMD(0x29);    // Display on
+
+    screen_buffer = rg_alloc(RG_SCREEN_WIDTH * RG_SCREEN_HEIGHT * 2, MEM_ANY);
+    rg_task_create("rg_lcd_blit", &lcd_blit_task, NULL, 4096, 1, RG_TASK_PRIORITY_6, 1);
 }
 
 static void lcd_deinit(void)
@@ -263,6 +234,31 @@ static void lcd_deinit(void)
     // gpio_reset_pin(RG_GPIO_LCD_DC);
 }
 
-const rg_display_driver_t rg_display_driver_ili9341 = {
-    .name = "ili9341",
+static void lcd_set_backlight(float percent)
+{
+    float level = RG_MIN(RG_MAX(percent / 100.f, 0), 1.f);
+    int error_code = 0;
+
+#if defined(RG_GPIO_LCD_BCKL)
+    error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
+#endif
+
+    if (error_code)
+        RG_LOGE("failed setting backlight to %d%% (0x%02X)\n", (int)(100 * level), error_code);
+    else
+        RG_LOGI("backlight set to %d%%\n", (int)(100 * level));
+}
+
+static void lcd_sync(void)
+{
+    dirty++;
+}
+
+static inline uint16_t *lcd_get_buffer_ptr(int left, int top)
+{
+    return screen_buffer + (top * display.screen.real_width) + left;
+}
+
+const rg_display_driver_t rg_display_driver_esp_lcd = {
+    .name = "esp_lcd",
 };
