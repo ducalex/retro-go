@@ -660,8 +660,8 @@ bool rg_display_set_geometry(int width, int height, const rg_margins_t *margins)
     display.screen.real_width = width;
     display.screen.real_height = height;
     display.screen.margins = margins ? *margins : (rg_margins_t){0, 0, 0, 0};
-    display.screen.width = display.screen.real_width - display.screen.margins.left + display.screen.margins.right;
-    display.screen.height = display.screen.real_height - display.screen.margins.top + display.screen.margins.bottom;
+    display.screen.width = display.screen.real_width - (display.screen.margins.left + display.screen.margins.right);
+    display.screen.height = display.screen.real_height - (display.screen.margins.top + display.screen.margins.bottom);
     display.changed = true;
     // update_viewport_scaling();             // This will be implicitly done by the display task
     rg_gui_update_geometry();              // Let the GUI know that the geometry has changed
