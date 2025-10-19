@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import argparse, math, struct, time, zlib
+import argparse, hashlib, math, struct, time, zlib
 
 def readfile(filepath):
     try:
@@ -73,11 +73,13 @@ def create_image(chip_type, partitions, bootloader_file, name, version, target):
     output_data = bytearray(b"\xFF" * max(p[3] + p[4] for p in partitions))
 
     # It would be better to call gen_esp32part.py but it's a hassle to make it work for all our supported platforms...
+    PARTITION_MAGIC = b"\xAA\x50"
+    PARTITION_MD5_MAGIC = b"\xEB\xEB\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
     table_bin = b""
     for partype, subtype, label, offset, size, data in partitions:
-        table_bin += struct.pack("<2sBBLL16sL", b"\xAA\x50", partype, subtype, offset, size, label.encode(), 0)
+        table_bin += struct.pack("<2sBBLL16sL", PARTITION_MAGIC, partype, subtype, offset, size, label.encode(), 0)
+    table_bin += PARTITION_MD5_MAGIC + hashlib.md5(table_bin).digest()
     table_bin += b"\xFF" * (0xC00 - len(table_bin))  # Pad table with 0xFF otherwise it will be invalid
-    # The lack of an MD5 entry is deliberate to maintain compatibility with very old bootloaders
     output_data[table_offset : table_offset + len(table_bin)] = table_bin
 
     bootloader_bin = readfile(bootloader_file)
