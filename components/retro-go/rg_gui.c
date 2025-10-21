@@ -2215,8 +2215,11 @@ void rg_gui_debug_menu(void)
         rg_system_set_log_level(RG_LOG_DEBUG);
         break;
     case 0x100:
-        rg_display_set_geometry(RG_MAX(64, (rand() % RG_SCREEN_WIDTH) & ~0x3),
-                                RG_MAX(64, (rand() % RG_SCREEN_HEIGHT) & ~0x3), NULL);
+        rg_display_set_geometry(
+            RG_MAX(64, (rand() % RG_SCREEN_WIDTH) & ~0x3),
+            RG_MAX(64, (rand() % RG_SCREEN_HEIGHT) & ~0x3),
+            &(rg_margins_t){rand() % 16, rand() % 16, rand() % 16, rand() % 16}
+        );
         break;
     }
 }
