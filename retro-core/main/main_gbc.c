@@ -219,7 +219,7 @@ static rg_gui_event_t rtc_update_cb(rg_gui_option_t *option, rg_gui_event_t even
 static void video_callback(void *buffer)
 {
     int64_t startTime = rg_system_timer();
-    slowFrame = !rg_display_sync(false);
+    slowFrame = rg_display_is_busy();
     rg_display_submit(currentUpdate, 0);
     video_time += rg_system_timer() - startTime;
 }

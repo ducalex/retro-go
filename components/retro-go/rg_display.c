@@ -366,6 +366,15 @@ static void display_task(void *arg)
         if (msg.type == RG_TASK_MSG_STOP)
             break;
 
+        const rg_surface_t *update = msg.dataPtr;
+
+        if (display.source.width != update->width || display.source.height != update->height)
+        {
+            display.source.width = update->width;
+            display.source.height = update->height;
+            display.changed = true;
+        }
+
         if (display.changed)
         {
             update_viewport_scaling();
@@ -380,7 +389,7 @@ static void display_task(void *arg)
             display.changed = false;
         }
 
-        write_update(msg.dataPtr);
+        write_update(update);
         // draw_on_screen_display(0, display.screen.height);
         rg_task_receive(&msg, -1);
 
@@ -393,7 +402,9 @@ void rg_display_force_redraw(void)
     display.changed = true;
     // memset(screen_line_checksum, 0, sizeof(screen_line_checksum));
     rg_system_event(RG_EVENT_REDRAW, NULL);
-    rg_display_sync(true);
+    // Wait for the redraw to be complete, if any was initiated!
+    while (rg_display_is_busy())
+        rg_task_yield();
 }
 
 const rg_display_t *rg_display_get_info(void)
@@ -509,25 +520,20 @@ void rg_display_submit(const rg_surface_t *update, uint32_t flags)
     if (!update || !update->data)
         return;
 
-    if (display.source.width != update->width || display.source.height != update->height)
-    {
-        rg_display_sync(true);
-        display.source.width = update->width;
-        display.source.height = update->height;
-        display.changed = true;
-    }
-
     rg_task_send(display_task_queue, &(rg_task_msg_t){.dataPtr = update}, -1);
 
     counters.blockTime += rg_system_timer() - time_start;
     counters.totalFrames++;
 }
 
-bool rg_display_sync(bool block)
+bool rg_display_is_busy(void)
 {
-    while (block && rg_task_messages_waiting(display_task_queue))
-        continue; // We should probably yield?
-    return !rg_task_messages_waiting(display_task_queue);
+    return rg_task_messages_waiting(display_task_queue) != 0;
+}
+
+void rg_display_sync(void)
+{
+    lcd_sync();
 }
 
 // FIXME: We need to add a way to group writes and indicate completion, so that the display driver will blit/flip only
@@ -550,8 +556,11 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
     // This will work for now because we rarely draw from different threads (so all we need is ensure
     // that we're not interrupting a display update). But what we SHOULD be doing is acquire a lock
     // before every call to lcd_set_window and release it only after the last call to lcd_send_buffer.
-    if (!(flags & RG_DISPLAY_WRITE_NOSYNC))
-        rg_display_sync(true);
+    if ((flags & RG_DISPLAY_WRITE_NOSYNC) == 0)
+    {
+        while (rg_display_is_busy())
+            rg_task_yield();
+    }
 
     // This isn't really necessary but it makes sense to invalidate
     // the lines we're about to overwrite...
@@ -666,9 +675,10 @@ bool rg_display_set_geometry(int width, int height, const rg_margins_t *margins)
     // update_viewport_scaling();             // This will be implicitly done by the display task
     rg_gui_update_geometry();              // Let the GUI know that the geometry has changed
     rg_system_event(RG_EVENT_GEOMETRY, 0); // Let everybody know that the geometry has changed
-    RG_LOGI("Screen: resolution=%dx%d, effective=%dx%d, format=%d",
-            display.screen.real_width, display.screen.real_height,
-            display.screen.width, display.screen.height, display.screen.format);
+    RG_LOGI("Screen: resolution=%dx%d (eff. %dx%d), margins=(%d %d %d %d), format=%d",
+            display.screen.real_width, display.screen.real_height, display.screen.width, display.screen.height,
+            display.screen.margins.left, display.screen.margins.top, display.screen.margins.right, display.screen.margins.bottom,
+            display.screen.format);
     return true;
 }
 

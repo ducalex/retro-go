@@ -470,9 +470,9 @@ void app_main(void)
         {
             for (int i = 0; i < 256; ++i)
                 currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
-            slowFrame = !rg_display_sync(false);
             currentUpdate->width = screen_width;
             currentUpdate->height = screen_height;
+            slowFrame = rg_display_is_busy(); // Previous frame is still not done, hence slowFrame...
             rg_display_submit(currentUpdate, 0);
         }
 

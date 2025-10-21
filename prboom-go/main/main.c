@@ -137,12 +137,15 @@ void I_UpdateNoBlit(void)
 void I_FinishUpdate(void)
 {
     rg_display_submit(update, 0);
-    rg_display_sync(true); // Wait for update->buffer to be released
 }
 
 bool I_StartDisplay(void)
 {
+    // Wait for the frame buffer to be released before we start drawing to it
+    while (rg_display_is_busy())
+        rg_task_yield();
     return true;
+    // return !rg_display_is_busy();
 }
 
 void I_EndDisplay(void)

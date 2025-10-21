@@ -275,7 +275,7 @@ void gw_main(void)
 
         // Our refresh rate is 128Hz, which is way too fast for our display
         // so make sure the previous frame is done sending before queuing a new one
-        if (rg_display_sync(false) && drawFrame)
+        if (!rg_display_is_busy() && drawFrame)
         {
             gw_system_blit(currentUpdate->data);
             rg_display_submit(currentUpdate, 0);

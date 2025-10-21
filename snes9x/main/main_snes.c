@@ -486,7 +486,7 @@ void app_main(void)
 
         if (drawFrame)
         {
-            slowFrame = !rg_display_sync(false);
+            slowFrame = rg_display_is_busy();
             rg_display_submit(currentUpdate, 0);
             currentUpdate = updates[currentUpdate == updates[0]];
         }

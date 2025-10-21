@@ -244,7 +244,7 @@ void sms_main(void)
         {
             if (render_copy_palette(currentUpdate->palette))
                 memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
-            slowFrame = !rg_display_sync(false);
+            slowFrame = rg_display_is_busy();
             rg_display_submit(currentUpdate, 0);
             currentUpdate = updates[currentUpdate == updates[0]]; // Swap
             bitmap.data = currentUpdate->data;

@@ -372,7 +372,9 @@ void gui_scroll_list(tab_t *tab, scroll_whence_t mode, int arg)
 
 void gui_redraw(void)
 {
-    rg_display_sync(true);
+    while (rg_display_is_busy())
+        rg_task_yield(); // Wait for gui.surface to be released
+
     rg_gui_set_surface(gui.surface);
 
     tab_t *tab = gui_get_current_tab();
