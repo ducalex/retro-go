@@ -1,6 +1,9 @@
 #include "rg_localization.h"
 
-static const char *language_names[RG_LANG_MAX] = {"English", "Francais"};
+static const char *language_names[RG_LANG_MAX] = {
+    [RG_LANG_EN] = "English",
+    [RG_LANG_FR] = "Francais",
+};
 
 static const char *translations[][RG_LANG_MAX] =
 {

@@ -86,9 +86,11 @@ font_path = ("arial.ttf")  # Replace with your TTF font path
 start_x = 0
 start_y = 0
 
-def get_char_list():
+def get_char_list(ranges):
+    if isinstance(ranges, str):
+        ranges = ranges.replace(" ", "").split(',')
     list_char = []
-    for intervals in list_char_ranges.get().split(','):
+    for intervals in ranges:
         first = intervals.split('-')[0]
         # we check if we the user input is a single char or an interval
         try:
@@ -99,7 +101,18 @@ def get_char_list():
             second = intervals.split('-')[1]
             for char in range(int(first), int(second) + 1):
                 list_char.append(char)
-    return list_char
+    return sorted(set(list_char))
+
+def get_ranges_list(char_codes):
+    char_codes = sorted(set(char_codes))
+    ranges = []
+    start = char_codes[0]
+    for i in range(1, len(char_codes)):
+        if char_codes[i] != char_codes[i - 1] + 1:
+            ranges.append(f"{start}-{char_codes[i - 1]}" if start != char_codes[i - 1] else str(start))
+            start = char_codes[i]
+    ranges.append(f"{start}-{char_codes[-1]}" if start != char_codes[-1] else str(start))
+    return ranges
 
 def find_bounding_box(image):
     pixels = image.load()
@@ -127,7 +140,7 @@ def load_ttf_font(font_path, font_size):
     font_name = ' '.join(pil_font.getname())
     font_data = []
 
-    for char_code in get_char_list():
+    for char_code in get_char_list(list_char_ranges.get()):
         char = chr(char_code)
 
         image = Image.new("1", (font_size * 2, font_size * 2), 0) # generate mono bmp, 0 = black color
@@ -194,7 +207,7 @@ def load_ttf_font(font_path, font_size):
         font_data.append(glyph_data)
 
     # The font render glyphs at font_size but they can shift them up or down which will cause the max_height
-    # to exceed font_size. It's not desirable to remove the padding entirely (the "enforce" option above), 
+    # to exceed font_size. It's not desirable to remove the padding entirely (the "enforce" option above),
     # but there are some things we can do to reduce the discrepency without affecting the look.
     max_height = max(g["ofs_y"] + g["box_h"] for g in font_data)
     if max_height > font_size:
@@ -325,13 +338,14 @@ def generate_c_font(font_name, font_size, font_data):
     normalized_name = f"{font_name.replace('-', '_').replace(' ', '')}{font_size}"
     max_height = max(font_size, max(g["ofs_y"] + g["box_h"] for g in font_data))
     memory_usage = sum(len(g["bitmap"]) + 8 for g in font_data)
+    char_ranges = ", ".join(get_ranges_list([g["char_code"] for g in font_data]))
 
     file_data = "#include \"../rg_gui.h\"\n\n"
     file_data += "// File generated with font_converter.py (https://github.com/ducalex/retro-go/tree/dev/tools)\n\n"
     file_data += f"// Font           : {font_name}\n"
     file_data += f"// Point Size     : {font_size}\n"
     file_data += f"// Memory usage   : {memory_usage} bytes\n"
-    file_data += f"// # characters   : {len(font_data)}\n\n"
+    file_data += f"// Characters     : {len(font_data)} ({char_ranges})\n\n"
     file_data += f"const rg_font_t font_{normalized_name} = {{\n"
     file_data += f"    .name = \"{font_name}\",\n"
     file_data += f"    .type = 1,\n"

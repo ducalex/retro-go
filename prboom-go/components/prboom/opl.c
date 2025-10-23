@@ -76,7 +76,7 @@ static Chip opl_chip;
 
 // Temporary mixing buffer used by the mixing callback.
 
-static int *mix_buffer = NULL;
+static int32_t *mix_buffer = NULL;
 
 // Register number that was written.
 
@@ -107,7 +107,7 @@ int OPL_Init (unsigned int rate)
     current_time = 0;
 
 
-    mix_buffer = malloc(opl_sample_rate * sizeof(uint32_t));
+    mix_buffer = malloc(opl_sample_rate * sizeof(int32_t));
 
     // Create the emulator structure:
 

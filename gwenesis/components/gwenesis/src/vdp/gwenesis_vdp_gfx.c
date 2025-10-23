@@ -988,6 +988,8 @@ void gwenesis_vdp_render_config()
 #define CONV(b)   ((0x3e00000 & b)>>10) | ((0xfc00 & b)>>5) | ((0x1f & b))
 #define SPACE(c)  ((0xe800 & c)<<10) | ((0x7e0 & c)<<5) | ((0x1f & c))
 
+/* Function unused
+
 __attribute__((optimize("unroll-loops"))) static void
 blit_4to5_line(uint16_t *in, uint16_t *out) {
 
@@ -1006,6 +1008,7 @@ blit_4to5_line(uint16_t *in, uint16_t *out) {
     dest_row[x_dst + 4] = CONV(b3);
   }
 }
+*/
 
 void gwenesis_vdp_render_line(int line)
 {

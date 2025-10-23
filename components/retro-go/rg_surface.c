@@ -314,6 +314,7 @@ rg_surface_t *rg_surface_load_image_file(const char *filename, uint32_t flags)
         return img;
     }
 
+    // RG_LOGE("Image loading failed: '%s'", filename);
     return NULL;
 }
 
