@@ -2,8 +2,8 @@
 # For example override python variables or set environment variables with os.putenv
 
 # Espressif chip in the device
-IDF_TARGET = "esp32"
+IDF_TARGET = "esp32s3"
 # .fw file format, if supported by the device
 FW_FORMAT = "none"
 # Default apps to build when none is specified (comment to build all)
-# DEFAULT_APPS = "launcher prboom-go"
+# DEFAULT_APPS = f"{DEFAULT_APPS} gbsp updater"

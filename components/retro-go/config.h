@@ -22,8 +22,8 @@
 #include "targets/nullnano/config.h"
 #elif defined(RG_TARGET_T_DECK_PLUS)
 #include "targets/t-deck-plus/config.h"
-#elif defined(RG_TARGET_VMU)
-#include "targets/vmu/config.h"
+#elif defined(RG_TARGET_VMU_S3)
+#include "targets/vmu-s3/config.h"
 #elif defined(RG_TARGET_CROKPOCKET)
 #include "targets/crokpocket/config.h"
 #elif defined(RG_TARGET_ESP32_S3_DEVKIT)
