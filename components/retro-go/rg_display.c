@@ -93,12 +93,16 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
 
     // Not the original author, but a good explanation is found at:
     // https://medium.com/@luc.trudeau/fast-averaging-of-high-color-16-bit-pixels-cb4ac7fd1488
+#if RG_SCREEN_BYTE_ORDER == 0
     a = (a << 8) | (a >> 8);
     b = (b << 8) | (b >> 8);
     unsigned s = a ^ b;
     unsigned v = ((s & 0xF7DEU) >> 1) + (a & b) + (s & 0x0821U);
     return (v << 8) | (v >> 8);
-
+#else
+    unsigned s = a ^ b;
+    return ((s & 0xF7DEU) >> 1) + (a & b) + (s & 0x0821U);
+#endif
     // This is my attempt at averaging two 565BE values without swapping bytes (3x the speed of the code above)
     // return (((a ^ b) & 0b1101111011110110U) >> 1) + (a & b);
 }
@@ -147,6 +151,12 @@ static inline void write_update(const rg_surface_t *update)
     int window_top = -1;
     int osd_next_call = 20;
 
+    // if (format != RG_PIXEL_565_BE && format != RG_PIXEL_565_LE && format != RG_PIXEL_PAL565_BE &&
+    //     format != RG_PIXEL_PAL565_LE)
+    // {
+    //     RG_PANIC("Unknown pixel format!");
+    // }
+
     for (int y = 0; y < draw_height;)
     {
         int lines_to_copy = RG_MIN(lines_per_buffer, lines_remaining);
@@ -187,13 +197,25 @@ static inline void write_update(const rg_surface_t *update)
                         *line_buffer_ptr++ = (PIXEL); \
                     } \
                 }
-                if (format & RG_PIXEL_PALETTE)
+            #if RG_SCREEN_BYTE_ORDER == 0
+                if (format == RG_PIXEL_PAL565_BE)
                     RENDER_LINE(uint8_t, palette[buffer[x]])
+                else if (format == RG_PIXEL_565_BE)
+                    RENDER_LINE(uint16_t, buffer[x])
                 else if (format == RG_PIXEL_565_LE)
                     RENDER_LINE(uint16_t, (buffer[x] << 8) | (buffer[x] >> 8))
-                else
+                else if (format == RG_PIXEL_PAL565_LE)
+                    RENDER_LINE(uint8_t, (palette[buffer[x]] << 8) | (palette[buffer[x]] >> 8))
+            #else
+                if (format == RG_PIXEL_PAL565_LE)
+                    RENDER_LINE(uint8_t, palette[buffer[x]])
+                else if (format == RG_PIXEL_565_LE)
                     RENDER_LINE(uint16_t, buffer[x])
-
+                else if (format == RG_PIXEL_565_BE)
+                    RENDER_LINE(uint16_t, (buffer[x] << 8) | (buffer[x] >> 8))
+                else if (format == RG_PIXEL_PAL565_BE)
+                    RENDER_LINE(uint8_t, (palette[buffer[x]] << 8) | (palette[buffer[x]] >> 8))
+            #endif
                 if (partial_update)
                     checksum = rg_hash((void*)(line_buffer_ptr - draw_width), draw_width * 2);
             }
@@ -583,7 +605,11 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
         {
             const uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-            if (flags & RG_DISPLAY_WRITE_NOSWAP)
+        #if RG_SCREEN_BYTE_ORDER == 0
+            if ((flags & RG_DISPLAY_WRITE_BE_DATA) != 0)
+        #else
+            if ((flags & RG_DISPLAY_WRITE_BE_DATA) == 0)
+        #endif
             {
                 memcpy(dst, src, width * 2);
             }
@@ -613,8 +639,12 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
 {
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
+#if RG_SCREEN_BYTE_ORDER == 0
+    const uint16_t color = (color_le << 8) | (color_le >> 8);
+#else
+    const uint16_t color = color_le;
+#endif
 #if !LCD_SCREEN_BUFFER
-    const uint16_t color_be = (color_le << 8) | (color_le >> 8);
     int pixels_remaining = width * height;
     if (pixels_remaining <= 0)
         return;
@@ -624,7 +654,7 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
         uint16_t *buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
         int pixels = RG_MIN(pixels_remaining, LCD_BUFFER_LENGTH);
         for (size_t j = 0; j < pixels; ++j)
-            buffer[j] = color_be;
+            buffer[j] = color;
         lcd_send_buffer(buffer, pixels);
         pixels_remaining -= pixels;
     }
@@ -633,7 +663,7 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
     {
         uint16_t *buffer = lcd_get_buffer_ptr(screen_left, screen_top + y);
         for (int x = 0; x < width; ++x)
-            buffer[x] = color_le;
+            buffer[x] = color;
     }
 #endif
     lcd_sync();

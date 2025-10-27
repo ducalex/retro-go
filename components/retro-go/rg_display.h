@@ -39,7 +39,7 @@ typedef enum
 enum
 {
     RG_DISPLAY_WRITE_NOSYNC = (1 << 0),
-    RG_DISPLAY_WRITE_NOSWAP = (1 << 1),
+    RG_DISPLAY_WRITE_BE_DATA = (1 << 1),
     RG_DISPLAY_WRITE_DIRECT = (1 << 2),
 };
 
