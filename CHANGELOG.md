@@ -6,6 +6,7 @@
 - All: On-screen low battery indicator
 - All: German translations added
 - New device support: ESP32-P4 on a breadboard
+- New device support: VMU-S3 (replaces VMU)
 
 
 # Retro-Go 1.45 (2025-07-27)

@@ -19,6 +19,7 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 | [retro-ruler](targets/retro-ruler/docs/README.md)             |   |
 | [sdl2](targets/sdl2/docs/README.md)                           | Broken |
 | [t-deck-plus](targets/t-deck-plus/docs/README.md)             |  |
+| [vmu-s3](targets/vmu-s3/docs/README.md)             |  |
 
 
 # Credits
