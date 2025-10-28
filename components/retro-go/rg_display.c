@@ -93,13 +93,13 @@ static inline unsigned blend_pixels(unsigned a, unsigned b)
 
     // Not the original author, but a good explanation is found at:
     // https://medium.com/@luc.trudeau/fast-averaging-of-high-color-16-bit-pixels-cb4ac7fd1488
-#if RG_SCREEN_BYTE_ORDER == 0
+#if RG_SCREEN_PIXEL_FORMAT == 0 /* 565_BE */
     a = (a << 8) | (a >> 8);
     b = (b << 8) | (b >> 8);
     unsigned s = a ^ b;
     unsigned v = ((s & 0xF7DEU) >> 1) + (a & b) + (s & 0x0821U);
     return (v << 8) | (v >> 8);
-#else
+#else /* 565_LE */
     unsigned s = a ^ b;
     return ((s & 0xF7DEU) >> 1) + (a & b) + (s & 0x0821U);
 #endif
@@ -191,13 +191,13 @@ static inline void write_update(const rg_surface_t *update)
             else
             {
                 #define RENDER_LINE(PTR_TYPE, PIXEL) { \
-                    PTR_TYPE *buffer = (PTR_TYPE *)(data + map_viewport_to_source_y[y] * stride);\
+                    const PTR_TYPE *buffer = (PTR_TYPE *)(data + map_viewport_to_source_y[y] * stride); \
                     for (int xx = 0; xx < draw_width; ++xx) { \
                         int x = map_viewport_to_source_x[xx]; \
                         *line_buffer_ptr++ = (PIXEL); \
                     } \
                 }
-            #if RG_SCREEN_BYTE_ORDER == 0
+            #if RG_SCREEN_PIXEL_FORMAT == 0 /* 565_BE */
                 if (format == RG_PIXEL_PAL565_BE)
                     RENDER_LINE(uint8_t, palette[buffer[x]])
                 else if (format == RG_PIXEL_565_BE)
@@ -206,7 +206,7 @@ static inline void write_update(const rg_surface_t *update)
                     RENDER_LINE(uint16_t, (buffer[x] << 8) | (buffer[x] >> 8))
                 else if (format == RG_PIXEL_PAL565_LE)
                     RENDER_LINE(uint8_t, (palette[buffer[x]] << 8) | (palette[buffer[x]] >> 8))
-            #else
+            #else /* 565_LE */
                 if (format == RG_PIXEL_PAL565_LE)
                     RENDER_LINE(uint8_t, palette[buffer[x]])
                 else if (format == RG_PIXEL_565_LE)
@@ -337,6 +337,7 @@ static void update_viewport_scaling(void)
     display.viewport.step_x = (float)src_width / display.viewport.width;
     display.viewport.step_y = (float)src_height / display.viewport.height;
 
+    // For a filter to be applied it has to be enabled in the menu and scaling factor can't be an integer
     display.viewport.filter_x = (config.filter == RG_DISPLAY_FILTER_HORIZ || config.filter == RG_DISPLAY_FILTER_BOTH) &&
                                 (config.scaling && (display.viewport.width % src_width) != 0);
     display.viewport.filter_y = (config.filter == RG_DISPLAY_FILTER_VERT || config.filter == RG_DISPLAY_FILTER_BOTH) &&
@@ -605,9 +606,9 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
         {
             const uint16_t *src = (void *)buffer + ((y + line) * stride);
             uint16_t *dst = lcd_buffer + (line * width);
-        #if RG_SCREEN_BYTE_ORDER == 0
+        #if RG_SCREEN_PIXEL_FORMAT == 0 /* 565_BE */
             if ((flags & RG_DISPLAY_WRITE_BE_DATA) != 0)
-        #else
+        #else /* 565_LE */
             if ((flags & RG_DISPLAY_WRITE_BE_DATA) == 0)
         #endif
             {
@@ -639,9 +640,9 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
 {
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
-#if RG_SCREEN_BYTE_ORDER == 0
+#if RG_SCREEN_PIXEL_FORMAT == 0 /* 565_BE */
     const uint16_t color = (color_le << 8) | (color_le >> 8);
-#else
+#else /* 565_LE */
     const uint16_t color = color_le;
 #endif
 #if !LCD_SCREEN_BUFFER
@@ -701,6 +702,7 @@ bool rg_display_set_geometry(int width, int height, const rg_margins_t *margins)
     display.screen.margins = margins ? *margins : (rg_margins_t){0, 0, 0, 0};
     display.screen.width = display.screen.real_width - (display.screen.margins.left + display.screen.margins.right);
     display.screen.height = display.screen.real_height - (display.screen.margins.top + display.screen.margins.bottom);
+    // display.screen.format = RG_PIXEL_565_BE;
     display.changed = true;
     // update_viewport_scaling();             // This will be implicitly done by the display task
     rg_gui_update_geometry();              // Let the GUI know that the geometry has changed
