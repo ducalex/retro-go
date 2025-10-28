@@ -1,4 +1,4 @@
-#define LCD_SCREEN_BUFFER 1
+#define LCD_ACCESS_MODE   1 // 0=Windowed transactions, 1=Direct full framebuffer
 #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 #include <SDL2/SDL.h>

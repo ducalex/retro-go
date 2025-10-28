@@ -4,7 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-// #define LCD_SCREEN_BUFFER 0
+// #define LCD_ACCESS_MODE 0 // 0=Windowed transactions, 1=Direct full framebuffer
+// #define LCD_PIXEL_FORMAT RG_SCREEN_PIXEL_FORMAT
 // #define LCD_BUFFER_LENGTH (RG_SCREEN_WIDTH * 4) // In pixels
 
 // static rg_display_driver_t driver;
@@ -34,11 +35,11 @@ static void lcd_sync(void);
 static void lcd_flip(void);
 static void lcd_set_rotation(int rotation);
 static void lcd_set_backlight(float percent);
-// When LCD_SCREEN_BUFFER == 0:
+// When LCD_ACCESS_MODE == 0:
 static void lcd_set_window(int left, int top, int width, int height);
 static inline uint16_t *lcd_get_buffer(size_t length);
 static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
-// When LCD_SCREEN_BUFFER == 1:
+// When LCD_ACCESS_MODE == 1:
 static inline uint16_t *lcd_get_buffer_ptr(int left, int top);
 
 #if RG_SCREEN_DRIVER == 0 || RG_SCREEN_DRIVER == 1 /* ILI9341/ST7789 */
@@ -142,7 +143,7 @@ static inline void write_update(const rg_surface_t *update)
 
     const int screen_left = display.screen.margins.left + draw_left;
     const int screen_top = display.screen.margins.top + draw_top;
-    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES && !LCD_SCREEN_BUFFER;
+    const bool partial_update = RG_SCREEN_PARTIAL_UPDATES && LCD_ACCESS_MODE == 0;
     // const bool interlace = false;
 
     int lines_per_buffer = LCD_BUFFER_LENGTH / draw_width;
@@ -171,10 +172,10 @@ static inline void write_update(const rg_surface_t *update)
                                          LINE_IS_REPEATED(y + lines_to_copy)))
                 --lines_to_copy;
         }
-#if LCD_SCREEN_BUFFER
-        uint16_t *line_buffer = lcd_get_buffer_ptr(screen_left, screen_top + y);
-#else
+#if LCD_ACCESS_MODE == 0
         uint16_t *line_buffer = lcd_get_buffer(LCD_BUFFER_LENGTH);
+#else
+        uint16_t *line_buffer = lcd_get_buffer_ptr(screen_left, screen_top + y);
 #endif
         uint16_t *line_buffer_ptr = line_buffer;
 
@@ -262,7 +263,7 @@ static inline void write_update(const rg_surface_t *update)
             }
         }
 
-#if !LCD_SCREEN_BUFFER
+#if LCD_ACCESS_MODE == 0
         size_t lines_to_send = 0;
         if (need_update)
         {
@@ -593,7 +594,7 @@ void rg_display_write_rect(int left, int top, int width, int height, int stride,
     const int screen_left = display.screen.margins.left + left;
     const int screen_top = display.screen.margins.top + top;
 
-#if !LCD_SCREEN_BUFFER
+#if LCD_ACCESS_MODE == 0
     lcd_set_window(screen_left, screen_top, width, height);
 
     for (size_t y = 0; y < height;)
@@ -645,7 +646,7 @@ void rg_display_clear_rect(int left, int top, int width, int height, uint16_t co
 #else /* 565_LE */
     const uint16_t color = color_le;
 #endif
-#if !LCD_SCREEN_BUFFER
+#if LCD_ACCESS_MODE == 0
     int pixels_remaining = width * height;
     if (pixels_remaining <= 0)
         return;

@@ -2,6 +2,15 @@
 
 #include <smsplus.h>
 
+// #define AUDIO_SAMPLE_RATE   (32000)
+// #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_LE
+#endif
+
 static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
@@ -107,8 +116,8 @@ void sms_main(void)
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
-    updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
-    updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
+    updates[1] = rg_surface_create(SMS_WIDTH, SMS_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     system_reset_config();
@@ -243,7 +252,16 @@ void sms_main(void)
         if (drawFrame)
         {
             if (render_copy_palette(currentUpdate->palette))
+            {
+                // render_copy_palette gives us big-endian colors
+                if (FB_PIXEL_FORMAT  != RG_PIXEL_PAL565_BE)
+                {
+                    uint16_t *palette = currentUpdate->palette;
+                    for (size_t i = 0; i < 256; ++i)
+                        palette[i] = (palette[i] << 8) | (palette[i] >> 8);
+                }
                 memcpy(updates[currentUpdate == updates[0]]->palette, currentUpdate->palette, 512);
+            }
             slowFrame = rg_display_is_busy();
             rg_display_submit(currentUpdate, 0);
             currentUpdate = updates[currentUpdate == updates[0]]; // Swap

@@ -43,9 +43,14 @@
 #include <rg_system.h>
 
 #define AUDIO_SAMPLE_RATE 22050
-
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / TICRATE + 1)
 #define NUM_MIX_CHANNELS 8
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_LE
+#endif
 
 static rg_surface_t *update;
 static rg_app_t *app;
@@ -157,7 +162,12 @@ void I_SetPalette(int pal)
 {
     uint16_t *palette = V_BuildPalette(pal, 16);
     for (int i = 0; i < 256; i++)
-        update->palette[i] = palette[i] << 8 | palette[i] >> 8;
+    {
+        uint16_t color = palette[i];
+        if (FB_PIXEL_FORMAT  == RG_PIXEL_PAL565_BE)
+            color = (color << 8) | (color >> 8);
+        update->palette[i] = color;
+    }
     Z_Free(palette);
     current_palette = pal;
 }
@@ -560,7 +570,7 @@ void app_main()
     SCREENWIDTH = RG_MIN(rg_display_get_width(), MAX_SCREENWIDTH);
     SCREENHEIGHT = RG_MIN(rg_display_get_height(), MAX_SCREENHEIGHT);
 
-    update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    update = rg_surface_create(SCREENWIDTH, SCREENHEIGHT, FB_PIXEL_FORMAT, MEM_FAST);
 
     const char *iwad = NULL;
     const char *pwad = NULL;

@@ -3,6 +3,15 @@
 #include <sys/time.h>
 #include <gnuboy.h>
 
+// #define AUDIO_SAMPLE_RATE   (32000)
+// #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT  RG_PIXEL_565_BE
+#else
+#define FB_PIXEL_FORMAT  RG_PIXEL_565_LE
+#endif
+
 static int skipFrames = 0;
 static bool slowFrame = false;
 
@@ -254,8 +263,10 @@ void gbc_main(void)
 
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
-    updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
-    updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, RG_PIXEL_565_BE, MEM_ANY);
+    bool d565be = rg_display_get_info()->screen.format == RG_PIXEL_565_BE;
+
+    updates[0] = rg_surface_create(GB_WIDTH, GB_HEIGHT, FB_PIXEL_FORMAT , MEM_ANY);
+    updates[1] = rg_surface_create(GB_WIDTH, GB_HEIGHT, FB_PIXEL_FORMAT , MEM_ANY);
     currentUpdate = updates[0];
 
     useSystemTime = (bool)rg_settings_get_number(NS_APP, SETTING_SYSTIME, 1);
@@ -267,7 +278,8 @@ void gbc_main(void)
         RG_LOGE("Unable to create SRAM folder...");
 
     // Initialize the emulator
-    if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, GB_PIXEL_565_BE, &video_callback, &audio_callback) < 0)
+    const gb_video_fmt_t video_fmt = FB_PIXEL_FORMAT  == RG_PIXEL_565_BE ? GB_PIXEL_565_BE : GB_PIXEL_565_LE;
+    if (gnuboy_init(app->sampleRate, GB_AUDIO_STEREO_S16, video_fmt, &video_callback, &audio_callback) < 0)
         RG_PANIC("Emulator init failed!");
 
     gnuboy_set_framebuffer(currentUpdate->data);

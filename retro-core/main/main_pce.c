@@ -11,6 +11,13 @@
 
 #undef AUDIO_SAMPLE_RATE
 #define AUDIO_SAMPLE_RATE 22050
+// #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_LE
+#endif
 
 static bool emulationPaused = false; // This should probably be a mutex
 static int overscan = false;
@@ -123,8 +130,8 @@ void pce_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
     overscan = rg_settings_get_number(NS_APP, SETTING_OVERSCAN, 1);
 
-    updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
-    updates[1] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
+    updates[1] = rg_surface_create(XBUF_WIDTH, XBUF_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     updates[0]->data += 16;
@@ -135,7 +142,9 @@ void pce_main(void)
     uint16_t *palette = PalettePCE(16);
     for (int i = 0; i < 256; i++)
     {
-        uint16_t color = (palette[i] << 8) | (palette[i] >> 8);
+        uint16_t color = palette[i];
+        if (FB_PIXEL_FORMAT  == RG_PIXEL_PAL565_BE)
+            color = (color << 8) | (color >> 8);
         updates[0]->palette[i] = color;
         updates[1]->palette[i] = color;
     }

@@ -9,6 +9,12 @@
 #define AUDIO_SAMPLE_RATE (53267)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_LE
+#endif
+
 extern unsigned char* VRAM;
 extern int zclk;
 int system_clock;
@@ -270,8 +276,8 @@ void app_main(void)
     sn76489_enabled = rg_settings_get_number(NS_APP, SETTING_SN76489_EMULATION, 0);
     z80_enabled = rg_settings_get_number(NS_APP, SETTING_Z80_EMULATION, 1);
 
-    updates[0] = rg_surface_create(320, 241, RG_PIXEL_PAL565_BE, MEM_FAST);
-    // updates[1] = rg_surface_create(320, 241, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(320, 241, FB_PIXEL_FORMAT , MEM_FAST);
+    // updates[1] = rg_surface_create(320, 241, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     // This is a hack because our new surface format doesn't yet support overdraw space easily
@@ -468,8 +474,15 @@ void app_main(void)
 
         if (drawFrame)
         {
-            for (int i = 0; i < 256; ++i)
-                currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
+            if (FB_PIXEL_FORMAT  == RG_PIXEL_PAL565_BE)
+            {
+                for (int i = 0; i < 256; ++i)
+                    currentUpdate->palette[i] = (CRAM565[i] << 8) | (CRAM565[i] >> 8);
+            }
+            else
+            {
+                memcpy(currentUpdate->palette, CRAM565, 512);
+            }
             currentUpdate->width = screen_width;
             currentUpdate->height = screen_height;
             slowFrame = rg_display_is_busy(); // Previous frame is still not done, hence slowFrame...

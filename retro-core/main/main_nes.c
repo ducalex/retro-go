@@ -2,6 +2,15 @@
 
 #include <nofrendo.h>
 
+// #define AUDIO_SAMPLE_RATE   (32000)
+// #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_PAL565_LE
+#endif
+
 static int overscan = true;
 static int autocrop = 0;
 static int palette = 0;
@@ -62,7 +71,9 @@ static void build_palette(int n)
     uint16_t *pal = nofrendo_buildpalette(n, 16);
     for (int i = 0; i < 256; i++)
     {
-        uint16_t color = (pal[i] >> 8) | ((pal[i]) << 8);
+        uint16_t color = pal[i];
+        if (FB_PIXEL_FORMAT  == RG_PIXEL_PAL565_BE)
+            color = (pal[i] >> 8) | ((pal[i]) << 8);
         updates[0]->palette[i] = color;
         updates[1]->palette[i] = color;
     }
@@ -205,8 +216,8 @@ void nes_main(void)
     autocrop = rg_settings_get_number(NS_APP, SETTING_AUTOCROP, 0);
     palette = rg_settings_get_number(NS_APP, SETTING_PALETTE, NES_PALETTE_PVM);
 
-    updates[0] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
-    updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, RG_PIXEL_PAL565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
+    updates[1] = rg_surface_create(NES_SCREEN_PITCH, NES_SCREEN_HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     nes = nes_init(SYS_DETECT, app->sampleRate, true, RG_BASE_PATH_BIOS "/fds_bios.bin");

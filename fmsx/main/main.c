@@ -4,6 +4,12 @@
 #define AUDIO_SAMPLE_RATE (32000)
 #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 60 + 1)
 
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_565_LE
+#endif
+
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 static rg_task_t *audioQueue;
@@ -212,7 +218,9 @@ int InitMachine(void)
     for (int J = 0; J < 256; J++)
     {
         uint16_t color = C_RGB(((J >> 2) & 0x07) * 255 / 7, ((J >> 5) & 0x07) * 255 / 7, (J & 0x03) * 255 / 3);
-        BPal[J] = ((color >> 8) | (color << 8)) & 0xFFFF;
+        if (FB_PIXEL_FORMAT  == RG_PIXEL_565_BE)
+            color = (color >> 8) | (color << 8);
+        BPal[J] = color;
     }
 
     InitSound(AUDIO_SAMPLE_RATE, 150);
@@ -232,7 +240,8 @@ void TrashMachine(void)
 void SetColor(byte N, byte R, byte G, byte B)
 {
     uint16_t color = C_RGB(R, G, B);
-    color = (color >> 8) | (color << 8);
+    if (FB_PIXEL_FORMAT  == RG_PIXEL_565_BE)
+        color = (color >> 8) | (color << 8);
     if (N)
         XPal[N] = color;
     else
@@ -434,8 +443,8 @@ void app_main(void)
         },
     });
 
-    updates[0] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);
-    updates[1] = rg_surface_create(WIDTH, HEIGHT, RG_PIXEL_565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(WIDTH, HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
+    updates[1] = rg_surface_create(WIDTH, HEIGHT, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     KeyboardEmulation = rg_settings_get_number(NS_APP, "Input", 1);

@@ -7,6 +7,15 @@ extern "C" {
 
 #include <handy.h>
 
+// #define AUDIO_SAMPLE_RATE   (32000)
+// #define AUDIO_BUFFER_LENGTH (AUDIO_SAMPLE_RATE / 50 + 1)
+
+#if RG_SCREEN_PIXEL_FORMAT == 0
+#define FB_PIXEL_FORMAT RG_PIXEL_565_BE
+#else
+#define FB_PIXEL_FORMAT RG_PIXEL_565_LE
+#endif
+
 static CSystem *lynx = NULL;
 
 static int dpad_mapped_up;
@@ -89,17 +98,18 @@ static void set_display_mode(void)
 
 static CSystem *new_lynx(void)
 {
+    long displayformat = FB_PIXEL_FORMAT  == RG_PIXEL_565_BE ? MIKIE_PIXEL_FORMAT_16BPP_565_BE : MIKIE_PIXEL_FORMAT_16BPP_565;
     if (rg_extension_match(app->romPath, "zip"))
     {
         void *data;
         size_t size;
         if (!rg_storage_unzip_file(app->romPath, NULL, &data, &size, 0))
             RG_PANIC("ROM file unzipping failed!");
-        CSystem *lynx = new CSystem((UBYTE*)data, size, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+        CSystem *lynx = new CSystem((UBYTE*)data, size, displayformat, app->sampleRate);
         free(data);
         return lynx;
     }
-    return new CSystem(app->romPath, MIKIE_PIXEL_FORMAT_16BPP_565_BE, app->sampleRate);
+    return new CSystem(app->romPath, displayformat, app->sampleRate);
 }
 
 
@@ -202,8 +212,8 @@ extern "C" void lynx_main(void)
     app = rg_system_reinit(AUDIO_SAMPLE_RATE, &handlers, NULL);
 
     // the HANDY_SCREEN_WIDTH * HANDY_SCREEN_WIDTH is deliberate because of rotation
-    updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
-    updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, RG_PIXEL_565_BE, MEM_FAST);
+    updates[0] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, FB_PIXEL_FORMAT , MEM_FAST);
+    updates[1] = rg_surface_create(HANDY_SCREEN_WIDTH, HANDY_SCREEN_WIDTH, FB_PIXEL_FORMAT , MEM_FAST);
     currentUpdate = updates[0];
 
     // Init emulator
