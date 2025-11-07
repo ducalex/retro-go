@@ -7,27 +7,45 @@ import math
 import sys
 import re
 import os
+import struct
+import time
+import zlib
 
-IDF_PATH = os.getenv("IDF_PATH")
-if not IDF_PATH:
-    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
-
-TARGETS = ["odroid-go"] # We just need to specify the default, the others are discovered below
-for t in glob.glob("components/retro-go/targets/*/config.h"):
-    TARGETS.append(os.path.basename(os.path.dirname(t)))
-
-DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", TARGETS[0])
+DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go") # os.path.basename(os.getcwd()).title()
-PROJECT_ICON = os.getenv("PROJECT_ICON", "icon.raw")
-PROJECT_APPS = {}
+DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go snes9x gwenesis fmsx")
+PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
+PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
+PROJECT_APPS = {
+  # Project name  Type, SubType, Size
+  'launcher':     [0, 16, 983040],
+  'retro-core':   [0, 16, 983040],
+  'prboom-go':    [0, 16, 786432],
+  'gwenesis':     [0, 16, 983040],
+  'fmsx':         [0, 16, 589824],
+}
+# PROJECT_APPS = {}
+# for t in glob.glob("*/CMakeLists.txt"):
+#     name = os.path.basename(os.path.dirname(t))
+#     if name not in PROJECT_APPS:
+#         PROJECT_APPS[name] = [0, 0, 0]
 try:
     PROJECT_VER = os.getenv("PROJECT_VER") or subprocess.check_output(
         "git describe --tags --abbrev=5 --dirty --always", shell=True
     ).decode().rstrip()
 except:
     PROJECT_VER = "unknown"
+FW_FORMAT = "none"
+
+TARGETS = []
+for t in glob.glob("components/retro-go/targets/*/config.h"):
+    TARGETS.append(os.path.basename(os.path.dirname(t)))
+
+IDF_TARGET = os.getenv("IDF_TARGET", "esp32")
+IDF_PATH = os.getenv("IDF_PATH")
+if not IDF_PATH:
+    exit("IDF_PATH is not defined. Are you running inside esp-idf environment?")
 
 if os.name == 'nt':
     IDF_PY = os.path.join(IDF_PATH, "tools", "idf.py")
@@ -43,10 +61,6 @@ else:
     GEN_ESP32PART_PY = "gen_esp32part.py"
 MKFW_PY = os.path.join("tools", "mkfw.py")
 
-if os.path.exists("rg_config.py"):
-    with open("rg_config.py", "rb") as f:
-        exec(f.read())
-
 
 def run(cmd, cwd=None, check=True):
     print(f"Running command: {' '.join(cmd)}")
@@ -55,67 +69,31 @@ def run(cmd, cwd=None, check=True):
     return subprocess.run(cmd, shell=False, cwd=cwd, check=check)
 
 
-def build_firmware(output_file, apps, fw_format="odroid-go", fatsize=0):
-    print("Building firmware with: %s\n" % " ".join(apps))
-    args = [MKFW_PY, output_file, f"{PROJECT_NAME} {PROJECT_VER}", PROJECT_ICON]
+def build_image(apps, output_file, img_type="odroid", fatsize=0, target="unknown", version="unknown"):
+    print("Building firmware image with: %s\n" % " ".join(apps))
+    args = [MKFW_PY, "--type", img_type, "--name", PROJECT_NAME, "--icon", PROJECT_ICON, "--version", PROJECT_VER]
 
-    if fw_format == "esplay":
-        args.append("--esplay")
+    if img_type not in ["odroid", "esplay"]:
+        print("Building bootloader...")
+        bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
+        if not os.path.exists(bootloader_file):
+            run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+        args += ["--target", target, "--bootloader", bootloader_file]
 
+    args += [output_file]
+
+    ota_next_id = 16
     for app in apps:
         part = PROJECT_APPS[app]
-        args += [str(part[0]), str(part[1]), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
+        subtype = part[1]
+        if part[0] == 0 and (part[1] & 0xF0) == 0x10:  # Rewrite OTA indexes to maintain order
+            subtype = ota_next_id
+            ota_next_id += 1
+        args += [str(part[0]), str(subtype), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
+    if fatsize:
+        args += ["1", "129", fatsize, "vfs", "none"]
 
     run(args)
-
-
-def build_image(output_file, apps, img_format="esp32", fatsize=0):
-    print("Building image with: %s\n" % " ".join(apps))
-    image_data = bytearray(b"\xFF" * 0x10000)
-    table_ota = 0
-    table_csv = [
-        "nvs, data, nvs, 36864, 16384",
-        "otadata, data, ota, 53248, 8192",
-        "phy_init, data, phy, 61440, 4096",
-    ]
-
-    for app in apps:
-        with open(os.path.join(app, "build", app + ".bin"), "rb") as f:
-            data = f.read()
-        part_size = max(PROJECT_APPS[app][2], math.ceil(len(data) / 0x10000) * 0x10000)
-        table_csv.append("%s, app, ota_%d, %d, %d" % (app, table_ota, len(image_data), part_size))
-        table_ota += 1
-        image_data += data + b"\xFF" * (part_size - len(data))
-
-    if fatsize:
-        # Use "vfs" label, same as MicroPython, in case the storage is to be shared with a MicroPython install
-        table_csv.append("vfs, data, fat, %d, %s" % (len(image_data), fatsize))
-
-    print("Generating partition table...")
-    with open("partitions.csv", "w") as f:
-        f.write("\n".join(table_csv))
-    run([GEN_ESP32PART_PY, "partitions.csv", "partitions.bin"])
-    with open("partitions.bin", "rb") as f:
-        table_bin = f.read()
-
-    print("Building bootloader...")
-    bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
-    if not os.path.exists(bootloader_file):
-        run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
-    with open(bootloader_file, "rb") as f:
-        bootloader_bin = f.read()
-
-    if img_format == "esp32s3":
-        image_data[0x0000:0x0000+len(bootloader_bin)] = bootloader_bin
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
-    else:
-        image_data[0x1000:0x1000+len(bootloader_bin)] = bootloader_bin
-        image_data[0x8000:0x8000+len(table_bin)] = table_bin
-
-    with open(output_file, "wb") as f:
-        f.write(image_data)
-
-    print("\nSaved image '%s' (%d bytes)\n" % (output_file, len(image_data)))
 
 
 def clean_app(app):
@@ -150,7 +128,7 @@ def build_app(app, device_type, with_profiling=False, no_networking=False, is_re
 
 
 def flash_app(app, port, baudrate=1152000):
-    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_CHIP", IDF_TARGET)
     os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     if not os.path.exists("partitions.bin"):
@@ -160,14 +138,16 @@ def flash_app(app, port, baudrate=1152000):
     app_bin = os.path.join(app, "build", app + ".bin")
     print(f"Flashing '{app_bin}' to port {port}")
     run([PARTTOOL_PY, "--partition-table-file", "partitions.bin", "write_partition", "--partition-name", app, "--input", app_bin])
+    print("Done.\n")
 
 
 def flash_image(image_file, port, baudrate=1152000):
-    os.putenv("ESPTOOL_CHIP", os.getenv("IDF_TARGET", "auto"))
+    os.putenv("ESPTOOL_CHIP", IDF_TARGET)
     os.putenv("ESPTOOL_BAUD", str(baudrate))
     os.putenv("ESPTOOL_PORT", port)
     print(f"Flashing image file '{image_file}' to {port}")
     run([ESPTOOL_PY, "write_flash", "--flash_size", "detect", "0x0", image_file])
+    print("Done.\n")
 
 
 def monitor_app(app, port, baudrate=115200):
@@ -204,22 +184,23 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
-command = args.command
-apps = [app for app in PROJECT_APPS.keys() if app in args.apps or "all" in args.apps]
-
+if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
+    with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
+        prev_idf_target = os.getenv("IDF_TARGET")
+        exec(f.read())
+         # Detect if env.py modified os.environ[IDF_TARGET] instead of IDF_TARGET (old behavior)
+        if os.getenv("IDF_TARGET") != prev_idf_target:
+            IDF_TARGET = os.getenv("IDF_TARGET")
 
 if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
     os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
+os.putenv("IDF_TARGET", IDF_TARGET)
 
-if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
-    with open(f"components/retro-go/targets/{args.target}/env.py", "rb") as f:
-        exec(f.read())
+command = args.command
+apps = DEFAULT_APPS.split() if "all" in args.apps else args.apps
+apps = [app for app in PROJECT_APPS.keys() if app in apps] # Ensure ordering and uniqueness
 
 try:
-    if command in ["build-fw", "build-img", "release", "install"] and "launcher" not in apps:
-        print("\nWARNING: The launcher is mandatory for those apps and will be included!\n")
-        apps.insert(0, "launcher")
-
     if command in ["clean", "release"]:
         print("=== Step: Cleaning ===\n")
         for app in apps:
@@ -232,17 +213,16 @@ try:
 
     if command in ["build-fw", "release"]:
         print("=== Step: Packing ===\n")
-        fw_format = os.getenv("FW_FORMAT")
-        fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        if fw_format in ["odroid", "esplay"]:
-            build_firmware(fw_file, apps, os.getenv("FW_FORMAT"), args.fatsize)
+        if FW_FORMAT in ["odroid", "esplay"]:
+            fw_file = ("%s_%s_%s.fw" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
+            build_image(apps, fw_file, FW_FORMAT, args.fatsize, args.target, PROJECT_VER)
         else:
             print("Device doesn't support fw format, try build-img!")
 
     if command in ["build-img", "release", "install"]:
         print("=== Step: Packing ===\n")
         img_file = ("%s_%s_%s.img" % (PROJECT_NAME, PROJECT_VER, args.target)).lower()
-        build_image(img_file, apps, os.getenv("IMG_FORMAT", os.getenv("IDF_TARGET")), args.fatsize)
+        build_image(apps, img_file, IDF_TARGET, args.fatsize, args.target, PROJECT_VER)
 
     if command in ["install"]:
         print("=== Step: Flashing entire image to device ===\n")

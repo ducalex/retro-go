@@ -2,8 +2,6 @@
 #include "targets/odroid-go/config.h"
 #elif defined(RG_TARGET_MRGC_G32)
 #include "targets/mrgc-g32/config.h"
-#elif defined(RG_TARGET_QTPY_GAMER)
-#include "targets/qtpy-gamer/config.h"
 #elif defined(RG_TARGET_RETRO_ESP32)
 #include "targets/retro-esp32/config.h"
 #elif defined(RG_TARGET_RETRO_RULER_V1)
@@ -14,10 +12,8 @@
 #include "targets/mrgc-gbm/config.h"
 #elif defined(RG_TARGET_ESPLAY_MICRO)
 #include "targets/esplay-micro/config.h"
-#elif defined(RG_TARGET_ESPLAY_S3)
-#include "targets/esplay-s3/config.h"
-#elif defined(RG_TARGET_ESP32S3_DEVKIT_C)
-#include "targets/esp32s3-devkit-c/config.h"
+#elif defined(RG_TARGET_ESP32_S3_DEVKIT)
+#include "targets/esp32-s3-devkit/config.h"
 #elif defined(RG_TARGET_FRI3D_2024)
 #include "targets/fri3d-2024/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)

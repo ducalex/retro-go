@@ -1,5 +1,5 @@
 // Target definition
-#define RG_TARGET_NAME             "ESP32S3-DEVKIT-C"
+#define RG_TARGET_NAME             "ESP32-S3-DEVKIT"
 
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
