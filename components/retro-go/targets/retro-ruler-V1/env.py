@@ -6,4 +6,4 @@ IDF_TARGET = "esp32"
 # .fw file format, if supported by the device
 FW_FORMAT = "none"
 # Default apps to build when none is specified (comment to build all)
-# DEFAULT_APPS = "launcher prboom-go"
+DEFAULT_APPS = "launcher retro-core prboom-go gwenesis"

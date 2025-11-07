@@ -102,3 +102,4 @@
 // #define RG_GPIO_SND_I2S_WS          GPIO_NUM_NC
 // #define RG_GPIO_SND_I2S_DATA        GPIO_NUM_NC
 #define RG_GPIO_SND_AMP_ENABLE      GPIO_NUM_13
+#define RG_GPIO_SND_AMP_ENABLE_INVERT // Uncomment if the mute = HIGH
