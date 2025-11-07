@@ -364,7 +364,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         int line_width = padding * 2;
         for (const char *ptr = text; *ptr;)
         {
-            int chr = rg_utf8_get_codepoint(&ptr);
+            int chr = rg_utf8_decode(&ptr);
             line_width += monospace ?: get_glyph(NULL, font, font_height, chr);
 
             if (chr == '\n' || *ptr == 0)
@@ -398,7 +398,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
             const char *line = ptr;
             while (x_offset < draw_width && *line && *line != '\n')
             {
-                int chr = rg_utf8_get_codepoint(&line);
+                int chr = rg_utf8_decode(&line);
                 int width = monospace ?: get_glyph(NULL, font, font_height, chr);
                 if (draw_width - x_offset < width) // Do not truncate glyphs
                     break;
@@ -419,7 +419,7 @@ rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, //
         {
             uint32_t bitmap[font_height];
             const char *prev_ptr = ptr;
-            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_get_codepoint(&ptr));
+            int glyph_width = get_glyph(bitmap, font, font_height, rg_utf8_decode(&ptr));
             int width = monospace ?: glyph_width;
 
             if (draw_width - x_offset < width) // Do not truncate glyphs
