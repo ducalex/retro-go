@@ -14,15 +14,15 @@ import zlib
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go snes9x gwenesis fmsx")
+DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go gwenesis fmsx")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
 PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
 PROJECT_APPS = {
   # Project name  Type, SubType, Size
-  'launcher':     [0, 16, 983040],
-  'retro-core':   [0, 16, 983040],
+  'launcher':     [0, 16, 1048576],
+  'retro-core':   [0, 16, 1048576],
   'prboom-go':    [0, 16, 786432],
-  'gwenesis':     [0, 16, 983040],
+  'gwenesis':     [0, 16, 1048576],
   'fmsx':         [0, 16, 589824],
 }
 # PROJECT_APPS = {}
