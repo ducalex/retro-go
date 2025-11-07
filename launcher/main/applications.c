@@ -61,8 +61,15 @@ static int scan_folder_cb(const rg_scandir_t *entry, void *arg)
         app->files_capacity = new_capacity;
     }
 
+    char *name = rg_bucket_insert(app->filenames, entry->basename, strlen(entry->basename) + 1);
+    if (!name)
+    {
+        RG_LOGW("Ran out of memory for names, file scanning stopped at %d entries ...", app->files_count);
+        return RG_SCANDIR_STOP;
+    }
+
     app->files[app->files_count++] = (retro_file_t) {
-        .name = strdup(entry->basename),
+        .name = name,
         .folder = rg_unique_string(entry->dirname),
         .checksum = 0,
         .missing_cover = 0,
@@ -422,8 +429,8 @@ static void event_handler(gui_event_t event, tab_t *tab)
     {
         if (app && app->initialized)
         {
-            for (size_t i = 0; i < app->files_count; ++i)
-                free((char *)app->files[i].name);
+            rg_bucket_free(app->filenames);
+            app->filenames = rg_bucket_create(4096, 1);
             app->files_count = 0;
             app->initialized = false;
         }
@@ -674,6 +681,7 @@ static void application(const char *desc, const char *name, const char *exts, co
     app->available = rg_system_have_app(app->partition);
     app->files = calloc(100, sizeof(retro_file_t));
     app->files_capacity = 100;
+    app->filenames = rg_bucket_create(4096, 1);
     app->crc_offset = crc_offset;
 
     gui_add_tab(app->short_name, app->description, app, event_handler);
@@ -685,7 +693,7 @@ void applications_init(void)
     application("Super Nintendo", "snes", "smc sfc zip", "retro-core", 0);
     application("Nintendo Gameboy", "gb", "gb gbc zip", "retro-core", 0);
     application("Nintendo Gameboy Color", "gbc", "gbc gb zip", "retro-core", 0);
-    // application("Nintendo Gameboy Advance", "gba", "gba zip", "gbsp", 0);
+    application("Nintendo Gameboy Advance", "gba", "gba zip", "gbsp", 0);
     application("Nintendo Game & Watch", "gw", "gw", "retro-core", 0);
     // application("Sega SG-1000", "sg1", "sms sg sg1", "retro-core", 0);
     application("Sega Master System", "sms", "sms sg zip", "retro-core", 0);

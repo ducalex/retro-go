@@ -73,6 +73,14 @@ const char *rg_relpath(const char *path);
 uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t rg_hash(const char *buf, size_t len);
 
+/* Bucket allocator */
+// The bucket allocator is basically a linked-list of buckets. It's not smart in any way and can only grow.
+// Its purpose is to replace thousands of small allocations that fill internal memory (eg strdup)
+typedef struct rg_bucket_s rg_bucket_t;
+rg_bucket_t *rg_bucket_create(size_t capacity_bytes, size_t alignment_bytes);
+void *rg_bucket_insert(rg_bucket_t *bucket, const void *item, size_t item_bytes);
+void rg_bucket_free(rg_bucket_t *bucket);
+
 /* Misc */
 void *rg_alloc(size_t size, uint32_t caps);
 // rg_usleep behaves like usleep in libc: it will sleep for *at least* `us` microseconds, but possibly more
