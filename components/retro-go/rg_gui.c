@@ -636,7 +636,7 @@ void rg_gui_draw_status_bars(void)
     char footer[max_len];
 
     const rg_app_t *app = rg_system_get_app();
-    rg_stats_t stats = rg_system_get_counters();
+    rg_stats_t stats = rg_system_get_stats();
 
     if (!app->initialized || app->isLauncher)
         return;
@@ -1565,14 +1565,35 @@ static rg_gui_event_t custom_zoom_cb(rg_gui_option_t *option, rg_gui_event_t eve
     return RG_DIALOG_VOID;
 }
 
+static rg_gui_event_t overclock_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    // if (event == RG_DIALOG_ENTER)
+    // {
+    //     const rg_gui_option_t options[] = {
+    //         {0, _("CPU"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {1, _("LCD"), "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         {2, _("SD"),  "-", RG_DIALOG_FLAG_NORMAL, &overclock_update_cb},
+    //         RG_DIALOG_END,
+    //     };
+    //     rg_gui_dialog(option->label, options, 0);
+    // }
+    if (event == RG_DIALOG_PREV)
+        rg_system_set_overclock(rg_system_get_overclock() - 1);
+    else if (event == RG_DIALOG_NEXT)
+        rg_system_set_overclock(rg_system_get_overclock() + 1);
+    if (event == RG_DIALOG_INIT || event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
+        sprintf(option->value, "%d (%dMhz)", rg_system_get_overclock(), rg_system_get_cpu_speed());
+    return RG_DIALOG_VOID;
+}
+
 static rg_gui_event_t speedup_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT)
     {
         float change = (event == RG_DIALOG_NEXT) ? 0.5f : -0.5f;
-        rg_emu_set_speed(rg_emu_get_speed() + change);
+        rg_system_set_app_speed(rg_system_get_app_speed() + change);
     }
-    sprintf(option->value, "%.1fx", rg_emu_get_speed());
+    sprintf(option->value, "%.1fx", rg_system_get_app_speed());
     return RG_DIALOG_VOID;
 }
 
@@ -2022,6 +2043,9 @@ void rg_gui_options_menu(void)
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
+        #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S3 // && !RG_BUILD_RELEASE
+        {0, _("Overclock"),     "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
+        #endif
         {0, _("Emulator options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
     };
@@ -2112,6 +2136,7 @@ void rg_gui_debug_menu(void)
         {0x000, "Uptime    ", uptime,       RG_DIALOG_FLAG_NORMAL, NULL},
         {0x000, "Battery   ", battery_info, RG_DIALOG_FLAG_NORMAL, NULL},
         {0x000, "Blit time ", frame_time,   RG_DIALOG_FLAG_NORMAL, NULL},
+        {0x000, "Overclock",  overclock,    RG_DIALOG_FLAG_NORMAL, NULL},
         RG_DIALOG_SEPARATOR,
         {0x001, "Reboot to firmware",   NULL, RG_DIALOG_FLAG_NORMAL, NULL},
         {0x002, "Clear cache    ",      NULL, RG_DIALOG_FLAG_NORMAL, NULL},
@@ -2125,7 +2150,7 @@ void rg_gui_debug_menu(void)
 
     const rg_display_t *display = rg_display_get_info();
     rg_display_counters_t display_stats = rg_display_get_counters();
-    rg_stats_t stats = rg_system_get_counters();
+    rg_stats_t stats = rg_system_get_stats();
     time_t now = time(NULL);
 
     strftime(local_time, 32, "%F %T", localtime(&now));
@@ -2145,7 +2170,8 @@ void rg_gui_debug_menu(void)
     snprintf(heap_free, 20, "%d+%d", stats.freeMemoryInt, stats.freeMemoryExt);
     snprintf(block_free, 20, "%d+%d", stats.freeBlockInt, stats.freeBlockExt);
     snprintf(app_name, 32, "%s", rg_system_get_app()->name);
-    snprintf(uptime, 20, "%ds", (int)(rg_system_timer() / 1000000));
+    snprintf(uptime, 20, "%ds", stats.uptime);
+    snprintf(overclock, 20, "%d (%dMhz)", rg_system_get_overclock(), rg_system_get_cpu_speed());
 
     rg_battery_t battery;
     if (rg_input_read_battery_raw(&battery))
