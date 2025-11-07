@@ -221,28 +221,26 @@ static void update_statistics(void)
     update_memory_statistics();
 }
 
-static void update_indicators(void)
+static void update_indicators(bool reset_animation)
 {
     uint32_t visibleIndicators = indicators & app.indicatorsMask;
+    static int animation_step = 0;
     rg_color_t newColor = 0; // C_GREEN
+
+    if (reset_animation)
+        animation_step = 0;
+    else
+        animation_step++;
 
     if (indicators & (3 << RG_INDICATOR_CRITICAL))
         newColor = C_RED; // Make it flash rapidly!
     else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
-        newColor = C_RED;
+        newColor = (animation_step & 1) ? C_NONE : C_RED;
     else if (visibleIndicators)
         newColor = C_BLUE;
 
-    // In some cases it can be costly to update the LED status, skip if unchanged
-    if (newColor == ledColor)
-        return;
-
-#if defined(ESP_PLATFORM) && defined(RG_GPIO_LED)
-    // GPIO LED doesn't support colors, so any color = on
-    if (RG_GPIO_LED != GPIO_NUM_NC)
-        gpio_set_level(RG_GPIO_LED, newColor != 0);
-#endif
-    ledColor = newColor;
+    if (newColor != ledColor)
+        rg_system_set_led_color(newColor);
 }
 
 static void system_monitor_task(void *arg)
@@ -258,12 +256,10 @@ static void system_monitor_task(void *arg)
         rtcValue = time(NULL);
 
         update_statistics();
-        // update_indicators(); // Implicitly called by rg_system_set_indicator below
 
         rg_battery_t battery = rg_input_read_battery();
-        // TODO: The flashing should eventually be handled by update_indicators instead of here...
-        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f &&
-                                                           !rg_system_get_indicator(RG_INDICATOR_POWER_LOW)));
+        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, true);
+        update_indicators(false);
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
         rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (S:%d R:%d+%d), BATT:%d",
@@ -843,7 +839,8 @@ IRAM_ATTR int64_t rg_system_timer(void)
 
 void rg_system_event(int event, void *arg)
 {
-    RG_LOGV("Dispatching event:%d arg:%p\n", event, arg);
+    // FIXME: rg_* components should have a way to listen to events too (eg rg_gui receive RG_EVENT_GEOMETRY)
+    RG_LOGV("Dispatching event:%d arg:%p", event, arg);
     if (app.handlers.event)
         app.handlers.event(event, arg);
 }
@@ -1042,9 +1039,11 @@ bool rg_system_save_trace(const char *filename, bool panic_trace)
 
 void rg_system_set_indicator(rg_indicator_t indicator, bool on)
 {
+    uint32_t old_indicators = indicators;
     indicators &= ~(1 << indicator);
     indicators |= (on << indicator);
-    update_indicators();
+    if (old_indicators != indicators)
+        update_indicators(true);
 }
 
 bool rg_system_get_indicator(rg_indicator_t indicator)
@@ -1062,6 +1061,25 @@ void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on)
 bool rg_system_get_indicator_mask(rg_indicator_t indicator)
 {
     return app.indicatorsMask & (1 << indicator);
+}
+
+bool rg_system_set_led_color(rg_color_t color)
+{
+    ledColor = color;
+#if defined(RG_GPIO_LED)
+    int value = color > 0; // GPIO LED doesn't support colors, so any color = on
+    #if defined(RG_GPIO_LED_INVERT)
+    value = !value;
+    #endif
+    if (RG_GPIO_LED != GPIO_NUM_NC)
+        return gpio_set_level(RG_GPIO_LED, value) == ESP_OK;
+#endif
+    return true;
+}
+
+rg_color_t rg_system_get_led_color(void)
+{
+    return ledColor;
 }
 
 void rg_system_set_log_level(rg_log_level_t level)
@@ -1416,8 +1434,7 @@ rg_emu_states_t *rg_emu_get_states(const char *romPath, size_t slots)
 
 bool rg_emu_reset(bool hard)
 {
-    if (app.speed != 1.f)
-        rg_system_set_app_speed(1.f);
+    rg_system_set_app_speed(1.f);
     if (app.handlers.reset)
         return app.handlers.reset(hard);
     return false;
