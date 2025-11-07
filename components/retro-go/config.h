@@ -158,3 +158,11 @@
 #ifndef RG_SCREEN_VISIBLE_AREA
 #define RG_SCREEN_VISIBLE_AREA {0, 0, 0, 0}
 #endif
+
+#ifndef RG_LANG_DEFAULT
+#define RG_LANG_DEFAULT RG_LANG_EN
+#endif
+
+#ifndef RG_FONT_DEFAULT
+#define RG_FONT_DEFAULT RG_FONT_VERA_11
+#endif

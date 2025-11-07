@@ -6,15 +6,10 @@ static rg_app_t *app;
 static rg_surface_t *updates[2];
 static rg_surface_t *currentUpdate;
 
-const rg_keyboard_map_t coleco_keyboard = {
+const rg_keyboard_layout_t coleco_keyboard = {
+    .layout = "123" "456" "789" "*0#",
     .columns = 3,
     .rows = 4,
-    .data = {
-        '1', '2', '3',
-        '4', '5', '6',
-        '7', '8', '9',
-        '*', '0', '#',
-    },
 };
 
 static const char *SETTING_PALETTE = "palette";
@@ -171,7 +166,10 @@ void sms_main(void)
 
     while (true)
     {
+        const int64_t startTime = rg_system_timer();
         uint32_t joystick = rg_input_read_gamepad();
+        bool drawFrame = !skipFrames;
+        bool slowFrame = false;
 
         if (joystick & (RG_KEY_MENU|RG_KEY_OPTION))
         {
@@ -179,11 +177,8 @@ void sms_main(void)
                 rg_gui_game_menu();
             else
                 rg_gui_options_menu();
+            continue;
         }
-
-        int64_t startTime = rg_system_timer();
-        bool drawFrame = !skipFrames;
-        bool slowFrame = false;
 
         input.pad[0] = 0x00;
         input.pad[1] = 0x00;
@@ -221,7 +216,7 @@ void sms_main(void)
             {
                 rg_gui_draw_text(RG_GUI_CENTER, RG_GUI_CENTER, 0, _("To start, try: 1 or * or #"), C_YELLOW, C_BLACK, RG_TEXT_BIGGER);
                 rg_audio_set_mute(true);
-                int key = rg_input_read_keyboard(&coleco_keyboard);
+                int key = rg_gui_input_char(&coleco_keyboard);
                 rg_audio_set_mute(false);
 
                 if (key >= '0' && key <= '9')
@@ -232,12 +227,14 @@ void sms_main(void)
                     colecoKey = 11;
                 else
                     colecoKey = 255;
-                colecoKeyDecay = 3;
+                colecoKeyDecay = 4;
+                continue;
             }
             else if (joystick & RG_KEY_SELECT)
             {
                 rg_task_delay(100);
                 system_reset();
+                continue;
             }
         }
 

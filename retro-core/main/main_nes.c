@@ -175,7 +175,7 @@ static void nsf_draw_overlay(void)
         RG_DIALOG_END,
     };
     snprintf(song, sizeof(song), "%d / %d", nsf_current_song, header->total_songs);
-    rg_gui_draw_dialog("NSF Player", options, -1);
+    rg_gui_draw_dialog("NSF Player", options, 4, -1);
 }
 
 

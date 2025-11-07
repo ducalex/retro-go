@@ -559,7 +559,7 @@ void app_main()
 
     if (!iwad)
     {
-        iwad = rg_gui_file_picker("Select IWAD file", I_DoomExeDir(), is_iwad, false) ?: "";
+        iwad = rg_gui_file_picker("Select IWAD file", I_DoomExeDir(), is_iwad, false, false) ?: "";
         rg_gui_draw_hourglass(); // Redraw hourglass to indicate loading...
     }
 

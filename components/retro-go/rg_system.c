@@ -207,11 +207,12 @@ static void update_statistics(void)
         // Hard to fix this sync issue without a lock, which I don't want to use...
         ticks = RG_MAX(ticks, frames);
 
-        statistics.busyPercent = busyTime / totalTime * 100.f;
         statistics.totalFPS = ticks / totalTimeSecs;
         statistics.skippedFPS = (ticks - frames) / totalTimeSecs;
         statistics.fullFPS = fullFrames / totalTimeSecs;
         statistics.partialFPS = partFrames / totalTimeSecs;
+        statistics.busyPercent = busyTime / totalTime * 100.f;
+        statistics.speedPercent = app.tickRate > 0 ? (statistics.totalFPS / app.tickRate * 100.f) : 100.f;
     }
     statistics.uptime = rg_system_timer() / 1000000;
 
@@ -263,7 +264,7 @@ static void system_monitor_task(void *arg)
                                                            !rg_system_get_indicator(RG_INDICATOR_POWER_LOW)));
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
-        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (%d+%d+%d), BATT:%d\n",
+        rg_system_log(RG_LOG_DEBUG, NULL, "STACK:%d, HEAP:%d+%d (%d+%d), BUSY:%d%%, FPS:%d (S:%d R:%d+%d), BATT:%d",
             statistics.freeStackMain,
             statistics.freeMemoryInt / 1024,
             statistics.freeMemoryExt / 1024,
@@ -810,7 +811,10 @@ rg_stats_t rg_system_get_counters(void)
 void rg_system_set_tick_rate(int tickRate)
 {
     app.tickRate = tickRate;
-    app.frameTime = 1000000 / (app.tickRate * app.speed);
+    if (tickRate > 0)
+        app.frameTime = 1000000 / (app.tickRate * app.speed);
+    else
+        app.frameTime = 1000000;
 }
 
 int rg_system_get_tick_rate(void)

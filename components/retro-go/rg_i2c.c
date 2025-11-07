@@ -170,7 +170,16 @@ static const _gpio_port gpio_ports[] = {
 };
 static const _gpio_sequence gpio_init_seq[] = {};
 static const _gpio_sequence gpio_deinit_seq[] = {};
-static rg_gpio_mode_t PCF8575_mode = -1;
+static rg_gpio_mode_t PCF857x_mode = -1;
+
+#elif RG_I2C_GPIO_DRIVER == 5 // PCF8574
+
+static const _gpio_port gpio_ports[] = {
+    {-1, -1, -1, -1}, // PORT 0
+};
+static const _gpio_sequence gpio_init_seq[] = {};
+static const _gpio_sequence gpio_deinit_seq[] = {};
+static rg_gpio_mode_t PCF857x_mode = -1;
 
 #else
 
@@ -240,14 +249,15 @@ bool rg_i2c_gpio_configure_port(int port, uint8_t mask, rg_gpio_mode_t mode)
 {
     if (port < 0 || port >= gpio_ports_count)
         return false;
-#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
-    uint16_t temp = 0xFFFF;
-    if (mask != 0xFF && mode != PCF8575_mode && (mode == RG_GPIO_OUTPUT || PCF8575_mode == RG_GPIO_OUTPUT))
-        RG_LOGW("PCF8575 mode cannot be set by pin. (mask is 0x%02X, expected 0xFF)", mask);
-    PCF8575_mode = mode;
+#if RG_I2C_GPIO_DRIVER == 4 || RG_I2C_GPIO_DRIVER == 5 // PCF8575/PCF8574
+    uint32_t temp = 0xFFFFFFFF;
+    if (mask != 0xFF && mode != PCF857x_mode && (mode == RG_GPIO_OUTPUT || PCF857x_mode == RG_GPIO_OUTPUT))
+        RG_LOGW("PCF857x mode cannot be set by pin. (mask is 0x%02X, expected 0xFF)", mask);
+    PCF857x_mode = mode;
     if (mode != RG_GPIO_OUTPUT)
-        return rg_i2c_write(gpio_address, -1, &temp, 2) && rg_i2c_read(gpio_address, -1, &temp, 2);
-    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+        return rg_i2c_write(gpio_address, -1, &temp, gpio_ports_count)
+            && rg_i2c_read(gpio_address, -1, &temp, gpio_ports_count);
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, gpio_ports_count);
 #else
     int direction_reg = gpio_ports[port].direction_reg;
     int pullup_reg = gpio_ports[port].pullup_reg;
@@ -261,9 +271,9 @@ int rg_i2c_gpio_read_port(int port)
 {
     if (port < 0 || port >= gpio_ports_count)
         return -1;
-#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
-    uint8_t values[2];
-    return rg_i2c_read(gpio_address, -1, &values, 2) ? values[port & 1] : -1;
+#if RG_I2C_GPIO_DRIVER == 4 || RG_I2C_GPIO_DRIVER == 5 // PCF8575/PCF8574
+    uint8_t values[gpio_ports_count];
+    return rg_i2c_read(gpio_address, -1, &values, gpio_ports_count) ? values[port] : -1;
 #else
     return rg_i2c_read_byte(gpio_address, gpio_ports[port].input_reg);
 #endif
@@ -274,10 +284,10 @@ bool rg_i2c_gpio_write_port(int port, uint8_t value)
     if (port < 0 || port >= gpio_ports_count)
         return false;
     gpio_output_values[port] = value;
-#if RG_I2C_GPIO_DRIVER == 4 // PCF8575
-    if (PCF8575_mode != RG_GPIO_OUTPUT)
+#if RG_I2C_GPIO_DRIVER == 4 || RG_I2C_GPIO_DRIVER == 5 // PCF8575/PCF8574
+    if (PCF857x_mode != RG_GPIO_OUTPUT)
         return true; // This is consistent with other extenders, where the output latch is updated even in input mode
-    return rg_i2c_write(gpio_address, -1, &gpio_output_values, 2);
+    return rg_i2c_write(gpio_address, -1, &gpio_output_values, gpio_ports_count);
 #else
     return rg_i2c_write_byte(gpio_address, gpio_ports[port].output_reg, value);
 #endif

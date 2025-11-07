@@ -137,7 +137,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     uint32_t buttons = 0;
 #if defined(RG_I2C_GPIO_DRIVER)
     int data0 = rg_i2c_gpio_read_port(0), data1 = rg_i2c_gpio_read_port(1);
-    if (data0 > -1 && data1 > -1)
+    if (data0 > -1) // && data1 > -1)
     {
         buttons = (data1 << 8) | (data0);
 #elif defined(RG_TARGET_T_DECK_PLUS)
@@ -372,6 +372,11 @@ void rg_input_deinit(void)
     RG_LOGI("Input terminated.\n");
 }
 
+bool rg_input_key_is_present(rg_key_t mask)
+{
+    return (gamepad_mapped & mask) == mask;
+}
+
 uint32_t rg_input_read_gamepad(void)
 {
 #ifdef RG_TARGET_SDL2
@@ -423,70 +428,4 @@ const char *rg_input_get_key_name(rg_key_t key)
     case RG_KEY_NONE: return "None";
     default: return "Unknown";
     }
-}
-
-const char *rg_input_get_key_mapping(rg_key_t key)
-{
-    if ((gamepad_mapped & key) == key)
-        return "PHYSICAL";
-    return NULL;
-}
-
-const rg_keyboard_map_t virtual_map1 = {
-    .columns = 10,
-    .rows = 4,
-    .data = {
-        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J',
-        'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
-        'U', 'V', 'W', 'X', 'Y', 'Z', ' ', ',', '.', ' ',
-    }
-};
-
-int rg_input_read_keyboard(const rg_keyboard_map_t *map)
-{
-    int cursor = -1;
-    int count = map->columns * map->rows;
-
-    if (!map)
-        map = &virtual_map1;
-
-    rg_input_wait_for_key(RG_KEY_ALL, false, 1000);
-
-    while (1)
-    {
-        uint32_t joystick = rg_input_read_gamepad();
-        int prev_cursor = cursor;
-
-        if (joystick & RG_KEY_A)
-            return map->data[cursor];
-        if (joystick & RG_KEY_B)
-            break;
-
-        if (joystick & RG_KEY_LEFT)
-            cursor--;
-        if (joystick & RG_KEY_RIGHT)
-            cursor++;
-        if (joystick & RG_KEY_UP)
-            cursor -= map->columns;
-        if (joystick & RG_KEY_DOWN)
-            cursor += map->columns;
-
-        if (cursor > count - 1)
-            cursor = prev_cursor;
-        else if (cursor < 0)
-            cursor = prev_cursor;
-
-        cursor = RG_MIN(RG_MAX(cursor, 0), count - 1);
-
-        if (cursor != prev_cursor)
-            rg_gui_draw_keyboard(map, cursor);
-
-        rg_input_wait_for_key(RG_KEY_ALL, false, 500);
-        rg_input_wait_for_key(RG_KEY_ANY, true, 500);
-
-        rg_system_tick(0);
-    }
-
-    return -1;
 }

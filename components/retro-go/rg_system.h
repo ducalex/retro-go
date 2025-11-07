@@ -195,6 +195,7 @@ typedef struct
     float partialFPS;
     float fullFPS;
     float totalFPS;
+    float speedPercent;
     float busyPercent;
     int64_t busyTime;
     int64_t lastTick;

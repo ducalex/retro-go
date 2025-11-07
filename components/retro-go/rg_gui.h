@@ -69,10 +69,11 @@ typedef struct
 
 typedef struct
 {
-    intptr_t arg;
-    size_t index;
-    bool cancelled;
-} rg_dialog_ret_t;
+    const char *layout;
+    size_t columns;
+    size_t rows;
+    const char *label;
+} rg_keyboard_layout_t;
 
 typedef struct rg_gui_option_s rg_gui_option_t;
 typedef rg_gui_event_t (*rg_gui_callback_t)(rg_gui_option_t *, rg_gui_event_t);
@@ -104,6 +105,7 @@ struct rg_gui_option_s
 #define TEXT_RECT(text, max) rg_gui_draw_text(-(max), 0, 0, (text), 0, 0, RG_TEXT_MULTILINE|RG_TEXT_DUMMY_DRAW)
 
 void rg_gui_init(void);
+void rg_gui_update_geometry(void);
 bool rg_gui_set_language_id(int index);
 void rg_gui_set_surface(rg_surface_t *surface);
 bool rg_gui_set_font(int index);
@@ -111,25 +113,29 @@ bool rg_gui_set_theme(const char *name);
 const char *rg_gui_get_theme_name(void);
 rg_image_t *rg_gui_get_theme_image(const char *name);
 rg_color_t rg_gui_get_theme_color(const char *section, const char *key, rg_color_t default_value);
-void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const void *buffer);
+rg_margins_t rg_gui_get_safe_area(void);
+void rg_gui_copy_buffer(int left, int top, int width, int height, int stride, const uint16_t *buffer, bool transparency);
 
 rg_rect_t rg_gui_draw_text(int x_pos, int y_pos, int width, const char *text, // const rg_font_t *font,
                            rg_color_t color_fg, rg_color_t color_bg, uint32_t flags);
+rg_rect_t rg_gui_draw_dialog(const char *title, const rg_gui_option_t *options, size_t options_count, int sel);
+rg_rect_t rg_gui_draw_message(const char *format, ...);
 void rg_gui_draw_rect(int x_pos, int y_pos, int width, int height, int border_size,
                       rg_color_t border_color, rg_color_t fill_color);
-void rg_gui_draw_icons(void);
-void rg_gui_draw_dialog(const char *header, const rg_gui_option_t *options, int sel);
 void rg_gui_draw_image(int x_pos, int y_pos, int width, int height, bool resample, const rg_image_t *img);
+void rg_gui_draw_icons(void);
 void rg_gui_draw_hourglass(void); // This should be moved to system or display...
 void rg_gui_draw_status_bars(void);
-void rg_gui_draw_keyboard(const rg_keyboard_map_t *map, size_t cursor);
-void rg_gui_draw_message(const char *format, ...);
+void rg_gui_draw_virtual_keyboard(int x_pos, int y_pos, const rg_keyboard_layout_t *map, int cursor_pos, bool partial_redraw);
+void rg_gui_draw_input_screen(const char *title, const char *message, const char *input_buffer,
+                              const rg_keyboard_layout_t *layout_ptr, int cursor_pos, bool partial_redraw);
 
 intptr_t rg_gui_dialog(const char *title, const rg_gui_option_t *options, int selected_index);
 bool rg_gui_confirm(const char *title, const char *message, bool default_yes);
 void rg_gui_alert(const char *title, const char *message);
-char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool none_option);
+char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(const char *path), bool browse_tree, bool none_option);
 char *rg_gui_input_str(const char *title, const char *message, const char *default_value);
+int rg_gui_input_char(const rg_keyboard_layout_t *map);
 
 int rg_gui_savestate_menu(const char *title, const char *rom_path);
 void rg_gui_options_menu(void);
