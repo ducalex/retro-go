@@ -258,7 +258,7 @@ static void system_monitor_task(void *arg)
         update_statistics();
 
         rg_battery_t battery = rg_input_read_battery();
-        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, true);
+        rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f));
         update_indicators(false);
 
         // Try to avoid complex conversions that could allocate, prefer rounding/ceiling if necessary.
