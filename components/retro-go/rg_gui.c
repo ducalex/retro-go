@@ -1039,6 +1039,29 @@ void rg_gui_alert(const char *title, const char *message)
     rg_gui_dialog(title, message ? options : options + 1, -1);
 }
 
+void rg_gui_error(const char *message, const char *object, int _errno, bool exit_program)
+{
+    const char *title = exit_program ? _("Fatal Error") : _("Error");
+    const char *button = exit_program ? _("Exit") : _("OK");
+    char error_msg[128] = "";
+
+    const rg_gui_option_t options[] = {
+        {0, message,  NULL,           RG_DIALOG_FLAG_NORMAL,                                   NULL},
+        {0, _("Obj"), (char *)object, object ? RG_DIALOG_FLAG_MESSAGE : RG_DIALOG_FLAG_HIDDEN, NULL},
+        {0, _("Err"), error_msg,      _errno ? RG_DIALOG_FLAG_MESSAGE : RG_DIALOG_FLAG_HIDDEN, NULL},
+        {0, "",       NULL,           RG_DIALOG_FLAG_MESSAGE,                                  NULL},
+        {1, button,   NULL,           RG_DIALOG_FLAG_NORMAL,                                   NULL},
+        RG_DIALOG_END,
+    };
+
+    esp_err_to_name_r(_errno, error_msg, sizeof(error_msg));
+
+    // FIXME: show blue backdrop color and hide bars?
+    rg_gui_dialog(title, options, -1);
+    if (exit_program)
+        rg_system_exit();
+}
+
 typedef struct
 {
     rg_gui_option_t *options;
