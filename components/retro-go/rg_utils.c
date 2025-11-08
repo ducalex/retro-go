@@ -355,19 +355,17 @@ typedef struct rg_bucket_s
 {
     size_t capacity;
     size_t cursor;
-    size_t alignment;
     rg_bucket_t *prev;
     rg_bucket_t *next;
     uint8_t data[];
 } rg_bucket_t;
 
-rg_bucket_t *rg_bucket_create(size_t capacity_bytes, size_t alignment_bytes)
+rg_bucket_t *rg_bucket_create(size_t capacity_bytes)
 {
     rg_bucket_t *bucket = calloc(1, sizeof(rg_bucket_t) + capacity_bytes);
     if (!bucket)
         return NULL;
     bucket->capacity = capacity_bytes;
-    bucket->alignment = alignment_bytes ?: 1;
     return bucket;
 }
 
@@ -382,7 +380,7 @@ void *rg_bucket_insert(rg_bucket_t *bucket, const void *item, size_t item_bytes)
     {
         if (!bucket->next) // End of the list, must allocate
         {
-            rg_bucket_t *new_bucket = rg_bucket_create(bucket->capacity, bucket->alignment);
+            rg_bucket_t *new_bucket = rg_bucket_create(bucket->capacity);
             if (!new_bucket)
                 return NULL;
             new_bucket->prev = bucket;
@@ -392,9 +390,11 @@ void *rg_bucket_insert(rg_bucket_t *bucket, const void *item, size_t item_bytes)
         }
         bucket = bucket->next;
     }
-    void *ptr = memcpy(bucket->data + bucket->cursor, item, item_bytes);
-    bucket->cursor += item_bytes;
-    bucket->cursor += bucket->cursor % bucket->alignment;
+    void *ptr = bucket->data + bucket->cursor;
+    if (item)
+        memcpy(ptr, item, item_bytes);
+    bucket->cursor += ((item_bytes + (sizeof(int) - 1)) / sizeof(int)) * sizeof(int);
+    // bucket->cursor += item_bytes;
     return ptr;
 }
 
@@ -408,9 +408,6 @@ void rg_bucket_free(rg_bucket_t *bucket)
     }
 }
 
-// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
-// that some memory is put in specific regions for performance or hardware reasons.
-// Memory from this function should be freed with free()
 void *rg_alloc(size_t size, uint32_t caps)
 {
     char caps_list[36] = "";

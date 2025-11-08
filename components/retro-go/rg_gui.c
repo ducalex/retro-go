@@ -1066,7 +1066,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     file_picker_opts_t options = {
         .options = calloc(8, sizeof(rg_gui_option_t)),
         .count = 0,
-        .filenames = rg_bucket_create(4096, 1),
+        .filenames = rg_bucket_create(4096),
         .validator = validator,
     };
     char *filepath = NULL;

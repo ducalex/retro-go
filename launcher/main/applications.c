@@ -430,7 +430,7 @@ static void event_handler(gui_event_t event, tab_t *tab)
         if (app && app->initialized)
         {
             rg_bucket_free(app->filenames);
-            app->filenames = rg_bucket_create(4096, 1);
+            app->filenames = rg_bucket_create(4096);
             app->files_count = 0;
             app->initialized = false;
         }
@@ -681,7 +681,7 @@ static void application(const char *desc, const char *name, const char *exts, co
     app->available = rg_system_have_app(app->partition);
     app->files = calloc(100, sizeof(retro_file_t));
     app->files_capacity = 100;
-    app->filenames = rg_bucket_create(4096, 1);
+    app->filenames = rg_bucket_create(4096);
     app->crc_offset = crc_offset;
 
     gui_add_tab(app->short_name, app->description, app, event_handler);

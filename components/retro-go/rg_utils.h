@@ -47,7 +47,6 @@
  * they cannot be freed. unique avoids keeping multiple copies of an identical string (eg a path)
  * Things like unique_string("abc") == unique_string("abc") are guaranteed to be true
 */
-const char *rg_const_string(const char *str);
 const char *rg_unique_string(const char *str);
 char *rg_strtolower(char *str);
 char *rg_strtoupper(char *str);
@@ -74,14 +73,18 @@ uint32_t rg_crc32(uint32_t crc, const uint8_t *buf, size_t len);
 uint32_t rg_hash(const char *buf, size_t len);
 
 /* Bucket allocator */
-// The bucket allocator is basically a linked-list of buckets. It's not smart in any way and can only grow.
-// Its purpose is to replace thousands of small allocations that fill internal memory (eg strdup)
+// The bucket allocator is basically a linked-list of fixed-size buckets that can contain variable-sized items.
+// It does not keep track of individual items and items cannot be removed or resized.
+// Its purpose is to replace the thousands of small allocations that fill internal memory (eg strdup)
 typedef struct rg_bucket_s rg_bucket_t;
-rg_bucket_t *rg_bucket_create(size_t capacity_bytes, size_t alignment_bytes);
+rg_bucket_t *rg_bucket_create(size_t capacity_bytes);
 void *rg_bucket_insert(rg_bucket_t *bucket, const void *item, size_t item_bytes);
 void rg_bucket_free(rg_bucket_t *bucket);
 
 /* Misc */
+// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
+// that some memory is put in specific regions for performance or hardware reasons.
+// Memory from this function should be freed with free()
 void *rg_alloc(size_t size, uint32_t caps);
 // rg_usleep behaves like usleep in libc: it will sleep for *at least* `us` microseconds, but possibly more
 // due to scheduling. You should use rg_task_delay() if you don't need more than 10-15ms granularity.
