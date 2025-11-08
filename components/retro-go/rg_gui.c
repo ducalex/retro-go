@@ -1043,6 +1043,7 @@ typedef struct
 {
     rg_gui_option_t *options;
     size_t count;
+    rg_bucket_t *filenames;
     bool (*validator)(const char *path);
 } file_picker_opts_t;
 
@@ -1054,7 +1055,7 @@ static int file_picker_cb(const rg_scandir_t *entry, void *arg)
     rg_gui_option_t *options = realloc(f->options, (f->count + 2) * sizeof(rg_gui_option_t));
     if (!options)
         return RG_SCANDIR_STOP;
-    char *name = strdup(entry->basename);
+    char *name = rg_bucket_insert(f->filenames, entry->basename, strlen(entry->basename) + 1);
     f->options = options;
     f->options[f->count++] = (rg_gui_option_t){(intptr_t)name, name, NULL, RG_DIALOG_FLAG_NORMAL, NULL};
     return RG_SCANDIR_CONTINUE;
@@ -1065,6 +1066,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     file_picker_opts_t options = {
         .options = calloc(8, sizeof(rg_gui_option_t)),
         .count = 0,
+        .filenames = rg_bucket_create(4096),
         .validator = validator,
     };
     char *filepath = NULL;
@@ -1098,8 +1100,7 @@ char *rg_gui_file_picker(const char *title, const char *path, bool (*validator)(
     }
 
 cleanup:
-    for (size_t i = 0; i < options.count; ++i)
-        free((void *)(options.options[i].arg));
+    rg_bucket_free(options.filenames);
     free(options.options);
     return filepath;
 }

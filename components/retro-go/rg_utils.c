@@ -351,9 +351,63 @@ const char *rg_unique_string(const char *str)
     return obj->data;
 }
 
-// Note: You should use calloc/malloc everywhere possible. This function is used to ensure
-// that some memory is put in specific regions for performance or hardware reasons.
-// Memory from this function should be freed with free()
+typedef struct rg_bucket_s
+{
+    size_t capacity;
+    size_t cursor;
+    rg_bucket_t *prev;
+    rg_bucket_t *next;
+    uint8_t data[];
+} rg_bucket_t;
+
+rg_bucket_t *rg_bucket_create(size_t capacity_bytes)
+{
+    rg_bucket_t *bucket = calloc(1, sizeof(rg_bucket_t) + capacity_bytes);
+    if (!bucket)
+        return NULL;
+    bucket->capacity = capacity_bytes;
+    return bucket;
+}
+
+void *rg_bucket_insert(rg_bucket_t *bucket, const void *item, size_t item_bytes)
+{
+    if (!bucket || bucket->capacity < item_bytes)
+    {
+        RG_LOGW("Item size exceeds bucket capacity!");
+        return NULL;
+    }
+    while (bucket->cursor + item_bytes > bucket->capacity)
+    {
+        if (!bucket->next) // End of the list, must allocate
+        {
+            rg_bucket_t *new_bucket = rg_bucket_create(bucket->capacity);
+            if (!new_bucket)
+                return NULL;
+            new_bucket->prev = bucket;
+            bucket->next = new_bucket;
+            bucket = new_bucket;
+            break;
+        }
+        bucket = bucket->next;
+    }
+    void *ptr = bucket->data + bucket->cursor;
+    if (item)
+        memcpy(ptr, item, item_bytes);
+    bucket->cursor += ((item_bytes + (sizeof(int) - 1)) / sizeof(int)) * sizeof(int);
+    // bucket->cursor += item_bytes;
+    return ptr;
+}
+
+void rg_bucket_free(rg_bucket_t *bucket)
+{
+    while (bucket)
+    {
+        rg_bucket_t *next = bucket->next;
+        free(bucket);
+        bucket = next;
+    }
+}
+
 void *rg_alloc(size_t size, uint32_t caps)
 {
     char caps_list[36] = "";
