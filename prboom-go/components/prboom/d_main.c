@@ -537,9 +537,9 @@ bool D_AddFile(const char *file)
 
   snprintf(relpath, PATH_MAX, "%s/%s", I_DoomExeDir(), file);
 
-  if (access(relpath, R_OK) == 0)
+  if (rg_storage_exists(relpath))
     file = relpath;
-  else if (access(file, R_OK) != 0) {
+  else if (!rg_storage_exists(file)) {
     lprintf(LO_WARN, "D_AddFile: %s not found\n", file);
     return false;
   }
