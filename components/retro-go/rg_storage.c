@@ -200,7 +200,7 @@ void rg_storage_init(void)
     if (error_code) // only if no previous storage was successfully mounted already
     {
   #if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
-        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as LittleFS...", RG_STORAGE_FLASH_PARTITION);
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as LittleFS at '%s'...", RG_STORAGE_FLASH_PARTITION, RG_STORAGE_ROOT);
 
         esp_vfs_littlefs_conf_t conf = {
             .base_path = RG_STORAGE_ROOT,
@@ -216,14 +216,18 @@ void rg_storage_init(void)
             size_t total = 0, used = 0;
             if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
             {
-                RG_LOGI("LittleFS partition size: total: %d, used: %d", (int)total, (int)used);
+                RG_LOGI("LittleFS partition '%s' mounted at '%s': total: %d bytes, used: %d bytes", RG_STORAGE_FLASH_PARTITION, RG_STORAGE_ROOT, (int)total, (int)used);
             }
+        }
+        else
+        {
+            RG_LOGE("LittleFS mount failed with error 0x%x (%s)", err, esp_err_to_name(err));
         }
         error_code = (int)err;
   #else
-        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as FAT...", RG_STORAGE_FLASH_PARTITION);
+       RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as FAT...", RG_STORAGE_FLASH_PARTITION);
 
-        esp_vfs_fat_mount_config_t mount_config = {
+       esp_vfs_fat_mount_config_t mount_config = {
             .format_if_mount_failed = true,
             .max_files = 4,
             .allocation_unit_size = 0,
@@ -378,7 +382,9 @@ rg_stat_t rg_storage_stat(const char *path)
 bool rg_storage_exists(const char *path)
 {
     CHECK_PATH(path);
-    return access(path, F_OK) == 0;
+    // NOTE: Using stat() instead of access() because access() doesn't work reliably on LittleFS
+    struct stat st;
+    return stat(path, &st) == 0;
 }
 
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
