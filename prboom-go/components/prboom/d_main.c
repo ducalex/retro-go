@@ -917,10 +917,10 @@ static void D_DoomMainSetup(void)
       while (++p != myargc && *myargv[p] != '-')
         {
           AddDefaultExtension(strcpy(file, myargv[p]), ".bex");
-          if (access(file, F_OK))  // nope
+          if (!rg_storage_exists(file))  // nope
             {
               AddDefaultExtension(strcpy(file, myargv[p]), ".deh");
-              if (access(file, F_OK))  // still nope
+              if (!rg_storage_exists(file))  // still nope
                 I_Error("D_DoomMainSetup: Cannot find .deh or .bex file named %s",myargv[p]);
             }
           // during the beta we have debug output to dehout.txt

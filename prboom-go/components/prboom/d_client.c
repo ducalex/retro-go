@@ -46,6 +46,9 @@
 #ifdef HAVE_SYS_WAIT_H
 #include <sys/wait.h>
 #endif
+#ifdef RETRO_GO
+#include <rg_system.h>
+#endif
 
 #ifdef USE_SDL_NET
  #include "SDL.h"
@@ -229,7 +232,7 @@ boolean D_NetGetWad(const char* name)
     }
     /* This is the parent, i.e. main LxDoom process */
     wait(&rv);
-    if (!(done = !access(name, R_OK))) {
+    if (!(done = rg_storage_exists(name))) {
       if (!strcmp(p+strlen(p)-4, ".zip")) {
   p = strrchr(p, '/')+1;
   if ((pid = fork()) == -1)
@@ -240,7 +243,7 @@ boolean D_NetGetWad(const char* name)
   }
   /* Parent waits for the file */
   wait(&rv);
-  done = !!access(name, R_OK);
+  done = !rg_storage_exists(name);
       }
       /* Add more decompression protocols here as desired */
     }
