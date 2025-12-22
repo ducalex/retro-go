@@ -20,6 +20,9 @@
 
 #ifdef ESP_PLATFORM
 #include <esp_vfs_fat.h>
+#if defined(RG_STORAGE_FLASH_PARTITION)
+#include "esp_littlefs.h"
+#endif
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -40,7 +43,7 @@ static bool disk_mounted = false;
 static sdmmc_card_t *card_handle = NULL;
 #endif
 #if defined(RG_STORAGE_FLASH_PARTITION)
-static wl_handle_t wl_handle = WL_INVALID_HANDLE;
+static bool littlefs_mounted = false;
 #endif
 
 #define CHECK_PATH(path)          \
@@ -192,14 +195,25 @@ void rg_storage_init(void)
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
-        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as LittleFS...", RG_STORAGE_FLASH_PARTITION);
 
-        esp_vfs_fat_mount_config_t mount_config = {
+        esp_vfs_littlefs_conf_t conf = {
+            .base_path = RG_STORAGE_ROOT,
+            .partition_label = RG_STORAGE_FLASH_PARTITION,
             .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
-            .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
+            .dont_mount = false,
         };
 
-        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
+        esp_err_t err = esp_vfs_littlefs_register(&conf);
+        if (err == ESP_OK)
+        {
+            littlefs_mounted = true;
+            size_t total = 0, used = 0;
+            if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
+            {
+                RG_LOGI("LittleFS partition size: total: %d, used: %d", (int)total, (int)used);
+            }
+        }
         error_code = (int)err;
     }
 
@@ -232,10 +246,10 @@ void rg_storage_deinit(void)
 #endif
 
 #if defined(RG_STORAGE_FLASH_PARTITION)
-    if (wl_handle != WL_INVALID_HANDLE)
+    if (littlefs_mounted)
     {
-        esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);
-        wl_handle = WL_INVALID_HANDLE;
+        esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
+        littlefs_mounted = false;
         error_code = (int)err;
     }
 #endif
@@ -434,9 +448,19 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
 
 int64_t rg_storage_get_free_space(const char *path)
 {
-    // Here we should translate the provided VFS path to the matching filesystem driver and drive
-    // But we don't. Instead we just assume it's drive 0 of the fatfs driver. Yay laziness.
 #ifdef ESP_PLATFORM
+#if defined(RG_STORAGE_FLASH_PARTITION)
+    if (littlefs_mounted)
+    {
+        size_t total = 0, used = 0;
+        if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
+        {
+            return (int64_t)(total - used);
+        }
+        return -1;
+    }
+#endif
+    // FAT filesystem fallback for SD card
     DWORD nclst;
     FATFS *fatfs;
     if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
