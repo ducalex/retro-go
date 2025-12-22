@@ -43,10 +43,10 @@ static bool disk_mounted = false;
 static sdmmc_card_t *card_handle = NULL;
 #endif
 #if defined(RG_STORAGE_FLASH_PARTITION)
-  #if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
-static bool littlefs_mounted = false;
-  #else
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
+  #else
+static bool littlefs_mounted = false;
   #endif
 #endif
 
@@ -199,7 +199,17 @@ void rg_storage_init(void)
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
-  #if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
+
+        esp_vfs_fat_mount_config_t mount_config = {
+            .format_if_mount_failed = true,
+            .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
+        };
+
+        esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
+        error_code = (int)err;
+  #else
         RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as LittleFS at '%s'...", RG_STORAGE_FLASH_PARTITION, RG_STORAGE_ROOT);
 
         esp_vfs_littlefs_conf_t conf = {
@@ -223,17 +233,6 @@ void rg_storage_init(void)
         {
             RG_LOGE("LittleFS mount failed with error 0x%x (%s)", err, esp_err_to_name(err));
         }
-        error_code = (int)err;
-  #else
-       RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as FAT...", RG_STORAGE_FLASH_PARTITION);
-
-       esp_vfs_fat_mount_config_t mount_config = {
-            .format_if_mount_failed = true,
-            .max_files = 4,
-            .allocation_unit_size = 0,
-        };
-
-        esp_err_t err = esp_vfs_fat_spiflash_mount_rw_wl(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
         error_code = (int)err;
   #endif
     }
@@ -267,18 +266,18 @@ void rg_storage_deinit(void)
 #endif
 
 #if defined(RG_STORAGE_FLASH_PARTITION)
-  #if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+    if (wl_handle != WL_INVALID_HANDLE)
+    {
+        esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);
+        wl_handle = WL_INVALID_HANDLE;
+        error_code = (int)err;
+    }
+  #else
     if (littlefs_mounted)
     {
         esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
         littlefs_mounted = false;
-        error_code = (int)err;
-    }
-  #else
-    if (wl_handle != WL_INVALID_HANDLE)
-    {
-        esp_err_t err = esp_vfs_fat_spiflash_unmount_rw_wl(RG_STORAGE_ROOT, wl_handle);
-        wl_handle = WL_INVALID_HANDLE;
         error_code = (int)err;
     }
   #endif
@@ -480,8 +479,17 @@ bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, 
 
 int64_t rg_storage_get_free_space(const char *path)
 {
+    // Here we should translate the provided VFS path to the matching filesystem driver and drive
+    // But we don't. Instead we just assume it's drive 0 of the fatfs driver. Yay laziness.
 #ifdef ESP_PLATFORM
-#if defined(RG_STORAGE_FLASH_PARTITION) && defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+#if defined(RG_STORAGE_FLASH_PARTITION) && !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+    DWORD nclst;
+    FATFS *fatfs;
+    if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
+    {
+        return (int64_t)nclst * fatfs->csize * fatfs->ssize;
+    }
+#elif defined(RG_STORAGE_FLASH_PARTITION) && defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
     if (littlefs_mounted)
     {
         size_t total = 0, used = 0;
@@ -491,14 +499,14 @@ int64_t rg_storage_get_free_space(const char *path)
         }
         return -1;
     }
-#endif
-    // FAT filesystem (SD card or flash partition without LittleFS)
+#else
     DWORD nclst;
     FATFS *fatfs;
     if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
     {
         return (int64_t)nclst * fatfs->csize * fatfs->ssize;
     }
+#endif
 #endif
 
     return -1;
