@@ -47,6 +47,9 @@
 #include <unistd.h>
 #endif
 #include <fcntl.h>
+#ifdef RETRO_GO
+#include <rg_system.h>
+#endif
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
@@ -2201,7 +2204,7 @@ void G_RecordDemo (const char* name)
   /* cph - Record demos straight to file
    * If file already exists, try to continue existing demo
    */
-  if (access(demoname, F_OK)) {
+  if (!rg_storage_exists(demoname)) {
     demofp = fopen(demoname, "wb");
   } else {
     demofp = fopen(demoname, "r+");
