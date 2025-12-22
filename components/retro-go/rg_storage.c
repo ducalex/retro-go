@@ -203,7 +203,7 @@ void rg_storage_init(void)
         RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
 
         esp_vfs_fat_mount_config_t mount_config = {
-            .format_if_mount_failed = true,
+            .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
             .max_files = 4, // must be initialized, otherwise it will be 0, which doesn't make sense, and will trigger an ESP_ERR_NO_MEM error
         };
 
