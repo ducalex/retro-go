@@ -18,7 +18,7 @@
 // Audio
 #define RG_AUDIO_USE_BUZZER_PIN     46
 #define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
-#define RG_AUDIO_USE_EXT_DAC        0   // 0 = Disable, 1 = Enable
+#define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
@@ -104,3 +104,7 @@
 #define RG_GPIO_SDSPI_CLK           RG_GPIO_LCD_CLK
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_14
 
+// External I2S DAC
+#define RG_GPIO_SND_I2S_BCK         GPIO_NUM_2
+#define RG_GPIO_SND_I2S_WS          GPIO_NUM_47 // also known as LRCK
+#define RG_GPIO_SND_I2S_DATA        GPIO_NUM_16
