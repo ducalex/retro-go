@@ -45,8 +45,6 @@ static sdmmc_card_t *card_handle = NULL;
 #if defined(RG_STORAGE_FLASH_PARTITION)
   #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
-  #else
-static bool littlefs_mounted = false;
   #endif
 #endif
 
@@ -222,7 +220,6 @@ void rg_storage_init(void)
         esp_err_t err = esp_vfs_littlefs_register(&conf);
         if (err == ESP_OK)
         {
-            littlefs_mounted = true;
             size_t total = 0, used = 0;
             if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
             {
@@ -274,10 +271,10 @@ void rg_storage_deinit(void)
         error_code = (int)err;
     }
   #else
-    if (littlefs_mounted)
+    // NOTE: Always attempt to unregister LittleFS even if mount failed, in case it was partially mounted
+    esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
     {
-        esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
-        littlefs_mounted = false;
         error_code = (int)err;
     }
   #endif
@@ -495,15 +492,12 @@ int64_t rg_storage_get_free_space(const char *path)
         return (int64_t)nclst * fatfs->csize * fatfs->ssize;
     }
 #elif defined(RG_STORAGE_FLASH_PARTITION) && defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
-    if (littlefs_mounted)
+    size_t total = 0, used = 0;
+    if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
     {
-        size_t total = 0, used = 0;
-        if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
-        {
-            return (int64_t)(total - used);
-        }
-        return -1;
+        return (int64_t)(total - used);
     }
+    return -1;
 #else
     DWORD nclst;
     FATFS *fatfs;
