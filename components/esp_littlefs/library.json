@@ -1,0 +1,14 @@
+{
+  "name": "esp_littlefs",
+  "version": "1.20.3",
+  "description": "LittleFS is a small fail-safe filesystem for micro-controllers.",
+  "frameworks": "espidf",
+  "platforms": "*",
+  "build": {
+    "srcFilter": "+<*> -<littlefs/runners> -<littlefs/benches> -<littlefs/tests>",
+    "flags": [
+      "-I ./src/littlefs/",
+      "-DLFS_CONFIG=lfs_config.h"
+    ]
+  }
+}
