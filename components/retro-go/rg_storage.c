@@ -381,9 +381,14 @@ rg_stat_t rg_storage_stat(const char *path)
 bool rg_storage_exists(const char *path)
 {
     CHECK_PATH(path);
+#if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
     // NOTE: Using stat() instead of access() because access() doesn't work reliably on LittleFS
     struct stat st;
     return stat(path, &st) == 0;
+#else
+    // Use the faster access() method when not using LittleFS
+    return access(path, F_OK) == 0;
+#endif
 }
 
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
