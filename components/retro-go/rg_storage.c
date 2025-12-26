@@ -271,7 +271,6 @@ void rg_storage_deinit(void)
         error_code = (int)err;
     }
   #else
-    // NOTE: Always attempt to unregister LittleFS even if mount failed, in case it was partially mounted
     esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
     if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
     {
