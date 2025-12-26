@@ -1,0 +1,55 @@
+name: Build firmware
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: "0 1 * * 6" # Every Saturday at 1AM
+
+jobs:
+  build-component:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        idf_ver: ["release-v5.0", "release-v5.1", "release-v5.2", "release-v5.3", "release-v5.4"] # re-add "latest" once we support v6.0
+        idf_target: ["esp32"]
+        include:
+          - idf_ver: "release-v5.2"
+            idf_target: esp32s2
+          - idf_ver: "release-v5.2"
+            idf_target: esp32c3
+          - idf_ver: "release-v5.2"
+            idf_target: esp32s3
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck src/*.c --enable=warning --error-exitcode=1 --force
+
+      - name: esp-idf build library
+        uses: espressif/esp-idf-ci-action@main
+        with:
+          esp_idf_version: ${{ matrix.idf_ver }}
+          target: ${{ matrix.idf_target }}
+          path: "example/"
+          command: apt-get update && apt-get install -y python3-venv && idf.py --version && idf.py build
+
+      - name: esp-idf build tests
+        uses: espressif/esp-idf-ci-action@main
+        with:
+          esp_idf_version: ${{ matrix.idf_ver }}
+          command: '/bin/bash -c " ln -s /app /opt/esp/idf/tools/unit-test-app/components/littlefs; cd /opt/esp/idf/tools/unit-test-app; idf.py -T littlefs build"'

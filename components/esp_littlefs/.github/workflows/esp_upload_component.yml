@@ -1,0 +1,20 @@
+name: Push LittleFS to Espressif Component Service
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  upload_components:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+        with:
+          submodules: recursive
+      - name: Upload component to component service
+        uses: espressif/upload-components-ci-action@v1
+        with:
+          name: "LittleFS"
+          namespace: "joltwallet"
+          api_token: ${{ secrets.ESP_IDF_COMPONENT_API_TOKEN }}

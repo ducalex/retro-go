@@ -1,0 +1,273 @@
+menu "LittleFS"
+
+    config LITTLEFS_SDMMC_SUPPORT
+        bool "SDMMC support (requires ESP-IDF v5+)"
+        default n
+        help
+            Toggle SD card support
+            This requires IDF v5+ as older ESP-IDF do not support SD card erase.
+
+    config LITTLEFS_MAX_PARTITIONS
+        int "Maximum Number of Partitions"
+        default 3
+        range 1 10
+        help
+            Define maximum number of partitions that can be mounted.
+
+    config LITTLEFS_PAGE_SIZE
+        int "LITTLEFS logical page size"
+        default 256
+        range 256 1024
+        help
+            Logical page size of LITTLEFS partition, in bytes. Must be multiple
+            of flash page size (which is usually 256 bytes).
+            Larger page sizes reduce overhead when storing large files, and
+            improve filesystem performance when reading large files.
+            Smaller page sizes reduce overhead when storing small (< page size)
+            files.
+
+    config LITTLEFS_OBJ_NAME_LEN
+        int "Maximum object name length including NULL terminator."
+        default 64
+        range 16 1022
+        help
+            Includes NULL-terminator. If flashing a prebuilt filesystem image,
+            rebuild the filesystem image if this value changes.
+            mklittlefs, the tool that generates the image will automatically be rebuilt.
+            If downloading a pre-built release of mklittlefs, it was most-likely
+            built with LFS_NAME_MAX=32 and should not be used.
+
+    config LITTLEFS_READ_SIZE
+        int "Minimum size of a block read."
+        default 128
+        help
+            Minimum size of a block read. All read operations will be a
+            multiple of this value.
+
+    config LITTLEFS_WRITE_SIZE
+        int "Minimum size of a block write."
+        default 128
+        help
+            Minimum size of a block program. All write operations will be a
+            multiple of this value.
+
+    config LITTLEFS_LOOKAHEAD_SIZE
+        int "Look ahead size."
+        default 128
+        help
+            Look ahead size. Must be a multiple of 8.
+
+    config LITTLEFS_CACHE_SIZE
+        int "Cache Size"
+        default 512
+        help
+            Size of block caches. Each cache buffers a portion of a block in RAM.
+            The littlefs needs a read cache, a program cache, and one additional
+            cache per file. Larger caches can improve performance by storing more
+            data and reducing the number of disk accesses. Must be a multiple of
+            the read and program sizes, and a factor of the block size (4096).
+
+    config LITTLEFS_BLOCK_CYCLES
+        int "LittleFS wear-leveling block cycles"
+        default 512
+        range -1 1024
+        help
+            Number of erase cycles before littlefs evicts metadata logs and moves 
+            the metadata to another block. Suggested values are in the
+            range 100-1000, with large values having better performance at the cost
+            of less consistent wear distribution.
+            Set to -1 to disable block-level wear-leveling.
+
+    config LITTLEFS_USE_MTIME
+        bool "Save file modification time"
+        default "y"
+        help
+            Saves timestamp on modification. Uses an additional 4bytes.
+    
+    config LITTLEFS_USE_ONLY_HASH
+        bool "Don't store filepath in the file descriptor"
+        default "n"
+        help
+            Records the filepath only as a 32-bit hash in the file descriptor instead
+            of the entire filepath. Saves approximately `sizeof(filepath)` bytes
+            per file descriptor.
+            If enabled, functionality (like fstat) that requires the file path 
+            from the file descriptor will not work.
+            In rare cases, may cause unlinking or renaming issues (unlikely) if
+            there's a hash collision between an open filepath and a filepath
+            to be modified.
+
+    config LITTLEFS_HUMAN_READABLE
+        bool "Make errno human-readable"
+        default "n"
+        help
+            Converts LittleFS error codes into human readable strings.
+            May increase binary size depending on logging level.
+
+    choice LITTLEFS_MTIME
+        prompt "mtime attribute options"
+        depends on LITTLEFS_USE_MTIME
+        default LITTLEFS_MTIME_USE_SECONDS
+        help
+            Save an additional 4-byte attribute. Options listed below.
+
+        config LITTLEFS_MTIME_USE_SECONDS
+            bool "Use Seconds"
+            help
+                Saves timestamp on modification.
+
+        config LITTLEFS_MTIME_USE_NONCE
+            bool "Use Nonce"
+            help
+                Saves nonce on modification; intended for detecting filechanges
+                on systems without access to a RTC.
+
+                A file who's nonce is the same as it was at a previous time has 
+                high probability of not having been modified.
+
+                Upon file modification, the nonce is incremented by one. Upon file
+                creation, a random nonce is assigned.
+
+                There is a very slim chance that a file will have the same nonce if
+                it is deleted and created again (approx 1 in 4 billion).
+
+    endchoice
+
+    config LITTLEFS_SPIFFS_COMPAT
+        bool "Improve SPIFFS drop-in compatability"
+        default "n"
+        help
+            Enabling this feature allows for greater drop-in compatability
+            when replacing SPIFFS. Since SPIFFS doesn't have folders, and 
+            folders are just considered as part of a file name, enabling this
+            will automatically create folders as necessary to create a file
+            instead of throwing an error. Similarly, upon the deletion of the
+            last file in a folder, the folder will be deleted. It is recommended
+            to only enable this flag as a stop-gap solution.
+            
+    config LITTLEFS_FLUSH_FILE_EVERY_WRITE
+        bool "Flush file to flash after each write operation"
+        default "n"
+        help
+            Enabling this feature extends SPIFFS capability.
+            In SPIFFS data is written immediately to the flash storage when fflush() function called.
+            In LittleFS flush() does not write data to the flash, and fsync() call needed after.
+            With this feature fflush() will write data to the storage.
+
+    config LITTLEFS_OPEN_DIR
+        bool "Support opening directory"
+        default "n"
+        depends on !LITTLEFS_USE_ONLY_HASH && LITTLEFS_SPIFFS_COMPAT
+        help
+            Support opening directory by following APIs:
+
+                int fd = open("my_directory", O_DIRECTORY);
+
+    config LITTLEFS_FCNTL_GET_PATH
+        bool "Support get file or directory path"
+        default "n"
+        depends on !LITTLEFS_USE_ONLY_HASH
+        help
+            Support getting directory by following APIs:
+
+                char buffer[MAXPATHLEN];
+
+                int fd = open("my_file", flags);
+                fcntl(fd, F_GETPATH, buffer);
+
+    config LITTLEFS_FCNTL_F_GETPATH_VALUE
+        int "Value of command F_GETPATH"
+        default 20
+        depends on LITTLEFS_FCNTL_GET_PATH
+        help
+            ESP-IDF's header file "fcntl.h" doesn't support macro "F_GETPATH",
+            so we should define this macro here.
+
+    config LITTLEFS_MULTIVERSION
+        bool "Support selecting the LittleFS minor version to write to disk"
+        default "n"
+        help
+            LittleFS 2.6 bumps the on-disk minor version of littlefs from lfs2.0 -> lfs2.1.
+
+            This change is backwards-compatible, but after the first write with the new version,
+            the image on disk will no longer be mountable by older versions of littlefs.
+
+            Enabling LITTLEFS_MULTIVERSION allows to select the On-disk version
+            to use when writing in the form of 16-bit major version
+            + 16-bit minor version. This limiting metadata to what is supported by
+            older minor versions. Note that some features will be lost. Defaults to
+            to the most recent minor version when zero.
+
+    choice LITTLEFS_DISK_VERSION
+        prompt "LITTLEFS_DISK_VERSION"
+        depends on LITTLEFS_MULTIVERSION
+        default LITTLEFS_DISK_VERSION_MOST_RECENT
+        help
+            See LITTLEFS_MULTIVERSION for details.
+
+        config LITTLEFS_DISK_VERSION_MOST_RECENT
+            bool "Write the most recent LittleFS version"
+
+        config LITTLEFS_DISK_VERSION_2_1
+            bool "Write LittleFS 2.1"
+
+        config LITTLEFS_DISK_VERSION_2_0
+            bool "Write LittleFS 2.0 (no forward-looking erase-state CRCs)"
+
+    endchoice
+
+    choice LITTLEFS_MALLOC_STRATEGY
+        prompt "Buffer allocation strategy"
+        default LITTLEFS_MALLOC_STRATEGY_DEFAULT
+        help
+            Maps lfs_malloc to ESP-IDF capabilities-based memory allocator or
+            disables dynamic allocation in favour of user-provided static buffers.
+
+        config LITTLEFS_MALLOC_STRATEGY_DISABLE
+            bool "Static buffers only"
+            help
+                Disallow dynamic allocation, static buffers must be provided by the calling application.
+
+        config LITTLEFS_MALLOC_STRATEGY_DEFAULT
+            bool "Default heap selection"
+            help
+                Uses an automatic allocation strategy. On systems with heap in SPIRAM, if
+                the allocation size does not exceed SPIRAM_MALLOC_ALWAYSINTERNAL then internal
+                heap allocation if preferred, otherwise allocation will be attempted from SPIRAM
+                heap.
+
+        config LITTLEFS_MALLOC_STRATEGY_INTERNAL
+            bool "Internal heap"
+            help
+                Uses ESP-IDF heap_caps_malloc to allocate from internal heap.
+
+        config LITTLEFS_MALLOC_STRATEGY_SPIRAM
+            bool "SPIRAM heap"
+            depends on SPIRAM_USE_MALLOC || SPIRAM_USE_CAPS_ALLOC
+            help
+                Uses ESP-IDF heap_caps_malloc to allocate from SPIRAM heap.
+
+    endchoice
+
+    config LITTLEFS_ASSERTS
+        bool "Enable asserts"
+        default "y"
+        help
+            Selects whether littlefs performs runtime assert checks.
+
+    config LITTLEFS_MMAP_PARTITION
+        bool "Memory map LITTLEFS partitions"
+        default "n"
+        help
+            Use esp_partition_mmap to map the partitions to memory, which can provide a significant
+            performance boost in some cases. Make sure the chip you're using has enough available address
+            space to map the partition (for the ESP32 there is 4MB available).
+
+    config LITTLEFS_WDT_RESET
+        bool "Reset task watchdog during flash operations"
+        default "n"
+        help
+            Enable calling esp_task_wdt_reset() during flash read/write/erase operations
+            to prevent task watchdog timeouts during long-running filesystem operations.
+
+endmenu
