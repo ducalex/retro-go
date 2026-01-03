@@ -1,5 +1,5 @@
 /****************************************************************************
- * Target definition for VMU-S3						    *
+ * Target definition for VMU-S3                                             *
  * Info: instructables.com/ESP32-VMU-Handheld-Console-Yes-It-Plays-Doom/    *
  ****************************************************************************/
 #define RG_TARGET_NAME             "VMU-S3"
@@ -18,8 +18,8 @@
  ****************************************************************************/
 // #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017, 4 = PCF8575, 5 = PCF8574
 // #define RG_I2C_GPIO_ADDR            0x00
-// #define RG_GPIO_I2C_SDA             GPIO_NUM_15
-// #define RG_GPIO_I2C_SCL             GPIO_NUM_4
+// #define RG_GPIO_I2C_SDA             GPIO_NUM_NC
+// #define RG_GPIO_I2C_SCL             GPIO_NUM_NC
 
 
 /****************************************************************************
@@ -34,9 +34,9 @@
 #define RG_GPIO_SDSPI_CS            GPIO_NUM_10
 // #define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
-// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_15
-// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_14
-// #define RG_GPIO_SDMMC_D0            GPIO_NUM_2
+// #define RG_GPIO_SDMMC_CMD           GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_CLK           GPIO_NUM_NC
+// #define RG_GPIO_SDMMC_D0            GPIO_NUM_NC
 // #define RG_GPIO_SDMMC_D1            GPIO_NUM_NC
 // #define RG_GPIO_SDMMC_D2            GPIO_NUM_NC
 // #define RG_GPIO_SDMMC_D3            GPIO_NUM_NC
@@ -108,13 +108,13 @@
     {RG_KEY_RIGHT, .num = GPIO_NUM_15, .pullup = 1, .level = 0},\
     {RG_KEY_DOWN,  .num = GPIO_NUM_5,  .pullup = 1, .level = 0},\
     {RG_KEY_LEFT,  .num = GPIO_NUM_6,  .pullup = 1, .level = 0},\
-    {RG_KEY_MENU,  .num = GPIO_NUM_18, .pullup = 1, .level = 0},\
+    {RG_KEY_SELECT,.num = GPIO_NUM_18, .pullup = 1, .level = 0},\
     {RG_KEY_START, .num = GPIO_NUM_17, .pullup = 1, .level = 0},\
     {RG_KEY_A,     .num = GPIO_NUM_1,  .pullup = 1, .level = 0},\
     {RG_KEY_B,     .num = GPIO_NUM_2,  .pullup = 1, .level = 0},\
 }
 #define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_SELECT, .src = RG_KEY_START | RG_KEY_A},\
+    {RG_KEY_MENU, .src = RG_KEY_START | RG_KEY_SELECT},\
     {RG_KEY_OPTION, .src = RG_KEY_START | RG_KEY_B},\
 }
 
@@ -140,7 +140,7 @@
 /****************************************************************************
  * Miscellaneous                                                            *
  ****************************************************************************/
-#define RG_RECOVERY_BTN                 RG_KEY_MENU // Keep this button pressed to open the recovery menu
+#define RG_RECOVERY_BTN                 RG_KEY_START // Keep this button pressed to open the recovery menu
 
 #define RG_CUSTOM_PLATFORM_INIT() \
     /* Arbitrary code executed very early during retro-go init */
