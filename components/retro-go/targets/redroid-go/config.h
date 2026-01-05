@@ -1,5 +1,5 @@
 // Target definition
-#define RG_TARGET_NAME             "ODROID-GO"
+#define RG_TARGET_NAME             "REDROID-GO"
 
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
