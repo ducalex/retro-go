@@ -359,6 +359,16 @@ static void platform_init(void)
         gpio_reset_pin(GPIO_NUM_14);
         gpio_reset_pin(GPIO_NUM_15);
     #endif
+    // Setup all SPI CS lines here in case we have a shared bus. A floating device could cause
+    // problems during the initialization of the first peripherals...
+    #if defined(RG_SCREEN_HOST) && defined(RG_GPIO_LCD_CS)
+        gpio_set_direction(RG_GPIO_LCD_CS, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_LCD_CS, 1);
+    #endif
+    #if defined(RG_STORAGE_SDSPI_HOST) && defined(RG_GPIO_SDSPI_CS)
+        gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT);
+        gpio_set_level(RG_GPIO_SDSPI_CS, 1);
+    #endif
     #ifdef RG_GPIO_LED
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_LED, 0);
