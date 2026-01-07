@@ -96,10 +96,10 @@ def get_char_list(ranges):
         try:
             second = intervals.split('-')[1]
         except IndexError:
-            list_char.append(int(first))
+            list_char.append(int(first, 0))
         else:
             second = intervals.split('-')[1]
-            for char in range(int(first), int(second) + 1):
+            for char in range(int(first, 0), int(second, 0) + 1):
                 list_char.append(char)
     return sorted(set(list_char))
 
