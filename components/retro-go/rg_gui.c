@@ -119,13 +119,15 @@ void rg_gui_init(void)
 
 bool rg_gui_set_language_id(int index)
 {
-#if !RG_CHINESE_SUPPORT
     if (index == RG_LANG_CHS)
     {
+#if RG_CHINESE_SUPPORT
+        rg_gui_set_font(RG_FONT_CHINESE);
+#else
         RG_LOGE("Chinese font not included, impossible to switch to Chinese!");
         return false;
-    }
 #endif
+    }
     if (rg_localization_set_language_id(index))
     {
         rg_settings_set_number(NS_GLOBAL, SETTING_LANGUAGE, index);
