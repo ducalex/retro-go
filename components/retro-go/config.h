@@ -1,4 +1,6 @@
-#if defined(RG_TARGET_ODROID_GO)
+#if defined(RG_TARGET_BRUTZELBOY)
+#include "targets/brutzelboy/config.h"
+#elif defined(RG_TARGET_ODROID_GO)
 #include "targets/odroid-go/config.h"
 #elif defined(RG_TARGET_MRGC_G32)
 #include "targets/mrgc-g32/config.h"
