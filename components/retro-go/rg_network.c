@@ -19,7 +19,6 @@
 #define SETTING_WIFI_MODE     "mode"
 
 #ifdef RG_ENABLE_NETWORKING
-#include <esp_idf_version.h>
 #include <esp_http_client.h>
 #include <esp_system.h>
 #include <esp_sntp.h>
@@ -28,13 +27,6 @@
 #include <nvs_flash.h>
 #include <lwip/err.h>
 #include <lwip/sys.h>
-
-#if ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 1, 0)
-#define esp_sntp_init sntp_init
-#define esp_sntp_stop sntp_stop
-#define esp_sntp_setoperatingmode sntp_setoperatingmode
-#define esp_sntp_setservername sntp_setservername
-#endif
 
 static rg_network_state_t network_state = RG_NETWORK_DISABLED;
 static rg_wifi_config_t wifi_config = {0};

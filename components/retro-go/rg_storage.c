@@ -544,11 +544,7 @@ bool rg_storage_write_file(const char *path, const void *data_ptr, size_t data_l
  */
 #if RG_ZIP_SUPPORT
 
-#if defined(ESP_PLATFORM) && ESP_IDF_VERSION_MAJOR < 5
-#include <rom/miniz.h>
-#else
 #include <miniz.h>
-#endif
 
 #define ZIP_MAGIC 0x04034b50
 typedef struct __attribute__((packed))

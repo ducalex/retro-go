@@ -1237,8 +1237,8 @@ int rg_system_get_cpu_speed(void)
 {
     if (overclockMhz)
         return overclockMhz;
-    #if CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ
-        return CONFIG_ESP32_DEFAULT_CPU_FREQ_MHZ;
+    #if CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_MHZ
+        return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ_MHZ;
     #elif CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ
         return CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
     #endif
