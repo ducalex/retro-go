@@ -1,8 +1,8 @@
-diff --git a/components/driver/sdspi_host.c b/components/driver/sdspi_host.c
-index 9a80188..4f35fbb 100644
---- a/components/driver/sdspi_host.c
-+++ b/components/driver/sdspi_host.c
-@@ -458,6 +458,7 @@ esp_err_t sdspi_host_start_command(sdspi_dev_handle_t handle, sdspi_hw_cmd_t *cm
+diff --git a/components/driver/spi/sdspi/sdspi_host.c b/components/driver/spi/sdspi/sdspi_host.c
+index b94f13869d..9d65b90a83 100644
+--- a/components/driver/spi/sdspi/sdspi_host.c
++++ b/components/driver/spi/sdspi/sdspi_host.c
+@@ -476,6 +476,7 @@ esp_err_t sdspi_host_start_command(sdspi_dev_handle_t handle, sdspi_hw_cmd_t *cm
          const bool multi_block = flags & SDSPI_CMD_FLAG_MULTI_BLK;
          //send stop transmission token only when multi-block write and non-SDIO mode
          const bool stop_transmission = multi_block && !(flags & SDSPI_CMD_FLAG_RSP_R5);
