@@ -1,35 +1,102 @@
-name: ci
+name: Build and Release Retro-Go Firmware
 
-on: 
-  workflow_dispatch:      # Start a workflow
-  push:
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
 
 jobs:
-  build:
+  build-and-release:
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Set up Git user
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
 
-    - name: Build
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        tags: retro-go:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-        load: true
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq python3 python3-pip
 
-    - name: Extract binaries from docker image
-      run: |
-        docker run --rm -v $(pwd)/build:/build retro-go:latest sh -c "cp /app/*.fw /build"
+      - name: Get latest tag version
+        id: get_version
+        run: |
+          latest_tag=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null)
+          if [[ -z "$latest_tag" ]]; then
+            latest_tag="0.00"
+          fi
+          IFS='.' read -r major minor <<< "$latest_tag"
+          major=$((10#$major))
+          minor=$((10#$minor))
+          if (( minor < 99 )); then
+            minor=$((minor + 1))
+          else
+            major=$((major + 1))
+            minor=0
+          fi
+          new_version="$major.$minor"
+          echo "NEW_VERSION=$new_version" >> $GITHUB_ENV
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: binaries
-        path: build/*.fw
+      - name: Add new version tag
+        run: |
+          git tag -a "v${{ env.NEW_VERSION }}" -m "Release ${{ env.NEW_VERSION }}"
+          git push origin "v${{ env.NEW_VERSION }}"
+
+      - name: Set up ESP-IDF environment and build firmware
+        id: esp-idf
+        uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v4.4
+          command: |
+            for d in components/retro-go/targets/*/ ; do
+              target=$(basename "$d")
+              if [ "$target" = "qtpy-gamer" ]; then
+                echo "Skipping target: $target"
+                continue
+              fi
+              for format in img fw; do
+                python3 rg_tool.py --target "$target" build-$format
+                if [ $? -ne 0 ]; then
+                  echo "Build failed for target: $target format: $format"
+                  exit 1
+                fi
+              done
+              echo "Build succeeded for target: $target"
+            done
+
+      - name: Upload firmware artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: ./*.img, ./*.fw
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.NEW_VERSION }}
+          name: ${{ github.repository }} ${{ env.NEW_VERSION }}
+          body: |
+            # ${{ github.repository }} ${{ env.NEW_VERSION }}
+
+            ## List of files included in this release:
+
+            $(ls -1 *.img | sed -E 's/\.img$//' | sed -E 's/^[^_]*_//' | sed -E 's/^- //' | awk '{print "- " toupper(substr($0,1,1)) substr($0,2)}')
+
+            ## Installation Instructions
+            How to choose the correct file: .img is to be used if you flash your device over USB, .fw if your device supports flashing from your sdcard.
+
+            ## More Information
+            Refer to the [README](https://github.com/${{ github.repository }}/blob/main/README.md) for installation instructions.
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+          files: ./*.img
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
