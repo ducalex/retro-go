@@ -1,0 +1,14 @@
+name: Feature Request
+description: Submit a feature request for Retro-Go
+labels: ["enhancement"]
+title: '[Feature Request]: '
+
+body:
+  - type: textarea
+    attributes:
+      label: "Description"
+      description: "Please write a clear and concise description of the suggestion you have."
+  - type: textarea
+    attributes:
+      label: "Anything else?"
+      description: "If applicable, add screenshots or logs or links to help explain the suggestion."

@@ -1,0 +1,37 @@
+name: Bug Report
+description: Submit a bug report for Retro-Go
+labels: ["bug"]
+title: ''
+
+body:
+  - type: textarea
+    attributes:
+      label: "Description"
+      description: "Please write a clear and concise description of the problem you have."
+  - type: textarea
+    attributes:
+      label: Steps To Reproduce
+      description: Steps to reproduce the problem.
+      placeholder: |
+        1. In this environment...
+        1. With this config...
+        1. Run '...'
+        1. See error...
+  - type: textarea
+    attributes:
+      label: Environment
+      description: |
+        examples:
+          - **Retro-Go**: 1.46
+          - **Device**: ODROID-GO
+          - **OS**: Windows
+          - **ESP-IDF**: 5.4.1
+      value: |
+          - Retro-Go:
+          - Device:
+          - OS:
+          - ESP-IDF:
+  - type: textarea
+    attributes:
+      label: "Anything else?"
+      description: "If applicable, add screenshots or logs or links to help explain the problem."
