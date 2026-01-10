@@ -1,12 +1,16 @@
-# Retro-Go 1.xx (2025-??-??)
-- Launcher: Added virtual keyboard to manage wifi networks
-- Launcher: Diacritics now display correctly in filenames
+# Retro-Go 1.xx (2026-??-??)
 - GEN/MD: Improved performance
 - SNES: Improved performance
-- All: On-screen low battery indicator
-- All: German translations added
 - New device support: ESP32-P4 on a breadboard
 - New device support: VMU-S3 (replaces VMU)
+
+
+# Retro-Go 1.46 (2025-11-07)
+- Launcher: Added virtual keyboard to manage wifi networks
+- Launcher: Diacritics are now correctly shown in filenames
+- All: Overclock works better (original esp32 only)
+- All: German translations has been added
+- All: On-screen low battery indicator
 
 
 # Retro-Go 1.45 (2025-07-27)
