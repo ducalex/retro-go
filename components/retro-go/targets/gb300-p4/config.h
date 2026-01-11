@@ -71,6 +71,7 @@
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATION          6   // Possible values are 0-7 (you'll have to experiment)
 #define RG_SCREEN_RGB_BGR           1   // Possible values are 0-1 (change if colors are bad)
+#define RG_SCREEN_PIXEL_FORMAT      0   // Possible values are 0=565_BE, 1=565_LE
 #define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}  // Left, Top, Right, Bottom
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}  // Left, Top, Right, Bottom
 #define RG_SCREEN_PARTIAL_UPDATES   1
@@ -155,5 +156,6 @@ ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x
 
 #define RG_CUSTOM_PLATFORM_INIT() \
     /* Arbitrary code executed very early during retro-go init */
+
 
 // See components/retro-go/config.h for more things you can define here!
