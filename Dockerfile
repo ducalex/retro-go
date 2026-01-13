@@ -1,5 +1,8 @@
 FROM espressif/idf:release-v5.1
 
+# Build argument to specify which apps to build (space-separated, or "none" to skip build and only pack)
+ARG APPS=updater launcher retro-core prboom-go snes9x gwenesis fmsx gbsp
+
 WORKDIR /app
 
 ADD . /app
@@ -13,5 +16,10 @@ RUN cd /opt/esp/idf && \
 
 # Build
 SHELL ["/bin/bash", "-c"]
-RUN . /opt/esp/idf/export.sh && \
-	python rg_tool.py --target=odroid-go release
+# Build apps (if APPS is not "none"), then pack firmware
+RUN if [ "$APPS" != "none" ]; then \
+      . /opt/esp/idf/export.sh && \
+      python rg_tool.py --target=odroid-go build $APPS; \
+    fi && \
+    . /opt/esp/idf/export.sh && \
+    python rg_tool.py --target=odroid-go build-fw

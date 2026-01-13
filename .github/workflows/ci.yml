@@ -7,22 +7,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: [updater, launcher, retro-core, prboom-go, snes9x, gwenesis, fmsx, gbsp]
+      fail-fast: false
 
     steps:
-    # Remove ~18 GiB of preinstalled software to have more disk space during the build
-    - name: Cleanup runner
-      run: |
-        df -h
-        sudo rm -rf /opt/microsoft /usr/local/.ghcup /usr/local/julia* /usr/share/dotnet /usr/share/swift /usr/lib/llvm*
-        df -h
-
     - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Build
+    - name: Build app
       uses: docker/build-push-action@v6
       with:
         context: .
@@ -30,13 +27,63 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
         load: true
+        build-args: |
+          APPS=${{ matrix.app }}
 
-    - name: Extract binaries from docker image
+    - name: Extract app binary
       run: |
-        docker run --rm -v $(pwd)/build:/build retro-go:latest sh -c "cp /app/*.fw /build"
+        mkdir -p build
+        docker run --rm -v $(pwd)/build:/build retro-go:latest sh -c "cp /app/${{ matrix.app }}/build/${{ matrix.app }}.bin /build/"
+
+    - name: Upload app binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-${{ matrix.app }}
+        path: build/*.bin
+
+  pack:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Download all app binaries
+      uses: actions/download-artifact@v4
+      with:
+        pattern: app-*
+        path: build
+        merge-multiple: false
+
+    - name: Copy binaries to app directories
+      run: |
+        for app in updater launcher retro-core prboom-go snes9x gwenesis fmsx gbsp; do
+          mkdir -p $app/build
+          cp build/app-$app/*.bin $app/build/
+        done
+
+    - name: Build and pack firmware
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        tags: retro-go:latest
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+        load: true
+        build-args: |
+          APPS=none
+
+    - name: Extract firmware from docker image
+      run: |
+        mkdir -p output
+        docker run --rm -v $(pwd)/output:/output retro-go:latest sh -c "cp /app/*.fw /output/"
 
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
       with:
         name: binaries
-        path: build/*.fw
+        path: output/*.fw
