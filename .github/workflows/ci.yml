@@ -1,6 +1,6 @@
 name: ci
 
-on: 
+on:
   workflow_dispatch:      # Start a workflow
   push:
 
@@ -9,6 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # Remove ~18 GiB of preinstalled software to have more disk space during the build
+    - name: Cleanup runner
+      run: |
+        df -h
+        sudo rm -rf /opt/microsoft /usr/local/.ghcup /usr/local/julia* /usr/share/dotnet /usr/share/swift /usr/lib/llvm*
+        df -h
+
     - name: Checkout repository
       uses: actions/checkout@v4
 
