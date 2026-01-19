@@ -5,19 +5,26 @@
 #include <string.h>
 #include <math.h>
 
+// #define USE_ADC_DRIVER_NG
+
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
-#include <driver/adc.h>
-// This is a lazy way to silence deprecation notices on some esp-idf versions...
-// This hardcoded value is the first thing to check if something stops working!
-#define ADC_ATTEN_DB_11 3
+#ifdef USE_ADC_DRIVER_NG
+#include <esp_adc/adc_oneshot.h>
+#include <esp_adc/adc_cali.h>
+#include <esp_adc/adc_cali_scheme.h>
+static adc_oneshot_unit_handle_t adc_handles[4];
+static adc_cali_handle_t adc_cali_handles[4];
 #else
-#include <SDL2/SDL.h>
-#endif
-
-#if RG_BATTERY_DRIVER == 1
+#include <driver/adc.h>
 #include <esp_adc_cal.h>
 static esp_adc_cal_characteristics_t adc_chars;
+#endif
+// This is a lazy way to silence deprecation notices on esp-idf 5.2+ stating
+// that ADC_ATTEN_DB_12 should be used instead (which is the same value)
+#define ADC_ATTEN_DB_11 3 /* ADC_ATTEN_DB_12 */
+#else
+#include <SDL2/SDL.h>
 #endif
 
 #ifdef RG_GAMEPAD_ADC_MAP
@@ -48,21 +55,100 @@ static rg_battery_t battery_state = {0};
         gamepad_mapped |= keymap[i].key;          \
 
 #ifdef ESP_PLATFORM
-static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
+static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, bool calibrate)
 {
+    RG_ASSERT(unit == ADC_UNIT_1 || unit == ADC_UNIT_2, "Invalid ADC unit");
+    esp_err_t err = ESP_FAIL;
+#ifdef USE_ADC_DRIVER_NG
+    if (!adc_handles[unit])
+    {
+        adc_oneshot_unit_init_cfg_t config = {.unit_id = unit, .clk_src = 0, .ulp_mode = ADC_ULP_MODE_DISABLE};
+        err = adc_oneshot_new_unit(&config, &adc_handles[unit]);
+    }
+    const adc_oneshot_chan_cfg_t config = {.atten = atten, .bitwidth = ADC_BITWIDTH_DEFAULT};
+    err = adc_oneshot_config_channel(adc_handles[unit], channel, &config);
+#else
+    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+    {
+        adc1_config_width(ADC_WIDTH_MAX - 1);
+        err = adc1_config_channel_atten(channel, atten);
+    }
+    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+    {
+        err = adc2_config_channel_atten(channel, atten);
+    }
+#endif
+    if (err != ESP_OK)
+    {
+        RG_LOGE("Failed to configure ADC_UNIT_%d channel:%d atten:%d error:0x%02X",
+                (int)unit, (int)channel, (int)atten, (int)err);
+        return false;
+    }
+
+    if (calibrate)
+    {
+#ifdef USE_ADC_DRIVER_NG
+    #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
+        const adc_cali_curve_fitting_config_t config = {
+            .unit_id = unit,
+            .atten = atten,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+        };
+        err = adc_cali_create_scheme_curve_fitting(&config, &adc_cali_handles[unit]);
+    #elif ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
+        const adc_cali_line_fitting_config_t config = {
+            .unit_id = unit,
+            .atten = atten,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
+            #if CONFIG_IDF_TARGET_ESP32
+            .default_vref = 1100,
+            #endif
+        };
+        err = adc_cali_create_scheme_line_fitting(&config, &adc_cali_handles[unit]);
+    #else
+        err = ESP_ERR_NOT_SUPPORTED;
+    #endif
+#else
+        err = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+#endif
+        if (err != ESP_OK)
+        {
+            RG_LOGW("Failed to calibrate ADC_UNIT_%d atten:%d error:0x%02X",
+                    (int)unit, (int)atten, (int)err);
+        }
+    }
+    return true;
+}
+
+static inline int _adc_get_raw(adc_unit_t unit, adc_channel_t channel)
+{
+    RG_ASSERT(unit == ADC_UNIT_1 || unit == ADC_UNIT_2, "Invalid ADC unit");
+    int adc_raw_value = -1;
+#ifdef USE_ADC_DRIVER_NG
+    if (adc_oneshot_read(adc_handles[unit], channel, &adc_raw_value) != ESP_OK)
+        RG_LOGE("ADC reading failed, this can happen while wifi is active.");
+#else
     if (unit == ADC_UNIT_1)
-    {
-        return adc1_get_raw(channel);
-    }
-    else if (unit == ADC_UNIT_2)
-    {
-        int adc_raw_value = -1;
-        if (adc2_get_raw(channel, ADC_WIDTH_MAX - 1, &adc_raw_value) != ESP_OK)
-            RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
-        return adc_raw_value;
-    }
-    RG_LOGE("Invalid ADC unit %d", (int)unit);
-    return -1;
+        adc_raw_value = adc1_get_raw(channel);
+    else if (adc2_get_raw(channel, ADC_WIDTH_MAX - 1, &adc_raw_value) != ESP_OK)
+        RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
+#endif
+    return adc_raw_value;
+}
+
+static inline int _adc_get_voltage(adc_unit_t unit, adc_channel_t channel)
+{
+    int raw_value = _adc_get_raw(unit, channel);
+    if (raw_value < 0)
+        return -1;
+#ifdef USE_ADC_DRIVER_NG
+    int voltage;
+    if (adc_cali_raw_to_voltage(adc_cali_handles[unit], raw_value, &voltage) != ESP_OK)
+        return -1;
+    return voltage;
+#else
+    return esp_adc_cal_raw_to_voltage(raw_value, &adc_chars);
+#endif
 }
 #endif
 
@@ -75,10 +161,10 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     for (int i = 0; i < 4; ++i)
     {
-        int value = adc_get_raw(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL);
+        int value = _adc_get_voltage(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL);
         if (value < 0)
             return false;
-        raw_value += esp_adc_cal_raw_to_voltage(value, &adc_chars);
+        raw_value += value;
     }
     raw_value /= 4;
 #elif RG_BATTERY_DRIVER == 2 /* I2C */
@@ -112,7 +198,7 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        int value = adc_get_raw(mapping->unit, mapping->channel);
+        int value = _adc_get_raw(mapping->unit, mapping->channel);
         if (value >= mapping->min && value <= mapping->max)
         {
             if (abs(old_adc_values[i] - value) < RG_GAMEPAD_ADC_FILTER_WINDOW)
@@ -271,16 +357,10 @@ void rg_input_init(void)
 
 #if defined(RG_GAMEPAD_ADC_MAP)
     RG_LOGI("Initializing ADC gamepad driver...");
-    adc1_config_width(ADC_WIDTH_MAX - 1);
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        if (mapping->unit == ADC_UNIT_1)
-            adc1_config_channel_atten(mapping->channel, mapping->atten);
-        else if (mapping->unit == ADC_UNIT_2)
-            adc2_config_channel_atten(mapping->channel, mapping->atten);
-        else
-            RG_LOGE("Invalid ADC unit %d!", (int)mapping->unit);
+        _adc_setup_channel(mapping->unit, mapping->channel, mapping->atten, false);
     }
     UPDATE_GLOBAL_MAP(keymap_adc);
 #endif
@@ -337,21 +417,7 @@ void rg_input_init(void)
 
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     RG_LOGI("Initializing ADC battery driver...");
-    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
-    {
-        adc1_config_width(ADC_WIDTH_MAX - 1); // there is no adc2_config_width
-        adc1_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-        esp_adc_cal_characterize(ADC_UNIT_1, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
-    }
-    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
-    {
-        adc2_config_channel_atten(RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11);
-        esp_adc_cal_characterize(ADC_UNIT_2, ADC_ATTEN_DB_11, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
-    }
-    else
-    {
-        RG_LOGE("Only ADC1 and ADC2 are supported for ADC battery driver!");
-    }
+    _adc_setup_channel(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11, true);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.

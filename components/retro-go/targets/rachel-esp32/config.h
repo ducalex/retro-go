@@ -23,6 +23,7 @@
 #define RG_SCREEN_HEIGHT            240
 #define RG_SCREEN_ROTATION          5   // 1.3 inch = 5 (MY|MV)  /  2.4 inch = 4 (MY)
 #define RG_SCREEN_RGB_BGR           1   // 1.3 inch = 1 (BGR)  /  2.4 inch = 0 (RGB)
+#define RG_SCREEN_PIXEL_FORMAT      0   // Possible values are 0=565_BE, 1=565_LE
 #define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                                        \

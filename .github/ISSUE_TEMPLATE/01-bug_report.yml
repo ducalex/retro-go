@@ -1,7 +1,7 @@
 name: Bug Report
 description: Submit a bug report for Retro-Go
 labels: ["bug"]
-title: ''
+title: '[Bug]: '
 
 body:
   - type: textarea

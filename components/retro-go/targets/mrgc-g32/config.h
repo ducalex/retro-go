@@ -66,6 +66,7 @@
 #define RG_SCREEN_HEIGHT            320
 #define RG_SCREEN_ROTATION          0   // Possible values are 0-7 (you'll have to experiment)
 #define RG_SCREEN_RGB_BGR           0   // Possible values are 0-1 (change if colors are bad)
+#define RG_SCREEN_PIXEL_FORMAT      0   // Possible values are 0=565_BE, 1=565_LE
 #define RG_SCREEN_VISIBLE_AREA      {0, 28, 0, 68} // left, top, right, bottom
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}   // left, top, right, bottom
 #define RG_SCREEN_PARTIAL_UPDATES   1

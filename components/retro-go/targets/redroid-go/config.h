@@ -1,5 +1,5 @@
 // Target definition
-#define RG_TARGET_NAME             "RETRO-ESP32"
+#define RG_TARGET_NAME             "REDROID-GO"
 
 // Storage
 #define RG_STORAGE_ROOT             "/sd"
@@ -8,6 +8,10 @@
 // #define RG_STORAGE_SDMMC_HOST       SDMMC_HOST_SLOT_1
 // #define RG_STORAGE_SDMMC_SPEED      SDMMC_FREQ_DEFAULT
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
+
+// GPIO Extender
+// #define RG_I2C_GPIO_DRIVER          0   // 1 = AW9523, 2 = PCF9539, 3 = MCP23017
+// #define RG_I2C_GPIO_ADDR            0x00
 
 // Audio
 #define RG_AUDIO_USE_INT_DAC        3   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
@@ -20,10 +24,8 @@
 #define RG_SCREEN_BACKLIGHT         1
 #define RG_SCREEN_WIDTH             320
 #define RG_SCREEN_HEIGHT            240
-#define RG_SCREEN_ROTATION          6   // Possible values are 0-7 (you'll have to experiment)
-#define RG_SCREEN_RGB_BGR           1   // Possible values are 0-1 (change if colors are bad)
-#define RG_SCREEN_PIXEL_FORMAT      0   // Possible values are 0=565_BE, 1=565_LE
-#define RG_SCREEN_VISIBLE_AREA      {15, 0, 20, 0}
+#define RG_SCREEN_ROTATE            0
+#define RG_SCREEN_VISIBLE_AREA      {0, 0, 0, 0}
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}
 #define RG_SCREEN_INIT()                                                                                         \
     ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
@@ -36,31 +38,31 @@
     ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
     ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
     ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
+    ILI9341_CMD(0x36, 0xA8);                 /* Memory Access Control (MY|MV|BGR) */                             \
     ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
     ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
     ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
     ILI9341_CMD(0xF2, 0x00);                 /* 3Gamma Function Disable */                                       \
     ILI9341_CMD(0x26, 0x01);                 /* Gamma curve selected */                                          \
     ILI9341_CMD(0xE0, 0x0F, 0x31, 0x2B, 0x0C, 0x0E, 0x08, 0x4E, 0xF1, 0x37, 0x07, 0x10, 0x03, 0x0E, 0x09, 0x00); \
+    ILI9341_CMD(0x21);                       /* Invert colors */                                                 \
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_ADC_MAP {\
-    {RG_KEY_UP,    ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 2048, 4096},\
-    {RG_KEY_DOWN,  ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 1024, 2047},\
-    {RG_KEY_LEFT,  ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 2048, 4096},\
-    {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 2047},\
+    {RG_KEY_UP,    ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 3072, 4096},\
+    {RG_KEY_DOWN,  ADC_UNIT_1, ADC_CHANNEL_7, ADC_ATTEN_DB_11, 1024, 3071},\
+    {RG_KEY_LEFT,  ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 3072, 4096},\
+    {RG_KEY_RIGHT, ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 1024, 3071},\
 }
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_SELECT, .num = GPIO_NUM_27, .pullup = 1, .level = 0},\
     {RG_KEY_START,  .num = GPIO_NUM_39, .pullup = 0, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_13, .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_0,  .pullup = 0, .level = 0},\
     {RG_KEY_A,      .num = GPIO_NUM_32, .pullup = 1, .level = 0},\
     {RG_KEY_B,      .num = GPIO_NUM_33, .pullup = 1, .level = 0},\
-}
-#define RG_GAMEPAD_VIRT_MAP {\
-    {RG_KEY_MENU,   .src = RG_KEY_START | RG_KEY_SELECT},\
-    {RG_KEY_OPTION, .src = RG_KEY_SELECT | RG_KEY_A    },\
 }
 
 // Battery
