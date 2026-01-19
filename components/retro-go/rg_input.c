@@ -20,6 +20,9 @@ static adc_cali_handle_t adc_cali_handles[4];
 #include <esp_adc_cal.h>
 static esp_adc_cal_characteristics_t adc_chars;
 #endif
+// This is a lazy way to silence deprecation notices on esp-idf 5.2+ stating
+// that ADC_ATTEN_DB_12 should be used instead (which is the same value)
+#define ADC_ATTEN_DB_11 3 /* ADC_ATTEN_DB_12 */
 #else
 #include <SDL2/SDL.h>
 #endif
