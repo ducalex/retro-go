@@ -52,6 +52,7 @@ extern mapintf_t map119_intf;
 extern mapintf_t map160_intf;
 extern mapintf_t map162_intf;
 extern mapintf_t map163_intf;
+extern mapintf_t map165_intf;
 extern mapintf_t map176_intf;
 extern mapintf_t map185_intf;
 extern mapintf_t map191_intf;
@@ -116,6 +117,7 @@ static const mapintf_t *mappers[] =
     &map160_intf,
     &map162_intf,
     &map163_intf,
+    &map165_intf,
     &map176_intf,
     &map185_intf,
     &map191_intf,
