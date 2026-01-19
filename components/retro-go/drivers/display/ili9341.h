@@ -4,10 +4,6 @@
 #include <driver/gpio.h>
 #include <driver/ledc.h>
 
-#if defined(RG_SCREEN_ROTATE) && RG_SCREEN_ROTATE != 0
-#error "RG_SCREEN_ROTATE doesn't do anything on this driver, you have to use the 0x36 command during init!"
-#endif
-
 static spi_device_handle_t spi_dev;
 static QueueHandle_t spi_transactions;
 static QueueHandle_t spi_buffers;
@@ -15,6 +11,14 @@ static QueueHandle_t spi_buffers;
 #define SPI_TRANSACTION_COUNT (10)
 #define SPI_BUFFER_COUNT      (5)
 #define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
+
+#define ILI9341_CMD(cmd, data...)                    \
+    {                                                \
+        const uint8_t c = cmd, x[] = {data};         \
+        spi_queue_transaction(&c, 1, 0);             \
+        if (sizeof(x))                               \
+            spi_queue_transaction(&x, sizeof(x), 1); \
+    }
 
 static inline uint16_t *spi_take_buffer(void)
 {
@@ -141,14 +145,6 @@ static void spi_deinit(void)
         RG_LOGE("Failed to properly terminate SPI driver!");
 }
 
-#define ILI9341_CMD(cmd, data...)                    \
-    {                                                \
-        const uint8_t c = cmd, x[] = {data};         \
-        spi_queue_transaction(&c, 1, 0);             \
-        if (sizeof(x))                               \
-            spi_queue_transaction(&x, sizeof(x), 1); \
-    }
-
 static void lcd_set_backlight(float percent)
 {
     float level = RG_MIN(RG_MAX(percent / 100.f, 0), 1.f);
@@ -156,9 +152,6 @@ static void lcd_set_backlight(float percent)
 
 #if defined(RG_GPIO_LCD_BCKL)
     error_code = ledc_set_fade_time_and_start(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_0, 0x1FFF * level, 50, 0);
-#elif defined(RG_TARGET_QTPY_GAMER)
-    rg_i2c_gpio_set_direction(AW_TFT_BACKLIGHT, RG_GPIO_ANALOG_OUTPUT);
-    rg_i2c_gpio_set_level(AW_TFT_BACKLIGHT, level * 255);
 #endif
 
     if (error_code)
@@ -204,17 +197,20 @@ static void lcd_init(void)
 #ifdef RG_GPIO_LCD_BCKL
     // Initialize backlight at 0% to avoid the lcd reset flash
     ledc_timer_config(&(ledc_timer_config_t){
-        .duty_resolution = LEDC_TIMER_13_BIT,
-        .freq_hz = 5000,
         .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_13_BIT,
         .timer_num = LEDC_TIMER_0,
+        .freq_hz = 5000,
     });
     ledc_channel_config(&(ledc_channel_config_t){
-        .channel = LEDC_CHANNEL_0,
-        .duty = 0,
         .gpio_num = RG_GPIO_LCD_BCKL,
         .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
         .timer_sel = LEDC_TIMER_0,
+        .duty = 0,
+    #ifdef RG_GPIO_LCD_BCKL_INVERT
+        .flags.output_invert = 1,
+    #endif
     });
     ledc_fade_func_install(0);
 #endif
@@ -231,25 +227,24 @@ static void lcd_init(void)
     rg_usleep(100 * 1000);
     gpio_set_level(RG_GPIO_LCD_RST, 1);
     rg_usleep(10 * 1000);
-#elif defined(RG_TARGET_QTPY_GAMER)
-    rg_i2c_gpio_set_direction(AW_TFT_RESET, RG_GPIO_OUTPUT);
-    rg_i2c_gpio_set_level(AW_TFT_RESET, 0);
-    rg_usleep(100 * 1000);
-    rg_i2c_gpio_set_level(AW_TFT_RESET, 1);
-    rg_usleep(10 * 1000);
 #endif
 
-    ILI9341_CMD(0x01);          // Reset
-    rg_usleep(5 * 1000);        // Wait 5ms after reset
-    ILI9341_CMD(0x3A, 0X05);    // Pixel Format Set RGB565
-    #ifdef RG_SCREEN_INIT
-        RG_SCREEN_INIT();
-    #else
-        #warning "LCD init sequence is not defined for this device!"
-    #endif
-    ILI9341_CMD(0x11);  // Exit Sleep
-    rg_usleep(10 * 1000);// Wait 10ms after sleep out
-    ILI9341_CMD(0x29);  // Display on
+    ILI9341_CMD(0x01);       // Reset
+    rg_usleep(5 * 1000);     // Wait 5ms after reset
+    ILI9341_CMD(0x3A, 0X55); // COLMOD (Pixel Format Set RGB565 65k)
+#if defined(RG_SCREEN_ROTATION) && defined(RG_SCREEN_RGB_BGR)
+    // The rotation is designed so that the user can simply try all values 0-7 to find what works.
+    // It's simpler than trying to explain the MADCTL register bits, combined with hardware variations...
+    ILI9341_CMD(0x36, (RG_SCREEN_RGB_BGR ? 0x08 : 0x00) | (RG_SCREEN_ROTATION << 5)); // MADCTL (0x08=BGR, 0x20=MV, 0x40=MX, 0x80=MY)
+#endif
+#ifdef RG_SCREEN_INIT
+    RG_SCREEN_INIT();
+#else
+    #warning "LCD init sequence is not defined for this device!"
+#endif
+    ILI9341_CMD(0x11);    // Exit Sleep
+    rg_usleep(10 * 1000); // Wait 10ms after sleep out
+    ILI9341_CMD(0x29);    // Display on
 }
 
 static void lcd_deinit(void)
