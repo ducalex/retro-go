@@ -55,38 +55,45 @@ static rg_battery_t battery_state = {0};
 static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_bitwidth_t width, bool calibrate)
 {
     RG_ASSERT(unit == ADC_UNIT_1 || unit == ADC_UNIT_2, "Invalid ADC unit");
+    esp_err_t err = ESP_FAIL;
 #ifdef USE_ADC_DRIVER_NG
     if (!adc_handles[unit])
     {
-        const adc_oneshot_unit_init_cfg_t config = {
-            .unit_id = unit,
-            .clk_src = 0,
-            .ulp_mode = ADC_ULP_MODE_DISABLE,
-        };
-        if (adc_oneshot_new_unit(&config, &adc_handles[unit]) != ESP_OK)
-        {
-            RG_LOGE("Failed to initialize ADC unit:%d", (int)unit);
-            return false;
-        }
+        adc_oneshot_unit_init_cfg_t config = {.unit_id = unit, .clk_src = 0, .ulp_mode = ADC_ULP_MODE_DISABLE};
+        err = adc_oneshot_new_unit(&config, &adc_handles[unit]);
     }
     const adc_oneshot_chan_cfg_t config = {.atten = atten, .bitwidth = ADC_BITWIDTH_DEFAULT};
-    if (adc_oneshot_config_channel(adc_handles[unit], channel, &config) != ESP_OK)
+    err = adc_oneshot_config_channel(adc_handles[unit], channel, &config);
+#else
+    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
     {
-        RG_LOGE("Failed to configure ADC unit:%d channel:%d atten:%d width:%d",
-                (int)unit, (int)channel, (int)atten, (int)width);
+        adc1_config_width(ADC_WIDTH_MAX - 1);
+        err = adc1_config_channel_atten(channel, atten);
+    }
+    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+    {
+        err = adc2_config_channel_atten(channel, atten);
+    }
+#endif
+    if (err != ESP_OK)
+    {
+        RG_LOGE("Failed to configure ADC_UNIT_%d channel:%d atten:%d width:%d error:0x%02X",
+                (int)unit, (int)channel, (int)atten, (int)width, (int)err);
         return false;
     }
+
     if (calibrate)
     {
+#ifdef USE_ADC_DRIVER_NG
     #if ADC_CALI_SCHEME_CURVE_FITTING_SUPPORTED
-        adc_cali_curve_fitting_config_t config = {
+        const adc_cali_curve_fitting_config_t config = {
             .unit_id = unit,
             .atten = atten,
             .bitwidth = width,
         };
-        adc_cali_create_scheme_curve_fitting(&config, &adc_cali_handles[unit]);
+        err = adc_cali_create_scheme_curve_fitting(&config, &adc_cali_handles[unit]);
     #elif ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
-        adc_cali_line_fitting_config_t config = {
+        const adc_cali_line_fitting_config_t config = {
             .unit_id = unit,
             .atten = atten,
             .bitwidth = width,
@@ -94,24 +101,19 @@ static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, ad
             .default_vref = 1100,
             #endif
         };
-        adc_cali_create_scheme_line_fitting(&config, &adc_cali_handles[unit]);
+        err = adc_cali_create_scheme_line_fitting(&config, &adc_cali_handles[unit]);
     #else
-        RG_LOGW("Calibration not supported!");
+        err = ESP_ERR_NOT_SUPPORTED;
     #endif
-    }
 #else
-    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
-    {
-        adc1_config_width(ADC_WIDTH_MAX - 1);
-        adc1_config_channel_atten(channel, atten);
-    }
-    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
-    {
-        adc2_config_channel_atten(channel, atten);
-    }
-    if (calibrate)
-        esp_adc_cal_characterize(unit, atten, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
+        err = esp_adc_cal_characterize(unit, atten, ADC_WIDTH_MAX - 1, 1100, &adc_chars);
 #endif
+        if (err != ESP_OK)
+        {
+            RG_LOGW("Failed to calibrate ADC_UNIT_%d atten:%d width:%d error:0x%02X",
+                    (int)unit, (int)atten, (int)width, (int)err);
+        }
+    }
     return true;
 }
 
