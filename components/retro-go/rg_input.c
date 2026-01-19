@@ -55,7 +55,7 @@ static rg_battery_t battery_state = {0};
         gamepad_mapped |= keymap[i].key;          \
 
 #ifdef ESP_PLATFORM
-static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_bitwidth_t width, bool calibrate)
+static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, bool calibrate)
 {
     RG_ASSERT(unit == ADC_UNIT_1 || unit == ADC_UNIT_2, "Invalid ADC unit");
     esp_err_t err = ESP_FAIL;
@@ -80,8 +80,8 @@ static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, ad
 #endif
     if (err != ESP_OK)
     {
-        RG_LOGE("Failed to configure ADC_UNIT_%d channel:%d atten:%d width:%d error:0x%02X",
-                (int)unit, (int)channel, (int)atten, (int)width, (int)err);
+        RG_LOGE("Failed to configure ADC_UNIT_%d channel:%d atten:%d error:0x%02X",
+                (int)unit, (int)channel, (int)atten, (int)err);
         return false;
     }
 
@@ -92,14 +92,14 @@ static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, ad
         const adc_cali_curve_fitting_config_t config = {
             .unit_id = unit,
             .atten = atten,
-            .bitwidth = width,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
         };
         err = adc_cali_create_scheme_curve_fitting(&config, &adc_cali_handles[unit]);
     #elif ADC_CALI_SCHEME_LINE_FITTING_SUPPORTED
         const adc_cali_line_fitting_config_t config = {
             .unit_id = unit,
             .atten = atten,
-            .bitwidth = width,
+            .bitwidth = ADC_BITWIDTH_DEFAULT,
             #if CONFIG_IDF_TARGET_ESP32
             .default_vref = 1100,
             #endif
@@ -113,8 +113,8 @@ static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, ad
 #endif
         if (err != ESP_OK)
         {
-            RG_LOGW("Failed to calibrate ADC_UNIT_%d atten:%d width:%d error:0x%02X",
-                    (int)unit, (int)atten, (int)width, (int)err);
+            RG_LOGW("Failed to calibrate ADC_UNIT_%d atten:%d error:0x%02X",
+                    (int)unit, (int)atten, (int)err);
         }
     }
     return true;
@@ -360,7 +360,7 @@ void rg_input_init(void)
     for (size_t i = 0; i < RG_COUNT(keymap_adc); ++i)
     {
         const rg_keymap_adc_t *mapping = &keymap_adc[i];
-        _adc_setup_channel(mapping->unit, mapping->channel, mapping->atten, ADC_BITWIDTH_DEFAULT, false);
+        _adc_setup_channel(mapping->unit, mapping->channel, mapping->atten, false);
     }
     UPDATE_GLOBAL_MAP(keymap_adc);
 #endif
@@ -417,7 +417,7 @@ void rg_input_init(void)
 
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     RG_LOGI("Initializing ADC battery driver...");
-    _adc_setup_channel(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11, ADC_BITWIDTH_DEFAULT, true);
+    _adc_setup_channel(RG_BATTERY_ADC_UNIT, RG_BATTERY_ADC_CHANNEL, ADC_ATTEN_DB_11, true);
 #endif
 
     // The first read returns bogus data in some drivers, waste it.
