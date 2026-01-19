@@ -1,5 +1,5 @@
 /****************************************************************************
- * Target definition for Hardkernel's ESP32-S3-DEVKIT                       *
+ * Target definition for ESP32-S3-DEVKIT                                    *
  ****************************************************************************/
 #define RG_TARGET_NAME             "ESP32-S3-DEVKIT"
 
