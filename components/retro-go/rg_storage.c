@@ -20,6 +20,9 @@
 
 #ifdef ESP_PLATFORM
 #include <esp_vfs_fat.h>
+#if defined(RG_STORAGE_FLASH_PARTITION) && defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+#include "esp_littlefs.h"
+#endif
 #endif
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -40,7 +43,9 @@ static bool disk_mounted = false;
 static sdmmc_card_t *card_handle = NULL;
 #endif
 #if defined(RG_STORAGE_FLASH_PARTITION)
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
 static wl_handle_t wl_handle = WL_INVALID_HANDLE;
+  #endif
 #endif
 
 #define CHECK_PATH(path)          \
@@ -192,6 +197,7 @@ void rg_storage_init(void)
 
     if (error_code) // only if no previous storage was successfully mounted already
     {
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
         RG_LOGI("Looking for an internal flash partition labelled '%s' to mount for storage...", RG_STORAGE_FLASH_PARTITION);
 
         esp_vfs_fat_mount_config_t mount_config = {
@@ -201,6 +207,31 @@ void rg_storage_init(void)
 
         esp_err_t err = esp_vfs_fat_spiflash_mount(RG_STORAGE_ROOT, RG_STORAGE_FLASH_PARTITION, &mount_config, &wl_handle);
         error_code = (int)err;
+  #else
+        RG_LOGI("Looking for an internal flash partition labelled '%s' to mount as LittleFS at '%s'...", RG_STORAGE_FLASH_PARTITION, RG_STORAGE_ROOT);
+
+        esp_vfs_littlefs_conf_t conf = {
+            .base_path = RG_STORAGE_ROOT,
+            .partition_label = RG_STORAGE_FLASH_PARTITION,
+            .format_if_mount_failed = true, // if mount failed, it's probably because it's a clean install so the partition hasn't been formatted yet
+            .dont_mount = false,
+        };
+
+        esp_err_t err = esp_vfs_littlefs_register(&conf);
+        if (err == ESP_OK)
+        {
+            size_t total = 0, used = 0;
+            if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
+            {
+                RG_LOGI("LittleFS partition '%s' mounted at '%s': total: %d bytes, used: %d bytes", RG_STORAGE_FLASH_PARTITION, RG_STORAGE_ROOT, (int)total, (int)used);
+            }
+        }
+        else
+        {
+            RG_LOGE("LittleFS mount failed with error 0x%x (%s)", err, esp_err_to_name(err));
+        }
+        error_code = (int)err;
+  #endif
     }
 
 #endif
@@ -232,12 +263,20 @@ void rg_storage_deinit(void)
 #endif
 
 #if defined(RG_STORAGE_FLASH_PARTITION)
+  #if !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
     if (wl_handle != WL_INVALID_HANDLE)
     {
         esp_err_t err = esp_vfs_fat_spiflash_unmount(RG_STORAGE_ROOT, wl_handle);
         wl_handle = WL_INVALID_HANDLE;
         error_code = (int)err;
     }
+  #else
+    esp_err_t err = esp_vfs_littlefs_unregister(RG_STORAGE_FLASH_PARTITION);
+    if (err != ESP_OK && err != ESP_ERR_INVALID_STATE)
+    {
+        error_code = (int)err;
+    }
+  #endif
 #endif
 
     if (error_code)
@@ -338,7 +377,14 @@ rg_stat_t rg_storage_stat(const char *path)
 bool rg_storage_exists(const char *path)
 {
     CHECK_PATH(path);
+#if defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+    // NOTE: Using stat() instead of access() because access() doesn't work reliably on LittleFS
+    struct stat st;
+    return stat(path, &st) == 0;
+#else
+    // Use the faster access() method when not using LittleFS
     return access(path, F_OK) == 0;
+#endif
 }
 
 bool rg_storage_scandir(const char *path, rg_scandir_cb_t *callback, void *arg, uint32_t flags)
@@ -437,12 +483,28 @@ int64_t rg_storage_get_free_space(const char *path)
     // Here we should translate the provided VFS path to the matching filesystem driver and drive
     // But we don't. Instead we just assume it's drive 0 of the fatfs driver. Yay laziness.
 #ifdef ESP_PLATFORM
+#if defined(RG_STORAGE_FLASH_PARTITION) && !defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
     DWORD nclst;
     FATFS *fatfs;
     if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
     {
         return (int64_t)nclst * fatfs->csize * fatfs->ssize;
     }
+#elif defined(RG_STORAGE_FLASH_PARTITION) && defined(RG_STORAGE_FLASH_PARTITION_LITTLEFS)
+    size_t total = 0, used = 0;
+    if (esp_littlefs_info(RG_STORAGE_FLASH_PARTITION, &total, &used) == ESP_OK)
+    {
+        return (int64_t)(total - used);
+    }
+    return -1;
+#else
+    DWORD nclst;
+    FATFS *fatfs;
+    if (f_getfree("0:", &nclst, &fatfs) == FR_OK)
+    {
+        return (int64_t)nclst * fatfs->csize * fatfs->ssize;
+    }
+#endif
 #endif
 
     return -1;
