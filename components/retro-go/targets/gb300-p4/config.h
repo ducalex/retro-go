@@ -76,24 +76,17 @@
 #define RG_SCREEN_SAFE_AREA         {0, 0, 0, 0}  // Left, Top, Right, Bottom
 #define RG_SCREEN_PARTIAL_UPDATES   1
 #define RG_SCREEN_INIT()                                                                                     \
-ILI9341_CMD(0xCF, 0x00, 0xc3, 0x30);                                                                         \
-ILI9341_CMD(0xED, 0x64, 0x03, 0x12, 0x81);                                                                   \
-ILI9341_CMD(0xE8, 0x85, 0x00, 0x78);                                                                         \
-ILI9341_CMD(0xCB, 0x39, 0x2c, 0x00, 0x34, 0x02);                                                             \
-ILI9341_CMD(0xF7, 0x20);                                                                                     \
 ILI9341_CMD(0x21);                       /* Inversion */                                                     \
-ILI9341_CMD(0xEA, 0x00, 0x00);                                                                               \
 ILI9341_CMD(0xC0, 0x1B);                 /* Power control   //VRH[5:0] */                                    \
 ILI9341_CMD(0xC1, 0x12);                 /* Power control   //SAP[2:0];BT[3:0] */                            \
 ILI9341_CMD(0xC5, 0x32, 0x3C);           /* VCM control */                                                   \
 ILI9341_CMD(0xC7, 0x91);                 /* VCM control2 */                                                  \
-ILI9341_CMD(0xB1, 0x00, 0x10);           /* Frame Rate Control (1B=70, 1F=61, 10=119) */                     \
-ILI9341_CMD(0xB6, 0x0A, 0xA2);           /* Display Function Control */                                      \
-ILI9341_CMD(0xF6, 0x01, 0x30);                                                                               \
-ILI9341_CMD(0xF2, 0x00); /* 3Gamma Function Disable */                                                       \
-ILI9341_CMD(0x26, 0x01); /* Gamma curve selected */                                                          \
-ILI9341_CMD(0xE0, 0xD0, 0x00, 0x05, 0x0E, 0x15, 0x0D, 0x37, 0x43, 0x47, 0x09, 0x15, 0x12, 0x16, 0x19);       \
-ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x1C, 0x18, 0x16, 0x19);       \
+ILI9341_CMD(0xB2, 0x0F, 0x0F, 0x00, 0x33, 0x33);  /* Porch Setting (0x0C, 0x0C=Std or 0x0F, 0x0F=Slow */     \
+ILI9341_CMD(0xC6, 0x03);          /* ST7789 Frame Rate Control (0F=60, 07 to 00=75 to 119, 6Hz steps) */     \
+ILI9341_CMD(0xB6, 0x0A, 0x82);           /* Gate Scan Direction (82=Std, A2=Inv, 22=Alt) */                  \
+ILI9341_CMD(0xF6, 0x01, 0x00);           /* Interface Control (01=Std, 21=Interleave */                      \
+ILI9341_CMD(0xE0, 0xD0, 0x00, 0x02, 0x07, 0x0A, 0x28, 0x32, 0x44, 0x42, 0x06, 0x0E, 0x12, 0x14, 0x17);       \
+ILI9341_CMD(0xE1, 0xD0, 0x00, 0x02, 0x07, 0x0A, 0x28, 0x31, 0x54, 0x47, 0x0E, 0x1C, 0x17, 0x1B, 0x1E);       \
 
 
 #define RG_GPIO_LCD_MISO            GPIO_NUM_18
@@ -159,3 +152,4 @@ ILI9341_CMD(0xE1, 0xD0, 0x00, 0x05, 0x0D, 0x0C, 0x06, 0x2D, 0x44, 0x40, 0x0E, 0x
 
 
 // See components/retro-go/config.h for more things you can define here!
+
