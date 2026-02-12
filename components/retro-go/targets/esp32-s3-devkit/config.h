@@ -10,8 +10,9 @@
 // #define RG_STORAGE_FLASH_PARTITION  "vfs"
 
 // Audio
-#define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both
+#define RG_AUDIO_USE_INT_DAC        0   // 0 = Disable, 1 = GPIO25, 2 = GPIO26, 3 = Both (Atenção: Apenas ESP32 pussui as portas 25 e 26 podendo ser usadas com o módulo analógico PAM8302 que possuo em estoque. O ESP32S3 é 100% digital.
 #define RG_AUDIO_USE_EXT_DAC        1   // 0 = Disable, 1 = Enable
+
 
 // Video
 #define RG_SCREEN_DRIVER            0   // 0 = ILI9341/ST7789
@@ -44,6 +45,8 @@
     ILI9341_CMD(0xE1, 0x00, 0x0E, 0x14, 0x03, 0x11, 0x07, 0x31, 0xC1, 0x48, 0x08, 0x0F, 0x0C, 0x31, 0x36, 0x0F);
 
 
+
+/* Backup Default Code:
 // Input
 // Refer to rg_input.h to see all available RG_KEY_* and RG_GAMEPAD_*_MAP types
 #define RG_GAMEPAD_ADC_MAP {\
@@ -52,6 +55,8 @@
     {RG_KEY_DOWN,  ADC_UNIT_1, ADC_CHANNEL_5, ADC_ATTEN_DB_11, 1024, 3071},\
     {RG_KEY_LEFT,  ADC_UNIT_1, ADC_CHANNEL_6, ADC_ATTEN_DB_11, 3072, 4096},\
 }
+*/
+/*
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_SELECT, .num = GPIO_NUM_16, .pullup = 1, .level = 0},\
     {RG_KEY_START,  .num = GPIO_NUM_17, .pullup = 1, .level = 0},\
@@ -60,27 +65,60 @@
     {RG_KEY_A,      .num = GPIO_NUM_15, .pullup = 1, .level = 0},\
     {RG_KEY_B,      .num = GPIO_NUM_5,  .pullup = 1, .level = 0},\
 }
+*/
+
+// D-PAD Map
+#define RG_GAMEPAD_GPIO_MAP {\
+    {RG_KEY_SELECT, .num = GPIO_NUM_16, .pullup = 1, .level = 0},\
+    {RG_KEY_START,  .num = GPIO_NUM_17, .pullup = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_18, .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_8,  .pullup = 1, .level = 0},\
+    {RG_KEY_A,      .num = GPIO_NUM_15, .pullup = 1, .level = 0},\
+    {RG_KEY_B,      .num = GPIO_NUM_5,  .pullup = 1, .level = 0},\
+    {RG_KEY_UP,     .num = GPIO_NUM_2,  .pullup = 1, .level = 0},\
+    {RG_KEY_RIGHT,  .num = GPIO_NUM_14, .pullup = 1, .level = 0},\
+    {RG_KEY_DOWN,   .num = GPIO_NUM_45, .pullup = 1, .level = 0},\
+    {RG_KEY_LEFT,   .num = GPIO_NUM_46, .pullup = 1, .level = 0},\
+}
 
 // Battery
 #define RG_BATTERY_DRIVER           1
 #define RG_BATTERY_ADC_UNIT         ADC_UNIT_1
-#define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_3
+#define RG_BATTERY_ADC_CHANNEL      ADC_CHANNEL_3 
 #define RG_BATTERY_CALC_PERCENT(raw) (((raw) * 2.f - 3500.f) / (4200.f - 3500.f) * 100.f)
 #define RG_BATTERY_CALC_VOLTAGE(raw) ((raw) * 2.f * 0.001f)
+
+// Volume Control Potentiometer (GPIO 7 / ADC1_CH6)
+// This potentiometer is connected to GPIO 7 and will be read periodically to control audio volume
+// The ADC raw value (0-4095) is mapped to volume percentage (0-100%)
+#define RG_POTENTIOMETER_ENABLED     1
+#define RG_POTENTIOMETER_ADC_UNIT    ADC_UNIT_1
+#define RG_POTENTIOMETER_ADC_CHANNEL ADC_CHANNEL_6
+#define RG_POTENTIOMETER_ADC_ATTEN   ADC_ATTEN_DB_11
+// Converts raw ADC value (0-4095) to volume percentage (0-100%)
+// The formula maps 0V to 0% and 3.3V to 100%
+// raw_voltage = (adc_raw * 3.3) / 4095
+// volume = (raw_voltage / 3.3) * 100 = (adc_raw / 4095) * 100
+#define RG_POTENTIOMETER_CALC_VOLUME(raw) ((int32_t)((raw) * 100 / 4095))
+// Hysteresis threshold to prevent volume changes from small ADC fluctuations (in percentage points)
+#define RG_POTENTIOMETER_UPDATE_THRESHOLD 5
+// Update interval in microseconds (update every 100ms)
+#define RG_POTENTIOMETER_UPDATE_INTERVAL  (100 * 1000)
 
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_38
 
 // SPI Display (back up working)
-#define RG_GPIO_LCD_MISO            GPIO_NUM_NC
-#define RG_GPIO_LCD_MOSI            GPIO_NUM_12
-#define RG_GPIO_LCD_CLK             GPIO_NUM_48
-#define RG_GPIO_LCD_CS              GPIO_NUM_NC
-#define RG_GPIO_LCD_DC              GPIO_NUM_47
-#define RG_GPIO_LCD_BCKL            GPIO_NUM_39
-#define RG_GPIO_LCD_RST             GPIO_NUM_3
+#define RG_GPIO_LCD_MISO            GPIO_NUM_NC // MISO (SDO) ---> Not Connection Where <---
+#define RG_GPIO_LCD_MOSI            GPIO_NUM_12 // MOSI (SDI / DIN)
+#define RG_GPIO_LCD_CLK             GPIO_NUM_48 // SCK (CLK)
+#define RG_GPIO_LCD_CS              GPIO_NUM_NC // GND
+#define RG_GPIO_LCD_DC              GPIO_NUM_47 // DC (D/C)
+#define RG_GPIO_LCD_BCKL            GPIO_NUM_39 // LED / BL (BackLight)
+#define RG_GPIO_LCD_RST             GPIO_NUM_3  // RST (RESET)
 
+// SD Card
 #define RG_GPIO_SDSPI_MISO          GPIO_NUM_9
 #define RG_GPIO_SDSPI_MOSI          GPIO_NUM_11
 #define RG_GPIO_SDSPI_CLK           GPIO_NUM_13
