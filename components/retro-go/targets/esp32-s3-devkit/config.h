@@ -105,6 +105,23 @@
 // Update interval in microseconds (update every 100ms)
 #define RG_POTENTIOMETER_UPDATE_INTERVAL  (100 * 1000)
 
+// LCD Brightness Control Potentiometer (GPIO 6 / ADC1_CH5)
+// This potentiometer is connected to GPIO 6 and will be read periodically to control LCD brightness
+// The ADC raw value (0-4095) is mapped to brightness percentage (0-100%)
+#define RG_BRIGHTNESS_POTENTIOMETER_ENABLED     1
+#define RG_BRIGHTNESS_POTENTIOMETER_ADC_UNIT    ADC_UNIT_1
+#define RG_BRIGHTNESS_POTENTIOMETER_ADC_CHANNEL ADC_CHANNEL_5
+#define RG_BRIGHTNESS_POTENTIOMETER_ADC_ATTEN   ADC_ATTEN_DB_11
+// Converts raw ADC value (0-4095) to brightness percentage (0-100%)
+// The formula maps 0V to 0% and 3.3V to 100%
+// raw_voltage = (adc_raw * 3.3) / 4095
+// brightness = (raw_voltage / 3.3) * 100 = (adc_raw / 4095) * 100
+#define RG_BRIGHTNESS_POTENTIOMETER_CALC_BRIGHTNESS(raw) ((int32_t)((raw) * 100 / 4095))
+// Hysteresis threshold to prevent brightness changes from small ADC fluctuations (in percentage points)
+#define RG_BRIGHTNESS_POTENTIOMETER_UPDATE_THRESHOLD 5
+// Update interval in microseconds (update every 100ms)
+#define RG_BRIGHTNESS_POTENTIOMETER_UPDATE_INTERVAL  (100 * 1000)
+
 
 // Status LED
 #define RG_GPIO_LED                 GPIO_NUM_38
