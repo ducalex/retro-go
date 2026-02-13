@@ -1,5 +1,7 @@
 #include "rg_system.h"
 #include "rg_input.h"
+#include "rg_audio.h"
+#include "rg_display.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -102,6 +104,58 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
     };
     return true;
 }
+
+#ifdef RG_POTENTIOMETER_ENABLED
+bool rg_input_read_potentiometer_raw(int *out)
+{
+    int raw_value = 0;
+
+#ifdef ESP_PLATFORM
+    // Read the potentiometer multiple times and average for stability
+    // This is similar to how battery voltage is read
+    for (int i = 0; i < 4; ++i)
+    {
+        int value = adc_get_raw(RG_POTENTIOMETER_ADC_UNIT, RG_POTENTIOMETER_ADC_CHANNEL);
+        if (value < 0)
+            return false;
+        raw_value += value;
+    }
+    raw_value /= 4;
+#else
+    return false;
+#endif
+
+    if (out)
+        *out = RG_POTENTIOMETER_CALC_VOLUME(raw_value);
+    return true;
+}
+#endif
+
+#ifdef RG_BRIGHTNESS_POTENTIOMETER_ENABLED
+bool rg_input_read_brightness_potentiometer_raw(int *out)
+{
+    int raw_value = 0;
+
+#ifdef ESP_PLATFORM
+    // Read the potentiometer multiple times and average for stability
+    // This is similar to how battery voltage is read
+    for (int i = 0; i < 4; ++i)
+    {
+        int value = adc_get_raw(RG_BRIGHTNESS_POTENTIOMETER_ADC_UNIT, RG_BRIGHTNESS_POTENTIOMETER_ADC_CHANNEL);
+        if (value < 0)
+            return false;
+        raw_value += value;
+    }
+    raw_value /= 4;
+#else
+    return false;
+#endif
+
+    if (out)
+        *out = RG_BRIGHTNESS_POTENTIOMETER_CALC_BRIGHTNESS(raw_value);
+    return true;
+}
+#endif
 
 bool rg_input_read_gamepad_raw(uint32_t *out)
 {
@@ -218,6 +272,14 @@ static void input_task(void *arg)
     uint32_t local_gamepad_state = 0;
     uint32_t state;
     int64_t next_battery_update = 0;
+#ifdef RG_POTENTIOMETER_ENABLED
+    int64_t next_potentiometer_update = 0;
+    int last_potentiometer_volume = -1000;  // Initialize with value that won't match any real volume
+#endif
+#ifdef RG_BRIGHTNESS_POTENTIOMETER_ENABLED
+    int64_t next_brightness_potentiometer_update = 0;
+    int last_brightness_potentiometer_level = -1000;  // Initialize with value that won't match any real brightness
+#endif
 
     // Start the task with debounce history full to allow a button held during boot to be detected
     memset(debounce, 0xFF, sizeof(debounce));
@@ -257,6 +319,58 @@ static void input_task(void *arg)
             battery_state = temp;
             next_battery_update = rg_system_timer() + 2 * 1000000; // update every 2 seconds
         }
+
+#ifdef RG_POTENTIOMETER_ENABLED
+        if (rg_system_timer() >= next_potentiometer_update)
+        {
+            int potentiometer_volume = 0;
+            if (rg_input_read_potentiometer_raw(&potentiometer_volume))
+            {
+                // Only update volume if change is significant enough (hysteresis)
+                // This prevents minor ADC fluctuations from constantly updating the volume
+                if (abs(potentiometer_volume - last_potentiometer_volume) >= RG_POTENTIOMETER_UPDATE_THRESHOLD)
+                {
+                    // Clamp volume to 0-100% range
+                    int volume = RG_MAX(0, RG_MIN(100, potentiometer_volume));
+                    // Only call rg_audio_set_volume if audio driver is ready (non-null)
+                    // This prevents panic during early boot before audio initialization
+                    if (rg_audio_get_driver() != NULL)
+                    {
+                        rg_audio_set_volume(volume);
+                        last_potentiometer_volume = volume;
+                        RG_LOGD("Potentiometer adjusted volume to %d%%\n", volume);
+                    }
+                }
+            }
+            next_potentiometer_update = rg_system_timer() + RG_POTENTIOMETER_UPDATE_INTERVAL;
+        }
+#endif
+
+#ifdef RG_BRIGHTNESS_POTENTIOMETER_ENABLED
+        if (rg_system_timer() >= next_brightness_potentiometer_update)
+        {
+            int brightness_level = 0;
+            if (rg_input_read_brightness_potentiometer_raw(&brightness_level))
+            {
+                // Only update brightness if change is significant enough (hysteresis)
+                // This prevents minor ADC fluctuations from constantly updating the brightness
+                if (abs(brightness_level - last_brightness_potentiometer_level) >= RG_BRIGHTNESS_POTENTIOMETER_UPDATE_THRESHOLD)
+                {
+                    // Clamp brightness to valid range (1-100, display module has min/max internally)
+                    int brightness = RG_MAX(1, RG_MIN(100, brightness_level));
+                    // Only call rg_display_set_backlight if display driver is ready
+                    // This prevents issues during early boot before display initialization
+                    if (rg_display_get_backlight() >= 0)
+                    {
+                        rg_display_set_backlight(brightness);
+                        last_brightness_potentiometer_level = brightness;
+                        RG_LOGD("Brightness potentiometer adjusted backlight to %d%%\n", brightness);
+                    }
+                }
+            }
+            next_brightness_potentiometer_update = rg_system_timer() + RG_BRIGHTNESS_POTENTIOMETER_UPDATE_INTERVAL;
+        }
+#endif
 
         rg_task_delay(10);
     }
@@ -351,6 +465,40 @@ void rg_input_init(void)
     else
     {
         RG_LOGE("Only ADC1 and ADC2 are supported for ADC battery driver!");
+    }
+#endif
+
+#ifdef RG_POTENTIOMETER_ENABLED
+    RG_LOGI("Initializing ADC potentiometer driver...");
+    if (RG_POTENTIOMETER_ADC_UNIT == ADC_UNIT_1)
+    {
+        adc1_config_width(ADC_WIDTH_MAX - 1);
+        adc1_config_channel_atten(RG_POTENTIOMETER_ADC_CHANNEL, RG_POTENTIOMETER_ADC_ATTEN);
+    }
+    else if (RG_POTENTIOMETER_ADC_UNIT == ADC_UNIT_2)
+    {
+        adc2_config_channel_atten(RG_POTENTIOMETER_ADC_CHANNEL, RG_POTENTIOMETER_ADC_ATTEN);
+    }
+    else
+    {
+        RG_LOGE("Only ADC1 and ADC2 are supported for potentiometer driver!");
+    }
+#endif
+
+#ifdef RG_BRIGHTNESS_POTENTIOMETER_ENABLED
+    RG_LOGI("Initializing ADC brightness potentiometer driver...");
+    if (RG_BRIGHTNESS_POTENTIOMETER_ADC_UNIT == ADC_UNIT_1)
+    {
+        adc1_config_width(ADC_WIDTH_MAX - 1);
+        adc1_config_channel_atten(RG_BRIGHTNESS_POTENTIOMETER_ADC_CHANNEL, RG_BRIGHTNESS_POTENTIOMETER_ADC_ATTEN);
+    }
+    else if (RG_BRIGHTNESS_POTENTIOMETER_ADC_UNIT == ADC_UNIT_2)
+    {
+        adc2_config_channel_atten(RG_BRIGHTNESS_POTENTIOMETER_ADC_CHANNEL, RG_BRIGHTNESS_POTENTIOMETER_ADC_ATTEN);
+    }
+    else
+    {
+        RG_LOGE("Only ADC1 and ADC2 are supported for brightness potentiometer driver!");
     }
 #endif
 
