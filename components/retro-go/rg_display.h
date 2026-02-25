@@ -32,7 +32,7 @@ typedef enum
 
 typedef enum
 {
-    RG_DISPLAY_BACKLIGHT_MIN = 1,
+    RG_DISPLAY_BACKLIGHT_MIN = 10,
     RG_DISPLAY_BACKLIGHT_MAX = 100,
 } display_backlight_t;
 

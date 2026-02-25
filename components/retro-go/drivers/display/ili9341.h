@@ -147,7 +147,7 @@ static void spi_deinit(void)
 
 static void lcd_set_backlight(float percent)
 {
-    float level = RG_MIN(RG_MAX(percent / 100.f, 0), 1.f);
+    float level = RG_MIN(RG_MAX(percent / 100.f, 0.01), 1.f);
     int error_code = 0;
 
 #if defined(RG_GPIO_LCD_BCKL)
