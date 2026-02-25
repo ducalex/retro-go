@@ -12,6 +12,10 @@ static QueueHandle_t spi_buffers;
 #define SPI_BUFFER_COUNT      (5)
 #define SPI_BUFFER_LENGTH     (LCD_BUFFER_LENGTH * 2)
 
+#ifndef RG_SCREEN_SPI_MODE
+#define RG_SCREEN_SPI_MODE 0
+#endif
+
 #define ILI9341_CMD(cmd, data...)                    \
     {                                                \
         const uint8_t c = cmd, x[] = {data};         \
@@ -116,7 +120,7 @@ static void spi_init(void)
 
     const spi_device_interface_config_t devcfg = {
         .clock_speed_hz = RG_SCREEN_SPEED,   // Typically SPI_MASTER_FREQ_40M or SPI_MASTER_FREQ_80M
-        .mode = 0,                           // SPI mode 0
+        .mode = RG_SCREEN_SPI_MODE,          // SPI mode (target-configurable)
         .spics_io_num = RG_GPIO_LCD_CS,      // CS pin
         .queue_size = SPI_TRANSACTION_COUNT, // We want to be able to queue 5 transactions at a time
         .pre_cb = &spi_pre_transfer_cb,      // Specify pre-transfer callback to handle D/C line and SPI lock
@@ -131,6 +135,9 @@ static void spi_init(void)
 
     ret = spi_bus_add_device(RG_SCREEN_HOST, &devcfg, &spi_dev);
     RG_ASSERT(ret == ESP_OK, "spi_bus_add_device failed.");
+    RG_LOGI("LCD SPI host=%d mode=%d speed=%d clk=%d mosi=%d cs=%d dc=%d",
+            RG_SCREEN_HOST, RG_SCREEN_SPI_MODE, RG_SCREEN_SPEED,
+            RG_GPIO_LCD_CLK, RG_GPIO_LCD_MOSI, RG_GPIO_LCD_CS, RG_GPIO_LCD_DC);
 
     rg_task_create("rg_spi", &spi_task, NULL, 1.5 * 1024, RG_TASK_PRIORITY_7, 1);
 }

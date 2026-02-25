@@ -20,6 +20,8 @@
 #include "targets/fri3d-2024/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)
 #include "targets/byteboi-rev1/config.h"
+#elif defined(RG_TARGET_BYTEBOI_REV2)
+#include "targets/byteboi-rev2/config.h"
 #elif defined(RG_TARGET_RACHEL_ESP32)
 #include "targets/rachel-esp32/config.h"
 #elif defined(RG_TARGET_NULLNANO)
