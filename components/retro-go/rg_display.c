@@ -505,7 +505,7 @@ void rg_display_set_backlight(display_backlight_t percent)
 {
     config.backlight = RG_MIN(RG_MAX(percent, RG_DISPLAY_BACKLIGHT_MIN), RG_DISPLAY_BACKLIGHT_MAX);
     rg_settings_set_number(NS_GLOBAL, SETTING_BACKLIGHT, config.backlight);
-    lcd_set_backlight(config.backlight);
+    lcd_set_backlight(config.backlight*config.backlight/100.0f);//Gamma = 2
 }
 
 display_backlight_t rg_display_get_backlight(void)
