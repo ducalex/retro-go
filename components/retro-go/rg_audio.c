@@ -194,7 +194,7 @@ void rg_audio_set_volume(int percent)
     RG_ASSERT(audio.driver != NULL, "Audio device not ready!");
     audio.volume = RG_MIN(RG_MAX(percent, 0), 100);
     if (audio.driver->set_volume)
-        audio.driver->set_volume(audio.volume);
+        audio.driver->set_volume((audio.volume*audio.volume)/100);
     rg_settings_set_number(NS_GLOBAL, SETTING_VOLUME, audio.volume);
     RG_LOGI("Volume set to %d%%\n", audio.volume);
 }
