@@ -1,0 +1,12 @@
+#include "../fceu-types.h"
+#include "../x6502.h"
+#include "../fceu.h"
+#include "../ppu.h"
+#include "../fceu-memory.h"
+#include "../fceu-sound.h"
+#include "../fceu-state.h"
+#include "../fceu-cart.h"
+#include "../cheat.h"
+#include "../unif.h"
+#include "../ines.h"
+#include <string.h>
