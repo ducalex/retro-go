@@ -216,8 +216,13 @@ void rg_system_set_indicator(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator(rg_indicator_t indicator);
 void rg_system_set_indicator_mask(rg_indicator_t indicator, bool on);
 bool rg_system_get_indicator_mask(rg_indicator_t indicator);
-bool rg_system_set_led_color(rg_color_t color);
-rg_color_t rg_system_get_led_color(void);
+#ifdef RG_GPIO_LED
+bool rg_system_set_led(bool value);
+#endif
+#ifdef RG_GPIO_WS2812
+void ws2812_init(void);
+void ws2812_set_rgb(uint8_t r, uint8_t g, uint8_t b);
+#endif
 void rg_system_set_tick_rate(int tickRate);
 int rg_system_get_tick_rate(void);
 void rg_system_set_log_level(rg_log_level_t level);

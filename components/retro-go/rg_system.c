@@ -1,4 +1,5 @@
 #include "rg_system.h"
+#include "rg_display.h"
 
 #include <sys/time.h>
 #include <stdarg.h>
@@ -19,6 +20,13 @@
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
+#include "driver/ledc.h"
+
+#ifdef RG_GPIO_WS2812
+#include "driver/rmt_tx.h"
+#include "driver/rmt_encoder.h"
+#endif
+
 #else
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mutex.h>
@@ -90,10 +98,16 @@ static bool panicTraceCleared = false;
 static bool exitCalled = false;
 static int overclockLevel, overclockMhz;
 static uint32_t indicators;
-static rg_color_t ledColor = -1;
+static uint8_t ledColor = 0;
 static rg_stats_t statistics;
 static rg_app_t app;
 static rg_task_t tasks[8];
+static rg_battery_t battery;
+
+#ifdef RG_GPIO_WS2812
+static rmt_channel_handle_t channel = NULL;
+static rmt_encoder_handle_t encoder = NULL;
+#endif
 
 static const char *SETTING_BOOT_NAME = "BootName";
 static const char *SETTING_BOOT_ARGS = "BootArgs";
@@ -228,26 +242,114 @@ static void update_statistics(void)
     update_memory_statistics();
 }
 
-static void update_indicators(bool reset_animation)
+#ifdef RG_GPIO_WS2812
+void ws2812_init(void)
 {
+    rmt_tx_channel_config_t config = {
+        .clk_src = RMT_CLK_SRC_DEFAULT,
+        .gpio_num = RG_GPIO_WS2812,
+        .mem_block_symbols = 64,
+        .resolution_hz = 10000000, // 10 MHz
+        .trans_queue_depth = 4,
+    };
+
+    ESP_ERROR_CHECK(rmt_new_tx_channel(&config, &channel));
+    ESP_ERROR_CHECK(rmt_enable(channel));
+
+    /* WS2812 Timing */
+    rmt_bytes_encoder_config_t enc_config = {
+        .bit0 = {
+            .level0 = 1,
+            .duration0 = 4,
+            .level1 = 0,
+            .duration1 = 9,
+        },
+        .bit1 = {
+            .level0 = 1,
+            .duration0 = 8,
+            .level1 = 0,
+            .duration1 = 5,
+        },
+        .flags.msb_first = 1
+    };
+
+    ESP_ERROR_CHECK(rmt_new_bytes_encoder(&enc_config, &encoder));
+}
+
+void ws2812_set_rgb(uint8_t r, uint8_t g, uint8_t b)
+{
+    #ifdef RG_GPIO_LED_DIMMING
+    uint32_t dim = rg_display_get_backlight();
+    r = (uint32_t)(r * dim * dim * 23)>>16;//~*3,5/10000
+    g = (uint32_t)(g * dim * dim * 13)>>17;//~    /10000
+    b = (uint32_t)(b * dim * dim * 23)>>16;//~*3,5/10000
+    #endif
+    static uint8_t data[3];
+    data[0] = g;//dim/10;//g;
+    data[1] = r;//dim/10*4;//r<<1;
+    data[2] = b;//dim/10*20;
+
+    rmt_transmit_config_t tx_config = {
+        .loop_count = 0,
+    };
+
+    // Fire the data and do not wait for completion
+    esp_err_t err = rmt_transmit(channel, encoder, data, sizeof(data), &tx_config);
+    
+    if (err != ESP_OK) {
+        RG_LOGE("RMT transmit failed: 0x%02X", err);
+    }
+}
+#endif
+
+static void update_indicators(bool reset_animation){
     uint32_t visibleIndicators = indicators & app.indicatorsMask;
     static int animation_step = 0;
-    rg_color_t newColor = 0; // C_GREEN
+    uint8_t newColor = 0; // Nothing
 
     if (reset_animation)
         animation_step = 0;
     else
         animation_step++;
 
-    if (indicators & (3 << RG_INDICATOR_CRITICAL))
-        newColor = C_RED; // Make it flash rapidly!
-    else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
-        newColor = (animation_step & 1) ? C_NONE : C_RED;
-    else if (visibleIndicators)
-        newColor = C_BLUE;
+#ifdef RG_GPIO_WS2812
+    #define indicatorvalue 63
+    newColor = (int)battery.level/10;
+    uint8_t red = 9 - newColor;
+    uint8_t gre = newColor;
+    uint8_t blu = 0;
 
-    if (newColor != ledColor)
-        rg_system_set_led_color(newColor);
+    if (indicators & (3 << RG_INDICATOR_CRITICAL)){
+        newColor += 128;
+        red += indicatorvalue;
+        gre += indicatorvalue;
+        blu += indicatorvalue;
+    }
+    else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW)){
+        newColor += (animation_step & 1) ? 0 : 64;
+        red += (animation_step & 1) ? 0 : indicatorvalue;
+    }
+    else if (visibleIndicators){
+        newColor += 16;
+        blu += indicatorvalue;
+    }
+    if (newColor != ledColor){
+        ledColor = newColor;
+        ws2812_set_rgb(red,gre,blu);
+    }
+#elif defined(RG_GPIO_LED)
+    if (indicators & (3 << RG_INDICATOR_CRITICAL))
+        newColor = 1;
+    else if (visibleIndicators & (1 << RG_INDICATOR_POWER_LOW))
+        newColor = (animation_step & 1) ? 0 : 1;
+    else if (visibleIndicators)
+        newColor = 1;
+
+    if (newColor != ledColor){
+        ledColor = newColor;
+        rg_system_set_led(newColor);
+    }
+#endif
 }
 
 static void system_monitor_task(void *arg)
@@ -264,7 +366,7 @@ static void system_monitor_task(void *arg)
 
         update_statistics();
 
-        rg_battery_t battery = rg_input_read_battery();
+        battery = rg_input_read_battery();
         rg_system_set_indicator(RG_INDICATOR_POWER_LOW, (battery.present && battery.level <= 2.f));
         update_indicators(false);
 
@@ -385,7 +487,7 @@ static void platform_init(void)
         gpio_set_direction(RG_GPIO_SDSPI_CS, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_SDSPI_CS, 1);
     #endif
-    #ifdef RG_GPIO_LED
+    #if defined(RG_GPIO_LED) && !defined(RG_GPIO_LED_DIMMING) && !defined(RG_GPIO_WS2812)
         gpio_set_direction(RG_GPIO_LED, GPIO_MODE_OUTPUT);
         gpio_set_level(RG_GPIO_LED, 0);
     #endif
@@ -400,6 +502,41 @@ static void platform_init(void)
 #if defined(RG_CUSTOM_PLATFORM_INIT)
     RG_LOGI("Running platform-specific init...\n");
     RG_CUSTOM_PLATFORM_INIT();
+#endif
+
+#if defined(RG_GPIO_LCD_BCKL) || defined(RG_GPIO_LED_DIMMING)
+    // Initialize backlight at 0% to avoid the lcd reset flash
+    ledc_timer_config(&(ledc_timer_config_t){
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .duty_resolution = LEDC_TIMER_13_BIT,
+        .timer_num = LEDC_TIMER_0,
+        .freq_hz = 5000,
+    });
+    #ifdef RG_GPIO_LCD_BCKL
+    ledc_channel_config(&(ledc_channel_config_t){
+        .gpio_num = RG_GPIO_LCD_BCKL,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_0,
+        .timer_sel = LEDC_TIMER_0,
+        .duty = 0,
+    #ifdef RG_GPIO_LCD_BCKL_INVERT
+        .flags.output_invert = 1,
+    #endif
+    });
+    #endif
+    #if defined(RG_GPIO_LED) && defined(RG_GPIO_LED_DIMMING) && !defined(RG_GPIO_WS2812)
+    ledc_channel_config(&(ledc_channel_config_t){
+        .gpio_num = RG_GPIO_LED,
+        .speed_mode = LEDC_LOW_SPEED_MODE,
+        .channel = LEDC_CHANNEL_1,
+        .timer_sel = LEDC_TIMER_0,
+        .duty = 0,
+    #ifdef RG_GPIO_LED_INVERT
+        .flags.output_invert = 1,
+    #endif
+    });
+    #endif
+    ledc_fade_func_install(0);
 #endif
 }
 
@@ -462,6 +599,11 @@ rg_app_t *rg_system_init(const rg_config_t *config)
 
     rg_storage_init();
     rg_input_init();
+
+#ifdef RG_GPIO_WS2812
+    battery = rg_input_read_battery();
+    ws2812_init();
+#endif
 
     // Test for recovery request as early as possible
     for (int timeout = 5, btn; (btn = rg_input_read_gamepad() & RG_RECOVERY_BTN) && timeout >= 0; --timeout)
@@ -1110,24 +1252,28 @@ bool rg_system_get_indicator_mask(rg_indicator_t indicator)
     return app.indicatorsMask & (1 << indicator);
 }
 
-bool rg_system_set_led_color(rg_color_t color)
-{
-    ledColor = color;
-#if defined(RG_GPIO_LED)
-    int value = color > 0; // GPIO LED doesn't support colors, so any color = on
+#if defined(RG_GPIO_LED) && !defined(RG_GPIO_WS2812)
+bool rg_system_set_led(bool value){
+    // GPIO LED doesn't support colors, so any color = on
+#ifdef RG_GPIO_LED_DIMMING
+    if (value){
+        uint32_t dim = rg_display_get_backlight();
+        dim = ((uint32_t)dim * dim * 13420)>>14; // dim² * 8191 / 10000 in fast
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, dim);
+    }
+    else{
+        ledc_set_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
+    }
+    return ledc_update_duty(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1) == ESP_OK;
+
+#else
     #if defined(RG_GPIO_LED_INVERT)
     value = !value;
     #endif
-    if (RG_GPIO_LED != GPIO_NUM_NC)
-        return gpio_set_level(RG_GPIO_LED, value) == ESP_OK;
+    return gpio_set_level(RG_GPIO_LED, value) == ESP_OK;
 #endif
-    return true;
 }
-
-rg_color_t rg_system_get_led_color(void)
-{
-    return ledColor;
-}
+#endif
 
 void rg_system_set_log_level(rg_log_level_t level)
 {

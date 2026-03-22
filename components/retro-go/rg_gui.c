@@ -2051,7 +2051,7 @@ void rg_gui_options_menu(void)
         {0, _("Show clock"),    "-", RG_DIALOG_FLAG_NORMAL, &show_clock_cb},
         {0, _("Timezone"),      "-", RG_DIALOG_FLAG_NORMAL, &timezone_cb},
         {0, _("Language"),      "-", RG_DIALOG_FLAG_NORMAL, &language_cb},
-        #ifdef RG_GPIO_LED // Only show disk LED option if disk LED GPIO pin is defined
+        #if defined (RG_GPIO_LED) || defined (RG_GPIO_WS2812) // Only show disk LED option if disk LED GPIO pin is defined
         {0, _("LED options"),   NULL, RG_DIALOG_FLAG_NORMAL, &led_indicator_cb},
         #endif
         #ifdef RG_ENABLE_NETWORKING
