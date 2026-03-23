@@ -1,5 +1,7 @@
 #if defined(RG_TARGET_BRUTZELBOY)
 #include "targets/brutzelboy/config.h"
+#elif defined(RG_TARGET_RETROWOOD_S3)
+#include "targets/retrowood-s3/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)
 #include "targets/byteboi-rev1/config.h"
 #elif defined(RG_TARGET_CROKPOCKET)
