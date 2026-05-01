@@ -1,0 +1,2 @@
+IDF_TARGET = "esp32"
+FLASH_SIZE = "4MB"
