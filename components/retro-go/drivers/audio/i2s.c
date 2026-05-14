@@ -78,7 +78,11 @@ static bool driver_init(int device, int sample_rate)
         if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
+            #ifdef RG_GPIO_SND_I2S_MCK
+                .mck_io_num = RG_GPIO_SND_I2S_MCK,
+            #else
                 .mck_io_num = GPIO_NUM_NC,
+            #endif
                 .bck_io_num = RG_GPIO_SND_I2S_BCK,
                 .ws_io_num = RG_GPIO_SND_I2S_WS,
                 .data_out_num = RG_GPIO_SND_I2S_DATA,
