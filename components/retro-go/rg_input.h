@@ -77,6 +77,14 @@ typedef struct
     uint32_t src;
 } rg_keymap_virt_t;
 
+// #define RG_GAMEPAD_TOUCH_MAP {{}, ...} to map touch screen regions to keys
+typedef struct
+{
+    rg_key_t key;
+    int x_min, y_min;
+    int x_max, y_max;
+} rg_keymap_touch_t;
+
 // FIXME: Create a single unified keymap...
 // ...
 
@@ -89,6 +97,7 @@ typedef struct
 } rg_battery_t;
 
 void rg_input_init(void);
+void rg_input_late_init(void);
 void rg_input_deinit(void);
 bool rg_input_key_is_present(rg_key_t mask);
 bool rg_input_key_is_pressed(rg_key_t mask);

@@ -7,7 +7,7 @@
 # Building Retro-Go
 
 ## Prerequisites
-You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.4 to 5.3 are supported.
+You will need a working installation of [esp-idf](https://docs.espressif.com/projects/esp-idf/en/release-v4.4/esp32/get-started/index.html#get-started-get-prerequisites). Versions 4.4 to 5.5 are supported. The ESP32-C5 based NM-CYD-C5 target requires ESP-IDF 5.5 or newer.
 
 _Note: As of retro-go 1.44, I use 4.4.8. I used 4.3 for 1.35 to 1.43. ESP-IDF 4.1 was used for 1.20 to 1.34 versions._
 

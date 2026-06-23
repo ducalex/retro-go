@@ -474,6 +474,7 @@ rg_app_t *rg_system_init(int sampleRate, const rg_handlers_t *handlers, void *_u
     app.bootArgs = rg_settings_get_string(NS_BOOT, SETTING_BOOT_ARGS, app.bootArgs);
     app.bootFlags = rg_settings_get_number(NS_BOOT, SETTING_BOOT_FLAGS, app.bootFlags);
     rg_display_init();
+    rg_input_late_init();
     rg_gui_init();
 
     if (enterRecoveryMode)
@@ -584,7 +585,7 @@ rg_task_t *rg_task_create(const char *name, void (*taskFunc)(void *arg), void *a
 
 #if defined(ESP_PLATFORM)
     TaskHandle_t handle = NULL;
-    if (affinity < 0)
+    if (affinity < 0 || affinity >= portNUM_PROCESSORS)
         affinity = tskNO_AFFINITY;
     if (xTaskCreatePinnedToCore(task_wrapper, name, stackSize, task, priority, &handle, affinity) == pdPASS)
         return task;

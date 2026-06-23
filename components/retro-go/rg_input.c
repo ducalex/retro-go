@@ -5,12 +5,25 @@
 #include <string.h>
 #include <math.h>
 
+#if defined(RG_GAMEPAD_ADC_MAP) || RG_BATTERY_DRIVER == 1
+#define RG_INPUT_USE_ADC 1
+#endif
+#if defined(RG_GAMEPAD_TOUCH_MAP) && defined(RG_TOUCH_XPT2046_CS)
+#define RG_INPUT_USE_XPT2046 1
+#endif
+
 #ifdef ESP_PLATFORM
 #include <driver/gpio.h>
+#ifdef RG_INPUT_USE_XPT2046
+#include <driver/spi_master.h>
+#endif
+#ifdef RG_INPUT_USE_ADC
 #include <driver/adc.h>
+#include <soc/soc_caps.h>
 // This is a lazy way to silence deprecation notices on some esp-idf versions...
 // This hardcoded value is the first thing to check if something stops working!
 #define ADC_ATTEN_DB_11 3
+#endif
 #else
 #include <SDL2/SDL.h>
 #endif
@@ -38,6 +51,9 @@ static rg_keymap_serial_t keymap_serial[] = RG_GAMEPAD_SERIAL_MAP;
 #ifdef RG_GAMEPAD_VIRT_MAP
 static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
 #endif
+#ifdef RG_GAMEPAD_TOUCH_MAP
+static rg_keymap_touch_t keymap_touch[] = RG_GAMEPAD_TOUCH_MAP;
+#endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
 static uint32_t gamepad_mapped = 0;
@@ -47,13 +63,111 @@ static rg_battery_t battery_state = {0};
     for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
         gamepad_mapped |= keymap[i].key;          \
 
-#ifdef ESP_PLATFORM
+#ifdef RG_INPUT_USE_XPT2046
+#ifndef RG_TOUCH_XPT2046_HOST
+#define RG_TOUCH_XPT2046_HOST RG_SCREEN_HOST
+#endif
+#ifndef RG_TOUCH_XPT2046_SPEED
+#define RG_TOUCH_XPT2046_SPEED (2500 * 1000)
+#endif
+#ifndef RG_TOUCH_XPT2046_PRESSURE_MIN
+#define RG_TOUCH_XPT2046_PRESSURE_MIN 80
+#endif
+#ifndef RG_TOUCH_XPT2046_X_MIN
+#define RG_TOUCH_XPT2046_X_MIN 200
+#endif
+#ifndef RG_TOUCH_XPT2046_X_MAX
+#define RG_TOUCH_XPT2046_X_MAX 3900
+#endif
+#ifndef RG_TOUCH_XPT2046_Y_MIN
+#define RG_TOUCH_XPT2046_Y_MIN 200
+#endif
+#ifndef RG_TOUCH_XPT2046_Y_MAX
+#define RG_TOUCH_XPT2046_Y_MAX 3900
+#endif
+
+static spi_device_handle_t touch_dev;
+
+static esp_err_t xpt2046_init_device(void)
+{
+    if (touch_dev)
+        return ESP_OK;
+
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = RG_TOUCH_XPT2046_SPEED,
+        .mode = 0,
+        .spics_io_num = RG_TOUCH_XPT2046_CS,
+        .queue_size = 1,
+    };
+
+    return spi_bus_add_device(RG_TOUCH_XPT2046_HOST, &devcfg, &touch_dev);
+}
+
+static int map_touch_axis(int value, int raw_min, int raw_max, int screen_max)
+{
+    int low = RG_MIN(raw_min, raw_max);
+    int high = RG_MAX(raw_min, raw_max);
+    value = RG_MIN(RG_MAX(value, low), high);
+    int mapped = (value - raw_min) * screen_max / (raw_max - raw_min);
+    return RG_MIN(RG_MAX(mapped, 0), screen_max);
+}
+
+static int xpt2046_read_channel(uint8_t command)
+{
+    uint8_t tx[3] = {command, 0, 0};
+    uint8_t rx[3] = {0};
+    spi_transaction_t t = {
+        .length = 24,
+        .tx_buffer = tx,
+        .rx_buffer = rx,
+    };
+
+    if (spi_device_polling_transmit(touch_dev, &t) != ESP_OK)
+        return -1;
+    return ((rx[1] << 8) | rx[2]) >> 3;
+}
+
+static bool xpt2046_read_point(int *out_x, int *out_y)
+{
+    int z1 = xpt2046_read_channel(0xB1);
+    int z2 = xpt2046_read_channel(0xC1);
+    int pressure = z1 + 4095 - z2;
+    if (z1 < 0 || z2 < 0 || pressure < RG_TOUCH_XPT2046_PRESSURE_MIN)
+        return false;
+
+    int raw_x = 0, raw_y = 0;
+    for (int i = 0; i < 3; ++i)
+    {
+        int x = xpt2046_read_channel(0xD1);
+        int y = xpt2046_read_channel(0x91);
+        if (x < 0 || y < 0)
+            return false;
+        raw_x += x;
+        raw_y += y;
+    }
+    raw_x /= 3;
+    raw_y /= 3;
+
+#ifdef RG_TOUCH_XPT2046_SWAP_XY
+    int temp = raw_x;
+    raw_x = raw_y;
+    raw_y = temp;
+#endif
+
+    *out_x = map_touch_axis(raw_x, RG_TOUCH_XPT2046_X_MIN, RG_TOUCH_XPT2046_X_MAX, RG_SCREEN_WIDTH - 1);
+    *out_y = map_touch_axis(raw_y, RG_TOUCH_XPT2046_Y_MIN, RG_TOUCH_XPT2046_Y_MAX, RG_SCREEN_HEIGHT - 1);
+    return true;
+}
+#endif
+
+#if defined(ESP_PLATFORM) && defined(RG_INPUT_USE_ADC)
 static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
 {
     if (unit == ADC_UNIT_1)
     {
         return adc1_get_raw(channel);
     }
+#if SOC_ADC_PERIPH_NUM > 1
     else if (unit == ADC_UNIT_2)
     {
         int adc_raw_value = -1;
@@ -61,6 +175,7 @@ static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
             RG_LOGE("ADC2 reading failed, this can happen while wifi is active.");
         return adc_raw_value;
     }
+#endif
     RG_LOGE("Invalid ADC unit %d", (int)unit);
     return -1;
 }
@@ -68,6 +183,7 @@ static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
 
 bool rg_input_read_battery_raw(rg_battery_t *out)
 {
+#if RG_BATTERY_DRIVER != 0
     uint32_t raw_value = 0;
     bool present = true;
     bool charging = false;
@@ -101,6 +217,9 @@ bool rg_input_read_battery_raw(rg_battery_t *out)
         .charging = charging,
     };
     return true;
+#else
+    return false;
+#endif
 }
 
 bool rg_input_read_gamepad_raw(uint32_t *out)
@@ -196,6 +315,23 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
         const rg_keymap_serial_t *mapping = &keymap_serial[i];
         if (((buttons >> mapping->num) & 1) == mapping->level)
             state |= mapping->key;
+    }
+#endif
+
+#if defined(RG_GAMEPAD_TOUCH_MAP) && defined(RG_INPUT_USE_XPT2046)
+    if (touch_dev)
+    {
+        int touch_x, touch_y;
+        if (xpt2046_read_point(&touch_x, &touch_y))
+        {
+            for (size_t i = 0; i < RG_COUNT(keymap_touch); ++i)
+            {
+                const rg_keymap_touch_t *mapping = &keymap_touch[i];
+                if (touch_x >= mapping->x_min && touch_x <= mapping->x_max &&
+                    touch_y >= mapping->y_min && touch_y <= mapping->y_max)
+                    state |= mapping->key;
+            }
+        }
     }
 #endif
 
@@ -334,7 +470,6 @@ void rg_input_init(void)
     UPDATE_GLOBAL_MAP(keymap_serial);
 #endif
 
-
 #if RG_BATTERY_DRIVER == 1 /* ADC */
     RG_LOGI("Initializing ADC battery driver...");
     if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
@@ -364,9 +499,37 @@ void rg_input_init(void)
     RG_LOGI("Input ready. state=" PRINTF_BINARY_16 "\n", PRINTF_BINVAL_16(gamepad_state));
 }
 
+void rg_input_late_init(void)
+{
+#if defined(RG_GAMEPAD_TOUCH_MAP) && defined(RG_INPUT_USE_XPT2046)
+    if (!touch_dev)
+    {
+        RG_LOGI("Initializing XPT2046 touch gamepad driver...");
+        esp_err_t ret = xpt2046_init_device();
+        if (ret == ESP_OK)
+        {
+            UPDATE_GLOBAL_MAP(keymap_touch);
+        }
+        else
+        {
+            RG_LOGE("XPT2046 init failed: %s", esp_err_to_name(ret));
+        }
+    }
+#endif
+}
+
 void rg_input_deinit(void)
 {
     input_task_running = false;
+#if defined(RG_INPUT_USE_XPT2046)
+    if (touch_dev)
+    {
+        esp_err_t ret = spi_bus_remove_device(touch_dev);
+        if (ret != ESP_OK)
+            RG_LOGE("XPT2046 deinit failed: %s", esp_err_to_name(ret));
+        touch_dev = NULL;
+    }
+#endif
     // while (gamepad_state != -1)
     //     rg_task_yield();
     RG_LOGI("Input terminated.\n");

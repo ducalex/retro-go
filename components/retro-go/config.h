@@ -1,3 +1,7 @@
+#ifndef RG_ENABLE_TOUCH_GAMEPAD
+#define RG_ENABLE_TOUCH_GAMEPAD 1
+#endif
+
 #if defined(RG_TARGET_BRUTZELBOY)
 #include "targets/brutzelboy/config.h"
 #elif defined(RG_TARGET_ODROID_GO)
@@ -32,6 +36,8 @@
 #include "targets/crokpocket/config.h"
 #elif defined(RG_TARGET_REDROID_GO)
 #include "targets/redroid-go/config.h"
+#elif defined(RG_TARGET_NM_CYD_C5)
+#include "targets/nm-cyd-c5/config.h"
 #else
 #warning "No target defined. Defaulting to ODROID-GO."
 #include "targets/odroid-go/config.h"

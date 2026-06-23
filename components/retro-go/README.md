@@ -15,6 +15,7 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 | [mrgc-g32](targets/mrgc-g32/docs/README.md)                   | Official |
 | [mrgc-gbm](targets/mrgc-gbm/docs/README.md)                   |  |
 | [nullnano](targets/nullnano/docs/README.md)                   |  |
+| [nm-cyd-c5](targets/nm-cyd-c5/docs/README.md)                 | PoC |
 | [odroid-go](targets/odroid-go/docs/README.md)                 | Official |
 | [qtpy-gamer](targets/qtpy-gamer/docs/README.md)               | Broken |
 | [rachel-esp32](targets/rachel-esp32/docs/README.md)           |   |
@@ -41,4 +42,3 @@ Retro-Go's shared library (or framework) provides an easy way to port emulators 
 
 # License
 [GPLv2](COPYING)
-

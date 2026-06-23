@@ -62,6 +62,7 @@ def create_firmware(fw_type, partitions, icon_file, name, version, target):
 def create_image(chip_type, partitions, bootloader_file, name, version, target):
     bootloader_offset, table_offset, prog_offset = {
         "esp32":   (0x1000, 0x8000, 0x10000),
+        "esp32c5": (0x2000, 0x8000, 0x10000),
         "esp32s3": (0x0000, 0x8000, 0x10000),
         "esp32p4": (0x2000, 0x8000, 0x10000),
     }.get(chip_type)
@@ -105,7 +106,7 @@ def create_image(chip_type, partitions, bootloader_file, name, version, target):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Retro-Go firmware tool")
-    parser.add_argument("--type", choices=["odroid", "esplay", "esp32", "esp32s3", "esp32p4"], default="odroid")
+    parser.add_argument("--type", choices=["odroid", "esplay", "esp32", "esp32c5", "esp32s3", "esp32p4"], default="odroid")
     parser.add_argument("--bootloader", default="none")
     parser.add_argument("--name", default="unknown")
     parser.add_argument("--icon", default="none")
