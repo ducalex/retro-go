@@ -63,17 +63,17 @@
 
 #define RG_RECOVERY_BTN RG_KEY_MENU // Keep this button pressed to open the recovery menu
 
-// RG_KEY_SELECT is labelled MENU on the PCB
-// RG_KEY_START is labelled START on the PCB
-// RG_KEY_OPTION is labelled Y on the PCB
-// RG_KEY_MENU is labelled X on the PCB
-// RG_KEY_A is labelled A on the PCB
-// RG_KEY_B is labelled B on the PCB
+// GPIO_NUM_45 is labelled MENU on the PCB
+// GPIO_NUM_0 is labelled START on the PCB
+// GPIO_NUM_38 is labelled Y on the PCB
+// GPIO_NUM_41 is labelled X on the PCB
+// GPIO_NUM_39 is labelled A on the PCB
+// GPIO_NUM_40 is labelled B on the PCB
 #define RG_GAMEPAD_GPIO_MAP {\
-    {RG_KEY_SELECT, .num = GPIO_NUM_45, .pullup = 1, .level = 0},\
+    {RG_KEY_MENU,   .num = GPIO_NUM_45, .pullup = 1, .level = 0},\
     {RG_KEY_START,  .num = GPIO_NUM_0,  .pullup = 1, .level = 0},\
-    {RG_KEY_OPTION, .num = GPIO_NUM_38, .pullup = 1, .level = 0},\
-    {RG_KEY_MENU,   .num = GPIO_NUM_41, .pullup = 1, .level = 0},\
+    {RG_KEY_SELECT, .num = GPIO_NUM_38, .pullup = 1, .level = 0},\
+    {RG_KEY_OPTION, .num = GPIO_NUM_41, .pullup = 1, .level = 0},\
     {RG_KEY_A,      .num = GPIO_NUM_39, .pullup = 1, .level = 0},\
     {RG_KEY_B,      .num = GPIO_NUM_40, .pullup = 1, .level = 0},\
 }
