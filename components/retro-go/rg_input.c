@@ -68,12 +68,12 @@ static inline bool _adc_setup_channel(adc_unit_t unit, adc_channel_t channel, ad
     const adc_oneshot_chan_cfg_t config = {.atten = atten, .bitwidth = ADC_BITWIDTH_DEFAULT};
     err = adc_oneshot_config_channel(adc_handles[unit], channel, &config);
 #else
-    if (RG_BATTERY_ADC_UNIT == ADC_UNIT_1)
+    if (unit == ADC_UNIT_1)
     {
         adc1_config_width(ADC_WIDTH_MAX - 1);
         err = adc1_config_channel_atten(channel, atten);
     }
-    else if (RG_BATTERY_ADC_UNIT == ADC_UNIT_2)
+    else if (unit == ADC_UNIT_2)
     {
         err = adc2_config_channel_atten(channel, atten);
     }
