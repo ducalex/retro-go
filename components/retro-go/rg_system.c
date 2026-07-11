@@ -19,6 +19,10 @@
 #include <esp_timer.h>
 #include <esp_sleep.h>
 #include <driver/gpio.h>
+#if CONFIG_IDF_TARGET_ESP32P4
+#include "soc/hp_sys_clkrst_reg.h"
+#include "esp_cpu.h"
+#endif
 #else
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_mutex.h>
@@ -1216,6 +1220,83 @@ void rg_system_set_overclock(int level)
     // esp_timer_impl_update_apb_freq(80.0 / 240.0 * real_mhz);
     // ets_update_cpu_frequency(real_mhz);
 #endif
+
+    app.frameskip = 1;
+
+    overclockLevel = level;
+    overclockMhz = real_mhz;
+
+    RG_LOGW("Overclock level %d applied: %dMhz", level, real_mhz);
+#elif CONFIG_IDF_TARGET_ESP32P4
+    #define OC_MAX_LEVEL                   6
+    #define OC_MIN_LEVEL                  -6
+
+    if (level < OC_MIN_LEVEL || level > OC_MAX_LEVEL)
+    {
+        RG_LOGW("Invalid level %d, min:%d max:%d", level, OC_MIN_LEVEL, OC_MAX_LEVEL);
+        return;
+    }
+
+    extern uint8_t regi2c_ctrl_read_reg(uint8_t block, uint8_t host_id, uint8_t reg_add);
+    extern void regi2c_ctrl_write_reg(uint8_t block, uint8_t host_id, uint8_t reg_add, uint8_t data);
+    extern unsigned efuse_hal_chip_revision(void);
+    extern uint64_t esp_rtc_get_time_us(void);
+
+    static int original_div7_0 = -1;
+    if (original_div7_0 == -1)
+        original_div7_0 = regi2c_ctrl_read_reg(0x67, 0, 3); // I2C_CPLL (0x67), host 0, register 3 (DIV7_0)
+
+    int target_freq = 360 + level * 20;
+    int pll_freq = target_freq;
+    int div_int = 1;
+    int div_num = 0;
+    int div_den = 1;
+
+    if (target_freq % 40 != 0)
+    {
+        pll_freq = target_freq + 20;
+        div_int = 1;
+        div_num = 1;
+        div_den = target_freq / 20;
+    }
+
+    unsigned chip_version = efuse_hal_chip_revision();
+    uint8_t div7_0;
+    if (level == 0)
+    {
+        div7_0 = original_div7_0;
+    }
+    else
+    {
+        if (chip_version < 1)
+        {
+            div7_0 = (pll_freq / 40) - 4;
+        }
+        else
+        {
+            div7_0 = pll_freq / 40;
+        }
+    }
+
+    regi2c_ctrl_write_reg(0x67, 0, 3, div7_0);
+    rg_task_delay(20);
+
+    uint32_t val = REG_READ(HP_SYS_CLKRST_ROOT_CLK_CTRL0_REG);
+    val &= ~HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUM_M;
+    val |= ((div_int - 1) << HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUM_S) & HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUM_M;
+    val &= ~HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUMERATOR_M;
+    val |= (div_num << HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUMERATOR_S) & HP_SYS_CLKRST_REG_CPU_CLK_DIV_NUMERATOR_M;
+    val &= ~HP_SYS_CLKRST_REG_CPU_CLK_DIV_DENOMINATOR_M;
+    val |= (div_den << HP_SYS_CLKRST_REG_CPU_CLK_DIV_DENOMINATOR_S) & HP_SYS_CLKRST_REG_CPU_CLK_DIV_DENOMINATOR_M;
+    REG_WRITE(HP_SYS_CLKRST_ROOT_CLK_CTRL0_REG, val);
+
+    REG_SET_BIT(HP_SYS_CLKRST_ROOT_CLK_CTRL0_REG, HP_SYS_CLKRST_REG_SOC_CLK_DIV_UPDATE);
+    while (REG_GET_BIT(HP_SYS_CLKRST_ROOT_CLK_CTRL0_REG, HP_SYS_CLKRST_REG_SOC_CLK_DIV_UPDATE)) ;
+
+    uint64_t t = esp_rtc_get_time_us();
+    uint32_t cc = esp_cpu_get_cycle_count();
+    rg_usleep(100000);
+    int real_mhz = (double)(esp_cpu_get_cycle_count() - cc) / (esp_rtc_get_time_us() - t);
 
     app.frameskip = 1;
 
