@@ -1,0 +1,5 @@
+/*.nds
+/arm7/*.elf
+/arm9/*.elf
+/arm9/build
+/arm7/build

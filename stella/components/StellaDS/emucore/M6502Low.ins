@@ -1,0 +1,4328 @@
+//============================================================================
+//
+//   SSSS    tt          lll  lll
+//  SS  SS   tt           ll   ll
+//  SS     tttttt  eeee   ll   ll   aaaa
+//   SSSS    tt   ee  ee  ll   ll      aa
+//      SS   tt   eeeeee  ll   ll   aaaaa  --  "An Atari 2600 VCS Emulator"
+//  SS  SS   tt   ee      ll   ll  aa  aa
+//   SSSS     ttt  eeeee llll llll  aaaaa
+//
+// Copyright (c) 1995-2024 by Bradford W. Mott, Stephen Anthony
+// and the Stella Team
+//
+// This file has been modified by Dave Bernazzani (wavemotion-dave)
+// for optimized execution on the DS/DSi platform. Please seek the
+// official Stella source distribution which is far cleaner, newer,
+// and better maintained.
+//
+// See the file "License.txt" for information on usage and redistribution of
+// this file, and for a DISCLAIMER OF ALL WARRANTIES.
+//============================================================================
+
+/**
+  Code to handle addressing modes and branch instructions for
+  high compatibility emulation
+
+  @author  Bradford W. Mott
+  @version $Id: M6502Hi.ins,v 1.5 2008-04-27 11:53:22 stephena Exp $
+*/
+
+#ifndef NOTSAMEPAGE
+  #define NOTSAMEPAGE(_addr1, _addr2) (((_addr1) ^ (_addr2)) & 0xff00)
+#endif
+
+case 0x69:
+{
+  operand = peek_PC(PC++);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x65:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x75:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x6d:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x7d:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x79:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x61:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x71:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  Int32 nonBCDSum = (Int16)A + (Int16)operand + (C);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    A = nonBCDSum;
+    C = (nonBCDSum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    notZ = nonBCDSum & 0xff;  // Z flag calculation ignores D flag
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+
+case 0x4b:
+{
+  operand = peek_PC(PC++);
+}
+{
+  A &= operand;
+
+  // Set carry flag according to the right-most bit
+  C = A & 0x01;
+
+  A = (A >> 1) & 0x7f;
+
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x0b:
+case 0x2b:
+{
+  operand = peek_PC(PC++);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+  C = (N ? 1:0);
+}
+break;
+
+
+case 0x29:
+{
+  operand = peek_PC(PC++);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x25:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x35:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x2d:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x3d:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x39:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x21:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x31:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A &= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x8b:
+{
+  operand = peek_PC(PC++);
+}
+{
+  // NOTE: The implementation of this instruction is based on
+  // information from the 64doc.txt file.  This instruction is
+  // reported to be unstable!
+  A = (A | 0xee) & X & operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x6b:
+{
+  operand = peek_PC(PC++);
+}
+{
+  // NOTE: The implementation of this instruction is based on
+  // information from the 64doc.txt file.  There are mixed
+  // reports on its operation!
+  if(!D)
+  {
+    A &= operand;
+    A = ((A >> 1) & 0x7f) | (C ? 0x80 : 0x00);
+
+    C = ((A & 0x40) ? 1:0);
+    V = (A & 0x40) ^ ((A & 0x20) << 1);
+
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 value = A & operand;
+
+    A = ((value >> 1) & 0x7f) | (C ? 0x80 : 0x00);
+    N = (C ? 0x80:0x00);
+    notZ = A;
+    V = (value ^ A) & 0x40;
+
+    if(((value & 0x0f) + (value & 0x01)) > 0x05)
+    {
+      A = (A & 0xf0) | ((A + 0x06) & 0x0f);
+    }
+    
+    if(((value & 0xf0) + (value & 0x10)) > 0x50) 
+    {
+      A = (A + 0x60) & 0xff;
+      C = 1;
+    }
+    else
+    {
+      C = 0;
+    }
+  }
+}
+break;
+
+
+case 0x0a:
+{
+  fake_peek();
+}
+{
+  // Set carry flag according to the left-most bit in A
+  C = ((A & 0x80) ? 1:0);
+
+  A <<= 1;
+
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x06:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x16:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x0e:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x1e:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+
+case 0x90:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(!C)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0xb0:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(C)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0xf0:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(!notZ)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0x24:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  notZ = (A & operand);
+  N = operand;
+  V = operand & 0x40;
+}
+break;
+
+case 0x2C:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  notZ = (A & operand);
+  N = operand;
+  V = operand & 0x40;
+}
+break;
+
+
+case 0x30:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(N & 0x80)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0xD0:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(notZ)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0x10:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(!(N & 0x80))
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0x00:
+{
+  peek_PC(PC++);
+
+  B = true;
+
+  poke(0x0100 + SP--, PC >> 8);
+  poke(0x0100 + SP--, PC & 0x00ff);
+  poke(0x0100 + SP--, PS());
+
+  I = true;
+
+  PC = peek(0xfffe);
+  PC |= ((uInt16)peek(0xffff) << 8);
+}
+break;
+
+
+case 0x50:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(!V)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0x70:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(V)
+  {
+    fake_peek();
+    uInt16 address = PC + (Int8)operand;
+    if(NOTSAMEPAGE(PC, address)) fake_peek();
+    PC = address;
+  }
+}
+break;
+
+
+case 0x18:
+{
+  fake_peek();
+}
+{
+  C = 0;
+}
+break;
+
+
+case 0xd8:
+{
+  fake_peek();
+}
+{
+  D = false;
+}
+break;
+
+
+case 0x58:
+{
+  fake_peek();
+}
+{
+  I = false;
+}
+break;
+
+
+case 0xb8:
+{
+  fake_peek();
+}
+{
+  V = false;
+}
+break;
+
+
+case 0xc9:
+{
+  operand = peek_PC(PC++);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xc5:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xd5:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xcd:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xdd:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xd9:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xc1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xd1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  uInt16 value = (uInt16)A - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+
+case 0xe0:
+{
+  operand = peek_PC(PC++);
+}
+{
+  uInt16 value = (uInt16)X - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xe4:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  uInt16 value = (uInt16)X - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xec:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  uInt16 value = (uInt16)X - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+
+case 0xc0:
+{
+  operand = peek_PC(PC++);
+}
+{
+  uInt16 value = (uInt16)Y - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xc4:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  uInt16 value = (uInt16)Y - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+case 0xcc:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  uInt16 value = (uInt16)Y - (uInt16)operand;
+
+  notZ = value;
+  N = value & 0x0080;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+
+case 0xcf:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+   C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xdf:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+   C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xdb:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+   C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xc7:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+  C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xd7:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+  C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xc3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+  C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+case 0xd3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  uInt16 value2 = (uInt16)A - (uInt16)value;
+  notZ = value2;
+  N = value2 & 0x0080;
+  C = ((value2 & 0x0100) ? 0:1);
+}
+break;
+
+
+case 0xc6:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xd6:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xce:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xde:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand - 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+
+case 0xca:
+{
+  fake_peek();
+}
+{
+  X--;
+
+  notZ = X;
+  N = X;
+}
+break;
+
+
+case 0x88:
+{
+  fake_peek();
+}
+{
+  Y--;
+
+  notZ = Y;
+  N = Y;
+}
+break;
+
+
+case 0x49:
+{
+  operand = peek_PC(PC++);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x45:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x55:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x4d:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x5d:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x59:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x41:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x51:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0xe6:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand + 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xf6:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand + 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xee:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand + 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+case 0xfe:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = operand + 1;
+  poke(operandAddress, value);
+
+  notZ = value;
+  N = value & 0x80;
+}
+break;
+
+
+case 0xe8:
+{
+  fake_peek();
+}
+{
+  X++;
+  notZ = X;
+  N = X;
+}
+break;
+
+
+case 0xc8:
+{
+  fake_peek();
+}
+{
+  Y++;
+  notZ = Y;
+  N = Y;
+}
+break;
+
+
+case 0xef:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A; 
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xff:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] 
+        - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xfb:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xe7:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand]  - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xf7:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xe3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xf3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  operand = operand + 1;
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    A = ourBCDTable[1][difference];
+    notZ = A;
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+
+case 0x4c:  // JMP
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+}
+{
+#ifdef DATA_STREAMS_PLUS
+  if (!(operandAddress & 0xFFFE)) operandAddress = peek_JumpStreamPlus(operandAddress);
+#endif
+#ifdef DATA_STREAMS
+  if (!(operandAddress & 0xFFFE)) operandAddress = peek_JumpStream(operandAddress);
+#endif
+  PC = operandAddress;
+}
+break;
+
+case 0x6c:
+{
+  uInt16 addr = peek_PC(PC++);
+  addr |= ((uInt16)peek_PC(PC++) << 8);
+
+  // Simulate the error in the indirect addressing mode!
+  uInt16 high = NOTSAMEPAGE(addr, addr + 1) ? (addr & 0xff00) : (addr + 1);
+
+  operandAddress = peek(addr);
+  operandAddress |= ((uInt16)peek(high) << 8);
+}
+{
+  PC = operandAddress;
+}
+break;
+
+
+case 0x20:
+{
+  uInt8 low = peek_PC(PC++);
+  peek(0x0100 + SP);
+
+  // It seems that the 650x does not push the address of the next instruction
+  // on the stack it actually pushes the address of the next instruction
+  // minus one.  This is compensated for in the RTS instruction
+  poke(0x0100 + SP--, PC >> 8);
+  poke(0x0100 + SP--, PC & 0xff);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8); 
+  PC = low | high;
+}
+break;
+
+
+case 0xbb:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A = X = SP = SP & operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0xaf:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xbf:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xa7:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xb7:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += Y;
+  operand = peek(address); 
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xa3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xb3:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A = operand;
+  X = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+//---------------------------------------------------------------------------------------------------------
+//LDA - This one is special as the DPC+/CDF/J+ ARM assisted code uses this to pass data from ARM ram into
+//      the A register. Significant emulation CPU time is consumed here so we do our best to optmize it.
+//---------------------------------------------------------------------------------------------------------
+case 0xa9:
+{
+#ifndef DATA_STREAMS_PLUS
+  A = peek_PC(PC++);
+#endif
+
+#ifdef CTY_LDA_F2
+    if (A == 0xF2) A = CTY_updateMusicModeDataFetchers();
+#endif
+
+#ifdef DPC_PLUS_FAST_FETCH
+  extern bool myFastFetch;
+  if (myFastFetch && (A < 0x0028)) 
+  {
+      A = peek_Fetch(A); 
+      // More often than not, what follows LDA is STA...
+      if (myDPCptr[PC&0xFFF] == 0x85)
+      {
+        gSystemCycles += 3;
+        poke_small(myDPCptr[++PC & 0xFFF], A);
+        PC++;
+      }
+  }
+#endif
+
+#ifdef DATA_STREAMS
+  extern u8 myDataStreamFetch;
+  if (A < myDataStreamFetch) 
+  {
+      A = peek_DataStream(A);
+      // More often than not, what follows LDA is STA...
+      if (myDPCptr[PC&0xFFF] == 0x85)
+      {
+        gSystemCycles += 3;
+        poke_small(myDPCptr[++PC & 0xFFF], A);
+        PC++;
+      }
+  }
+#endif
+
+#ifdef DATA_STREAMS_PLUS
+  extern u8 myDataStreamFetch; extern uInt8* myFetcherOffsetPtr;
+#ifdef DATA_STREAMS_PLUS_PLUS  
+  u8 *next6502Inst = &fast_cart_buffer[PC & f8_bankbit];
+#else  
+  u8 *next6502Inst = &myDPCptr[PC & 0xFFF];
+#endif  
+  A = *next6502Inst++;  
+  
+  unsigned int offset_A = A-(*myFetcherOffsetPtr); 
+  if (offset_A < myDataStreamFetch)  
+  {
+#ifdef DATA_STREAMS_PLUS_PLUS  
+     A = peek_DataStreamPlusPlus(offset_A);
+#else     
+     A = peek_DataStreamPlus(offset_A);
+#endif     
+  }
+
+  // --------------------------------------------------
+  // More often than not, what follows LDA is STA...
+  // This gives us a nice look-ahead-speed-up
+  // --------------------------------------------------
+  if (*next6502Inst == 0x85)
+  {
+     gSystemCycles += 4;
+     PC += 3; next6502Inst++;
+     poke_small(*next6502Inst, A);
+     break; // Actung! This is dangerous... we are not setting Z nor N here for CDFJ+ with fast Data Fetchers to save some cycles
+  } else {PC++; gSystemCycles++;}
+#endif
+
+}
+{
+  notZ = N = A;
+}
+break;
+
+case 0xa5:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  A = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xb5:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  A = peek(address); 
+}
+{
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xad:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  A = peek(address);
+}
+{
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xbd:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  A = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xb9:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xa1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  A = peek(address);
+}
+{
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0xb1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A = operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0xa2:
+{
+  X = peek_PC(PC++);
+#ifdef DATA_STREAMS_PLUS
+  extern u8 myDataStreamFetch, myLDXenabled; extern uInt8 *myFetcherOffsetPtr;
+  if (myLDXenabled)
+  {
+     unsigned int offset_X = X-(*myFetcherOffsetPtr); 
+     if (offset_X < myDataStreamFetch) 
+#ifdef DATA_STREAMS_PLUS_PLUS     
+        X = peek_DataStreamPlusPlus(offset_X);
+#else
+        X = peek_DataStreamPlus(offset_X);
+#endif
+  }
+#endif
+  
+}
+{
+  notZ = X;
+  N = X;
+}
+break;
+
+case 0xa6:
+{
+  X = peek_zpg(peek_PC(PC++));
+}
+{
+  notZ = X;
+  N = X;
+}
+break;
+
+case 0xb6:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += Y;
+  X = peek(address); 
+}
+{
+  notZ = X;
+  N = X;
+}
+break;
+
+case 0xae:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  X = peek(address);
+}
+{
+  notZ = X;
+  N = X;
+}
+break;
+
+case 0xbe:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  X = operand;
+  notZ = X;
+  N = X;
+}
+break;
+
+
+case 0xa0:
+{
+  Y = peek_PC(PC++);
+#ifdef DATA_STREAMS_PLUS
+  extern u8 myDataStreamFetch, myLDYenabled; extern uInt8 *myFetcherOffsetPtr;
+  if (myLDYenabled)
+  {
+    unsigned int offset_Y = Y-(*myFetcherOffsetPtr); 
+    if (offset_Y < myDataStreamFetch) 
+#ifdef DATA_STREAMS_PLUS_PLUS    
+        Y = peek_DataStreamPlusPlus(offset_Y);
+#else
+        Y = peek_DataStreamPlus(offset_Y);
+#endif        
+  }
+#endif
+}
+{
+  notZ = Y;
+  N = Y;
+}
+break;
+
+case 0xa4:
+{
+  Y = peek_zpg(peek_PC(PC++));
+}
+{
+  notZ = Y;
+  N = Y;
+}
+break;
+
+case 0xb4:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  Y = peek(address); 
+}
+{
+  notZ = Y;
+  N = Y;
+}
+break;
+
+case 0xac:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  Y = peek(address);
+}
+{
+  notZ = Y;
+  N = Y;
+}
+break;
+
+case 0xbc:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  Y = operand;
+  notZ = Y;
+  N = Y;
+}
+break;
+
+
+case 0x4a:
+{
+  fake_peek();
+}
+{
+  // Set carry flag according to the right-most bit
+  C = A & 0x01;
+
+  A = (A >> 1) & 0x7f;
+
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x46:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x56:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x4e:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x5e:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+
+case 0xab:
+{
+  operand = peek_PC(PC++);
+}
+{
+  // NOTE: The implementation of this instruction is based on
+  // information from the 64doc.txt file.  This instruction is
+  // reported to be very unstable!
+  A = X = (A | 0xee) & operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x1a:
+case 0x3a:
+case 0x5a:
+case 0x7a:
+case 0xda:
+case 0xea:
+case 0xfa:
+{
+  fake_peek();
+}
+{
+}
+break;
+
+case 0x80:
+case 0x82:
+case 0x89:
+case 0xc2:
+case 0xe2:
+{
+  fake_peek(); PC++; // These are, effectiovely, NO-OPs
+}
+{
+}
+break;
+
+case 0x04:
+case 0x44:
+case 0x64:
+{
+  fake_peek(); fake_peek(); PC++; // These are, effectiovely, NO-OPs
+}
+{
+}
+break;
+
+case 0x14:
+case 0x34:
+case 0x54:
+case 0x74:
+case 0xd4:
+case 0xf4:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+}
+break;
+
+case 0x0c:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+}
+break;
+
+case 0x1c:
+case 0x3c:
+case 0x5c:
+case 0x7c:
+case 0xdc:
+case 0xfc:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+}
+break;
+
+
+case 0x09:
+{
+  operand = peek_PC(PC++);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x05:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x15:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x0d:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x1d:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x19:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x01:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x11:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x48:
+{
+  fake_peek();
+}
+{
+  poke(0x0100 + SP--, A);
+}
+break;
+
+
+case 0x08:
+{
+  fake_peek();
+}
+{
+  poke(0x0100 + SP--, PS());
+}
+break;
+
+
+case 0x68:
+{
+  fake_peek();
+}
+{
+  peek(0x0100 + SP++);
+  A = peek(0x0100 + SP);
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x28:
+{
+  fake_peek();
+}
+{
+  peek(0x0100 + SP++);
+  PS(peek(0x0100 + SP));
+}
+break;
+
+
+case 0x2f:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x3f:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x3b:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x27:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x37:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x23:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x33:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  uInt8 value = (operand << 1) | (C);
+  poke(operandAddress, value);
+
+  A &= value;
+  C = ((operand & 0x80) ? 1:0);
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x2a:
+{
+  fake_peek();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the left-most bit
+  C = ((A & 0x80) ? 1:0);
+
+  A = (A << 1) | (oldC ? 1 : 0);
+
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x26:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the left-most bit in operand
+  C = ((operand & 0x80) ? 1:0);
+
+  operand = (operand << 1) | (oldC ? 1 : 0);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x36:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the left-most bit in operand
+  C = ((operand & 0x80) ? 1:0);
+
+  operand = (operand << 1) | (oldC ? 1 : 0);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x2e:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the left-most bit in operand
+  C = ((operand & 0x80) ? 1:0);
+
+  operand = (operand << 1) | (oldC ? 1 : 0);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x3e:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the left-most bit in operand
+  C = ((operand & 0x80) ? 1:0);
+
+  operand = (operand << 1) | (oldC ? 1 : 0);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+
+case 0x6a:
+{
+  fake_peek();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = A & 0x01;
+
+  A = ((A >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x66:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x76:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek_zpg(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x6e:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+case 0x7e:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  notZ = operand;
+  N = operand;
+}
+break;
+
+
+case 0x6f:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x7f:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x7b:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x67:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x77:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x63:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0x73:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  bool oldC = C;
+
+  // Set carry flag according to the right-most bit
+  C = operand & 0x01;
+
+  operand = ((operand >> 1) & 0x7f) | (oldC ? 0x80 : 0x00);
+  poke(operandAddress, operand);
+
+  if(!D)
+  {
+    Int32 sum = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((sum > 127) || (sum < -128));
+
+    sum = (Int16)A + (Int16)operand + (C);
+    A = sum;
+    C = (sum > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int32 sum = ourBCDTable[0][A] + ourBCDTable[0][operand] + (C);
+
+    C = (sum > 99);
+    A = ourBCDTable[1][sum & 0xff];
+    notZ = A;
+    N = A;
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+
+case 0x40:
+{
+  fake_peek();
+}
+{
+  peek(0x0100 + SP++);
+  PS(peek(0x0100 + SP++));
+  PC = peek(0x0100 + SP++);
+  PC |= ((uInt16)peek(0x0100 + SP) << 8);
+}
+break;
+
+
+case 0x60:
+{
+  gSystemCycles += 2;SP++;
+  PC = peek(0x0100 + SP++);
+  PC |= ((uInt16)peek(0x0100 + SP) << 8);
+  fake_peek(); PC++;
+}
+break;
+
+
+case 0x8f:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+}
+{
+  poke(operandAddress, A & X);
+}
+break;
+
+case 0x87:
+{
+  operandAddress = peek_PC(PC++);
+}
+{
+  poke(operandAddress, A & X);
+}
+break;
+
+case 0x97:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + Y) & 0xFF;
+}
+{
+  poke(operandAddress, A & X);
+}
+break;
+
+case 0x83:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+}
+{
+  poke(operandAddress, A & X);
+}
+break;
+
+
+case 0xe9:
+case 0xeb:
+{
+  operand = peek_PC(PC++);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xe5:
+{
+  operand = peek_zpg(peek_PC(PC++));
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xf5:
+{
+  uInt8 address = peek_PC(PC++);
+  fake_peek();
+  address += X;
+  operand = peek(address); 
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xed:
+{
+  uInt16 address = peek_PC(PC++);
+  address |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(address);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xfd:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + X));
+  if((low + X) > 0xFF)
+    operand = peek((high | low) + X);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xf9:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xe1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  uInt16 address = peek(pointer++);
+  address |= ((uInt16)peek(pointer) << 8);
+  operand = peek(address);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+case 0xf1:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  operand = peek(high | (uInt8)(low + Y));
+  if((low + Y) > 0xFF)
+    operand = peek((high | low) + Y);
+}
+{
+  if(!D)
+  {
+    operand = ~operand;
+    Int16 difference = (Int16)((Int8)A) + (Int16)((Int8)operand) + (C);
+    V = ((difference > 127) || (difference < -128));
+
+    difference = ((Int16)A) + ((Int16)operand) + (C);
+    A = difference;
+    C = (difference > 0xff);
+    notZ = A;
+    N = A;
+  }
+  else
+  {
+    uInt8 oldA = A;
+    Int16 difference = ourBCDTable[0][A] - ourBCDTable[0][operand] - (C ? 0 : 1);
+
+    if(difference < 0)
+      difference += 100;
+
+    // Z flag calculation ignores D flag
+    notZ = (((Int16)A) + ((Int16)~operand) + (C)) & 0xff;
+    A = ourBCDTable[1][difference];
+    N = A;
+
+    C = (oldA >= (operand + (C ? 0 : 1)));
+    V = ((oldA ^ A) & 0x80) && ((A ^ operand) & 0x80);
+  }
+}
+break;
+
+
+case 0xcb:
+{
+  operand = peek_PC(PC++);
+}
+{
+  uInt16 value = (uInt16)(X & A) - (uInt16)operand;
+  X = (value & 0xff);
+
+  notZ = X;
+  N = X;
+  C = ((value & 0x0100) ? 0:1);
+}
+break;
+
+
+case 0x38:
+{
+  fake_peek();
+}
+{
+  C = 1;
+}
+break;
+
+
+case 0xf8:
+{
+  fake_peek();
+}
+{
+  D = true;
+}
+break;
+
+
+case 0x78:
+{
+  fake_peek();
+}
+{
+  I = true;
+}
+break;
+
+
+case 0x9f:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  // NOTE: There are mixed reports on the actual operation
+  // of this instruction!
+  poke(operandAddress, A & X & (((operandAddress >> 8) & 0xff) + 1)); 
+}
+break;
+
+case 0x93:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  // NOTE: There are mixed reports on the actual operation
+  // of this instruction!
+  poke(operandAddress, A & X & (((operandAddress >> 8) & 0xff) + 1)); 
+}
+break;
+
+
+case 0x9b:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  // NOTE: There are mixed reports on the actual operation
+  // of this instruction!
+  SP = A & X;
+  poke(operandAddress, A & X & (((operandAddress >> 8) & 0xff) + 1)); 
+}
+break;
+
+
+case 0x9e:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  // NOTE: There are mixed reports on the actual operation
+  // of this instruction!
+  poke(operandAddress, X & (((operandAddress >> 8) & 0xff) + 1)); 
+}
+break;
+
+
+case 0x9c:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+}
+{
+  // NOTE: There are mixed reports on the actual operation
+  // of this instruction!
+  poke(operandAddress, Y & (((operandAddress >> 8) & 0xff) + 1)); 
+}
+break;
+
+
+case 0x0f:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x1f:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x1b:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x07:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x17:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x03:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x13:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the left-most bit in value
+  C = ((operand & 0x80) ? 1:0);
+
+  operand <<= 1;
+  poke(operandAddress, operand);
+
+  A |= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x4f:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x5f:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x5b:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x47:
+{
+  operandAddress = peek_PC(PC++);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x57:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x43:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+case 0x53:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+  operand = peek(operandAddress);
+  //poke(operandAddress, operand);
+  fake_poke();
+}
+{
+  // Set carry flag according to the right-most bit in value
+  C = operand & 0x01;
+
+  operand = (operand >> 1) & 0x7f;
+  poke(operandAddress, operand);
+
+  A ^= operand;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x85:
+{
+#ifdef DATA_STREAMS_PLUS
+  gSystemCycles++;
+  poke_small(peek_PC(PC++), A);
+#else
+  poke(peek_PC(PC++), A);
+#endif
+}
+break;
+
+case 0x95:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+case 0x8d:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+case 0x9d:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + X;
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+case 0x99:
+{
+  uInt16 low = peek_PC(PC++);
+  uInt16 high = ((uInt16)peek_PC(PC++) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+case 0x81:
+{
+  uInt8 pointer = peek_PC(PC++);
+  fake_peek();
+  pointer += X;
+  operandAddress = peek(pointer++);
+  operandAddress |= ((uInt16)peek(pointer) << 8);
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+case 0x91:
+{
+  uInt8 pointer = peek_PC(PC++);
+  uInt16 low = peek(pointer++);
+  uInt16 high = ((uInt16)peek(pointer) << 8);
+  fake_peek();
+  operandAddress = (high | low) + Y;
+}
+{
+  poke(operandAddress, A);
+}
+break;
+
+
+case 0x86:
+{
+#ifdef DATA_STREAMS_PLUS
+  gSystemCycles++;
+  poke_small(peek_PC(PC++), X);
+#else
+  poke(peek_PC(PC++), X);
+#endif  
+}
+break;
+
+case 0x96:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + Y) & 0xFF;
+}
+{
+  poke(operandAddress, X);
+}
+break;
+
+case 0x8e:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+}
+{
+  poke(operandAddress, X);
+}
+break;
+
+
+case 0x84:
+{
+#ifdef DATA_STREAMS_PLUS
+  gSystemCycles++;
+  poke_small(peek_PC(PC++), Y);
+#else
+  poke(peek_PC(PC++), Y);
+#endif  
+}
+break;
+
+case 0x94:
+{
+  operandAddress = peek_PC(PC++);
+  fake_peek();
+  operandAddress = (operandAddress + X) & 0xFF;
+}
+{
+  poke(operandAddress, Y);
+}
+break;
+
+case 0x8c:
+{
+  operandAddress = peek_PC(PC++);
+  operandAddress |= ((uInt16)peek_PC(PC++) << 8);
+}
+{
+  poke(operandAddress, Y);
+}
+break;
+
+
+case 0xaa:
+{
+  fake_peek();
+}
+{
+  X = A;
+  notZ = X;
+  N = X;
+}
+break;
+
+
+case 0xa8:
+{
+  fake_peek();
+}
+{
+  Y = A;
+  notZ = Y;
+  N = Y;
+}
+break;
+
+
+case 0xba:
+{
+  fake_peek();
+}
+{
+  X = SP;
+  notZ = X;
+  N = X;
+}
+break;
+
+
+case 0x8a:
+{
+  fake_peek();
+}
+{
+  A = X;
+  notZ = A;
+  N = A;
+}
+break;
+
+
+case 0x9a:
+{
+  fake_peek();
+}
+{
+  SP = X;
+}
+break;
+
+
+case 0x98:
+{
+  fake_peek();
+}
+{
+  A = Y;
+  notZ = A;
+  N = A;
+}
+break;
+
+default:
+{
+    illegal_op(operand);
+}
+break;
