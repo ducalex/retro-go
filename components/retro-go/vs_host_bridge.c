@@ -251,6 +251,26 @@ static void vs_povperf_send_stats(void)
     vs_host_bridge_send(line, NULL, 0);
 }
 
+// Diagnostic A/B toggle between the gated hall-pulse filter and the
+// pre-filter raw passthrough (hall_filter.h / ventilastation_pov.c), reusing
+// the same "hallfilter" wire command as the MicroPython side
+// (hall_filter_control.py) so one host-side control (the emulator's F5 key)
+// reaches whichever firmware is actually running.
+static void vs_hallfilter_send_state(void)
+{
+    rg_vs_pov_hall_filter_stats_t stats;
+    rg_vs_pov_get_hall_filter_stats(&stats);
+    char line[224];
+    snprintf(line, sizeof(line),
+        "hallfilter_state enabled=%d period_us=%lld jitter_us=%lld "
+        "accepted=%lu spurious=%lu missed=%lu missed_pulses=%lu outlier=%lu stall=%lu resync=%lu",
+        stats.enabled ? 1 : 0, (long long)stats.period_us, (long long)stats.jitter_us,
+        (unsigned long)stats.accepted, (unsigned long)stats.spurious,
+        (unsigned long)stats.missed, (unsigned long)stats.missed_pulses,
+        (unsigned long)stats.outlier, (unsigned long)stats.stall, (unsigned long)stats.resync);
+    vs_host_bridge_send(line, NULL, 0);
+}
+
 // Shared by the "reset"/"exit" text commands and RESYNC (see
 // docs/internals/input-protocol-v2.md#resync--device-identification):
 // freeze+fade the current frame so every shared retro-core/fMSX/prboom game
@@ -347,6 +367,29 @@ static void vs_handle_command(const char *cmd)
         return;
     }
 
+    if (strcmp(cmd, "hallfilter status") == 0) {
+        vs_hallfilter_send_state();
+        return;
+    }
+
+    if (strcmp(cmd, "hallfilter on") == 0) {
+        rg_vs_pov_set_hall_filter_enabled(true);
+        vs_hallfilter_send_state();
+        return;
+    }
+
+    if (strcmp(cmd, "hallfilter off") == 0) {
+        rg_vs_pov_set_hall_filter_enabled(false);
+        vs_hallfilter_send_state();
+        return;
+    }
+
+    if (strcmp(cmd, "hallfilter toggle") == 0) {
+        rg_vs_pov_set_hall_filter_enabled(!rg_vs_pov_get_hall_filter_enabled());
+        vs_hallfilter_send_state();
+        return;
+    }
+
     // EXIT is the emulator's Home/Guide action.  Both it and RESET return to
     // MicroPython, but first freeze the current game frame and sweep it black
     // from the outer LEDs to the centre.  Blocking here stops every shared
@@ -371,8 +414,9 @@ static void vs_handle_command(const char *cmd)
     }
 
     // Every other command (eg. wifi_config) is silently ignored -- native
-    // apps only care about joystick state, reset, OTA, and the povcal/povperf
-    // calibration and profiling commands handled above.
+    // apps only care about joystick state, reset, OTA, and the
+    // povcal/povperf/hallfilter calibration, profiling, and diagnostic
+    // commands handled above.
 }
 
 static void vs_feed_bytes(const uint8_t *data, int n)

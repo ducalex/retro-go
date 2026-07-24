@@ -14,6 +14,7 @@
 #include <freertos/task.h>
 #include <nvs.h>
 #include "color_pipeline.h"
+#include "hall_filter.h"
 #include "intensidades.h"
 #include "rg_system.h"
 #include "vs_board_config.h"
@@ -205,8 +206,27 @@ static uint32_t vs_exit_presented_generation = 0;
 // the first rg_vs_pov_submit_surface() call before touching vs_data.
 static volatile bool rebuilding = true;
 
+// Filtered equivalents of the raw hall edge -- gpu_serve() reads these two
+// globals, same as before the hall filter existed; only the writer changed
+// (see hall_filter_drain() below). Mirrors hardware/rotor/modules/povdisplay/povdisplay.c.
 static volatile int64_t last_turn = 0;
 static volatile int64_t last_turn_duration = 102400;
+
+// hall_neg_sensed() (IRAM_ATTR, must stay division-free) hands raw edges that
+// pass the coarse debounce floor to this single-slot mailbox; hall_filter_drain()
+// -- called from vs_display_task()'s task-context loop, never from the ISR --
+// does the real classification, which needs 64-bit division that isn't
+// guaranteed IRAM-safe on this toolchain. See hall_filter.h.
+static portMUX_TYPE hall_lock = portMUX_INITIALIZER_UNLOCKED;
+static volatile int64_t hall_pending_edge = 0;
+static volatile bool hall_pending = false;
+static int64_t hall_raw_last_edge = 0;  // ISR-only: previous edge that passed the coarse floor
+static hall_filter_t hall_filter_state;
+
+// Diagnostic bypass: when false, hall_filter_drain() reproduces the
+// pre-filter behavior exactly (raw carry-forward, no classification). Mirrors
+// hardware/rotor/modules/povdisplay/povdisplay.c's hall_filter_enabled.
+static volatile bool hall_filter_enabled = true;
 
 // This profiler is deliberately opt-in, mirroring the MicroPython GPU task
 // profiler (hardware/rotor/modules/povdisplay/povdisplay.c) so the same
@@ -441,20 +461,75 @@ static void vsspi_wait_complete(void) {
 
 static void IRAM_ATTR hall_neg_sensed(void *arg) {
     int64_t this_turn = rg_system_timer();
-    int64_t this_turn_duration = this_turn - last_turn;
+    int64_t this_turn_duration = this_turn - hall_raw_last_edge;
     if (this_turn_duration > RG_VS_FASTEST_CREDIBLE_TURN_US) {
-        last_turn_duration = this_turn_duration;
-        last_turn = this_turn;
+        hall_raw_last_edge = this_turn;
+        portENTER_CRITICAL_ISR(&hall_lock);
+        hall_pending_edge = this_turn;
+        hall_pending = true;
+        portEXIT_CRITICAL_ISR(&hall_lock);
     }
 }
 
 static void hall_init(void) {
+    hall_filter_init(&hall_filter_state, last_turn_duration);
     gpio_set_direction(vs_board.hall_gpio, GPIO_MODE_INPUT);
     gpio_set_intr_type(vs_board.hall_gpio, GPIO_INTR_NEGEDGE);
     esp_err_t ret = gpio_install_isr_service(0);
     RG_ASSERT(ret == ESP_OK || ret == ESP_ERR_INVALID_STATE, "gpio_install_isr_service failed.");
     ret = gpio_isr_handler_add(vs_board.hall_gpio, hall_neg_sensed, (void *)vs_board.hall_gpio);
     RG_ASSERT(ret == ESP_OK, "gpio_isr_handler_add failed.");
+}
+
+// Task-context only (never call from an ISR: hall_filter_submit() does 64-bit
+// division). Drains at most one pending edge per call -- vs_display_task()'s
+// loop iterates far faster than the hall fires, so this always runs well
+// within one column period of the real edge.
+static void hall_filter_drain(void) {
+    int64_t edge;
+    bool has_edge;
+    portENTER_CRITICAL(&hall_lock);
+    has_edge = hall_pending;
+    edge = hall_pending_edge;
+    hall_pending = false;
+    portEXIT_CRITICAL(&hall_lock);
+    if (!has_edge) {
+        return;
+    }
+    if (!__atomic_load_n(&hall_filter_enabled, __ATOMIC_ACQUIRE)) {
+        last_turn_duration = edge - last_turn;
+        last_turn = edge;
+        return;
+    }
+    if (hall_filter_submit(&hall_filter_state, edge)) {
+        last_turn = hall_filter_state.last_turn_us;
+        last_turn_duration = hall_filter_state.period_us;
+    }
+}
+
+void rg_vs_pov_set_hall_filter_enabled(bool enabled) {
+    bool was_enabled = __atomic_load_n(&hall_filter_enabled, __ATOMIC_ACQUIRE);
+    if (enabled && !was_enabled) {
+        hall_filter_init(&hall_filter_state, last_turn_duration);
+    }
+    __atomic_store_n(&hall_filter_enabled, enabled, __ATOMIC_RELEASE);
+}
+
+bool rg_vs_pov_get_hall_filter_enabled(void) {
+    return __atomic_load_n(&hall_filter_enabled, __ATOMIC_ACQUIRE);
+}
+
+void rg_vs_pov_get_hall_filter_stats(rg_vs_pov_hall_filter_stats_t *out) {
+    out->enabled = __atomic_load_n(&hall_filter_enabled, __ATOMIC_ACQUIRE);
+    out->period_us = hall_filter_state.period_us;
+    out->jitter_us = hall_filter_state.jitter_us;
+    out->accepted = hall_filter_state.accepted_count;
+    out->spurious = hall_filter_state.spurious_count;
+    out->missed = hall_filter_state.missed_count;
+    out->missed_pulses = hall_filter_state.missed_pulses_total;
+    out->outlier = hall_filter_state.outlier_count;
+    out->stall = hall_filter_state.stall_count;
+    out->resync = hall_filter_state.resync_count;
 }
 
 // Serve the column currently under the LEDs, if the fan has advanced to a new
@@ -527,6 +602,7 @@ static void IRAM_ATTR vs_display_task(void *arg) {
     spi_start_buses();
     ESP_ERROR_CHECK(spi_device_acquire_bus(spi_handle, portMAX_DELAY));
     while (true) {
+        hall_filter_drain();
         if (rebuilding) {
             rg_task_delay(2); // no surface/framebuffer yet
             continue;

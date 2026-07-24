@@ -72,6 +72,33 @@ void rg_vs_pov_set_performance_profiling(bool enabled);
 void rg_vs_pov_reset_performance_stats(void);
 void rg_vs_pov_get_performance_stats(rg_vs_pov_performance_stats_t *out);
 
+// Diagnostic A/B toggle between the gated hall-pulse filter (hall_filter.h)
+// and the pre-filter raw passthrough, matching the MicroPython side's
+// povdisplay.set_hall_filter_enabled()/get_hall_filter_enabled(). Driven by
+// the "hallfilter" wire command in vs_host_bridge.c's vs_handle_command(),
+// same as povcal/povperf -- this stays reachable while a native app is
+// running (it's a separate in-band dispatcher from MicroPython's director.py,
+// not MicroPython itself, which is not resident during that time: launching
+// a native app is a full esp_ota_set_boot_partition()+esp_restart(), not
+// coexistence -- see native_apps.c).
+void rg_vs_pov_set_hall_filter_enabled(bool enabled);
+bool rg_vs_pov_get_hall_filter_enabled(void);
+
+typedef struct {
+    bool enabled;
+    int64_t period_us;
+    int64_t jitter_us;
+    uint32_t accepted;
+    uint32_t spurious;
+    uint32_t missed;
+    uint32_t missed_pulses;
+    uint32_t outlier;
+    uint32_t stall;
+    uint32_t resync;
+} rg_vs_pov_hall_filter_stats_t;
+
+void rg_vs_pov_get_hall_filter_stats(rg_vs_pov_hall_filter_stats_t *out);
+
 
 // Draws a title plus a short list of option lines directly in the POV's
 // native (angle, radius) address space, in a narrow wedge centred on the
