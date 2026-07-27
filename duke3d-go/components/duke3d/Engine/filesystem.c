@@ -1,0 +1,1117 @@
+//
+//  filesystem.c
+//  Duke3D
+//
+//  Created by fabien sanglard on 12-12-19.
+//  Copyright (c) 2012 fabien sanglard. All rights reserved.
+//
+
+#include "filesystem.h"
+
+#include "platform.h"
+#include "cache.h"
+#include "fixedPoint_math.h"
+#include "global.h"
+#include <strings.h>
+
+#include "esp_attr.h"
+#include "SDL.h"
+
+#include "duke3d.h"
+#include <rg_system.h>
+#include <inttypes.h>
+#include <ctype.h>
+
+extern char game_dir[512];
+
+static void copy_string_bounded(char *dst, size_t dst_size, const char *src)
+{
+    if (dst_size == 0)
+        return;
+
+    size_t length = 0;
+    while (length + 1 < dst_size && src[length] != '\0')
+        length++;
+    memcpy(dst, src, length);
+    dst[length] = '\0';
+}
+
+//The multiplayer module in game.dll needs direct access to the crc32 (sic).
+int32_t groupefil_crc32[MAXGROUPFILES];
+
+
+// A typical GRP index entry:
+//     - 12 bytes for filename
+//     -  4 for filesize
+typedef uint8_t grpIndexEntry_t[16]; 
+
+typedef struct grpArchive_s{
+    
+    int32_t  numFiles             ;//Number of files in the archive.
+    grpIndexEntry_t  *gfilelist   ;//Array containing the filenames.
+    int32_t  *fileOffsets         ;//Array containing the file offsets.
+    int32_t  *filesizes           ;//Array containing the file offsets.
+    int32_t  *hashHeads           ;//Buckets for fast case-insensitive name lookup.
+    int32_t  *hashNext            ;//Collision chain, one entry per GRP member.
+    uint32_t hashMask             ;//Bucket count minus one (power-of-two table).
+    int fileDescriptor            ;//The fd used for open,read operations.
+    const uint8_t *data           ;//Raw GRP data when archive is memory-backed.
+    uint8_t dataOwned             ;//If true, free(data) on uninit.
+    uint32_t crc32                ;//Hash to recognize GRP: Duke Shareware, Duke plutonimum etc...
+    
+} grpArchive_t;
+
+//All GRP opened are in this structure
+typedef struct grpSet_s{
+    grpArchive_t archives[MAXGROUPFILES];
+    int32_t num;
+} grpSet_t;
+
+// Marking it static gurantee not only invisility outside module
+// but also that the content will be set to 0.
+static grpSet_t grpSet;
+
+static uint32_t grp_name_hash(const char *name)
+{
+    int32_t length = 0;
+    uint32_t hash = 2166136261u;
+
+    while (length < 12 && name[length] != '\0') length++;
+    while (length > 0 && name[length - 1] == ' ') length--;
+
+    for (int32_t i = 0; i < length; i++) {
+        hash ^= (uint8_t)tolower((unsigned char)name[i]);
+        hash *= 16777619u;
+    }
+    return hash;
+}
+
+static int grp_name_matches(const char *shortname, const char *grpName)
+{
+    int32_t m;
+
+    for (m = 0; m < 12; m++) {
+        const char c1 = shortname[m];
+        const char c2 = grpName[m];
+        if (c1 == '\0') {
+            int32_t n;
+            for (n = m; n < 12; n++)
+                if (grpName[n] != ' ' && grpName[n] != '\0') break;
+            return n == 12;
+        }
+        if (tolower((unsigned char)c1) != tolower((unsigned char)c2))
+            return 0;
+    }
+    return 1;
+}
+
+static void grp_build_name_index(grpArchive_t *archive)
+{
+    uint32_t bucketCount = 1;
+    while (bucketCount < (uint32_t)archive->numFiles * 2u)
+        bucketCount <<= 1;
+
+    archive->hashHeads = rg_alloc(bucketCount * sizeof(*archive->hashHeads),
+                                  MEM_SLOW | MEM_NOPANIC);
+    archive->hashNext = rg_alloc((size_t)archive->numFiles * sizeof(*archive->hashNext),
+                                 MEM_SLOW | MEM_NOPANIC);
+    if (!archive->hashHeads || !archive->hashNext) {
+        free(archive->hashHeads);
+        free(archive->hashNext);
+        archive->hashHeads = NULL;
+        archive->hashNext = NULL;
+        archive->hashMask = 0;
+        return;
+    }
+
+    archive->hashMask = bucketCount - 1;
+    memset(archive->hashHeads, 0xff, bucketCount * sizeof(*archive->hashHeads));
+
+    // Insert in ascending order at each bucket head. Collision chains then
+    // retain the original reverse-index override behavior used by kopen4load.
+    for (int32_t i = 0; i < archive->numFiles; i++) {
+        const uint32_t bucket = grp_name_hash((char *)archive->gfilelist[i])
+            & archive->hashMask;
+        archive->hashNext[i] = archive->hashHeads[bucket];
+        archive->hashHeads[bucket] = i;
+    }
+}
+
+
+static int32_t initgroupfile_common(grpArchive_t *archive, const char *name, int32_t totalLength)
+{
+    int32_t i, j, k;
+    uint8_t header[16];
+
+    if (archive->data)
+    {
+        memcpy(header, archive->data, sizeof(header));
+    }
+    else
+    {
+        SDL_LockDisplay();
+        lseek(archive->fileDescriptor, 0, SEEK_SET);
+        read(archive->fileDescriptor, header, sizeof(header));
+        SDL_UnlockDisplay();
+    }
+
+    // Check the magic number (12 bytes header).
+    if ((header[0] != 'K') || (header[1] != 'e') || (header[2] != 'n') ||
+        (header[3] != 'S') || (header[4] != 'i') || (header[5] != 'l') ||
+        (header[6] != 'v') || (header[7] != 'e') || (header[8] != 'r') ||
+        (header[9] != 'm') || (header[10] != 'a') || (header[11] != 'n'))
+    {
+        printf("Error: File %s is not a GRP archive.\n", name ? name : "<memory>");
+        return -1;
+    }
+
+    // The next 4 bytes of the header feature the number of files in the GRP archive.
+    archive->numFiles = BUILDSWAP_INTEL32(*((int32_t *)&header[12]));
+
+    archive->gfilelist = malloc(archive->numFiles * sizeof(grpIndexEntry_t));
+    archive->fileOffsets = malloc(archive->numFiles * sizeof(int32_t));
+    archive->filesizes = malloc(archive->numFiles * sizeof(int32_t));
+
+    if (!archive->gfilelist || !archive->fileOffsets || !archive->filesizes)
+    {
+        Error(EXIT_FAILURE, "Error: Memory allocation failed for GRP index.\n");
+    }
+
+    if (archive->data)
+    {
+        memcpy(archive->gfilelist, archive->data + 16, archive->numFiles * 16);
+    }
+    else
+    {
+        SDL_LockDisplay();
+        lseek(archive->fileDescriptor, 16, SEEK_SET);
+        read(archive->fileDescriptor, archive->gfilelist, archive->numFiles * 16);
+        SDL_UnlockDisplay();
+    }
+
+    //Initialize all file offset and pointers.
+    j = 12 + 4 + archive->numFiles * sizeof(grpIndexEntry_t);
+    for (i = 0; i < archive->numFiles; i++)
+    {
+        k = BUILDSWAP_INTEL32(*((int32_t *)&archive->gfilelist[i][12])); // get size
+
+        // Now that the filesize has been read, we can replace it with '0' and hence have a
+        // valid, null terminated character string that will be usable.
+        archive->gfilelist[i][12] = '\0';
+        archive->filesizes[i] = k;
+        archive->fileOffsets[i] = j; // absolute offset list of all files.
+        j += k;
+    }
+
+    grp_build_name_index(archive);
+
+    if (totalLength == 44356548)
+    {
+        archive->crc32 = CRC_BASE_GRP_ATOMIC_15;
+        printf("Version: Atomic 1.5\n");
+    }
+    else if (totalLength == 44348015)
+    {
+        archive->crc32 = CRC_BASE_GRP_PLUTONIUM_14;
+        printf("Version: Plutonium 1.4\n");
+    }
+    else if (totalLength == 26524524)
+    {
+        archive->crc32 = CRC_BASE_GRP_FULL_13;
+        printf("Version: Full 1.3d\n");
+    }
+    else if (totalLength == 11035779)
+    {
+        archive->crc32 = CRC_BASE_GRP_SHAREWARE_13;
+        printf("Version: Shareware 1.3\n");
+    }
+    else
+    {
+        archive->crc32 = CRC_BASE_GRP_SHAREWARE_13; // If CRC32 isnt recognised, it will default to Shareware v1.3
+    }
+
+    // The game layer seems to absolutely need to access an array int[4] groupefil_crc32
+    // so we need to store the crc32 in there too.
+    groupefil_crc32[grpSet.num] = archive->crc32;
+
+    grpSet.num++;
+    return (grpSet.num - 1);
+}
+
+int32_t initgroupfile(const char  *filename)
+{
+    grpArchive_t *archive;
+
+    printf("Loading %s ...", filename); fflush(stdout);
+
+    if (grpSet.num == MAXGROUPFILES)
+    {
+        printf("Error: Unable to open an extra GRP archive <= No more slot available.\n");
+        return -1;
+    }
+
+    archive = &grpSet.archives[grpSet.num];
+
+    //Init the slot
+    memset(archive, 0, sizeof(grpArchive_t));
+    archive->fileDescriptor = -1;
+
+    SDL_LockDisplay();
+    archive->fileDescriptor = open(filename, O_BINARY | O_RDONLY, S_IREAD);
+    SDL_UnlockDisplay();
+
+    if (archive->fileDescriptor < 0)
+    {
+        Error(EXIT_FAILURE, "Error: Unable to open file %s.\n", filename);
+    }
+    printf(" (fd=%d)\n", archive->fileDescriptor); fflush(stdout);
+
+    int32_t length = filelength(archive->fileDescriptor);
+    archive->data = NULL;
+    archive->dataOwned = 0;
+
+    printf("\n");
+    return initgroupfile_common(archive, filename, length);
+}
+
+int32_t initgroupfile_from_memory(const char *name, const void *data, int32_t size)
+{
+    grpArchive_t *archive;
+
+    if (!data || size < 16)
+    {
+        return -1;
+    }
+
+    if (grpSet.num == MAXGROUPFILES)
+    {
+        printf("Error: Unable to open an extra GRP archive <= No more slot available.\n");
+        return -1;
+    }
+
+    archive = &grpSet.archives[grpSet.num];
+    memset(archive, 0, sizeof(grpArchive_t));
+    archive->fileDescriptor = -1;
+    archive->data = (const uint8_t *)data;
+    archive->dataOwned = 1;
+
+    printf("Loading %s from RAM ...\n", name ? name : "<memory>");
+    return initgroupfile_common(archive, name, size);
+}
+
+int32_t groupfile_primary_is_memory_backed(void)
+{
+    if (grpSet.num <= 0)
+        return 0;
+    return grpSet.archives[0].data != NULL;
+}
+
+void uninitgroupfile(void)
+{
+	int i;
+    
+	for( i=0 ; i < grpSet.num ;i++){
+	       if (grpSet.archives[i].fileDescriptor >= 0)
+	           close(grpSet.archives[i].fileDescriptor);
+	       if (grpSet.archives[i].dataOwned)
+	           free((void *)grpSet.archives[i].data);
+	       free(grpSet.archives[i].gfilelist);
+	       free(grpSet.archives[i].fileOffsets);
+	       free(grpSet.archives[i].filesizes);
+	       free(grpSet.archives[i].hashHeads);
+	       free(grpSet.archives[i].hashNext);
+	       memset(&grpSet.archives[i], 0, sizeof(grpArchive_t));
+	   }
+    
+}
+
+void crc32_table_gen(uint32_t* crc32_table) /* build CRC32 table */
+{
+    uint32_t crc, poly;
+    int	i, j;
+
+    poly = 0xEDB88320L;
+    for (i = 0; i < 256; i++)
+    {
+		crc = i;
+		for (j = 8; j > 0; j--)
+		{
+			if (crc & 1)
+				crc = (crc >> 1) ^ poly;
+			else
+				crc >>= 1;
+		}
+		crc32_table[i] = crc;
+    }
+}
+
+uint32_t crc32(uint8_t  *buf, uint32_t length)
+{
+	uint32_t initial_crc;
+
+	initial_crc = 0;
+	return(crc32_update(buf, length, initial_crc));
+}
+
+uint32_t crc32_update(uint8_t  *buf, uint32_t length, uint32_t crc_to_update)
+{
+	uint32_t crc32_table[256];
+
+	crc32_table_gen(crc32_table);
+
+	crc_to_update ^= 0xFFFFFFFF;
+
+	while (length--)
+		crc_to_update = crc32_table[(crc_to_update ^ *buf++) & 0xFF] ^ (crc_to_update >> 8);
+
+	return crc_to_update ^ 0xFFFFFFFF;
+}
+
+
+/*
+ *                                      16   12   5
+ * this is the CCITT CRC 16 polynomial X  + X  + X  + 1.
+ * This is 0x1021 when x is 2, but the way the algorithm works
+ * we use 0x8408 (the reverse of the bit pattern).  The high
+ * bit is always assumed to be set, thus we only use 16 bits to
+ * represent the 17 bit value.
+ */
+
+#define POLY 0x8408   /* 1021H bit reversed */
+
+uint16_t crc16(uint8_t  *data_p, uint16_t length)
+{
+    uint8_t  i;
+    unsigned int data;
+    unsigned int crc = 0xffff;
+    
+    if (length == 0)
+        return (~crc);
+    do
+    {
+        for (i=0, data=(unsigned int)0xff & *data_p++;
+             i < 8;
+             i++, data >>= 1)
+        {
+            if ((crc & 0x0001) ^ (data & 0x0001))
+                crc = (crc >> 1) ^ POLY;
+            else  crc >>= 1;
+        }
+    } while (--length);
+    
+    crc = ~crc;
+    data = crc;
+    crc = (crc << 8) | (data >> 8 & 0xff);
+    
+    return (crc);
+}
+
+// The engine can open files transparently on the filesystem or on the GRPsystem
+enum fileType_e{ SYSTEM_FILE, GRP_FILE} ;
+
+//An entry in the array tracking open files
+typedef struct openFile_s{
+    enum fileType_e type ;
+    int fd        ;  //Either the fileDescriptor or the fileIndex in a GRP depending on the type.
+    int cursor    ;  //lseek cursor
+    int grpID     ;  //GRP id
+    int used      ;  //Marker 1=used
+    uint8_t *buffer;
+    int32_t bufSize;
+    int32_t bufFilePos; // Position in file where buffer starts
+} openFile_t;
+
+
+#define MAXOPENFILES 64
+#define KREAD_BUFFER_SIZE (8192)
+static openFile_t openFiles[MAXOPENFILES];
+
+int32_t kopen4load(const char  *filename, int openOnlyFromGRP){
+	int32_t     i, k;
+    int32_t     newhandle;
+    grpArchive_t* archive;
+    
+    if (!filename || filename[0] == '\0') return -1;
+
+    // Search a free slot
+	newhandle = 0;
+	while (newhandle < MAXOPENFILES && openFiles[newhandle].used)
+		newhandle++;
+	
+    if (newhandle >= MAXOPENFILES)
+        Error(EXIT_FAILURE, "Too Many files open!\n");
+    
+    // For GRP search, we only want the filename part if a path was provided
+    const char *shortname = filename;
+    const char *p1 = strrchr(filename, '/');
+    const char *p2 = strrchr(filename, '\\');
+    if (p1 || p2) {
+        shortname = (p1 > p2) ? p1 + 1 : p2 + 1;
+    }
+
+    // RG_LOGI("kopen4load: filename='%s', shortname='%s', openOnlyFromGRP=%d", filename, shortname, openOnlyFromGRP);
+
+    // Try to look in the GRP archives FIRST (Instant memory lookup)
+	for(k=grpSet.num-1;k>=0;k--)
+	{
+        archive = &grpSet.archives[k];
+        if (!archive->gfilelist) continue;
+
+        if (archive->hashHeads) {
+            const uint32_t bucket = grp_name_hash(shortname) & archive->hashMask;
+            i = archive->hashHeads[bucket];
+            while (i >= 0 &&
+                   !grp_name_matches(shortname, (char *)archive->gfilelist[i]))
+                i = archive->hashNext[i];
+        } else {
+            // Allocation failure while constructing the index is non-fatal.
+            // Preserve the original reverse linear lookup as a fallback.
+            for (i = archive->numFiles - 1; i >= 0; i--)
+                if (grp_name_matches(shortname, (char *)archive->gfilelist[i]))
+                    break;
+        }
+
+        if (i >= 0) {
+            openFiles[newhandle].type = GRP_FILE;
+            openFiles[newhandle].used = 1;
+            openFiles[newhandle].cursor = 0;
+            openFiles[newhandle].fd = i;
+            openFiles[newhandle].grpID = k;
+            openFiles[newhandle].buffer = NULL;
+            openFiles[newhandle].bufSize = 0;
+            openFiles[newhandle].bufFilePos = -1;
+            return(newhandle);
+        }
+	}
+
+    // Fallback to the filesystem (Slow SD lookup)
+    if(!openOnlyFromGRP){
+        int fd = open(filename, O_BINARY|O_RDONLY);
+        if (fd != -1){
+            openFiles[newhandle].fd = fd;
+            openFiles[newhandle].type = SYSTEM_FILE;
+            openFiles[newhandle].cursor = 0;
+            openFiles[newhandle].used = 1;
+            openFiles[newhandle].buffer = NULL;
+            openFiles[newhandle].bufSize = 0;
+            openFiles[newhandle].bufFilePos = -1;
+            return(newhandle); 
+        }
+    }
+    
+	return(-1);
+}
+
+int32_t kread(int32_t handle, void *buffer, int32_t leng){
+    openFile_t      * openFile ;
+    grpArchive_t    * archive  = NULL;
+    
+    if (handle < 0 || handle >= MAXOPENFILES) return -1;
+    if (buffer == NULL && leng > 0) {
+        RG_LOGE("kread: handle=%"PRIi32", buffer is NULL, leng=%"PRIi32"!", (int32_t)handle, (int32_t)leng);
+        RG_PANIC("kread with NULL buffer!");
+    }
+    openFile = &openFiles[handle];
+    if (!openFile->used) return -1;
+
+    int32_t totalToRead = leng;
+    if (openFile->type == GRP_FILE) {
+        archive = &grpSet.archives[openFile->grpID];
+        totalToRead = min(leng, archive->filesizes[openFile->fd] - openFile->cursor);
+    }
+    if (totalToRead <= 0) return 0;
+
+    if (openFile->type == GRP_FILE && archive->data)
+    {
+        const uint8_t *src = archive->data + archive->fileOffsets[openFile->fd] + openFile->cursor;
+        memcpy(buffer, src, totalToRead);
+        openFile->cursor += totalToRead;
+        return totalToRead;
+    }
+
+    // A complete GRP member is normally copied into its final cache allocation
+    // in one call (sounds and many tiles use this path). Send it through the
+    // persistent DMA bounce buffer below instead of allocating and freeing an
+    // 8 KiB per-handle read cache for every member.
+    const int fullGrpRead = openFile->type == GRP_FILE
+        && openFile->cursor == 0
+        && totalToRead == archive->filesizes[openFile->fd];
+
+    // Use a per-handle buffer for genuinely small or interleaved reads.
+    if ((totalToRead < KREAD_BUFFER_SIZE && !fullGrpRead)
+        || openFile->buffer != NULL) {
+        if (!openFile->buffer) {
+            openFile->buffer = rg_alloc(KREAD_BUFFER_SIZE, MEM_FAST | MEM_DMA | MEM_NOPANIC);
+            if (!openFile->buffer) openFile->buffer = rg_alloc(KREAD_BUFFER_SIZE, MEM_SLOW);
+            openFile->bufFilePos = -1;
+        }
+
+        int32_t outPos = 0;
+        while (outPos < totalToRead) {
+            // Reload buffer if current cursor is not covered
+            if (openFile->bufFilePos == -1 || 
+                openFile->cursor < openFile->bufFilePos || 
+                openFile->cursor >= openFile->bufFilePos + openFile->bufSize) 
+            {
+                openFile->bufFilePos = openFile->cursor;
+                int fd;
+                int32_t baseOffset;
+                if (openFile->type == SYSTEM_FILE) {
+                    fd = openFile->fd;
+                    baseOffset = 0;
+                } else {
+                    fd = archive->fileDescriptor;
+                    baseOffset = archive->fileOffsets[openFile->fd];
+                }
+                
+                lseek(fd, baseOffset + openFile->bufFilePos, SEEK_SET);
+                int32_t toRead = KREAD_BUFFER_SIZE;
+                if (openFile->type == GRP_FILE) {
+                    toRead = min(toRead, archive->filesizes[openFile->fd] - openFile->bufFilePos);
+                }
+                if (toRead <= 0) break;
+
+                openFile->bufSize = read(fd, openFile->buffer, toRead);
+                if (openFile->bufSize <= 0) {
+                    openFile->bufFilePos = -1;
+                    break;
+                }
+            }
+
+            int32_t inBufPos = openFile->cursor - openFile->bufFilePos;
+            int32_t canCopy = openFile->bufSize - inBufPos;
+            if (canCopy > totalToRead - outPos) canCopy = totalToRead - outPos;
+
+            if (canCopy > 0) {
+                memcpy((uint8_t*)buffer + outPos, openFile->buffer + inBufPos, canCopy);
+                outPos += canCopy;
+                openFile->cursor += canCopy;
+            } else {
+                break;
+            }
+        }
+        return outPos;
+    }
+
+    // Direct large read: chunked via a DMA-aligned bounce buffer
+    int fd;
+    int32_t baseOffset;
+    if (openFile->type == SYSTEM_FILE) {
+        fd = openFile->fd;
+        baseOffset = 0;
+    } else {
+        fd = archive->fileDescriptor;
+        baseOffset = archive->fileOffsets[openFile->fd];
+    }
+
+    static uint8_t *dma_buffer = NULL;
+    static int32_t dma_buffer_size = 8192;
+    if (!dma_buffer) {
+        dma_buffer = rg_alloc(dma_buffer_size, MEM_FAST | MEM_DMA | MEM_NOPANIC);
+        if (!dma_buffer) {
+            dma_buffer_size = 2048;
+            dma_buffer = rg_alloc(dma_buffer_size, MEM_FAST | MEM_DMA | MEM_NOPANIC);
+        }
+        if (!dma_buffer) {
+            dma_buffer_size = 512;
+            dma_buffer = rg_alloc(dma_buffer_size, MEM_FAST | MEM_DMA);
+        }
+    }
+
+    int32_t totalRead = 0;
+
+    lseek(fd, baseOffset + openFile->cursor, SEEK_SET);
+
+    while (totalRead < totalToRead) {
+        int32_t chunk = min(totalToRead - totalRead, dma_buffer_size);
+        int32_t bytesRead = read(fd, dma_buffer, chunk);
+        
+        if (bytesRead <= 0) {
+            RG_LOGW("kread large: read returned %"PRId32", breaking. totalRead=%"PRId32", totalToRead=%"PRId32"", bytesRead, totalRead, totalToRead);
+            break;
+        }
+        
+        memcpy((uint8_t*)buffer + totalRead, dma_buffer, bytesRead);
+        totalRead += bytesRead;
+        openFile->cursor += bytesRead;
+    }
+
+    return totalRead;
+}
+
+int32_t kread16(int32_t handle, int16_t *buffer){
+    if (kread(handle, buffer, 2) != 2)
+        return(0);
+
+    *buffer = BUILDSWAP_INTEL16(*buffer);
+    return(1);
+}
+
+int32_t kread32(int32_t handle, int32_t *buffer){
+    if (kread(handle, buffer, 4) != 4)
+        return(0);
+
+    *buffer = BUILDSWAP_INTEL32(*buffer);
+    return(1);
+}
+
+int32_t kread8(int32_t handle, uint8_t  *buffer){
+    if (kread(handle, buffer, 1) != 1)
+        return(0);
+
+    return(1);
+}
+
+int32_t klseek(int32_t handle, int32_t offset, int whence){
+    if (handle < 0 || handle >= MAXOPENFILES || !openFiles[handle].used) {
+        return -1;
+    }
+    
+    openFile_t* f = &openFiles[handle];
+    int32_t newPos = -1;
+
+    if (f->type == SYSTEM_FILE) {
+        SDL_LockDisplay();
+        newPos = lseek(f->fd, offset, whence);
+        SDL_UnlockDisplay();
+    } else {
+        grpArchive_t* archive = &grpSet.archives[f->grpID];
+        switch(whence) {
+            case SEEK_SET: newPos = offset; break;
+            case SEEK_END: newPos = archive->filesizes[f->fd] + offset; break;
+            case SEEK_CUR: newPos = f->cursor + offset; break;
+        }
+    }
+
+    if (newPos != -1) {
+        if (newPos < f->bufFilePos || newPos >= f->bufFilePos + f->bufSize) {
+            f->bufFilePos = -1;
+        }
+        f->cursor = newPos;
+    }
+    
+    return newPos;
+}
+
+int32_t filelength(int32_t fd){
+    struct stat stats;
+	SDL_LockDisplay();
+    fstat(fd, &stats);
+	SDL_UnlockDisplay();
+    return (int32_t )stats.st_size;
+}
+
+int32_t kfilelength(int32_t handle)
+{
+    if (handle < 0 || handle >= MAXOPENFILES) {
+        return -1;
+    }
+
+	openFile_t* openFile = &openFiles[handle];
+    
+    if (!openFile->used){
+        return -1;
+    }
+    
+    if (openFile->type == SYSTEM_FILE){
+        return(filelength(openFile->fd));
+    }
+    
+    else{
+        if (openFile->grpID < 0 || openFile->grpID >= grpSet.num) {
+            return -1;
+        }
+        grpArchive_t* archive = &grpSet.archives[ openFile->grpID ];
+        if (!archive->filesizes) {
+            return -1;
+        }
+        if (openFile->fd < 0 || openFile->fd >= archive->numFiles) {
+            return -1;
+        }
+        return archive->filesizes[openFile->fd];
+    }
+    
+}
+
+void kclose(int32_t handle)
+{
+    openFile_t* openFile = &openFiles[handle];
+    
+    //This is a typical handle for a non existing file.
+    if (handle == -1)
+        return;
+    
+    if (!openFile->used){
+        Error(EXIT_FAILURE, "Invalid handle in kclose. Unrecoverable error.\n");
+    }
+    SDL_LockDisplay();
+    if (openFile->type == SYSTEM_FILE){
+        close(openFile->fd);
+    }
+	SDL_UnlockDisplay();
+    if (openFile->buffer) free(openFile->buffer);
+    memset(openFile, 0, sizeof(openFile_t));
+}
+
+
+
+
+/* Internal LZW variables */
+#define LZWSIZE 16384           /* Watch out for shorts! */
+static uint8_t  *lzwbuf1, *lzwbuf4, *lzwbuf5;
+static uint8_t  lzwbuflock[5];
+static short *lzwbuf2, *lzwbuf3;
+
+
+
+int32_t compress(uint8_t  *lzwinbuf, int32_t uncompleng, uint8_t  *lzwoutbuf)
+{
+	int32_t i, addr, newaddr, addrcnt, zx, *longptr;
+	int32_t bytecnt1, bitcnt, numbits, oneupnumbits;
+	short *shortptr;
+    
+	for(i=255;i>=0;i--) { lzwbuf1[i] = (uint8_t ) i; lzwbuf3[i] = (short) ((i+1)&255); }
+	clearbuf((void *) (lzwbuf2),256>>1,0xffffffff);
+	clearbuf((void *) (lzwoutbuf),((uncompleng+15)+3)>>2,0L);
+    
+	addrcnt = 256; bytecnt1 = 0; bitcnt = (4<<3);
+	numbits = 8; oneupnumbits = (1<<8);
+	do
+	{
+		addr = lzwinbuf[bytecnt1];
+		do
+		{
+			bytecnt1++;
+			if (bytecnt1 == uncompleng) break;
+			if (lzwbuf2[addr] < 0) {lzwbuf2[addr] = (short) addrcnt; break;}
+			newaddr = lzwbuf2[addr];
+			while (lzwbuf1[newaddr] != lzwinbuf[bytecnt1])
+			{
+				zx = lzwbuf3[newaddr];
+				if (zx < 0) {lzwbuf3[newaddr] = (short) addrcnt; break;}
+				newaddr = zx;
+			}
+			if (lzwbuf3[newaddr] == addrcnt) break;
+			addr = newaddr;
+		} while (addr >= 0);
+		lzwbuf1[addrcnt] = lzwinbuf[bytecnt1];
+		lzwbuf2[addrcnt] = -1;
+		lzwbuf3[addrcnt] = -1;
+        
+		longptr = (int32_t *)&lzwoutbuf[bitcnt>>3];
+		longptr[0] |= (addr<<(bitcnt&7));
+		bitcnt += numbits;
+		if ((addr&((oneupnumbits>>1)-1)) > ((addrcnt-1)&((oneupnumbits>>1)-1)))
+			bitcnt--;
+        
+		addrcnt++;
+		if (addrcnt > oneupnumbits) { numbits++; oneupnumbits <<= 1; }
+	} while ((bytecnt1 < uncompleng) && (bitcnt < (uncompleng<<3)));
+    
+	longptr = (int32_t *)&lzwoutbuf[bitcnt>>3];
+	longptr[0] |= (addr<<(bitcnt&7));
+	bitcnt += numbits;
+	if ((addr&((oneupnumbits>>1)-1)) > ((addrcnt-1)&((oneupnumbits>>1)-1)))
+		bitcnt--;
+    
+	shortptr = (short *)lzwoutbuf;
+	shortptr[0] = (short)uncompleng;
+	if (((bitcnt+7)>>3) < uncompleng)
+	{
+		shortptr[1] = (short)addrcnt;
+		return((bitcnt+7)>>3);
+	}
+	shortptr[1] = (short)0;
+	for(i=0;i<uncompleng;i++) lzwoutbuf[i+4] = lzwinbuf[i];
+	return(uncompleng+4);
+}
+
+int32_t uncompress(uint8_t  *lzwinbuf, int32_t compleng, uint8_t  *lzwoutbuf)
+{
+	int32_t strtot, currstr, numbits, oneupnumbits;
+	int32_t i, dat, leng, bitcnt, outbytecnt, *longptr;
+	short *shortptr;
+    
+	shortptr = (short *)lzwinbuf;
+	strtot = (int32_t )shortptr[1];
+	if (strtot == 0)
+	{
+		copybuf((void *)((lzwinbuf)+4),(void *)((lzwoutbuf)),((compleng-4)+3)>>2);
+		return((int32_t )shortptr[0]); /* uncompleng */
+	}
+	for(i=255;i>=0;i--) { lzwbuf2[i] = (short) i; lzwbuf3[i] = (short) i; }
+	currstr = 256; bitcnt = (4<<3); outbytecnt = 0;
+	numbits = 8; oneupnumbits = (1<<8);
+	do
+	{
+		longptr = (int32_t *)&lzwinbuf[bitcnt>>3];
+		dat = ((longptr[0]>>(bitcnt&7)) & (oneupnumbits-1));
+		bitcnt += numbits;
+		if ((dat&((oneupnumbits>>1)-1)) > ((currstr-1)&((oneupnumbits>>1)-1)))
+        { dat &= ((oneupnumbits>>1)-1); bitcnt--; }
+        
+		lzwbuf3[currstr] = (short) dat;
+        
+		for(leng=0;dat>=256;leng++,dat=lzwbuf3[dat])
+			lzwbuf1[leng] = (uint8_t ) lzwbuf2[dat];
+        
+		lzwoutbuf[outbytecnt++] = (uint8_t ) dat;
+		for(i=leng-1;i>=0;i--) lzwoutbuf[outbytecnt++] = lzwbuf1[i];
+        
+		lzwbuf2[currstr-1] = (short) dat; lzwbuf2[currstr] = (short) dat;
+		currstr++;
+		if (currstr > oneupnumbits) { numbits++; oneupnumbits <<= 1; }
+	} while (currstr < strtot);
+	return((int32_t )shortptr[0]); /* uncompleng */
+}
+
+
+void kdfread(void *buffer, size_t dasizeof, size_t count, int32_t fil)
+{
+	size_t i, j;
+	int32_t k, kgoal;
+	short leng;
+	uint8_t  *ptr;
+    
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 200;
+	if (lzwbuf1 == NULL) {
+        allocache(&lzwbuf1,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[0]);
+        if (lzwbuf1 == NULL) RG_PANIC("LZW buf 1 failed!");
+    }
+	if (lzwbuf2 == NULL) {
+        allocache((uint8_t**)&lzwbuf2,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[1]);
+        if (lzwbuf2 == NULL) RG_PANIC("LZW buf 2 failed!");
+    }
+	if (lzwbuf3 == NULL) {
+        allocache((uint8_t**)&lzwbuf3,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[2]);
+        if (lzwbuf3 == NULL) RG_PANIC("LZW buf 3 failed!");
+    }
+	if (lzwbuf4 == NULL) {
+        allocache(&lzwbuf4,LZWSIZE,&lzwbuflock[3]);
+        if (lzwbuf4 == NULL) RG_PANIC("LZW buf 4 failed!");
+    }
+	if (lzwbuf5 == NULL) {
+        allocache(&lzwbuf5,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[4]);
+        if (lzwbuf5 == NULL) RG_PANIC("LZW buf 5 failed!");
+    }
+    
+	if (dasizeof > LZWSIZE) { count *= dasizeof; dasizeof = 1; }
+	ptr = (uint8_t  *)buffer;
+    
+	kread(fil,&leng,2); kread(fil,lzwbuf5,(int32_t )leng);
+	k = 0;
+	kgoal = uncompress(lzwbuf5,leng,lzwbuf4);
+    
+	copybufbyte(lzwbuf4,ptr,(int32_t )dasizeof);
+	k += (int32_t )dasizeof;
+    
+	for(i=1;i<count;i++)
+	{
+		if (k >= kgoal)
+		{
+			kread(fil,&leng,2); kread(fil,lzwbuf5,(int32_t )leng);
+			k = 0; kgoal = uncompress(lzwbuf5,(int32_t )leng,lzwbuf4);
+		}
+		for(j=0;j<dasizeof;j++) ptr[j+dasizeof] = (uint8_t ) ((ptr[j]+lzwbuf4[j+k])&255);
+		k += dasizeof;
+		ptr += dasizeof;
+	}
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 1;
+}
+
+void dfread(void *buffer, size_t dasizeof, size_t count, FILE *fil)
+{
+	size_t i, j;
+	int32_t k, kgoal;
+	short leng;
+	uint8_t  *ptr;
+    
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 200;
+	if (lzwbuf1 == NULL) {
+        allocache(&lzwbuf1,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[0]);
+        if (lzwbuf1 == NULL) RG_PANIC("LZW buf 1 failed!");
+    }
+	if (lzwbuf2 == NULL) {
+        allocache((uint8_t**)&lzwbuf2,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[1]);
+        if (lzwbuf2 == NULL) RG_PANIC("LZW buf 2 failed!");
+    }
+	if (lzwbuf3 == NULL) {
+        allocache((uint8_t**)&lzwbuf3,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[2]);
+        if (lzwbuf3 == NULL) RG_PANIC("LZW buf 3 failed!");
+    }
+	if (lzwbuf4 == NULL) {
+        allocache(&lzwbuf4,LZWSIZE,&lzwbuflock[3]);
+        if (lzwbuf4 == NULL) RG_PANIC("LZW buf 4 failed!");
+    }
+	if (lzwbuf5 == NULL) {
+        allocache(&lzwbuf5,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[4]);
+        if (lzwbuf5 == NULL) RG_PANIC("LZW buf 5 failed!");
+    }
+    
+	if (dasizeof > LZWSIZE) {
+        count *= dasizeof;
+        dasizeof = 1;
+    }
+    
+	ptr = (uint8_t  *)buffer;
+    SDL_LockDisplay();
+	fread(&leng,2,1,fil);
+    fread(lzwbuf5,(int32_t )leng,1,fil);
+    
+	k = 0;
+    kgoal = uncompress(lzwbuf5,(int32_t )leng,lzwbuf4);
+    
+	copybufbyte(lzwbuf4,ptr,(int32_t )dasizeof);
+	k += (int32_t )dasizeof;
+    
+	for(i=1;i<count;i++)
+	{
+		if (k >= kgoal)
+		{
+			fread(&leng,2,1,fil); fread(lzwbuf5,(int32_t )leng,1,fil);
+			k = 0; kgoal = uncompress(lzwbuf5,(int32_t )leng,lzwbuf4);
+		}
+		for(j=0;j<dasizeof;j++) ptr[j+dasizeof] = (uint8_t ) ((ptr[j]+lzwbuf4[j+k])&255);
+		k += dasizeof;
+		ptr += dasizeof;
+	}
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 1;
+	SDL_UnlockDisplay();
+}
+
+void dfwrite(void *buffer, size_t dasizeof, size_t count, FILE *fil)
+{
+	size_t i, j, k;
+	short leng;
+	uint8_t  *ptr;
+    
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 200;
+	if (lzwbuf1 == NULL) {
+        allocache(&lzwbuf1,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[0]);
+        if (lzwbuf1 == NULL) RG_PANIC("LZW buf 1 failed!");
+    }
+	if (lzwbuf2 == NULL) {
+        allocache((uint8_t**)&lzwbuf2,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[1]);
+        if (lzwbuf2 == NULL) RG_PANIC("LZW buf 2 failed!");
+    }
+	if (lzwbuf3 == NULL) {
+        allocache((uint8_t**)&lzwbuf3,(LZWSIZE+(LZWSIZE>>4))*2,&lzwbuflock[2]);
+        if (lzwbuf3 == NULL) RG_PANIC("LZW buf 3 failed!");
+    }
+	if (lzwbuf4 == NULL) {
+        allocache(&lzwbuf4,LZWSIZE,&lzwbuflock[3]);
+        if (lzwbuf4 == NULL) RG_PANIC("LZW buf 4 failed!");
+    }
+	if (lzwbuf5 == NULL) {
+        allocache(&lzwbuf5,LZWSIZE+(LZWSIZE>>4),&lzwbuflock[4]);
+        if (lzwbuf5 == NULL) RG_PANIC("LZW buf 5 failed!");
+    }
+    
+	if (dasizeof > LZWSIZE) { count *= dasizeof; dasizeof = 1; }
+	ptr = (uint8_t  *)buffer;
+    
+	copybufbyte(ptr,lzwbuf4,(int32_t )dasizeof);
+	k = dasizeof;
+    SDL_LockDisplay();
+	if (k > LZWSIZE-dasizeof)
+	{
+		leng = (short)compress(lzwbuf4,k,lzwbuf5); k = 0;
+		fwrite(&leng,2,1,fil); fwrite(lzwbuf5,(int32_t )leng,1,fil);
+	}
+    
+	for(i=1;i<count;i++)
+	{
+		for(j=0;j<dasizeof;j++) lzwbuf4[j+k] = (uint8_t ) ((ptr[j+dasizeof]-ptr[j])&255);
+		k += dasizeof;
+		if (k > LZWSIZE-dasizeof)
+		{
+			leng = (short)compress(lzwbuf4,k,lzwbuf5); k = 0;
+			fwrite(&leng,2,1,fil); fwrite(lzwbuf5,(int32_t )leng,1,fil);
+		}
+		ptr += dasizeof;
+	}
+	if (k > 0)
+	{
+		leng = (short)compress(lzwbuf4,k,lzwbuf5);
+		fwrite(&leng,2,1,fil); fwrite(lzwbuf5,(int32_t )leng,1,fil);
+	}
+	lzwbuflock[0] = lzwbuflock[1] = lzwbuflock[2] = lzwbuflock[3] = lzwbuflock[4] = 1;
+	SDL_UnlockDisplay();
+}
+
+
+
+//int SafeFileExists ( const char  * _filename );
+int32_t TCkopen4load(const char  *filename, int32_t readfromGRP)
+{
+	char  fullfilename[1024];
+	int32_t result = -1;
+    
+    if (!filename || filename[0] == '\0') return -1;
+
+    // If it's an absolute path, don't prepend game_dir
+    if (filename[0] == '/') {
+        return kopen4load(filename, readfromGRP);
+    }
+
+	if(game_dir[0] != '\0' && !readfromGRP)
+	{
+		snprintf(fullfilename, sizeof(fullfilename), "%s/%s", game_dir, filename);
+        result = kopen4load(fullfilename, 0);
+        if (result != -1) return result;
+	}
+    
+	return kopen4load(filename, readfromGRP);
+}
+
+
+void   setGameDir(char* gameDir){
+    if (gameDir == NULL)
+        return;
+    
+    copy_string_bounded(game_dir, sizeof(game_dir), gameDir);
+}
+
+char*  getGameDir(void){
+    return game_dir;
+}
+
+int      getGRPcrc32(int grpID){
+    
+    return grpSet.archives[grpID].crc32;
+}
+
+const char *get_save_path(const char *filename)
+{
+    static char path[1024];
+    char name_no_ext[512];
+    copy_string_bounded(name_no_ext, sizeof(name_no_ext), filename);
+    char *dot = strrchr(name_no_ext, '.');
+    if (dot && strcasecmp(dot, ".sav") == 0) *dot = '\0';
+
+    char name_with_dir[600];
+    snprintf(name_with_dir, sizeof(name_with_dir), "duke3d/%s", name_no_ext);
+    
+    char *rg_path = rg_emu_get_path(RG_PATH_SAVE_STATE, name_with_dir);
+    if (rg_path) {
+        copy_string_bounded(path, sizeof(path), rg_path);
+        free(rg_path);
+    } else {
+        snprintf(path, sizeof(path), RG_BASE_PATH_SAVES "/duke3d/%s", filename);
+    }
+    rg_storage_mkdir(rg_dirname(path));
+    return path;
+}
+
+const char *get_config_path(const char *filename)
+{
+    static char path[1024];
+    char name_no_ext[512];
+    copy_string_bounded(name_no_ext, sizeof(name_no_ext), filename);
+    char *dot = strrchr(name_no_ext, '.');
+    if (dot && strcasecmp(dot, ".cfg") == 0) *dot = '\0';
+
+    snprintf(path, sizeof(path), RG_BASE_PATH_CONFIG "/%s.cfg", name_no_ext);
+    rg_storage_mkdir(RG_BASE_PATH_CONFIG);
+    return path;
+}
