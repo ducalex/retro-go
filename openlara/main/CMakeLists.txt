@@ -1,0 +1,7 @@
+set(COMPONENT_SRCDIRS ".")
+set(COMPONENT_ADD_INCLUDEDIRS ".")
+set(COMPONENT_REQUIRES OpenLara retro-go)
+register_component()
+rg_setup_compile_options()
+target_compile_definitions(${COMPONENT_LIB} PRIVATE "-D__RETROGO__")
+target_compile_options(${COMPONENT_LIB} PRIVATE "-w")

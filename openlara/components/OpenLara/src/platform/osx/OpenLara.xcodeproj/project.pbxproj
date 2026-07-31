@@ -1,0 +1,380 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		523F97E41DDF7AA5006FE2FC /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 523F97E31DDF7AA5006FE2FC /* Cocoa.framework */; };
+		9938F1A421E830250056E172 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9938F1A021E81EFE0056E172 /* IOKit.framework */; };
+		99713CC9204CAD9900006FAC /* tinflate.c in Sources */ = {isa = PBXBuildFile; fileRef = 99713CC8204CAD9900006FAC /* tinflate.c */; };
+		9975BF0B21E9F5D300F13342 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9975BF0A21E9F5D300F13342 /* Assets.xcassets */; };
+		99BF38CD21E7176900D90A38 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 99BF38CC21E7176900D90A38 /* main.mm */; settings = {COMPILER_FLAGS = "-Wno-invalid-source-encoding"; }; };
+		99BF38D221E7202500D90A38 /* audio in Resources */ = {isa = PBXBuildFile; fileRef = 99BF38CE21E7202500D90A38 /* audio */; };
+		99BF38D321E7202500D90A38 /* DELDATA in Resources */ = {isa = PBXBuildFile; fileRef = 99BF38CF21E7202500D90A38 /* DELDATA */; };
+		99BF38D421E7202500D90A38 /* PSXDATA in Resources */ = {isa = PBXBuildFile; fileRef = 99BF38D021E7202500D90A38 /* PSXDATA */; };
+		99BF38D521E7202500D90A38 /* FMV in Resources */ = {isa = PBXBuildFile; fileRef = 99BF38D121E7202500D90A38 /* FMV */; };
+		99BFB6A91DCA87BF00E2E997 /* stb_vorbis.c in Sources */ = {isa = PBXBuildFile; fileRef = 99BFB6A81DCA87BF00E2E997 /* stb_vorbis.c */; };
+		99BFB6AB1DCA87C500E2E997 /* minimp3.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 99BFB6AA1DCA87C500E2E997 /* minimp3.cpp */; };
+		99C4C0BA1796AB810032DE85 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 99C4C0931796A96F0032DE85 /* OpenGL.framework */; };
+		99DF7BC41DCBA30B00C40D0A /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 99DF7BC31DCBA30B00C40D0A /* AudioToolbox.framework */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		523F97E31DDF7AA5006FE2FC /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
+		9938F1A021E81EFE0056E172 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
+		993F06C7225BEE3A0030AF80 /* savegame.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = savegame.h; path = ../../savegame.h; sourceTree = "<group>"; };
+		993F06C8225BEE3A0030AF80 /* lang */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lang; path = ../../lang; sourceTree = "<group>"; };
+		993F06C9225BEE3A0030AF80 /* lang.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lang.h; path = ../../lang.h; sourceTree = "<group>"; };
+		993F06CA225BEE3A0030AF80 /* objects.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = objects.h; path = ../../objects.h; sourceTree = "<group>"; };
+		993F06CB225BEE3A0030AF80 /* video.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = video.h; path = ../../video.h; sourceTree = "<group>"; };
+		993F06CC225BEE3A0030AF80 /* gapi */ = {isa = PBXFileReference; lastKnownFileType = folder; name = gapi; path = ../../gapi; sourceTree = "<group>"; };
+		995C97EF1E91A857003825B2 /* shaders */ = {isa = PBXFileReference; lastKnownFileType = folder; name = shaders; path = ../../shaders; sourceTree = "<group>"; };
+		99713CAE204CA3DA00006FAC /* animation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = animation.h; path = ../../animation.h; sourceTree = "<group>"; };
+		99713CAF204CA3DA00006FAC /* cache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = cache.h; path = ../../cache.h; sourceTree = "<group>"; };
+		99713CB0204CA3DA00006FAC /* camera.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = camera.h; path = ../../camera.h; sourceTree = "<group>"; };
+		99713CB1204CA3DA00006FAC /* character.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = character.h; path = ../../character.h; sourceTree = "<group>"; };
+		99713CB2204CA3DA00006FAC /* collision.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = collision.h; path = ../../collision.h; sourceTree = "<group>"; };
+		99713CB3204CA3DA00006FAC /* controller.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = controller.h; path = ../../controller.h; sourceTree = "<group>"; };
+		99713CB4204CA3DA00006FAC /* core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = core.h; path = ../../core.h; sourceTree = "<group>"; };
+		99713CB5204CA3DA00006FAC /* debug.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = debug.h; path = ../../debug.h; sourceTree = "<group>"; };
+		99713CB6204CA3DA00006FAC /* enemy.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = enemy.h; path = ../../enemy.h; sourceTree = "<group>"; };
+		99713CB7204CA3DA00006FAC /* format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = format.h; path = ../../format.h; sourceTree = "<group>"; };
+		99713CB8204CA3DA00006FAC /* frustum.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = frustum.h; path = ../../frustum.h; sourceTree = "<group>"; };
+		99713CB9204CA3DA00006FAC /* game.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = game.h; path = ../../game.h; sourceTree = "<group>"; };
+		99713CBA204CA3DA00006FAC /* gameflow.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = gameflow.h; path = ../../gameflow.h; sourceTree = "<group>"; };
+		99713CBB204CA3DA00006FAC /* input.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = input.h; path = ../../input.h; sourceTree = "<group>"; };
+		99713CBC204CA3DA00006FAC /* inventory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = inventory.h; path = ../../inventory.h; sourceTree = "<group>"; };
+		99713CBD204CA3DA00006FAC /* lara.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = lara.h; path = ../../lara.h; sourceTree = "<group>"; };
+		99713CBE204CA3DA00006FAC /* level.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = level.h; path = ../../level.h; sourceTree = "<group>"; };
+		99713CBF204CA3DA00006FAC /* mesh.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = mesh.h; path = ../../mesh.h; sourceTree = "<group>"; };
+		99713CC0204CA3DA00006FAC /* shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = shader.h; path = ../../shader.h; sourceTree = "<group>"; };
+		99713CC1204CA3DA00006FAC /* sound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sound.h; path = ../../sound.h; sourceTree = "<group>"; };
+		99713CC2204CA3DA00006FAC /* sprite.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = sprite.h; path = ../../sprite.h; sourceTree = "<group>"; };
+		99713CC3204CA3DA00006FAC /* texture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = texture.h; path = ../../texture.h; sourceTree = "<group>"; };
+		99713CC5204CA3DA00006FAC /* ui.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ui.h; path = ../../ui.h; sourceTree = "<group>"; };
+		99713CC6204CA3DA00006FAC /* utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = utils.h; path = ../../utils.h; sourceTree = "<group>"; };
+		99713CC8204CAD9900006FAC /* tinflate.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = tinflate.c; path = ../../libs/tinf/tinflate.c; sourceTree = "<group>"; };
+		9975BF0A21E9F5D300F13342 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = SOURCE_ROOT; };
+		99BF38CC21E7176900D90A38 /* main.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		99BF38CE21E7202500D90A38 /* audio */ = {isa = PBXFileReference; lastKnownFileType = folder; name = audio; path = ../../../bin/audio; sourceTree = "<group>"; };
+		99BF38CF21E7202500D90A38 /* DELDATA */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DELDATA; path = ../../../bin/DELDATA; sourceTree = "<group>"; };
+		99BF38D021E7202500D90A38 /* PSXDATA */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PSXDATA; path = ../../../bin/PSXDATA; sourceTree = "<group>"; };
+		99BF38D121E7202500D90A38 /* FMV */ = {isa = PBXFileReference; lastKnownFileType = folder; name = FMV; path = ../../../bin/FMV; sourceTree = "<group>"; };
+		99BFB69E1DCA7F1700E2E997 /* libs */ = {isa = PBXFileReference; lastKnownFileType = folder; name = libs; path = ../../libs; sourceTree = "<group>"; };
+		99BFB6A81DCA87BF00E2E997 /* stb_vorbis.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = stb_vorbis.c; path = ../../libs/stb_vorbis/stb_vorbis.c; sourceTree = "<group>"; };
+		99BFB6AA1DCA87C500E2E997 /* minimp3.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = minimp3.cpp; path = ../../libs/minimp3/minimp3.cpp; sourceTree = "<group>"; };
+		99C4C0931796A96F0032DE85 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = System/Library/Frameworks/OpenGL.framework; sourceTree = SDKROOT; };
+		99C4C09B1796AACF0032DE85 /* OpenLara.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OpenLara.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		99C4C0A41796AACF0032DE85 /* OpenLara-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "OpenLara-Info.plist"; sourceTree = "<group>"; };
+		99DF7BC31DCBA30B00C40D0A /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		99C4C0981796AACF0032DE85 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9938F1A421E830250056E172 /* IOKit.framework in Frameworks */,
+				523F97E41DDF7AA5006FE2FC /* Cocoa.framework in Frameworks */,
+				99DF7BC41DCBA30B00C40D0A /* AudioToolbox.framework in Frameworks */,
+				99C4C0BA1796AB810032DE85 /* OpenGL.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		99C4C0771796A8230032DE85 = {
+			isa = PBXGroup;
+			children = (
+				995C97EF1E91A857003825B2 /* shaders */,
+				993F06CC225BEE3A0030AF80 /* gapi */,
+				993F06C8225BEE3A0030AF80 /* lang */,
+				993F06C9225BEE3A0030AF80 /* lang.h */,
+				993F06CA225BEE3A0030AF80 /* objects.h */,
+				993F06C7225BEE3A0030AF80 /* savegame.h */,
+				993F06CB225BEE3A0030AF80 /* video.h */,
+				99BF38CE21E7202500D90A38 /* audio */,
+				99BF38CF21E7202500D90A38 /* DELDATA */,
+				99BF38D121E7202500D90A38 /* FMV */,
+				99BF38D021E7202500D90A38 /* PSXDATA */,
+				99BF38CC21E7176900D90A38 /* main.mm */,
+				99713CAE204CA3DA00006FAC /* animation.h */,
+				99713CAF204CA3DA00006FAC /* cache.h */,
+				99713CB0204CA3DA00006FAC /* camera.h */,
+				99713CB1204CA3DA00006FAC /* character.h */,
+				99713CB2204CA3DA00006FAC /* collision.h */,
+				99713CB3204CA3DA00006FAC /* controller.h */,
+				99713CB4204CA3DA00006FAC /* core.h */,
+				99713CB5204CA3DA00006FAC /* debug.h */,
+				99713CB6204CA3DA00006FAC /* enemy.h */,
+				99713CB7204CA3DA00006FAC /* format.h */,
+				99713CB8204CA3DA00006FAC /* frustum.h */,
+				99713CB9204CA3DA00006FAC /* game.h */,
+				99713CBA204CA3DA00006FAC /* gameflow.h */,
+				99713CBB204CA3DA00006FAC /* input.h */,
+				99713CBC204CA3DA00006FAC /* inventory.h */,
+				99713CBD204CA3DA00006FAC /* lara.h */,
+				99713CBE204CA3DA00006FAC /* level.h */,
+				99713CBF204CA3DA00006FAC /* mesh.h */,
+				99713CC0204CA3DA00006FAC /* shader.h */,
+				99713CC1204CA3DA00006FAC /* sound.h */,
+				99713CC2204CA3DA00006FAC /* sprite.h */,
+				99713CC3204CA3DA00006FAC /* texture.h */,
+				99713CC5204CA3DA00006FAC /* ui.h */,
+				99713CC6204CA3DA00006FAC /* utils.h */,
+				99BFB6AA1DCA87C500E2E997 /* minimp3.cpp */,
+				99BFB6A81DCA87BF00E2E997 /* stb_vorbis.c */,
+				99713CC8204CAD9900006FAC /* tinflate.c */,
+				99BFB69E1DCA7F1700E2E997 /* libs */,
+				99C4C0A31796AACF0032DE85 /* Supporting Files */,
+				99C4C0821796A8230032DE85 /* Frameworks */,
+				99C4C0811796A8230032DE85 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		99C4C0811796A8230032DE85 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				99C4C09B1796AACF0032DE85 /* OpenLara.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		99C4C0821796A8230032DE85 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9938F1A021E81EFE0056E172 /* IOKit.framework */,
+				523F97E31DDF7AA5006FE2FC /* Cocoa.framework */,
+				99DF7BC31DCBA30B00C40D0A /* AudioToolbox.framework */,
+				99C4C0931796A96F0032DE85 /* OpenGL.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		99C4C0A31796AACF0032DE85 /* Supporting Files */ = {
+			isa = PBXGroup;
+			children = (
+				9975BF0A21E9F5D300F13342 /* Assets.xcassets */,
+				99C4C0A41796AACF0032DE85 /* OpenLara-Info.plist */,
+			);
+			name = "Supporting Files";
+			path = OpenLara;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		99C4C09A1796AACF0032DE85 /* OpenLara */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 99C4C0B41796AAD00032DE85 /* Build configuration list for PBXNativeTarget "OpenLara" */;
+			buildPhases = (
+				99C4C0971796AACF0032DE85 /* Sources */,
+				99C4C0981796AACF0032DE85 /* Frameworks */,
+				99C4C0991796AACF0032DE85 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = OpenLara;
+			productName = OpenLara;
+			productReference = 99C4C09B1796AACF0032DE85 /* OpenLara.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		99C4C0781796A8230032DE85 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0810;
+				ORGANIZATIONNAME = XProger;
+			};
+			buildConfigurationList = 99C4C07B1796A8230032DE85 /* Build configuration list for PBXProject "OpenLara" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				English,
+				en,
+			);
+			mainGroup = 99C4C0771796A8230032DE85;
+			productRefGroup = 99C4C0811796A8230032DE85 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				99C4C09A1796AACF0032DE85 /* OpenLara */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		99C4C0991796AACF0032DE85 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				99BF38D221E7202500D90A38 /* audio in Resources */,
+				99BF38D321E7202500D90A38 /* DELDATA in Resources */,
+				99BF38D421E7202500D90A38 /* PSXDATA in Resources */,
+				99BF38D521E7202500D90A38 /* FMV in Resources */,
+				9975BF0B21E9F5D300F13342 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		99C4C0971796AACF0032DE85 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				99BF38CD21E7176900D90A38 /* main.mm in Sources */,
+				99713CC9204CAD9900006FAC /* tinflate.c in Sources */,
+				99BFB6AB1DCA87C500E2E997 /* minimp3.cpp in Sources */,
+				99BFB6A91DCA87BF00E2E997 /* stb_vorbis.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		99C4C08C1796A8230032DE85 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-v";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		99C4C08D1796A8230032DE85 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = c11;
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				OTHER_LDFLAGS = "-v";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		99C4C0B51796AAD00032DE85 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LIBRARY = "libc++";
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "";
+				INFOPLIST_FILE = "OpenLara-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				OTHER_LDFLAGS = "--verbose";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.xproger.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Debug;
+		};
+		99C4C0B61796AAD00032DE85 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = "$(ARCHS_STANDARD)";
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_CXX_LIBRARY = "libc++";
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "";
+				INFOPLIST_FILE = "OpenLara-Info.plist";
+				MACOSX_DEPLOYMENT_TARGET = 10.12;
+				OTHER_LDFLAGS = "--verbose";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.xproger.${PRODUCT_NAME:rfc1034identifier}";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				WRAPPER_EXTENSION = app;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		99C4C07B1796A8230032DE85 /* Build configuration list for PBXProject "OpenLara" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99C4C08C1796A8230032DE85 /* Debug */,
+				99C4C08D1796A8230032DE85 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		99C4C0B41796AAD00032DE85 /* Build configuration list for PBXNativeTarget "OpenLara" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99C4C0B51796AAD00032DE85 /* Debug */,
+				99C4C0B61796AAD00032DE85 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 99C4C0781796A8230032DE85 /* Project object */;
+}

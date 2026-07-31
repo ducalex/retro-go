@@ -1,0 +1,3 @@
+#minmem
+# show CPU, DRAM, VRAM and DSP usage
+#$c/sysload

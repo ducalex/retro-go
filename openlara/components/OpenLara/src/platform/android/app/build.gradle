@@ -1,0 +1,42 @@
+apply plugin: 'com.android.application'
+
+android {
+    compileSdkVersion 30
+    buildToolsVersion '30.0.0'
+
+    defaultConfig {
+        applicationId "com.xproger.openlara"
+        minSdkVersion 19
+        targetSdkVersion 30
+        versionCode 1
+        versionName "0.1"
+        ndk {
+            abiFilters 'armeabi-v7a', 'x86', 'x86_64'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_TOOLCHAIN=clang'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path "CMakeLists.txt"
+        }
+    }
+    aaptOptions {
+        noCompress 'psx', 'phd', 'pcx', 'mp3', 'ogg'
+    }
+}
+
+dependencies {
+    compile fileTree(include: ['*.jar'], dir: 'libs')
+
+    compile 'com.google.vr:sdk-base:1.80.0'
+}
