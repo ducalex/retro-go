@@ -1,0 +1,53 @@
+#ifndef RETRO_GO
+{0,SPR_MINE1,stat_mine,FL_BONUS|FL_SHOOTABLE|FL_RESPAWN,0,0,10,0,0},
+{0,MISSMOKE1,stat_missmoke,FL_ACTIVE,6,4,0,0,0},
+{0,PLATFORM1,stat_disk,FL_BLOCK|FL_HEIGHTFLIPPABLE,0,0,0,0,0},
+{-1,0,0,0,0,0,0,0,0}
+};
+#endif
+
+
+#ifndef RETRO_GO
+dirtype diagonal[9][9] =
+{
+/* east */  {nodir,nodir,northeast,nodir,nodir,nodir,southeast,nodir,nodir},
+			{nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir},
+/* north */ {northeast,nodir,nodir,nodir,northwest,nodir,nodir,nodir,nodir},
+			{nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir},
+/* west */  {nodir,nodir,northwest,nodir,nodir,nodir,southwest,nodir,nodir},
+			{nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir},
+/* south */ {southeast,nodir,nodir,nodir,southwest,nodir,nodir,nodir,nodir},
+			{nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir},
+			{nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir,nodir}
+};
+#endif
+
+/*
+=============================================================================
+
+Local Variables                                                                                                                                 GLOBAL VARIABLES
+
+=============================================================================
+*/
+#ifndef RETRO_GO
+static awallinfo_t animwallsinfo[MAXANIMWALLS] =
+  {{3,4,"FPLACE1\0"}, //lava wall
+   {3,6,"ANIMY1\0"}, //anim red
+   {3,6,"ANIMR1\0"}, //anim yellow
+   {40,4,"ANIMFAC1\0"}, //anim face
+   {3,4,"ANIMONE1\0"}, //anim one
+   {3,4,"ANIMTWO1\0"}, //anim two
+   {3,4,"ANIMTHR1\0"}, //anim three
+   {3,4,"ANIMFOR1\0"}, //anim four
+   {3,6,"ANIMGW1\0"}, //anim grey water
+   {3,6,"ANIMYOU1\0"}, //anim you do not belong
+   {3,6,"ANIMBW1\0"}, //anim brown water
+   {3,6,"ANIMBP1\0"}, //anim brown piston
+   {3,6,"ANIMCHN1\0"}, //anim chain
+   {3,6,"ANIMFW1\0"}, //anim firewall
+   {3,6,"ANIMLAT1\0"}, //anim little blips
+   {3,6,"ANIMST1\0"}, //anim light streams left
+   {3,6,"ANIMRP1\0"}};//anim light streams right
+#endif
+
+int statcount;
