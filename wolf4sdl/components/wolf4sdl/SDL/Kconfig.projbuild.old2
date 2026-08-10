@@ -1,0 +1,318 @@
+menu "ESP32-DUKE3D platform-specific configuration"
+
+choice DUKE3D_HARDWARE
+	prompt "Hardware to run on"
+	default HW_ODROID_GO
+	help
+		This game can run on various types of hardware. Select what you have here. Warning: The hardware does need to have 4MiB PSRAM installed
+
+config HW_ODROID_GO
+	bool "ODROID-GO"
+
+#config HW_WROVERKIT_V1
+#	bool "ESP_Wrover_Kit v1 (red PCB)"
+
+#config HW_WROVERKIT_V2
+#	bool "ESP_Wrover_Kit v2/v3 (shiny/matte black PCB)"
+
+config HW_CUSTOM
+	bool "Custom hardware"
+
+endchoice
+
+###############################
+
+choice HW_LCD_TYPE_SEL
+	prompt "LCD type"
+	default HW_LCD_TYPE_ILI
+	depends on HW_CUSTOM || HW_WROVERKIT_V2
+
+config HW_LCD_TYPE_ILI
+	bool "ILI9341 LCD"
+
+config HW_LCD_TYPE_ST
+	bool "ST7789V LCD"
+
+endchoice
+
+###############################
+
+#config HW_WROVERKIT
+#	bool
+#	default n if HW_CUSTOM
+#	default n if HW_ODROID_GO
+#	default y if HW_WROVERKIT_V1
+#	default y if HW_WROVERKIT_V2
+
+
+config HW_LCD_TYPE
+	int
+	default 0 if HW_WROVERKIT_V1
+	default 0 if HW_LCD_TYPE_ILI
+	default 1 if HW_LCD_TYPE_ST
+	default 0 if HW_ODROID_GO
+
+###############################
+
+#####
+# Custom LCD
+#####
+config HW_LCD_MISO_GPIO_CUST
+	int "LCD MISO pin"
+	depends on HW_CUSTOM
+	range 1 35
+	default 19
+
+config HW_LCD_MOSI_GPIO_CUST
+	int "LCD MOSI pin"
+	depends on HW_CUSTOM
+	range 1 35
+	default 23
+
+
+config HW_LCD_CLK_GPIO_CUST
+	int "LCD CLK pin"
+	depends on HW_CUSTOM
+	range 1 35
+	default 18
+
+config HW_LCD_CS_GPIO_CUST
+	int "LCD CS pin"
+	depends on HW_CUSTOM
+	range 1 35
+	default 5
+
+config HW_LCD_DC_GPIO_CUST
+	int "LCD DC pin"
+	depends on HW_CUSTOM
+	range 1 35
+	default 22
+
+config HW_LCD_RESET_GPIO_CUST
+	int "LCD RESET pin"
+	depends on HW_CUSTOM
+	range -1 35
+	default 21
+
+config HW_LCD_BL_GPIO_CUST
+	int "LCD Backlight pin"
+	depends on HW_CUSTOM
+	range -1 35
+	default -1
+
+#####
+# Custom SD
+#####
+config HW_SD_PIN_NUM_MISO_CUST
+	int "SD Card MISO"
+	depends on HW_CUSTOM
+	range 1 35
+	default 2
+
+config HW_SD_PIN_NUM_MOSI_CUST
+	int "SD Card MOSI"
+	depends on HW_CUSTOM
+	range 1 35
+	default 13
+
+config HW_SD_PIN_NUM_CLK_CUST
+	int "SD Card CLK"
+	depends on HW_CUSTOM
+	range 1 35
+	default 14
+
+config HW_SD_PIN_NUM_CS_CUST
+	int "SD Card CS"
+	depends on HW_CUSTOM
+	range 1 35
+	default 15
+
+#####
+# Custom KEYS
+#####
+config HW_BUTTON_PIN_NUM_UP_CUST
+	int "UP Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 36
+
+config HW_BUTTON_PIN_NUM_DOWN_CUST
+	int "DOWN Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 34
+
+config HW_BUTTON_PIN_NUM_LEFT_CUST
+	int "LEFT Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 32
+
+config HW_BUTTON_PIN_NUM_RIGHT_CUST
+	int "RIGHT Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 39
+
+config HW_BUTTON_PIN_NUM_BUTTON1_CUST
+	int "BUTTON1 Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 33
+
+config HW_BUTTON_PIN_NUM_BUTTON2_CUST
+	int "BUTTON2 Button"
+	depends on HW_CUSTOM
+	range 1 39
+	default 35
+
+####
+# Optional Buttons
+####
+config HW_BUTTON_PIN_NUM_MENU_CUST
+	int "Menu Button"
+	depends on HW_CUSTOM
+	range -1 39
+	default -1
+
+config HW_BUTTON_PIN_NUM_SELECT_CUST
+	int "Select Button"
+	depends on HW_CUSTOM
+	range -1 39
+	default -1
+
+config HW_BUTTON_PIN_NUM_START_CUST
+	int "Start Button"
+	depends on HW_CUSTOM
+	range -1 39
+	default -1
+
+config HW_BUTTON_PIN_NUM_VOL_CUST
+	int "Volume Button"
+	depends on HW_CUSTOM
+	range -1 39
+	default -1
+
+###############################
+# Output configurations
+###############################
+
+#####
+# LCD - Hidden
+#####
+config HW_LCD_MISO_GPIO
+	int
+	default HW_LCD_MISO_GPIO_CUST if HW_CUSTOM
+	default 19
+	
+config HW_LCD_MOSI_GPIO
+	int
+	default HW_LCD_MOSI_GPIO_CUST if HW_CUSTOM
+	default 23
+
+config HW_LCD_CLK_GPIO
+	int
+	default HW_LCD_CLK_GPIO_CUST if HW_CUSTOM
+	default 18
+
+config HW_LCD_CS_GPIO
+	int
+	default HW_LCD_CS_GPIO_CUST if HW_CUSTOM
+	default 5
+
+config HW_LCD_DC_GPIO
+	int
+	default HW_LCD_DC_GPIO_CUST if HW_CUSTOM
+	default 21
+
+config HW_LCD_RESET_GPIO
+	int
+	default HW_LCD_RESET_GPIO_CUST if HW_CUSTOM
+	default -1
+
+config HW_LCD_BL_GPIO
+	int
+	default HW_LCD_BL_GPIO_CUST if HW_CUSTOM
+	default 14
+
+#####
+# SD - Hidden
+#####
+config HW_SD_PIN_NUM_MISO
+	int
+	default HW_SD_PIN_NUM_MISO_CUST if HW_CUSTOM
+	default 19
+
+config HW_SD_PIN_NUM_MOSI
+	int
+	default HW_SD_PIN_NUM_MOSI_CUST if HW_CUSTOM
+	default 23
+
+config HW_SD_PIN_NUM_CLK
+	int
+	default HW_SD_PIN_NUM_CLK_CUST if HW_CUSTOM
+	default 18
+
+config HW_SD_PIN_NUM_CS
+	int
+	default HW_SD_PIN_NUM_CS_CUST if HW_CUSTOM
+	default 22
+
+#####
+# KEYS - Hidden
+#####
+config HW_BUTTON_PIN_NUM_UP
+	int
+	default HW_BUTTON_PIN_NUM_UP_CUST if HW_CUSTOM
+	default 35
+
+config HW_BUTTON_PIN_NUM_DOWN
+	int
+	default HW_BUTTON_PIN_NUM_DOWN_CUST if HW_CUSTOM
+	default 35
+
+config HW_BUTTON_PIN_NUM_LEFT
+	int
+	default HW_BUTTON_PIN_NUM_LEFT_CUST if HW_CUSTOM
+	default 34
+
+config HW_BUTTON_PIN_NUM_RIGHT
+	int
+	default HW_BUTTON_PIN_NUM_RIGHT_CUST if HW_CUSTOM
+	default 34
+
+config HW_BUTTON_PIN_NUM_BUTTON1
+	int
+	default HW_BUTTON_PIN_NUM_BUTTON1_CUST if HW_CUSTOM
+	default 32
+
+config HW_BUTTON_PIN_NUM_BUTTON2
+	int
+	default HW_BUTTON_PIN_NUM_BUTTON2_CUST if HW_CUSTOM
+	default 33
+
+####
+# Optional Buttons - Hidden
+####
+config HW_BUTTON_PIN_NUM_MENU
+	int
+	default HW_BUTTON_PIN_NUM_MENU_CUST if HW_CUSTOM
+	default 13
+
+config HW_BUTTON_PIN_NUM_SELECT
+	int
+	default HW_BUTTON_PIN_NUM_SELECT_CUST if HW_CUSTOM
+	default 27
+
+config HW_BUTTON_PIN_NUM_START
+	int
+	default HW_BUTTON_PIN_NUM_START_CUST if HW_CUSTOM
+	default 39
+
+config HW_BUTTON_PIN_NUM_VOL
+	int
+	default HW_BUTTON_PIN_NUM_VOL_CUST if HW_CUSTOM
+	default 0
+
+
+endmenu
