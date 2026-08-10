@@ -9,6 +9,18 @@ def readfile(filepath):
         exit("\nERROR: Failed to read file '%s': %s\n" % (err.filename, err.strerror))
 
 
+def parse_size(value):
+    # Accepts plain integers ("12582912", "0xC00000") as well as the K/M suffixes that
+    # rg_tool.py's --fatsize advertises ("500K", "12M").
+    try:
+        text = str(value).strip()
+        if text[-1:].upper() in ("K", "M", "G"):
+            return int(text[:-1], 0) * {"K": 1024, "M": 1048576, "G": 1073741824}[text[-1].upper()]
+        return int(text, 0)
+    except (ValueError, IndexError, KeyError):
+        exit("\nERROR: Invalid partition size '%s'\n" % value)
+
+
 def get_partitions(args, flash_offset = 0):
     print("\nPartitions:")
     partitions = []
@@ -16,7 +28,7 @@ def get_partitions(args, flash_offset = 0):
     while len(args) >= 5:
         partype = int(args.pop(0), 0)
         subtype = int(args.pop(0), 0)
-        size = int(args.pop(0), 0)
+        size = parse_size(args.pop(0))
         label = args.pop(0)
         filename = args.pop(0)
 
