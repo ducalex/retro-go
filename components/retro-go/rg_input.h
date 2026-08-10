@@ -84,6 +84,14 @@ typedef struct
     int x1, y1, x2, y2; // Zone in display coordinates, inclusive
 } rg_keymap_touch_t;
 
+// #define RG_GAMEPAD_BLE_MAP {{}, ...} to use the Bluetooth LE HID driver (drivers/input/ble_hid.c).
+// `src` is one of the RG_BLE_* source bits declared in that driver's header.
+typedef struct
+{
+    rg_key_t key;
+    uint32_t src;
+} rg_keymap_ble_t;
+
 // FIXME: Create a single unified keymap...
 // ...
 

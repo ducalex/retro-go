@@ -1,4 +1,4 @@
-set(COMPONENT_SRCDIRS ". drivers/audio fonts libs/netplay libs/lodepng")
+set(COMPONENT_SRCDIRS ". drivers/audio drivers/input fonts libs/netplay libs/lodepng")
 set(COMPONENT_ADD_INCLUDEDIRS ". libs/netplay libs/lodepng")
 if((IDF_VERSION_MAJOR EQUAL 5) AND (IDF_VERSION_MINOR GREATER 2)) # esp-idf 5.3+
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client esp_driver_ledc driver")
@@ -6,6 +6,17 @@ elseif(IDF_VERSION_MAJOR EQUAL 5) # esp-idf 5.0 - 5.2
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update json nvs_flash esp_adc esp_timer esp_psram esp_wifi esp_http_client")
 else() # esp-idf 4.1 - 4.4
     set(COMPONENT_REQUIRES "spi_flash fatfs app_update esp_adc_cal json nvs_flash esp_wifi esp_http_client")
+endif()
+
+# Bluetooth LE HID gamepad support (drivers/input/ble_hid.c). Opt-in per target: set
+# ENABLE_BLUETOOTH = True in the target's env.py and define RG_GAMEPAD_BLE_MAP in its
+# config.h. The `bt` component is only pulled in when asked for, because it costs
+# ~200KB of flash and not every target has room (or a radio).
+# This has to be an environment variable rather than a -D cache variable: esp-idf
+# expands component requirements in a separate `cmake -P` process which inherits the
+# environment but not the cache, so a -D would be invisible exactly here.
+if("$ENV{RG_ENABLE_BLUETOOTH}" STREQUAL "1")
+    string(APPEND COMPONENT_REQUIRES " bt")
 endif()
 
 register_component()
