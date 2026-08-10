@@ -28,8 +28,6 @@
 
 #ifdef RG_AUDIO_CODEC_ES8311
 #include "rg_i2c.h"
-#include <string.h>
-#include <stdio.h>
 
 #ifndef RG_AUDIO_ES8311_ADDR
 #define RG_AUDIO_ES8311_ADDR 0x18
@@ -39,9 +37,9 @@
 #endif
 
 // Minimal ES8311 DAC bring-up: I2S slave, 16-bit. Internal clock is derived from the
-// BCLK (SCLK) pin so no MCLK output is required: DIG_MCLK = BCLK * 8 = fs * 32 * 8 = 256 * fs.
+// BCLK (SCLK) pin so no MCK output is required: DIG_MCLK = BCLK * 8 = fs * 32 * 8 = 256 * fs.
 // Register sequence and coefficients follow the esp-adf es8311 driver (FROM_SCLK_PIN path).
-// Set RG_AUDIO_ES8311_USE_MCLK 1 to clock from the MCLK pin (256 * fs) instead.
+// Set RG_AUDIO_ES8311_USE_MCLK 1 to clock from the MCK pin (256 * fs) instead.
 static bool es8311_set_sample_rate(int sample_rate)
 {
     const uint8_t addr = RG_AUDIO_ES8311_ADDR;
@@ -49,7 +47,7 @@ static bool es8311_set_sample_rate(int sample_rate)
     uint8_t dac_osr = (sample_rate >= 22050) ? 0x10 : 0x20;
     uint8_t adc_osr = 0x10;
 #if RG_AUDIO_ES8311_USE_MCLK
-    uint8_t pre_multi = 0; // x1: MCLK pin already provides 256 * fs
+    uint8_t pre_multi = 0; // x1: MCK pin already provides 256 * fs
 #else
     uint8_t pre_multi = 3; // x8: DIG_MCLK = BCLK * 8 (esp-adf forces this for SCLK source)
     if (sample_rate < 22050)
@@ -89,7 +87,7 @@ static void es8311_codec_init(int sample_rate)
     rg_usleep(20 * 1000);
     rg_i2c_write_byte(addr, 0x00, 0x00); // out of reset, I2S slave
 #if RG_AUDIO_ES8311_USE_MCLK
-    rg_i2c_write_byte(addr, 0x01, 0x3F); // enable all clocks, internal MCLK from MCLK pin
+    rg_i2c_write_byte(addr, 0x01, 0x3F); // enable all clocks, internal MCLK from MCK pin
 #else
     rg_i2c_write_byte(addr, 0x01, 0xBF); // enable all clocks, internal MCLK from BCLK (SCLK) pin
 #endif
@@ -105,14 +103,7 @@ static void es8311_codec_init(int sample_rate)
     rg_i2c_write_byte(addr, 0x00, 0x80); // power on
     rg_i2c_write_byte(addr, 0x32, 0xBF); // DAC volume 0dB
     RG_LOGI("ES8311 codec initialized (fs=%d, clk=%s)", sample_rate,
-            RG_AUDIO_ES8311_USE_MCLK ? "MCLK pin" : "BCLK-derived");
-    // Diagnostic register dump (clock manager + power + DAC)
-    static const uint8_t dump_regs[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x09, 0x0A,
-                                        0x0D, 0x0E, 0x12, 0x13, 0x31, 0x32};
-    char dump[128] = {0};
-    for (size_t i = 0; i < RG_COUNT(dump_regs); ++i)
-        sprintf(dump + strlen(dump), "%02X:%02X ", dump_regs[i], rg_i2c_read_byte(addr, dump_regs[i]));
-    RG_LOGI("ES8311 regs: %s", dump);
+            RG_AUDIO_ES8311_USE_MCLK ? "MCK pin" : "BCLK-derived");
 }
 #endif // RG_AUDIO_CODEC_ES8311
 
@@ -164,15 +155,15 @@ static bool driver_init(int device, int sample_rate)
         #if CONFIG_IDF_TARGET_ESP32
             .use_apll = true, // External DAC may care about accuracy
         #endif
-        #ifdef RG_GPIO_SND_I2S_MCLK
+        #ifdef RG_GPIO_SND_I2S_MCK
             .mclk_multiple = I2S_MCLK_MULTIPLE_256,
         #endif
         }, 0, NULL);
         if (ret == ESP_OK)
         {
             ret = i2s_set_pin(I2S_NUM_0, &(i2s_pin_config_t) {
-            #ifdef RG_GPIO_SND_I2S_MCLK
-                .mck_io_num = RG_GPIO_SND_I2S_MCLK,
+            #ifdef RG_GPIO_SND_I2S_MCK
+                .mck_io_num = RG_GPIO_SND_I2S_MCK,
             #else
                 .mck_io_num = GPIO_NUM_NC,
             #endif
