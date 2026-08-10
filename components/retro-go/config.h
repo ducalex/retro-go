@@ -16,6 +16,8 @@
 #include "targets/esplay-micro/config.h"
 #elif defined(RG_TARGET_ESP32_S3_DEVKIT)
 #include "targets/esp32-s3-devkit/config.h"
+#elif defined(RG_TARGET_ES3C28P)
+#include "targets/es3c28p/config.h"
 #elif defined(RG_TARGET_FRI3D_2024)
 #include "targets/fri3d-2024/config.h"
 #elif defined(RG_TARGET_BYTEBOI_REV1)
