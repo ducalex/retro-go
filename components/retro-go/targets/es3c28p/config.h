@@ -95,3 +95,36 @@
 // HIGH shuts it down, which is the opposite of retro-go's default, hence the invert.
 #define RG_GPIO_SND_AMP_ENABLE      1
 #define RG_GPIO_SND_AMP_ENABLE_INVERT 1
+
+// Bluetooth LE gamepad. The driver reads the controller's HID Report Map at runtime, so
+// this table maps HID *usages* (button numbers as the controller declares them) rather
+// than raw report bit offsets, and works with any BLE HID gamepad.
+//
+// The numbering below is for the Google Stadia Controller in Bluetooth mode, taken from
+// its report descriptor (VID 0x18D1 / PID 0x9400). Note that its usages are not
+// contiguous: 3, 6, 9, 10 and 16 are never declared.
+//   1=A  2=B  4=X  5=Y  7=L1  8=R1  11=Options  12=Menu  13=Guide
+//   14=L3  15=R3  17=Assistant  18=Capture
+// The d-pad comes from the HID hat switch, L2/R2 from the Brake/Accelerator axes.
+//
+// For a different controller, watch the serial log: the driver prints the decoded button
+// number whenever the state changes, so this table can be corrected without guesswork.
+#define RG_GAMEPAD_BLE_MAP {\
+    {RG_KEY_UP,     RG_BLE_DPAD_UP},\
+    {RG_KEY_DOWN,   RG_BLE_DPAD_DOWN},\
+    {RG_KEY_LEFT,   RG_BLE_DPAD_LEFT},\
+    {RG_KEY_RIGHT,  RG_BLE_DPAD_RIGHT},\
+    {RG_KEY_A,      RG_BLE_BUTTON(1)},\
+    {RG_KEY_B,      RG_BLE_BUTTON(2)},\
+    {RG_KEY_X,      RG_BLE_BUTTON(4)},\
+    {RG_KEY_Y,      RG_BLE_BUTTON(5)},\
+    {RG_KEY_L,      RG_BLE_BUTTON(7)},\
+    {RG_KEY_R,      RG_BLE_BUTTON(8)},\
+    {RG_KEY_SELECT, RG_BLE_BUTTON(11)},\
+    {RG_KEY_START,  RG_BLE_BUTTON(12)},\
+    {RG_KEY_MENU,   RG_BLE_BUTTON(13)},\
+    {RG_KEY_OPTION, RG_BLE_BUTTON(17)},\
+}
+// Some controllers only advertise the HID service UUID in their scan response, so
+// matching on the advertised name as well makes the first pairing more reliable.
+#define RG_BLE_NAME_FILTER {"Stadia", "Gamepad", "Controller"}
