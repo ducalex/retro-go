@@ -1516,6 +1516,21 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
+#ifdef RG_GAMEPAD_BLE_MAP
+#include "drivers/input/ble_hid.h"
+static rg_gui_event_t ble_status_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    if (event == RG_DIALOG_ENTER)
+    {
+        if (rg_gui_confirm(_("Gamepad"), _("Forget pairing and scan again?\n\nPut the controller in pairing\nmode afterwards."), false))
+            rg_ble_hid_forget_bonds();
+        return RG_DIALOG_REDRAW;
+    }
+    strcpy(option->value, rg_ble_hid_status());
+    return RG_DIALOG_VOID;
+}
+#endif
+
 static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = RG_DISPLAY_SCALING_COUNT - 1;
@@ -2034,6 +2049,9 @@ void rg_gui_options_menu(void)
         #ifdef RG_ENABLE_NETWORKING
         {0, _("Wi-Fi options"), NULL, RG_DIALOG_FLAG_NORMAL, &wifi_cb},
         #endif
+        #ifdef RG_GAMEPAD_BLE_MAP
+        {0, _("Gamepad"),       "-", RG_DIALOG_FLAG_NORMAL, &ble_status_cb},
+        #endif
         {0, _("Launcher options"), NULL, RG_DIALOG_FLAG_NORMAL, &app_options_cb},
         RG_DIALOG_END,
     };
@@ -2043,6 +2061,9 @@ void rg_gui_options_menu(void)
         {0, _("Filter"),        "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb},
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
+        #ifdef RG_GAMEPAD_BLE_MAP
+        {0, _("Gamepad"),       "-", RG_DIALOG_FLAG_NORMAL, &ble_status_cb},
+        #endif
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},
         #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S3 // && !RG_BUILD_RELEASE
         {0, _("Overclock"),     "-", RG_DIALOG_FLAG_NORMAL, &overclock_cb},
