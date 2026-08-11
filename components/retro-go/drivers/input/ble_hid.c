@@ -736,6 +736,21 @@ static void disc_run_step(void)
         disc_fail("gatt request", rc);
 }
 
+// True if we share a bond with this address. Bonded identity addresses come from the
+// store; controllers like the Stadia use a static random address, so a direct compare
+// is stable across sessions.
+static bool addr_is_bonded(const ble_addr_t *addr)
+{
+    ble_addr_t bonded[8];
+    int num_bonded = 0;
+    if (ble_store_util_bonded_peers(bonded, &num_bonded, 8) != 0)
+        return false;
+    for (int i = 0; i < num_bonded; ++i)
+        if (ble_addr_cmp(&bonded[i], addr) == 0)
+            return true;
+    return false;
+}
+
 static int gap_event(struct ble_gap_event *event, void *arg)
 {
     struct ble_hs_adv_fields fields;
@@ -745,10 +760,16 @@ static int gap_event(struct ble_gap_event *event, void *arg)
     switch (event->type)
     {
     case BLE_GAP_EVENT_DISC:
-        if (ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data) != 0)
-            return 0;
-        if (!adv_is_hid(&fields))
-            return 0;
+        // A bonded controller waking from sleep often advertises without its name or
+        // service list (sometimes with an empty directed advertisement), which the
+        // content filters below would ignore -- reconnect on the address alone.
+        if (!addr_is_bonded(&event->disc.addr))
+        {
+            if (ble_hs_adv_parse_fields(&fields, event->disc.data, event->disc.length_data) != 0)
+                return 0;
+            if (!adv_is_hid(&fields))
+                return 0;
+        }
 
         RG_LOGI("Found BLE HID device %02x:%02x:%02x:%02x:%02x:%02x, connecting...\n", event->disc.addr.val[5],
                 event->disc.addr.val[4], event->disc.addr.val[3], event->disc.addr.val[2],
