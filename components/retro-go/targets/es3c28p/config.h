@@ -69,6 +69,9 @@
 #define RG_GAMEPAD_GPIO_MAP {\
     {RG_KEY_MENU,   .num = GPIO_NUM_0, .pullup = 1, .level = 0},\
 }
+// Always-visible ghost eye button (top edge, in the gap between START and OPTION)
+// that toggles the touch overlay on tap: {x1, y1, x2, y2} in panel coordinates.
+#define RG_TOUCH_OVERLAY_TOGGLE_ZONE {231, 0, 269, 40}
 
 // I2C bus (FT6336U touch @0x38 + ES8311 codec @0x18).
 // NOTE: the touch reset line (GPIO18) is intentionally left unconfigured. Driving it

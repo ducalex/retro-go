@@ -26,6 +26,7 @@ static const char *SETTING_FILTER = "DispFilter";
 static const char *SETTING_ROTATION = "DispRotation";
 static const char *SETTING_BORDER = "DispBorder";
 static const char *SETTING_CUSTOM_ZOOM = "DispCustomZoom";
+static const char *SETTING_TOUCH_OVERLAY = "DispTouchOverlay";
 
 static void lcd_init(void);
 static void lcd_deinit(void);
@@ -42,6 +43,332 @@ static inline void lcd_send_buffer(uint16_t *buffer, size_t length);
 #include "drivers/display/sdl2.h"
 #else
 #include "drivers/display/dummy.h"
+#endif
+
+#ifdef RG_GAMEPAD_TOUCH_MAP
+// Ghost artwork for the RG_GAMEPAD_TOUCH_MAP zones: a D-pad cross with arrowheads,
+// lettered A/B buttons and labelled pills for the menu keys. Two intensities: zone
+// geometry is faint (25% white), glyphs and labels are strong (50% white). Pixels
+// inside the emulator viewport are blended into the frame at submit time (see
+// write_update); pixels on the letterbox bars are painted once per viewport change.
+#define TOUCH_OVERLAY_FAINT_LE  0x4208 // matches blending 25% white over black
+#define TOUCH_OVERLAY_STRONG_LE 0x7BEF // matches blending 50% white over black
+
+static struct {
+    uint8_t *faint;   // 1bpp, panel coordinates: zone geometry
+    uint8_t *strong;  // 1bpp, panel coordinates: glyphs and labels
+    uint8_t *button;  // the always-visible eye toggle (RG_TOUCH_OVERLAY_TOGGLE_ZONE)
+    uint8_t *slash;   // strike-through over the eye, shown while the overlay is off
+    uint8_t *row_any; // per-row occupancy of faint|strong, for fast skipping
+    uint8_t *row_btn; // per-row occupancy of button|slash
+    int stride;
+} touch_overlay;
+
+// 5x7 glyphs (rows top to bottom, bit 4 = leftmost), only the letters we label with
+static const struct { char ch; uint8_t rows[7]; } touch_overlay_font[] = {
+    {'A', {0x0E, 0x11, 0x11, 0x1F, 0x11, 0x11, 0x11}},
+    {'B', {0x1E, 0x11, 0x11, 0x1E, 0x11, 0x11, 0x1E}},
+    {'C', {0x0E, 0x11, 0x10, 0x10, 0x10, 0x11, 0x0E}},
+    {'E', {0x1F, 0x10, 0x10, 0x1E, 0x10, 0x10, 0x1F}},
+    {'L', {0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x1F}},
+    {'M', {0x11, 0x1B, 0x15, 0x15, 0x11, 0x11, 0x11}},
+    {'N', {0x11, 0x19, 0x15, 0x13, 0x11, 0x11, 0x11}},
+    {'O', {0x0E, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}},
+    {'P', {0x1E, 0x11, 0x11, 0x1E, 0x10, 0x10, 0x10}},
+    {'R', {0x1E, 0x11, 0x11, 0x1E, 0x14, 0x12, 0x11}},
+    {'S', {0x0F, 0x10, 0x10, 0x0E, 0x01, 0x01, 0x1E}},
+    {'T', {0x1F, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04}},
+    {'U', {0x11, 0x11, 0x11, 0x11, 0x11, 0x11, 0x0E}},
+};
+
+static void touch_overlay_set_pixel(uint8_t *mask, int x, int y)
+{
+    if (x >= 0 && y >= 0 && x < display.screen.real_width && y < display.screen.real_height)
+    {
+        mask[y * touch_overlay.stride + (x >> 3)] |= 1 << (x & 7);
+        touch_overlay.row_any[y] = 1;
+    }
+}
+
+static void touch_overlay_text(int cx, int cy, const char *text, int scale)
+{
+    const int len = (int)strlen(text);
+    const int y0 = cy - (7 * scale) / 2;
+    int x0 = cx - (len * 6 * scale - scale) / 2;
+    for (int c = 0; c < len; ++c, x0 += 6 * scale)
+    {
+        for (size_t g = 0; g < RG_COUNT(touch_overlay_font); ++g)
+        {
+            if (touch_overlay_font[g].ch != text[c])
+                continue;
+            for (int row = 0; row < 7; ++row)
+                for (int col = 0; col < 5; ++col)
+                    if (touch_overlay_font[g].rows[row] & (0x10 >> col))
+                        for (int sy = 0; sy < scale; ++sy)
+                            for (int sx = 0; sx < scale; ++sx)
+                                touch_overlay_set_pixel(touch_overlay.strong,
+                                    x0 + col * scale + sx, y0 + row * scale + sy);
+            break;
+        }
+    }
+}
+
+// Filled triangle pointing in (dx,dy), one of which must be 0. i=0 is the tip.
+static void touch_overlay_arrow(int cx, int cy, int dx, int dy, int size)
+{
+    for (int i = 0; i < size; ++i)
+        for (int j = -i; j <= i; ++j)
+            touch_overlay_set_pixel(touch_overlay.strong,
+                cx + (dx ? dx * (size / 2 - i) : j),
+                cy + (dy ? dy * (size / 2 - i) : j));
+}
+
+static bool touch_overlay_in_rrect(int x, int y, int x1, int y1, int x2, int y2, int r)
+{
+    if (x < x1 || x > x2 || y < y1 || y > y2)
+        return false;
+    const int dx = RG_MAX(RG_MAX(x1 + r - x, x - (x2 - r)), 0);
+    const int dy = RG_MAX(RG_MAX(y1 + r - y, y - (y2 - r)), 0);
+    return dx * dx + dy * dy <= r * r;
+}
+
+static void touch_overlay_rrect(int x1, int y1, int x2, int y2, int r)
+{
+    for (int y = y1; y <= y2; ++y)
+        for (int x = x1; x <= x2; ++x)
+        {
+            if (!touch_overlay_in_rrect(x, y, x1, y1, x2, y2, r))
+                continue;
+            // ~2px border: pixel is inside, but its 2-neighborhood isn't fully inside
+            if (!touch_overlay_in_rrect(x - 2, y, x1, y1, x2, y2, r) ||
+                !touch_overlay_in_rrect(x + 2, y, x1, y1, x2, y2, r) ||
+                !touch_overlay_in_rrect(x, y - 2, x1, y1, x2, y2, r) ||
+                !touch_overlay_in_rrect(x, y + 2, x1, y1, x2, y2, r))
+                touch_overlay_set_pixel(touch_overlay.faint, x, y);
+        }
+}
+
+static void touch_overlay_circle(int cx, int cy, int r)
+{
+    for (int y = cy - r; y <= cy + r; ++y)
+        for (int x = cx - r; x <= cx + r; ++x)
+        {
+            const int d2 = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+            if (d2 <= r * r && d2 >= (r - 2) * (r - 2))
+                touch_overlay_set_pixel(touch_overlay.faint, x, y);
+        }
+}
+
+static void touch_overlay_pill(const rg_keymap_touch_t *z, const char *label)
+{
+    const int x1 = z->x1 + 2, y1 = z->y1 + 2, x2 = z->x2 - 2, y2 = z->y2 - 2;
+    touch_overlay_rrect(x1, y1, x2, y2, RG_MIN(x2 - x1, y2 - y1) / 3);
+    touch_overlay_text((x1 + x2) / 2, (y1 + y2) / 2, label, 1);
+}
+
+#ifdef RG_TOUCH_OVERLAY_TOGGLE_ZONE
+static void touch_overlay_btn_pixel(uint8_t *mask, int x, int y)
+{
+    if (x >= 0 && y >= 0 && x < display.screen.real_width && y < display.screen.real_height)
+    {
+        mask[y * touch_overlay.stride + (x >> 3)] |= 1 << (x & 7);
+        touch_overlay.row_btn[y] = 1;
+    }
+}
+
+// The eye button: an elliptical eye with a pupil (always shown), plus a diagonal
+// strike-through that only renders while the overlay is disabled.
+static void touch_overlay_build_button(void)
+{
+    static const struct { int x1, y1, x2, y2; } tz = RG_TOUCH_OVERLAY_TOGGLE_ZONE;
+    const int cx = (tz.x1 + tz.x2) / 2, cy = (tz.y1 + tz.y2) / 2;
+    const int a = 13, b = 7, edge = a * a * b * b;
+    for (int dy = -b; dy <= b; ++dy)
+        for (int dx = -a; dx <= a; ++dx)
+        {
+            const int v = dx * dx * b * b + dy * dy * a * a;
+            if ((v <= edge && v >= edge * 5 / 8) || (dx * dx + dy * dy <= 3 * 3))
+                touch_overlay_btn_pixel(touch_overlay.button, cx + dx, cy + dy);
+        }
+    for (int dx = -14; dx <= 14; ++dx)
+        for (int t = -1; t <= 1; ++t)
+            touch_overlay_btn_pixel(touch_overlay.slash, cx + dx, cy + dx * 10 / 14 + t);
+}
+#endif
+
+// D-pad cross geometry: bar positions derived from the gap between the four zones
+static struct { int x1, y1, x2, y2, vx1, vx2, hy1, hy2; } touch_overlay_cross;
+
+static bool touch_overlay_in_cross(int x, int y)
+{
+    if (x < touch_overlay_cross.x1 || x > touch_overlay_cross.x2 ||
+        y < touch_overlay_cross.y1 || y > touch_overlay_cross.y2)
+        return false;
+    return (x >= touch_overlay_cross.vx1 && x <= touch_overlay_cross.vx2) ||
+           (y >= touch_overlay_cross.hy1 && y <= touch_overlay_cross.hy2);
+}
+
+static void touch_overlay_dpad(const rg_keymap_touch_t *up, const rg_keymap_touch_t *down,
+                               const rg_keymap_touch_t *left, const rg_keymap_touch_t *right)
+{
+    touch_overlay_cross.x1 = RG_MIN(up->x1, RG_MIN(down->x1, RG_MIN(left->x1, right->x1)));
+    touch_overlay_cross.y1 = RG_MIN(up->y1, RG_MIN(down->y1, RG_MIN(left->y1, right->y1)));
+    touch_overlay_cross.x2 = RG_MAX(up->x2, RG_MAX(down->x2, RG_MAX(left->x2, right->x2)));
+    touch_overlay_cross.y2 = RG_MAX(up->y2, RG_MAX(down->y2, RG_MAX(left->y2, right->y2)));
+    touch_overlay_cross.vx1 = left->x2 + 1;
+    touch_overlay_cross.vx2 = right->x1 - 1;
+    touch_overlay_cross.hy1 = up->y2 + 1;
+    touch_overlay_cross.hy2 = down->y1 - 1;
+
+    if (touch_overlay_cross.vx1 >= touch_overlay_cross.vx2 ||
+        touch_overlay_cross.hy1 >= touch_overlay_cross.hy2)
+    {
+        // Unexpected layout: fall back to plain outlines
+        const rg_keymap_touch_t *zones[] = {up, down, left, right};
+        for (size_t i = 0; i < 4; ++i)
+            touch_overlay_rrect(zones[i]->x1 + 2, zones[i]->y1 + 2, zones[i]->x2 - 2, zones[i]->y2 - 2, 6);
+        return;
+    }
+
+    for (int y = touch_overlay_cross.y1; y <= touch_overlay_cross.y2; ++y)
+        for (int x = touch_overlay_cross.x1; x <= touch_overlay_cross.x2; ++x)
+        {
+            if (!touch_overlay_in_cross(x, y))
+                continue;
+            if (!touch_overlay_in_cross(x - 2, y) || !touch_overlay_in_cross(x + 2, y) ||
+                !touch_overlay_in_cross(x, y - 2) || !touch_overlay_in_cross(x, y + 2))
+                touch_overlay_set_pixel(touch_overlay.faint, x, y);
+        }
+
+    const int arrow = 8;
+    touch_overlay_arrow((up->x1 + up->x2) / 2, (up->y1 + up->y2) / 2, 0, -1, arrow);
+    touch_overlay_arrow((down->x1 + down->x2) / 2, (down->y1 + down->y2) / 2, 0, 1, arrow);
+    touch_overlay_arrow((left->x1 + left->x2) / 2, (left->y1 + left->y2) / 2, -1, 0, arrow);
+    touch_overlay_arrow((right->x1 + right->x2) / 2, (right->y1 + right->y2) / 2, 1, 0, arrow);
+}
+
+static void touch_overlay_build_mask(void)
+{
+    size_t zones = 0;
+    const rg_keymap_touch_t *map = rg_input_get_touch_map(&zones);
+    touch_overlay.stride = (display.screen.real_width + 7) / 8;
+    touch_overlay.faint = calloc(display.screen.real_height, touch_overlay.stride);
+    touch_overlay.strong = calloc(display.screen.real_height, touch_overlay.stride);
+    touch_overlay.button = calloc(display.screen.real_height, touch_overlay.stride);
+    touch_overlay.slash = calloc(display.screen.real_height, touch_overlay.stride);
+    touch_overlay.row_any = calloc(display.screen.real_height, 1);
+    touch_overlay.row_btn = calloc(display.screen.real_height, 1);
+    if (!map || !touch_overlay.faint || !touch_overlay.strong || !touch_overlay.button ||
+        !touch_overlay.slash || !touch_overlay.row_any || !touch_overlay.row_btn)
+    {
+        free(touch_overlay.faint), touch_overlay.faint = NULL;
+        free(touch_overlay.strong), touch_overlay.strong = NULL;
+        free(touch_overlay.button), touch_overlay.button = NULL;
+        free(touch_overlay.slash), touch_overlay.slash = NULL;
+        free(touch_overlay.row_any), touch_overlay.row_any = NULL;
+        free(touch_overlay.row_btn), touch_overlay.row_btn = NULL;
+        return;
+    }
+
+    const rg_keymap_touch_t *up = NULL, *down = NULL, *left = NULL, *right = NULL;
+
+    for (size_t i = 0; i < zones; ++i)
+    {
+        const rg_keymap_touch_t *z = &map[i];
+        const int cx = (z->x1 + z->x2) / 2, cy = (z->y1 + z->y2) / 2;
+        switch (z->key)
+        {
+            case RG_KEY_UP:    up = z;    break; // the d-pad is drawn as a group below
+            case RG_KEY_DOWN:  down = z;  break;
+            case RG_KEY_LEFT:  left = z;  break;
+            case RG_KEY_RIGHT: right = z; break;
+            case RG_KEY_A:
+            case RG_KEY_B:
+                touch_overlay_circle(cx, cy, RG_MIN(z->x2 - z->x1, z->y2 - z->y1) / 2 - 3);
+                touch_overlay_text(cx, cy, z->key == RG_KEY_A ? "A" : "B", 2);
+                break;
+            case RG_KEY_SELECT: touch_overlay_pill(z, "SELECT"); break;
+            case RG_KEY_START:  touch_overlay_pill(z, "START");  break;
+            case RG_KEY_MENU:   touch_overlay_pill(z, "MENU");   break;
+            case RG_KEY_OPTION: touch_overlay_pill(z, "OPT");    break;
+            default:
+                touch_overlay_rrect(z->x1 + 2, z->y1 + 2, z->x2 - 2, z->y2 - 2, 6);
+                break;
+        }
+    }
+
+    if (up && down && left && right)
+        touch_overlay_dpad(up, down, left, right);
+    else
+    {
+        const rg_keymap_touch_t *zones_left[] = {up, down, left, right};
+        for (size_t i = 0; i < 4; ++i)
+            if (zones_left[i])
+                touch_overlay_rrect(zones_left[i]->x1 + 2, zones_left[i]->y1 + 2,
+                                    zones_left[i]->x2 - 2, zones_left[i]->y2 - 2, 6);
+    }
+
+#ifdef RG_TOUCH_OVERLAY_TOGGLE_ZONE
+    touch_overlay_build_button();
+#endif
+}
+
+static void touch_overlay_draw_run(int x1, int x2, int y, uint16_t color_le)
+{
+    if (x1 <= x2)
+        rg_display_clear_rect(x1 - display.screen.margins.left, y - display.screen.margins.top,
+                              x2 - x1 + 1, 1, color_le);
+}
+
+static void touch_overlay_draw_static_mask(const uint8_t *mask, const uint8_t *rows, uint16_t color_le,
+                                           int vp_x1, int vp_y1, int vp_x2, int vp_y2)
+{
+    for (int y = 0; y < display.screen.real_height; ++y)
+    {
+        if (!rows[y])
+            continue;
+        const uint8_t *mrow = &mask[y * touch_overlay.stride];
+        const bool row_in_vp = (y >= vp_y1 && y <= vp_y2);
+        int run = -1;
+        for (int x = 0; x <= display.screen.real_width; ++x)
+        {
+            bool set = x < display.screen.real_width && (mrow[x >> 3] & (1 << (x & 7)));
+            if (set && run < 0)
+                run = x;
+            if (!set && run >= 0)
+            {
+                if (!row_in_vp) // whole run sits on the top/bottom bars
+                {
+                    touch_overlay_draw_run(run, x - 1, y, color_le);
+                }
+                else // only the parts hanging over the side bars; write_update blends the rest
+                {
+                    touch_overlay_draw_run(run, RG_MIN(x - 1, vp_x1 - 1), y, color_le);
+                    touch_overlay_draw_run(RG_MAX(run, vp_x2 + 1), x - 1, y, color_le);
+                }
+                run = -1;
+            }
+        }
+    }
+}
+
+static void touch_overlay_draw_static(void)
+{
+    if (!touch_overlay.row_any)
+        return;
+    const int vp_x1 = display.screen.margins.left + display.viewport.left;
+    const int vp_y1 = display.screen.margins.top + display.viewport.top;
+    const int vp_x2 = vp_x1 + display.viewport.width - 1;
+    const int vp_y2 = vp_y1 + display.viewport.height - 1;
+    if (config.touch_overlay)
+    {
+        touch_overlay_draw_static_mask(touch_overlay.faint, touch_overlay.row_any, TOUCH_OVERLAY_FAINT_LE, vp_x1, vp_y1, vp_x2, vp_y2);
+        touch_overlay_draw_static_mask(touch_overlay.strong, touch_overlay.row_any, TOUCH_OVERLAY_STRONG_LE, vp_x1, vp_y1, vp_x2, vp_y2);
+    }
+    touch_overlay_draw_static_mask(touch_overlay.button, touch_overlay.row_btn, TOUCH_OVERLAY_STRONG_LE, vp_x1, vp_y1, vp_x2, vp_y2);
+    if (!config.touch_overlay)
+        touch_overlay_draw_static_mask(touch_overlay.slash, touch_overlay.row_btn, TOUCH_OVERLAY_STRONG_LE, vp_x1, vp_y1, vp_x2, vp_y2);
+}
 #endif
 
 static int draw_on_screen_display(int region_start, int region_end)
@@ -227,6 +554,41 @@ static inline void write_update(const rg_surface_t *update)
             }
         }
 
+#ifdef RG_GAMEPAD_TOUCH_MAP
+        if (touch_overlay.row_any && need_update)
+        {
+            // Ghost the touch overlay into the outgoing block. This happens after the
+            // checksums, so partial updates keep working; toggling the overlay goes
+            // through display.changed which resets the checksums anyway. The eye button
+            // (and its strike-through when disabled) renders even when the art doesn't.
+            const int block_top = display.screen.margins.top + draw_top + y - lines_to_copy;
+            const int panel_left = display.screen.margins.left + draw_left;
+            for (int i = 0; i < lines_to_copy; ++i)
+            {
+                const int py = block_top + i;
+                const bool art = config.touch_overlay && touch_overlay.row_any[py];
+                const bool btn = touch_overlay.row_btn[py];
+                if (!art && !btn)
+                    continue;
+                const uint8_t *frow = &touch_overlay.faint[py * touch_overlay.stride];
+                const uint8_t *srow = &touch_overlay.strong[py * touch_overlay.stride];
+                const uint8_t *brow = &touch_overlay.button[py * touch_overlay.stride];
+                const uint8_t *xrow = &touch_overlay.slash[py * touch_overlay.stride];
+                uint16_t *line = line_buffer + i * draw_width;
+                for (int xx = 0; xx < draw_width; ++xx)
+                {
+                    const int px = panel_left + xx;
+                    const int byi = px >> 3, bit = 1 << (px & 7);
+                    if ((btn && ((brow[byi] & bit) || (!config.touch_overlay && (xrow[byi] & bit)))) ||
+                        (art && (srow[byi] & bit)))
+                        line[xx] = blend_pixels(line[xx], 0xFFFF); // 50% white
+                    else if (art && (frow[byi] & bit))
+                        line[xx] = blend_pixels(line[xx], blend_pixels(line[xx], 0xFFFF)); // 25% white
+                }
+            }
+        }
+#endif
+
         if (need_update)
         {
             int left = display.screen.margins.left + draw_left;
@@ -363,6 +725,9 @@ static void display_task(void *arg)
                 else
                     rg_display_clear_except(display.viewport.left, display.viewport.top, display.viewport.width, display.viewport.height, C_BLACK);
             }
+            #ifdef RG_GAMEPAD_TOUCH_MAP
+            touch_overlay_draw_static();
+            #endif
             display.changed = false;
         }
 
@@ -373,6 +738,20 @@ static void display_task(void *arg)
         lcd_sync();
     }
 }
+
+#ifdef RG_GAMEPAD_TOUCH_MAP
+void rg_display_set_touch_overlay(bool enabled)
+{
+    config.touch_overlay = enabled;
+    rg_settings_set_number(NS_GLOBAL, SETTING_TOUCH_OVERLAY, enabled);
+    display.changed = true; // next submit resets the checksums and repaints the bars
+}
+
+bool rg_display_get_touch_overlay(void)
+{
+    return config.touch_overlay;
+}
+#endif
 
 void rg_display_force_redraw(void)
 {
@@ -631,6 +1010,7 @@ void rg_display_init(void)
         .rotation = rg_settings_get_number(NS_APP, SETTING_ROTATION, RG_DISPLAY_ROTATION_AUTO),
         .border_file = rg_settings_get_string(NS_APP, SETTING_BORDER, NULL),
         .custom_zoom = rg_settings_get_number(NS_APP, SETTING_CUSTOM_ZOOM, 1.0),
+        .touch_overlay = rg_settings_get_number(NS_GLOBAL, SETTING_TOUCH_OVERLAY, 1),
     };
     display = (rg_display_t){
         .screen.real_width = RG_SCREEN_WIDTH,
@@ -642,6 +1022,9 @@ void rg_display_init(void)
     };
     display.screen.width -= display.screen.margins.left + display.screen.margins.right;
     display.screen.height -= display.screen.margins.top + display.screen.margins.bottom;
+    #ifdef RG_GAMEPAD_TOUCH_MAP
+    touch_overlay_build_mask();
+    #endif
     lcd_init();
     rg_display_clear(C_BLACK);
     rg_task_delay(80); // Wait for the screen be cleared before turning on the backlight (40ms doesn't seem to be enough...)

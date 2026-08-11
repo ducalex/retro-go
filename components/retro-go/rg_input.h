@@ -105,3 +105,4 @@ rg_battery_t rg_input_read_battery(void);
 bool rg_input_read_gamepad_raw(uint32_t *out);
 bool rg_input_read_battery_raw(rg_battery_t *out);
 const char *rg_input_get_key_name(rg_key_t key);
+const rg_keymap_touch_t *rg_input_get_touch_map(size_t *count);

@@ -50,6 +50,19 @@ static rg_battery_t battery_state = {0};
     for (size_t i = 0; i < RG_COUNT(keymap); ++i) \
         gamepad_mapped |= keymap[i].key;          \
 
+const rg_keymap_touch_t *rg_input_get_touch_map(size_t *count)
+{
+#ifdef RG_GAMEPAD_TOUCH_MAP
+    if (count)
+        *count = RG_COUNT(keymap_touch);
+    return keymap_touch;
+#else
+    if (count)
+        *count = 0;
+    return NULL;
+#endif
+}
+
 #ifdef ESP_PLATFORM
 static inline int adc_get_raw(adc_unit_t unit, adc_channel_t channel)
 {
@@ -209,6 +222,9 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     if (rg_i2c_read(RG_TOUCH_I2C_ADDR, 0x00, touch_data, 13))
     {
         int points = touch_data[2] & 0x0F;
+    #ifdef RG_TOUCH_OVERLAY_TOGGLE_ZONE
+        bool overlay_toggle_hit = false;
+    #endif
         for (int p = 0; p < points && p < 2; ++p)
         {
             const uint8_t *d = &touch_data[3 + p * 6];
@@ -229,7 +245,21 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
                 if (tx >= mapping->x1 && tx <= mapping->x2 && ty >= mapping->y1 && ty <= mapping->y2)
                     state |= mapping->key;
             }
+        #ifdef RG_TOUCH_OVERLAY_TOGGLE_ZONE
+            {
+                static const struct { int x1, y1, x2, y2; } tz = RG_TOUCH_OVERLAY_TOGGLE_ZONE;
+                if (tx >= tz.x1 && tx <= tz.x2 && ty >= tz.y1 && ty <= tz.y2)
+                    overlay_toggle_hit = true;
+            }
+        #endif
         }
+    #ifdef RG_TOUCH_OVERLAY_TOGGLE_ZONE
+        // A tap (rising edge) on the ghost eye button toggles the touch overlay
+        static bool overlay_toggle_held = false;
+        if (overlay_toggle_hit && !overlay_toggle_held)
+            rg_display_set_touch_overlay(!rg_display_get_touch_overlay());
+        overlay_toggle_held = overlay_toggle_hit;
+    #endif
     }
 #else
 #error "RG_GAMEPAD_TOUCH_MAP requires a touch driver (RG_TOUCH_DRIVER_FT6X36)"
