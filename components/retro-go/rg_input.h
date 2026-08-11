@@ -77,6 +77,13 @@ typedef struct
     uint32_t src;
 } rg_keymap_virt_t;
 
+// #define RG_GAMEPAD_TOUCH_MAP {{}, ...} to use Touchscreen driver (screen zones as buttons)
+typedef struct
+{
+    rg_key_t key;
+    int x1, y1, x2, y2; // Zone in display coordinates, inclusive
+} rg_keymap_touch_t;
+
 // FIXME: Create a single unified keymap...
 // ...
 
@@ -98,3 +105,4 @@ rg_battery_t rg_input_read_battery(void);
 bool rg_input_read_gamepad_raw(uint32_t *out);
 bool rg_input_read_battery_raw(rg_battery_t *out);
 const char *rg_input_get_key_name(rg_key_t key);
+const rg_keymap_touch_t *rg_input_get_touch_map(size_t *count);

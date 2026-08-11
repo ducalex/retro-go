@@ -1516,6 +1516,20 @@ static rg_gui_event_t filter_update_cb(rg_gui_option_t *option, rg_gui_event_t e
     return RG_DIALOG_VOID;
 }
 
+#ifdef RG_GAMEPAD_TOUCH_MAP
+static rg_gui_event_t touch_overlay_cb(rg_gui_option_t *option, rg_gui_event_t event)
+{
+    bool enabled = rg_display_get_touch_overlay();
+    if (event == RG_DIALOG_PREV || event == RG_DIALOG_NEXT || event == RG_DIALOG_ENTER)
+    {
+        enabled = !enabled;
+        rg_display_set_touch_overlay(enabled);
+    }
+    strcpy(option->value, enabled ? _("On") : _("Off"));
+    return RG_DIALOG_VOID;
+}
+#endif
+
 static rg_gui_event_t scaling_update_cb(rg_gui_option_t *option, rg_gui_event_t event)
 {
     int max = RG_DISPLAY_SCALING_COUNT - 1;
@@ -2041,6 +2055,9 @@ void rg_gui_options_menu(void)
         {0, _("Scaling"),       "-", RG_DIALOG_FLAG_NORMAL, &scaling_update_cb},
         {0, _("Factor"),        "-", RG_DIALOG_FLAG_HIDDEN, &custom_zoom_cb},
         {0, _("Filter"),        "-", RG_DIALOG_FLAG_NORMAL, &filter_update_cb},
+        #ifdef RG_GAMEPAD_TOUCH_MAP
+        {0, _("Touch overlay"), "-", RG_DIALOG_FLAG_NORMAL, &touch_overlay_cb},
+        #endif
         {0, _("Border"),        "-", RG_DIALOG_FLAG_NORMAL, &border_update_cb},
         {0, _("Speed"),         "-", RG_DIALOG_FLAG_NORMAL, &speedup_update_cb},
         // {0, _("Misc options"),  NULL, RG_DIALOG_FLAG_NORMAL, &misc_options_cb},

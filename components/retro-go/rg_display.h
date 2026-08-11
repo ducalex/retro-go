@@ -50,6 +50,7 @@ typedef struct
     display_backlight_t backlight;
     char *border_file;
     double custom_zoom;
+    int touch_overlay;
 } rg_display_config_t;
 
 typedef struct
@@ -116,6 +117,8 @@ int rg_display_get_height(void);
 
 void rg_display_set_scaling(display_scaling_t scaling);
 display_scaling_t rg_display_get_scaling(void);
+void rg_display_set_touch_overlay(bool enabled);
+bool rg_display_get_touch_overlay(void);
 void rg_display_set_filter(display_filter_t filter);
 display_filter_t rg_display_get_filter(void);
 void rg_display_set_rotation(display_rotation_t rotation);
