@@ -38,6 +38,13 @@ static rg_keymap_serial_t keymap_serial[] = RG_GAMEPAD_SERIAL_MAP;
 #ifdef RG_GAMEPAD_VIRT_MAP
 static rg_keymap_virt_t keymap_virt[] = RG_GAMEPAD_VIRT_MAP;
 #endif
+#ifdef RG_GAMEPAD_TOUCH_MAP
+static rg_keymap_touch_t keymap_touch[] = RG_GAMEPAD_TOUCH_MAP;
+#endif
+#ifdef RG_GAMEPAD_BLE_MAP
+#include "drivers/input/ble_hid.h"
+static rg_keymap_ble_t keymap_ble[] = RG_GAMEPAD_BLE_MAP;
+#endif
 static bool input_task_running = false;
 static uint32_t gamepad_state = -1; // _Atomic
 static uint32_t gamepad_mapped = 0;
@@ -199,6 +206,53 @@ bool rg_input_read_gamepad_raw(uint32_t *out)
     }
 #endif
 
+#if defined(RG_GAMEPAD_TOUCH_MAP)
+#if RG_TOUCH_DRIVER_FT6X36
+    // FT6x36 capacitive touch: registers 0x02 = touch count, then two 6-byte points
+    uint8_t touch_data[13];
+    if (rg_i2c_read(RG_TOUCH_I2C_ADDR, 0x00, touch_data, 13))
+    {
+        int points = touch_data[2] & 0x0F;
+        for (int p = 0; p < points && p < 2; ++p)
+        {
+            const uint8_t *d = &touch_data[3 + p * 6];
+            int tx = ((d[0] & 0x0F) << 8) | d[1];
+            int ty = ((d[2] & 0x0F) << 8) | d[3];
+        #if RG_TOUCH_SWAP_XY
+            int tmp = tx; tx = ty; ty = tmp;
+        #endif
+        #if RG_TOUCH_INVERT_X
+            tx = RG_SCREEN_WIDTH - 1 - tx;
+        #endif
+        #if RG_TOUCH_INVERT_Y
+            ty = RG_SCREEN_HEIGHT - 1 - ty;
+        #endif
+            for (size_t i = 0; i < RG_COUNT(keymap_touch); ++i)
+            {
+                const rg_keymap_touch_t *mapping = &keymap_touch[i];
+                if (tx >= mapping->x1 && tx <= mapping->x2 && ty >= mapping->y1 && ty <= mapping->y2)
+                    state |= mapping->key;
+            }
+        }
+    }
+#else
+#error "RG_GAMEPAD_TOUCH_MAP requires a touch driver (RG_TOUCH_DRIVER_FT6X36)"
+#endif
+#endif
+
+#if defined(RG_GAMEPAD_BLE_MAP)
+    uint32_t ble_buttons = rg_ble_hid_read();
+    if (ble_buttons)
+    {
+        for (size_t i = 0; i < RG_COUNT(keymap_ble); ++i)
+        {
+            const rg_keymap_ble_t *mapping = &keymap_ble[i];
+            if (ble_buttons & mapping->src)
+                state |= mapping->key;
+        }
+    }
+#endif
+
 #if defined(RG_GAMEPAD_VIRT_MAP)
     for (size_t i = 0; i < RG_COUNT(keymap_virt); ++i)
     {
@@ -324,6 +378,18 @@ void rg_input_init(void)
     UPDATE_GLOBAL_MAP(keymap_kbd);
 #endif
 
+#if defined(RG_GAMEPAD_TOUCH_MAP)
+    RG_LOGI("Initializing TOUCH gamepad driver...");
+    rg_i2c_init();
+    UPDATE_GLOBAL_MAP(keymap_touch);
+#endif
+
+#if defined(RG_GAMEPAD_BLE_MAP)
+    RG_LOGI("Initializing BLE gamepad driver...");
+    rg_ble_hid_init();
+    UPDATE_GLOBAL_MAP(keymap_ble);
+#endif
+
 #if defined(RG_GAMEPAD_SERIAL_MAP)
     RG_LOGI("Initializing SERIAL gamepad driver...");
     gpio_set_direction(RG_GPIO_GAMEPAD_CLOCK, GPIO_MODE_OUTPUT);
@@ -367,6 +433,9 @@ void rg_input_init(void)
 void rg_input_deinit(void)
 {
     input_task_running = false;
+#if defined(RG_GAMEPAD_BLE_MAP)
+    rg_ble_hid_deinit();
+#endif
     // while (gamepad_state != -1)
     //     rg_task_yield();
     RG_LOGI("Input terminated.\n");

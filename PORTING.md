@@ -69,12 +69,14 @@ You can clone `components/retro-go/drivers/ili9341.h` to use as a starting point
 
 #### Input
 
-Retro-Go has five input drivers:
+Retro-Go has seven input drivers:
 - GPIO: This is a button connected to a pin of the esp32
 - ADC:  This is usually used with a voltage divider to put multiple buttons on a single esp32 pin
 - I2C:  Also known as a GPIO extender, retro-go supports many chips (AW9523, PCF9539, MCP23017, PCF8575)
 - Shift register: Like a SNES controller or a 74HC165
 - Virtual: If your device doesn't have enough button, you can map combos to the missing keys. eg start+select = menu
+- Touch: On a device with a touchscreen and no buttons, rectangular zones of the screen can act as keys
+- Bluetooth LE: A BLE HID gamepad (a Bluetooth controller), if your chip has a BLE radio
 
 You can combine any of them by defining the appropriate `RG_GAMEPAD_*_MAP` in your `config.h`. Refer to `rg_input.h` or other targets to see how configuration is done.
 

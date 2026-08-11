@@ -37,6 +37,8 @@ try:
 except:
     PROJECT_VER = "unknown"
 FW_FORMAT = "none"
+# Targets can set this in their env.py to build the Bluetooth LE gamepad driver
+ENABLE_BLUETOOTH = False
 
 TARGETS = []
 for t in glob.glob("components/retro-go/targets/*/config.h"):
@@ -195,6 +197,11 @@ if os.path.exists(f"components/retro-go/targets/{args.target}/env.py"):
 if os.path.exists(f"components/retro-go/targets/{args.target}/sdkconfig"):
     os.putenv("SDKCONFIG_DEFAULTS", os.path.abspath(f"components/retro-go/targets/{args.target}/sdkconfig"))
 os.putenv("IDF_TARGET", IDF_TARGET)
+# Read by components/retro-go/CMakeLists.txt. This has to be an environment variable
+# rather than a -D: esp-idf expands component requirements in a separate cmake process
+# that inherits the environment but not the cache, and that is the pass which decides
+# whether the `bt` component is part of the build.
+os.putenv("RG_ENABLE_BLUETOOTH", "1" if ENABLE_BLUETOOTH else "0")
 
 command = args.command
 apps = DEFAULT_APPS.split() if "all" in args.apps else args.apps
