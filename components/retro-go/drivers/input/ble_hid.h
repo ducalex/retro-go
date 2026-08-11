@@ -37,3 +37,6 @@ uint32_t rg_ble_hid_read(void);
 bool rg_ble_hid_connected(void);
 // Human readable connection state, for the debug/about menus.
 const char *rg_ble_hid_status(void);
+// Drop all stored bonds and restart scanning. Fixes the stale-key loop after a
+// controller re-enters pairing mode (it wipes its key, ours no longer matches).
+void rg_ble_hid_forget_bonds(void);

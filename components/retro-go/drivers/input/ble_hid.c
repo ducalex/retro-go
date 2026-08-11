@@ -390,14 +390,31 @@ static void start_scan(void)
         .filter_policy = 0,
         .limited = 0,
         .passive = 0, // Active scan: some controllers only advertise 0x1812 in the scan response
-        .filter_duplicates = 1,
+        // No duplicate filtering: with an infinite scan, one sighting that arrives without
+        // its scan response (frequent under Wi-Fi coexistence) would fail the name filter
+        // and then be suppressed forever — pairing would only ever work right after boot.
+        .filter_duplicates = 0,
     };
 
     ble.status = "scanning";
 
     int rc = ble_gap_disc(ble.own_addr_type, BLE_HS_FOREVER, &params, gap_event, NULL);
+    if (rc == BLE_HS_EBUSY || rc == BLE_HS_EPREEMPTED)
+    {
+        // A connect attempt or a dying scan still owns the radio; clear it and retry once
+        ble_gap_conn_cancel();
+        ble_gap_disc_cancel();
+        rc = ble_gap_disc(ble.own_addr_type, BLE_HS_FOREVER, &params, gap_event, NULL);
+    }
     if (rc != 0 && rc != BLE_HS_EALREADY)
+    {
+        ble.status = "scan failed";
         RG_LOGE("ble_gap_disc failed: %d\n", rc);
+    }
+    else
+    {
+        RG_LOGI("BLE scanning for HID devices\n");
+    }
 }
 
 static void reset_connection_state(void)
@@ -897,10 +914,13 @@ void rg_ble_hid_init(void)
     ble_svc_gap_device_name_set(RG_PROJECT_NAME);
     ble_store_config_init();
 
-    nimble_port_freertos_init(host_task);
-
+    // Status must be set before the host task starts: its sync callback can fire
+    // (and set "scanning") before we return, and must not be overwritten here.
     ble.initialized = true;
     ble.status = "starting";
+
+    nimble_port_freertos_init(host_task);
+
     RG_LOGI("BLE HID gamepad host started\n");
 }
 
@@ -932,6 +952,22 @@ const char *rg_ble_hid_status(void)
     return ble.status;
 }
 
+void rg_ble_hid_forget_bonds(void)
+{
+    if (!ble.initialized)
+        return;
+    // Drop all stored bonds so the next connection pairs from scratch. Cures the
+    // stale-key loop where the controller re-entered pairing mode (wiping its own
+    // key) while we still encrypt with the old one: "Encryption failed (520)".
+    ble_store_clear();
+    RG_LOGI("BLE bonds cleared, re-pairing\n");
+    ble_gap_conn_cancel(); // abort any in-flight connect attempt (harmless if none)
+    if (ble.conn_handle != BLE_HS_CONN_HANDLE_NONE)
+        ble_gap_terminate(ble.conn_handle, BLE_ERR_REM_USER_CONN_TERM); // rescan happens on disconnect
+    else
+        start_scan();
+}
+
 #else
 
 // Keep the translation unit non-empty for targets that don't enable BLE input.
@@ -940,5 +976,6 @@ void rg_ble_hid_deinit(void) {}
 uint32_t rg_ble_hid_read(void) { return 0; }
 bool rg_ble_hid_connected(void) { return false; }
 const char *rg_ble_hid_status(void) { return "disabled"; }
+void rg_ble_hid_forget_bonds(void) {}
 
 #endif
