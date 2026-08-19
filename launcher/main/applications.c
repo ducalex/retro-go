@@ -130,6 +130,23 @@ static const char *get_file_path(retro_file_t *file)
     return buffer;
 }
 
+static bool get_core_path(const char *partition, char *out_path, size_t out_len)
+{
+    snprintf(out_path, out_len, RG_BASE_PATH_ROMS "/cores/%s.bin", partition);
+    if (rg_storage_exists(out_path))
+        return true;
+
+    snprintf(out_path, out_len, RG_BASE_PATH "/cores/%s.bin", partition);
+    if (rg_storage_exists(out_path))
+        return true;
+
+    snprintf(out_path, out_len, RG_BASE_PATH_ROMS "/apps/%s.bin", partition);
+    if (rg_storage_exists(out_path))
+        return true;
+
+    return false;
+}
+
 static void application_start(retro_file_t *file, int load_state)
 {
     RG_ASSERT_ARG(file);
@@ -138,7 +155,45 @@ static void application_start(retro_file_t *file, int load_state)
     char *path = strdup(get_file_path(file));
     int flags = (gui.startup_mode ? RG_BOOT_ONCE : 0) | (load_state != -1 ? RG_BOOT_RESUME : 0);
     bookmark_add(BOOK_TYPE_RECENT, file); // This could relocate *file, but we no longer need it
-    rg_system_switch_app(part, name, path, load_state, flags);
+
+    if (rg_system_have_app(part) && strcmp(part, "bootstrap") != 0 && strcmp(part, "bootstrapped") != 0)
+    {
+        rg_system_switch_app(part, name, path, load_state, flags);
+        return;
+    }
+
+    if (strcmp(part, "bootstrap") == 0)
+    {
+        rg_system_switch_app(part, name, path, load_state, flags);
+        return;
+    }
+
+    char core_path[RG_PATH_MAX];
+    if (!get_core_path(part, core_path, sizeof(core_path)))
+    {
+        rg_gui_alert(_("Core not found"), part);
+        free(part);
+        free(name);
+        free(path);
+        return;
+    }
+
+    char *last_flashed = rg_settings_get_string(NS_GLOBAL, "LastFlashedApp", NULL);
+    if (last_flashed && strcmp(last_flashed, core_path) == 0)
+    {
+        free(last_flashed);
+        rg_system_switch_app("bootstrapped", name, path, load_state, flags);
+        return;
+    }
+    free(last_flashed);
+
+    rg_settings_set_string(NS_GLOBAL, "NextBootName", name);
+    rg_settings_set_string(NS_GLOBAL, "NextBootArgs", path);
+    rg_settings_set_number(NS_GLOBAL, "NextBootSlot", load_state);
+    rg_settings_set_number(NS_GLOBAL, "NextBootFlags", flags);
+    rg_settings_commit();
+
+    rg_system_switch_app("bootstrap", "bootstrap", core_path, 0, 0);
 }
 
 static uint32_t crc_read_file(retro_file_t *file, bool interactive)
@@ -657,7 +712,11 @@ static void application(const char *desc, const char *name, const char *exts, co
 {
     RG_ASSERT_ARG(desc && name && exts && part);
 
-    if (!rg_system_have_app(part))
+    char core_path[RG_PATH_MAX];
+    bool have_flash_part = rg_system_have_app(part);
+    bool have_sd_core = rg_system_have_app("bootstrapped") && get_core_path(part, core_path, sizeof(core_path));
+
+    if (!have_flash_part && !have_sd_core)
     {
         RG_LOGI("Application '%s' (%s) not present, skipping", desc, part);
         return;
@@ -673,7 +732,7 @@ static void application(const char *desc, const char *name, const char *exts, co
     snprintf(app->paths.covers, RG_PATH_MAX, RG_BASE_PATH_COVERS "/%s", app->short_name);
     snprintf(app->paths.saves, RG_PATH_MAX, RG_BASE_PATH_SAVES "/%s", app->short_name);
     snprintf(app->paths.roms, RG_PATH_MAX, RG_BASE_PATH_ROMS "/%s", app->short_name);
-    app->available = rg_system_have_app(app->partition);
+    app->available = true;
     app->files = calloc(100, sizeof(retro_file_t));
     app->files_capacity = 100;
     app->filenames = rg_bucket_create(4096);
@@ -703,7 +762,7 @@ void applications_init(void)
     application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 
     // Special app to bootstrap native esp32 binaries from the SD card
-    // application("Bootstrap", "apps", "bin elf", "bootstrap", 0);
+    application("Apps", "apps", "bin elf", "bootstrap", 0);
 
     if (rg_system_get_stats().freeMemory > 0x100000)
         crc_cache_init();

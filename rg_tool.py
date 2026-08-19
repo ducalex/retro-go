@@ -14,7 +14,7 @@ import zlib
 DEFAULT_TARGET = os.getenv("RG_TOOL_TARGET", "odroid-go")
 DEFAULT_BAUD = os.getenv("RG_TOOL_BAUD", "1152000")
 DEFAULT_PORT = os.getenv("RG_TOOL_PORT", "COM3")
-DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go snes9x gwenesis fmsx gbsp")
+DEFAULT_APPS = os.getenv("RG_TOOL_APPS", "launcher retro-core prboom-go snes9x gwenesis fmsx gbsp bootstrap")
 PROJECT_NAME = os.getenv("PROJECT_NAME", "Retro-Go")
 PROJECT_ICON = os.getenv("PROJECT_ICON", "assets/icon.raw")
 PROJECT_APPS = {
@@ -27,6 +27,7 @@ PROJECT_APPS = {
   'gwenesis':     [0, 16, 1048576],
   'fmsx':         [0, 16, 655360],
   'gbsp':         [0, 16, 851968],
+  'bootstrap':    [0, 16, 393216],
 }
 # PROJECT_APPS = {}
 # for t in glob.glob("*/CMakeLists.txt"):
@@ -78,9 +79,11 @@ def build_image(apps, output_file, img_type="odroid", fatsize=0, target="unknown
 
     if img_type not in ["odroid", "esplay"]:
         print("Building bootloader...")
-        bootloader_file = os.path.join(os.getcwd(), list(apps)[0], "build", "bootloader", "bootloader.bin")
+        # Prioritize launcher to build the custom bootloader with recovery hooks, fallback to first app
+        bootloader_app = "launcher" if "launcher" in apps else list(apps)[0]
+        bootloader_file = os.path.join(os.getcwd(), bootloader_app, "build", "bootloader", "bootloader.bin")
         if not os.path.exists(bootloader_file):
-            run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), list(apps)[0]))
+            run([IDF_PY, "bootloader"], cwd=os.path.join(os.getcwd(), bootloader_app))
         args += ["--target", target, "--bootloader", bootloader_file]
 
     args += [output_file]
@@ -93,6 +96,11 @@ def build_image(apps, output_file, img_type="odroid", fatsize=0, target="unknown
             subtype = ota_next_id
             ota_next_id += 1
         args += [str(part[0]), str(subtype), str(part[2]), app, os.path.join(app, "build", app + ".bin")]
+        
+    if 'bootstrap' in apps:
+        args += ["0", str(ota_next_id), "1572864", "bootstrapped", "none"]  # Edit bootstrap partition size here. 1572864 = 1.5MB, 1048576 = 1MB
+        ota_next_id += 1
+
     if fatsize:
         args += ["1", "129", fatsize, "vfs", "none"]
 
