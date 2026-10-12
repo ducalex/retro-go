@@ -699,6 +699,7 @@ void applications_init(void)
     application("Atari Lynx", "lnx", "lnx zip", "retro-core", 64);
     // application("Atari 2600", "a26", "a26 zip", "stella-go", 0);
     // application("Neo Geo Pocket Color", "ngp", "ngp ngc zip", "ngpocket-go", 0);
+    application("Quake", "quake", "pak", "quake-go", 0);
     application("DOOM", "doom", "wad zip", "prboom-go", 0);
     application("MSX", "msx", "rom mx1 mx2 dsk", "fmsx", 0);
 

@@ -1,0 +1,15 @@
+[sections:quake_sbss]
+entries:
+    .sbss+
+    .scommon+
+
+[scheme:quake_psram_scheme]
+entries:
+    bss -> extern_ram
+    common -> extern_ram
+    quake_sbss -> extern_ram
+
+[mapping:quake_psram_mapping]
+archive: libquake.a
+entries:
+    * (quake_psram_scheme)
