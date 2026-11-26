@@ -537,9 +537,9 @@ bool D_AddFile(const char *file)
 
   snprintf(relpath, PATH_MAX, "%s/%s", I_DoomExeDir(), file);
 
-  if (access(relpath, R_OK) == 0)
+  if (rg_storage_exists(relpath))
     file = relpath;
-  else if (access(file, R_OK) != 0) {
+  else if (!rg_storage_exists(file)) {
     lprintf(LO_WARN, "D_AddFile: %s not found\n", file);
     return false;
   }
@@ -917,10 +917,10 @@ static void D_DoomMainSetup(void)
       while (++p != myargc && *myargv[p] != '-')
         {
           AddDefaultExtension(strcpy(file, myargv[p]), ".bex");
-          if (access(file, F_OK))  // nope
+          if (!rg_storage_exists(file))  // nope
             {
               AddDefaultExtension(strcpy(file, myargv[p]), ".deh");
-              if (access(file, F_OK))  // still nope
+              if (!rg_storage_exists(file))  // still nope
                 I_Error("D_DoomMainSetup: Cannot find .deh or .bex file named %s",myargv[p]);
             }
           // during the beta we have debug output to dehout.txt
